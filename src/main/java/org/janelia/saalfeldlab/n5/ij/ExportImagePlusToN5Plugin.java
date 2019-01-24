@@ -24,6 +24,7 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileFilter;
 
 import org.scijava.command.Command;
+import org.scijava.plugin.Plugin;
 
 import bdv.export.ExportMipmapInfo;
 import bdv.export.ProgressWriter;
@@ -62,6 +63,8 @@ import net.imglib2.type.numeric.real.FloatType;
  * Replaced the xml-hdf5 writers with n5 file system writer.
  *
  */
+@Plugin(type = Command.class,
+menuPath = "Plugins>BigDataViewer>Export Current Image as N5")
 public class ExportImagePlusToN5Plugin implements Command {
 
 	public static void main(String[] args) {

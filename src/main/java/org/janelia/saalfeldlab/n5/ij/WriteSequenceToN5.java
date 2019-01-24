@@ -627,7 +627,9 @@ public class WriteSequenceToN5
 			//final String path = Util.getCellsPath( viewIdPartition, level );
 			N5ExportMetadataWriter metadata = new N5ExportMetadataWriter( n5Writer );
 			String path = N5ExportMetadata.getTimeChannelGroupPath( setupIdPartition, timepointIdPartition, level );
-			
+
+			//metadata.
+
 			try {
 				n5Writer.createDataset( path, dimensions, cellDimensions, N5Utils.dataType( t ), new GzipCompression() );
 			} catch (IOException e1) {
