@@ -1,4 +1,4 @@
-# n5-ij
+# n5-ij [![Build Status](https://travis-ci.com/saalfeldlab/n5-ij.svg?branch=master)](https://travis-ci.com/saalfeldlab/n5-ij)
 ImageJ convenience layer for N5
 
 Build into your Fiji installation:
