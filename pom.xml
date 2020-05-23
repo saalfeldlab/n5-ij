@@ -14,8 +14,8 @@
 	<version>0.0.2-SNAPSHOT</version>
 
 	<name>N5 ImageJ Bindings</name>
-	<description></description>
-	<url></url>
+	<description>ImageJ convenience layer for N5</description>
+	<url>https://github.com/saalfeldlab/n5-ij</url>
 	<inceptionYear>2017</inceptionYear>
 	<organization>
 		<name>Saalfeld Lab</name>
@@ -44,6 +44,13 @@
 			</roles>
 		</developer>
 	</developers>
+	<contributors>
+		<contributor>
+			<name>Igor Pisarev</name>
+			<url>https://imagej.net/User:Pisarevi</url>
+			<properties><id>igorpisarev</id></properties>
+		</contributor>
+	</contributors>
 
 	<mailingLists>
 		<mailingList>
@@ -74,8 +81,6 @@
 		<license.projectName>N5 ImageJ</license.projectName>
 		<license.organizationName>Saalfeld Lab</license.organizationName>
 		<license.copyrightOwners>Stephan Saalfeld</license.copyrightOwners>
-
-		<enforcer.skip>true</enforcer.skip>
 
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>deploy-to-scijava</releaseProfiles>
