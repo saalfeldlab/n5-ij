@@ -52,13 +52,20 @@
 		</mailingList>
 	</mailingLists>
 
-	<distributionManagement>
-		<repository>
-			<id>local-maven-repo</id>
-			<name>Local Maven Repository</name>
-			<url>file://${deploy.path}</url>
-		</repository>
-	</distributionManagement>
+	<scm>
+		<connection>scm:git:git://github.com/saalfeldlab/n5-ij</connection>
+		<developerConnection>scm:git:git@github.com:saalfeldlab/n5-ij</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/saalfeldlab/n5-ij</url>
+	</scm>
+	<issueManagement>
+		<system>GitHub</system>
+		<url>https://github.com/saalfeldlab/n5-ij/issues</url>
+	</issueManagement>
+	<ciManagement>
+		<system>Travis CI</system>
+		<url>https://travis-ci.com/saalfeldlab/n5-ij</url>
+	</ciManagement>
 
 	<properties>
 		<package-name>org.janelia.saalfeldlab</package-name>
@@ -69,6 +76,9 @@
 		<license.copyrightOwners>Stephan Saalfeld</license.copyrightOwners>
 
 		<enforcer.skip>true</enforcer.skip>
+
+		<!-- NB: Deploy releases to the SciJava Maven repository. -->
+		<releaseProfiles>deploy-to-scijava</releaseProfiles>
 	</properties>
 
 	<dependencies>
@@ -116,11 +126,7 @@
 
 	<repositories>
 		<repository>
-			<id>saalfeld-lab-maven-repo</id>
-			<url>https://saalfeldlab.github.io/maven</url>
-		</repository>
-		<repository>
-			<id>imagej.public</id>
+			<id>scijava.public</id>
 			<url>https://maven.scijava.org/content/groups/public</url>
 		</repository>
 	</repositories>
@@ -134,14 +140,6 @@
 					<configuration>
 						<source>1.8</source>
 						<target>1.8</target>
-					</configuration>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-deploy-plugin</artifactId>
-					<version>2.8.2</version>
-					<configuration>
-						<altDeploymentRepository>internal.repo::default::file://${deploy.path}</altDeploymentRepository>
 					</configuration>
 				</plugin>
 			</plugins>
