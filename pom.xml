@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
@@ -29,24 +28,6 @@
 		</license>
 	</licenses>
 
-	<mailingLists>
-		<mailingList>
-			<name>ImageJ Forum</name>
-			<archive>http://forum.imagej.net/</archive>
-		</mailingList>
-	</mailingLists>
-
-	<properties>
-		<package-name>org.janelia.saalfeldlab</package-name>
-
-		<license.licenseName>bsd_2</license.licenseName>
-		<license.projectName>N5 ImageJ</license.projectName>
-		<license.organizationName>Saalfeld Lab</license.organizationName>
-		<license.copyrightOwners>Stephan Saalfeld</license.copyrightOwners>
-
-		<enforcer.skip>true</enforcer.skip>
-	</properties>
-
 	<developers>
 		<developer>
 			<id>axtimwalde</id>
@@ -64,16 +45,31 @@
 		</developer>
 	</developers>
 
-	<repositories>
+	<mailingLists>
+		<mailingList>
+			<name>ImageJ Forum</name>
+			<archive>http://forum.imagej.net/</archive>
+		</mailingList>
+	</mailingLists>
+
+	<distributionManagement>
 		<repository>
-			<id>saalfeld-lab-maven-repo</id>
-			<url>https://saalfeldlab.github.io/maven</url>
+			<id>local-maven-repo</id>
+			<name>Local Maven Repository</name>
+			<url>file://${deploy.path}</url>
 		</repository>
-		<repository>
-			<id>imagej.public</id>
-			<url>https://maven.scijava.org/content/groups/public</url>
-		</repository>
-	</repositories>
+	</distributionManagement>
+
+	<properties>
+		<package-name>org.janelia.saalfeldlab</package-name>
+
+		<license.licenseName>bsd_2</license.licenseName>
+		<license.projectName>N5 ImageJ</license.projectName>
+		<license.organizationName>Saalfeld Lab</license.organizationName>
+		<license.copyrightOwners>Stephan Saalfeld</license.copyrightOwners>
+
+		<enforcer.skip>true</enforcer.skip>
+	</properties>
 
 	<dependencies>
 
@@ -118,6 +114,17 @@
 		</dependency>
 	</dependencies>
 
+	<repositories>
+		<repository>
+			<id>saalfeld-lab-maven-repo</id>
+			<url>https://saalfeldlab.github.io/maven</url>
+		</repository>
+		<repository>
+			<id>imagej.public</id>
+			<url>https://maven.scijava.org/content/groups/public</url>
+		</repository>
+	</repositories>
+
 	<build>
 		<pluginManagement>
 			<plugins>
@@ -140,12 +147,4 @@
 			</plugins>
 		</pluginManagement>
 	</build>
-
-	<distributionManagement>
-		<repository>
-			<id>local-maven-repo</id>
-			<name>Local Maven Repository</name>
-			<url>file://${deploy.path}</url>
-		</repository>
-	</distributionManagement>
 </project>
