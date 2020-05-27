@@ -20,11 +20,13 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
+import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import ij.ImagePlus;
 import net.imagej.Dataset;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
@@ -32,7 +34,7 @@ import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
-@Plugin( type = Command.class, menuPath = "File>Save As>N5" )
+@Plugin( type = Command.class, menuPath = "File>Save As>Export N5" )
 public class N5Exporter implements Command
 {
 	public static final String N5FS = "Filesystem";
@@ -47,6 +49,9 @@ public class N5Exporter implements Command
 
     @Parameter(visibility=ItemVisibility.MESSAGE, required=false)
     private String message = "Export an ImagePlus to an N5 container.";
+
+	@Parameter
+	private LogService log;
 
 	@Parameter
 	private ImagePlus image; // or use Dataset?
@@ -80,21 +85,29 @@ public class N5Exporter implements Command
 
 	public <T extends RealType<T> & NativeType<T>> void process() throws IOException
 	{
-		blockSize = Arrays.stream( blockSizeArg.split( "," )).mapToInt( x -> Integer.parseInt( x ) ).toArray();
-
-		System.out.println( n5RootLocation );
+		if( image.getNFrames() > 1 && metadataStyle.equals( N5Importer.MetadataN5ViewerKey ))
+		{
+			log.error("Writer does not yet support time points");
+			return;
+		}
 
 		N5Writer n5 = getWriter();
 		Compression compression = getCompression();
+		blockSize = Arrays.stream( blockSizeArg.split( "," )).mapToInt( x -> Integer.parseInt( x ) ).toArray();
 
 		Img<T> img = ImageJFunctions.wrap( image );
-		
 		N5Metadata<ImagePlus> meta = styles.get( metadataStyle );
 
 		String datasetString = "";
 		for( int c = 0; c < image.getNChannels(); c++ )
 		{
-			IntervalView<T> channelImg = Views.hyperSlice( img, 2, c );
+			RandomAccessibleInterval<T> channelImg;
+			if( img.numDimensions() >= 4 )
+			{
+				channelImg = Views.hyperSlice( img, 2, c );
+			}
+			else
+				channelImg = img;
 
 			if( metadataStyle.equals( N5Importer.MetadataN5ViewerKey ))
 			{

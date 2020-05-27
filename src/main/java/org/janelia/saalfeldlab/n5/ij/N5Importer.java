@@ -31,13 +31,13 @@ import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.exception.ImgLibException;
 
-@Plugin( type = Command.class, menuPath = "File>Import>N5" )
+@Plugin( type = Command.class, menuPath = "File>Import>Import N5" )
 public class N5Importer implements Command, WindowListener
 {
 	public static final String BDV_OPTION = "BigDataViewer";
 	public static final String IP_OPTION = "ImagePlus";
 
-	public static final String MetadataSimpleKey = "Simple Metadata";
+	public static final String MetadataSimpleKey = "SimpleMetadata";
 	public static final String MetadataN5ViewerKey = "N5Viewer Metadata";
 
 
