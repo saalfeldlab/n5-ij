@@ -25,6 +25,8 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
 import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
@@ -32,6 +34,7 @@ import net.imglib2.converter.Converters;
 import net.imglib2.exception.ImgLibException;
 import net.imglib2.img.cell.LazyCellImg;
 import net.imglib2.img.imageplus.ImagePlusImg;
+import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
@@ -42,10 +45,17 @@ import net.imglib2.view.Views;
 
 /**
  *
- *
  * @author Stephan Saalfeld &lt;saalfelds@janelia.hhmi.org&gt;
+ * @author John Bogovic &lt;bogovicj@janelia.hhmi.org&gt;
+ * 
  */
 public class N5IJUtils {
+
+	public static <T extends NativeType<T> & NumericType<T>> ImagePlus load(
+			final N5Reader n5,
+			final String dataset ) throws IOException, ImgLibException {
+		return load( n5, dataset, null );
+	}
 
 	/**
 	 * Loads and N5 dataset into an {@link ImagePlus}.  Other than
@@ -54,6 +64,7 @@ public class N5IJUtils {
 	 *
 	 * @param n5
 	 * @param dataset
+	 * @param metadata
 	 * @return
 	 * @throws IOException
 	 * @throws ImgLibException
@@ -61,7 +72,8 @@ public class N5IJUtils {
 	@SuppressWarnings( { "unchecked", "rawtypes" } )
 	public static <T extends NativeType<T> & NumericType<T>> ImagePlus load(
 			final N5Reader n5,
-			final String dataset) throws IOException, ImgLibException {
+			final String dataset,
+			final N5ImagePlusMetadata metadata ) throws IOException, ImgLibException {
 
 		final RandomAccessibleInterval<T> rai = N5Utils.open(n5, dataset);
 		final DatasetAttributes attributes = n5.getDatasetAttributes(dataset);
@@ -97,9 +109,12 @@ public class N5IJUtils {
 		for (final Pair<T, T> pair : Views.flatIterable(Views.interval(Views.pair(rai, impImg), rai)))
 			pair.getB().set(pair.getA());
 
-		return impImg.getImagePlus();
-	}
+		ImagePlus imp = impImg.getImagePlus();
+		if( metadata != null )
+			metadata.metadataFromN5( n5, dataset, imp );
 
+		return imp;
+	}
 
 	/**
 	 * Save an {@link ImagePlus} as an N5 dataset.
@@ -116,8 +131,33 @@ public class N5IJUtils {
 			final N5Writer n5,
 			final String datasetName,
 			final int[] blockSize,
-			final Compression compression) throws IOException {
+			final Compression compression) throws IOException
+	{
+		// TODO or use default simple metadata?
+		N5Metadata< ImagePlus > nullWriter = null;
+		save( imp, n5, datasetName, blockSize, compression, nullWriter );
+	}
 
+
+	/**
+	 * Save an {@link ImagePlus} as an N5 dataset.
+	 *
+	 * @param imp
+	 * @param n5
+	 * @param datasetName
+	 * @param blockSize
+	 * @param compression
+	 * @param metadata
+	 * @throws IOException
+	 */
+	public static void save(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String datasetName,
+			final int[] blockSize,
+			final Compression compression,
+			final N5Metadata<ImagePlus> metadata ) throws IOException
+	{
 		final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
 
 		N5Utils.save(
@@ -126,6 +166,9 @@ public class N5IJUtils {
 				datasetName,
 				blockSize,
 				compression);
+
+		if( metadata != null )
+			metadata.metadataToN5( imp, n5, datasetName );
 	}
 
 	/**
@@ -148,8 +191,36 @@ public class N5IJUtils {
 			final String datasetName,
 			final int[] blockSize,
 			final Compression compression,
-			final ExecutorService exec) throws IOException, InterruptedException, ExecutionException {
+			final ExecutorService exec
+			) throws IOException, InterruptedException, ExecutionException
+	{
+		save( imp, n5, datasetName, blockSize, compression, exec, null );
+	}
 
+	/**
+	 * Save and {@link ImagePlus} as an N5 dataset.  Parallelizes export using
+	 * an {@link ExecutorService}.
+	 *
+	 * @param imp
+	 * @param n5
+	 * @param datasetName
+	 * @param blockSize
+	 * @param compression
+	 * @param exec
+	 * @param metadata
+	 * @throws IOException
+	 * @throws InterruptedException
+	 * @throws ExecutionException
+	 */
+	public static void save(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String datasetName,
+			final int[] blockSize,
+			final Compression compression,
+			final ExecutorService exec,
+			final N5Metadata< ImagePlus > metadata ) throws IOException, InterruptedException, ExecutionException
+	{
 		final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
 
 		N5Utils.save(
@@ -159,6 +230,9 @@ public class N5IJUtils {
 				blockSize,
 				compression,
 				exec);
+
+		if( metadata != null )
+			metadata.metadataToN5( imp, n5, datasetName );
 	}
 
 	/**
