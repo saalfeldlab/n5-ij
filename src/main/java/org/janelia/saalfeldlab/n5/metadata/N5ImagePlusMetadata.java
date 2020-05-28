@@ -32,7 +32,7 @@ public class N5ImagePlusMetadata implements N5Metadata< ImagePlus >
 
 	public static final String downsamplingFactorsKey = "downsamplingFactors";
 
-	public void writeMetadata( N5Writer n5, String dataset, ImagePlus imp) throws IOException
+	public void metadataToN5( ImagePlus imp, N5Writer n5, String dataset ) throws IOException
 	{
 		Calibration cal = imp.getCalibration();
 
@@ -86,7 +86,7 @@ public class N5ImagePlusMetadata implements N5Metadata< ImagePlus >
 		return Optional.empty();
 	}
 
-	public void readMetadata( N5Reader n5, String dataset, ImagePlus imp ) throws IOException
+	public void metadataFromN5( N5Reader n5, String dataset, ImagePlus imp ) throws IOException
 	{
 		imp.setTitle( readAttribute( n5, dataset, titleKey, String.class ).orElse( "ImagePlus" ));
 

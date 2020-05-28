@@ -107,7 +107,9 @@ public class N5Exporter implements Command
 				channelImg = Views.hyperSlice( img, 2, c );
 			}
 			else
+			{
 				channelImg = img;
+			}
 
 			if( metadataStyle.equals( N5Importer.MetadataN5ViewerKey ))
 			{
@@ -119,7 +121,7 @@ public class N5Exporter implements Command
 			}
 
 			N5Utils.save( channelImg , n5, datasetString, blockSize, compression );
-			meta.writeMetadata( n5, datasetString, image );
+			meta.metadataToN5( image, n5, datasetString );
 		}
 
 	}

@@ -18,9 +18,9 @@ public class N5ViewerMetadata implements N5Metadata< ImagePlus >
 {
 	public static final String sep = File.separator;
 
-	public N5ViewerMetadata() { }
+	public N5ViewerMetadata(){}
 
-	public void readMetadata( N5Reader n5, String dataset, ImagePlus imp ) throws IOException
+	public void metadataFromN5( N5Reader n5, String dataset, ImagePlus imp ) throws IOException
 	{
 		N5ExportMetadataReader meta = new N5ExportMetadataReader( n5 );
 
@@ -28,7 +28,7 @@ public class N5ViewerMetadata implements N5Metadata< ImagePlus >
 		int channel = datasetToChannel( dataset );
 
 		String name = meta.getName();
-		imp.setTitle( name + " c" + channel );
+		imp.setTitle( name + " " + dataset );
 
 		VoxelDimensions voxdims = meta.getPixelResolution( channel );
 		if( voxdims.numDimensions() > 0 )
@@ -42,7 +42,11 @@ public class N5ViewerMetadata implements N5Metadata< ImagePlus >
 
 		imp.getCalibration().setUnit( voxdims.unit() );
 
-		imp.setDimensions( 1, imp.getImageStackSize(), 1 );
+		/*
+		 * this only makes sense if we're only opening one image
+		 * but not if we're combining channels 
+		 */
+//		imp.setDimensions( 1, imp.getImageStackSize(), 1 );
 	}
 
 	private int datasetToChannel( final String dataset )
@@ -59,7 +63,7 @@ public class N5ViewerMetadata implements N5Metadata< ImagePlus >
 		return channel;
 	}
 
-	public void writeMetadata( N5Writer n5, String dataset, ImagePlus imp ) throws IOException
+	public void metadataToN5( ImagePlus imp, N5Writer n5, String dataset ) throws IOException
 	{
 		double[] pixelResolution = new double[]{
 				imp.getCalibration().pixelWidth,

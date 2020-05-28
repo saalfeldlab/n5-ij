@@ -1,12 +1,13 @@
 package org.janelia.saalfeldlab.n5.ij;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.swing.JFrame;
@@ -15,6 +16,7 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
+import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
@@ -29,7 +31,17 @@ import org.scijava.ui.UIService;
 import ij.ImagePlus;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.exception.ImgLibException;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.imageplus.ImagePlusImg;
+import net.imglib2.img.imageplus.ImagePlusImgFactory;
+import net.imglib2.loops.LoopBuilder;
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.NumericType;
+import net.imglib2.util.Intervals;
+import net.imglib2.util.Util;
+import net.imglib2.view.Views;
 
 @Plugin( type = Command.class, menuPath = "File>Import>Import N5" )
 public class N5Importer implements Command, WindowListener
@@ -59,7 +71,7 @@ public class N5Importer implements Command, WindowListener
     
     @Parameter( label = "Subset", required=false, 
     		description="Specify the subset of the volume to open. xmin,ymin,zmin;xmax,ymax,zmax" )
-    private String subset;
+    private String subset = "";
     
     @Parameter( label = "as virtual?")
     private boolean isVirtual = false;
@@ -70,11 +82,9 @@ public class N5Importer implements Command, WindowListener
 //    @Parameter( label = "align to blocks", description = "description")
 //    private boolean alignToBlockGrid;
 
-
     private N5Reader n5;
 
-//    private List<String> datasetList;
-    private String dataset;
+    private List<String> datasetList;
 
 	private N5DatasetSelectorDialog selectionDialog;
 	
@@ -93,7 +103,6 @@ public class N5Importer implements Command, WindowListener
 			n5 = getReader();
 			if( n5 == null )
 			{
-//				System.err.println( "Could not open as n5 root");
 				log.error("Could not open as n5 root");
 				return;
 			}
@@ -106,7 +115,7 @@ public class N5Importer implements Command, WindowListener
 			}
 			else
 			{
-				dataset = datasetArg;
+				datasetList = Arrays.asList( datasetArg.split(","));
 				process();
 			}
 		}
@@ -116,21 +125,92 @@ public class N5Importer implements Command, WindowListener
 		}
 	}
 
-	public void process() throws ImgLibException, IOException
+	@SuppressWarnings("unchecked")
+	public <T extends NumericType<T> & NativeType<T>> void process() throws ImgLibException, IOException
 	{
+		N5Metadata<ImagePlus> metadata = styles.get( metadataStyle );
+
+		int nd = -1;
+		ArrayList< RandomAccessibleInterval<T>> channelList = new ArrayList<>();
+		for( String d : datasetList )
+		{
+			RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
+
+			RandomAccessibleInterval<T> img;
+			if( !subset.isEmpty() )
+			{
+				String[] minmax = subset.split(";");
+				long[] min = Arrays.stream( minmax[ 0 ].split(",")).mapToLong( Long::parseLong ).toArray();
+				long[] max = Arrays.stream( minmax[ 1 ].split(",")).mapToLong( Long::parseLong ).toArray();
+				img = Views.interval( imgRaw, new FinalInterval( min, max ));
+			}
+			else
+				img = imgRaw;
+
+			channelList.add( img );
+			// TODO implement if not virtual
+		}
+
+		ImagePlus imp = combineChannels( channelList, "all_channels" );
+
+		if( imp == null )
+			return;
+
+		// TODO check that all metadata are the same
+		metadata.metadataFromN5( n5, datasetList.get( 0 ), imp );
+
+		imp.show();
+	}
+
+	public <T extends NumericType<T> & NativeType<T>> ImagePlus combineChannels( final List<RandomAccessibleInterval<T>> channelImages, String title )
+	{
+		int nd = -1;
+		long[] size = null;
+		// check dimensions and sizes
+		for( RandomAccessibleInterval<?> c : channelImages )
+		{
+			if( nd < 0 )
+			{
+				nd = c.numDimensions();
+			}
+			else if( c.numDimensions() != nd )
+			{
+				System.err.println( "Channel images must have identical dimensionality" );
+				return null;
+			}
+
+			if( size == null )
+			{
+				size = Intervals.dimensionsAsLongArray( c );
+			}
+			else if( !Arrays.equals( size , Intervals.dimensionsAsLongArray( c )))
+			{
+				System.err.println( "Channel images must all be the same size." );
+				return null;
+			}
+			System.out.println( "channel " + c + " size: " + Arrays.toString( Intervals.dimensionsAsIntArray( c )) );
+		}
+
+		RandomAccessibleInterval<T> stackedImages = Views.stack( channelImages );
+		if( nd == 3 )
+			stackedImages = Views.permute( stackedImages, 2, 3 );
+
 		ImagePlus imp;
 		if( isVirtual )
 		{
-			// TODO implement
-			imp = null;
+			System.out.println( "stacked Image size: " + Arrays.toString( Intervals.dimensionsAsIntArray( stackedImages )));
+			imp = ImageJFunctions.wrap( stackedImages, title );
 		}
 		else
 		{
-			imp = N5IJUtils.load( n5, dataset );
+			ImagePlusImg<T,?> ipi = new ImagePlusImgFactory<T>( Util.getTypeFromInterval( stackedImages )).create( stackedImages );
+			LoopBuilder.setImages( stackedImages, ipi).forEachPixel((x,y) -> y.set(x));
+			imp = ipi.getImagePlus();
 		}
 
-		styles.get( metadataStyle ).readMetadata( n5, dataset, imp );
-		imp.show();
+		imp.setDimensions( (int)stackedImages.dimension( 2 ), (int)stackedImages.dimension( 3 ), 1 );
+
+		return imp;
 	}
 
 	/**
@@ -209,13 +289,13 @@ public class N5Importer implements Command, WindowListener
 	public void windowDeactivated(WindowEvent e) { }
 	
 	@Override
-	public void windowClosing(WindowEvent e) {
-		
-		System.out.println("Window closing" );
+	public void windowClosing(WindowEvent e)
+	{
 		if( selectionDialog.getSelectedDatasets() != null && 
 				selectionDialog.getSelectedDatasets().size() > 0 )
 		{
-			dataset = selectionDialog.getSelectedDatasets().get( 0 );
+//			dataset = selectionDialog.getSelectedDatasets().get( 0 );
+			datasetList = selectionDialog.getSelectedDatasets();
 		}
 		else
 		{
