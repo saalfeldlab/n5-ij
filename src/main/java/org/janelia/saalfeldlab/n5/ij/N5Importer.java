@@ -17,6 +17,7 @@ import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
@@ -49,8 +50,9 @@ public class N5Importer implements Command, WindowListener
 	public static final String BDV_OPTION = "BigDataViewer";
 	public static final String IP_OPTION = "ImagePlus";
 
-	public static final String MetadataSimpleKey = "SimpleMetadata";
 	public static final String MetadataN5ViewerKey = "N5Viewer Metadata";
+	public static final String MetadataN5CosemKey = "Cosem Metadata";
+	public static final String MetadataSimpleKey = "SimpleMetadata";
 
 
 	@Parameter
@@ -76,11 +78,16 @@ public class N5Importer implements Command, WindowListener
     @Parameter( label = "as virtual?")
     private boolean isVirtual = false;
 
-    @Parameter(label="metadata type", choices={ MetadataN5ViewerKey, MetadataSimpleKey } )
+    @Parameter(label="metadata type", 
+    		description = "The style for metadata stored in the N5 to import.",
+    		choices={ 	MetadataN5ViewerKey, 
+    					MetadataN5CosemKey,
+    					MetadataSimpleKey } )
     private String metadataStyle = MetadataN5ViewerKey;
 
-//    @Parameter( label = "align to blocks", description = "description")
-//    private boolean alignToBlockGrid;
+    // TODO
+    //@Parameter( label = "align to blocks", description = "description")
+    //private boolean alignToBlockGrid;
 
     private N5Reader n5;
 
@@ -96,6 +103,7 @@ public class N5Importer implements Command, WindowListener
 	{
 		styles = new HashMap<String,N5Metadata<ImagePlus>>();
 		styles.put( MetadataN5ViewerKey, new N5ViewerMetadata());
+		styles.put( MetadataN5CosemKey, new N5CosemMetadata());
 		styles.put( MetadataSimpleKey, new N5ImagePlusMetadata());
 
 		try
