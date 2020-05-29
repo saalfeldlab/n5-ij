@@ -113,7 +113,7 @@ public class N5Exporter implements Command
 
 			if( metadataStyle.equals( N5Importer.MetadataN5ViewerKey ))
 			{
-				datasetString = String.format( "/c%d", c );
+				datasetString = String.format( "/c%d/s0", c );
 			}
 			else
 			{
