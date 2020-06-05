@@ -110,13 +110,12 @@ public class N5ImagePlusMetadata implements N5Metadata< ImagePlus >
 		numFrames = readAttribute( n5, dataset, numFramesKey, Integer.class ).orElse( numFrames );
 		imp.setDimensions( numChannels, numSlices, numFrames );
 
-		Properties properties = imp.getProperties();
 		Optional<Properties> readProperties = readAttribute( n5, dataset, imagePropertiesKey, Properties.class );
 		if( readProperties.isPresent())
 		{
 			Properties rprops = readProperties.get();
 			for( Object k : rprops.keySet() )
-				properties.put( k, rprops.get( k ));
+				imp.setProperty( k.toString(), rprops.get( k ));
 		}
 	}
 
