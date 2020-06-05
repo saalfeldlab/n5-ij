@@ -51,6 +51,7 @@ public class N5Importer implements Command, WindowListener
 
 	public static final String MetadataSimpleKey = "SimpleMetadata";
 	public static final String MetadataN5ViewerKey = "N5Viewer Metadata";
+	public static final String MetadataCustomKey = "CustomMetadata";
 
 
 	@Parameter

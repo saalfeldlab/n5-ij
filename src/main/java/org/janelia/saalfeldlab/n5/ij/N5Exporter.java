@@ -1,5 +1,7 @@
 package org.janelia.saalfeldlab.n5.ij;
 
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -15,9 +17,11 @@ import org.janelia.saalfeldlab.n5.XzCompression;
 import org.janelia.saalfeldlab.n5.bdv.N5ExportMetadataWriter;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
+import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
@@ -35,7 +39,7 @@ import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
 @Plugin( type = Command.class, menuPath = "File>Save As>Export N5" )
-public class N5Exporter implements Command
+public class N5Exporter implements Command, WindowListener
 {
 	public static final String N5FS = "Filesystem";
 	public static final String N5H5 = "Hdf5";
@@ -70,18 +74,20 @@ public class N5Exporter implements Command
     		choices={GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION}, style="listBox")
     private String compressionArg = GZIP_COMPRESSION;
 
-    @Parameter( label = "container type",
-    		choices={N5FS, N5H5}, style="listBox")
+    @Parameter( label = "container type", choices={N5FS, N5H5}, style="listBox")
     private String type = N5FS;
     
-    @Parameter(label="metadata type", choices={ N5Importer.MetadataN5ViewerKey, N5Importer.MetadataSimpleKey } )
-    private String metadataStyle = N5Importer.MetadataN5ViewerKey;
-
+    @Parameter(	label="metadata type", 
+    			choices={ 	N5Importer.MetadataN5ViewerKey,
+							N5Importer.MetadataSimpleKey,
+							N5Importer.MetadataCustomKey } )
+    private String metadataStyle = N5Importer.MetadataSimpleKey;
 
     private int[] blockSize;
-  
-	public Map<String, N5Metadata<ImagePlus>> styles;
 
+	private Map<String, N5Metadata<ImagePlus>> styles;
+
+	private N5MetadataSpecDialog metaSpecDialog;
 
 	public <T extends RealType<T> & NativeType<T>> void process() throws IOException
 	{
@@ -123,7 +129,6 @@ public class N5Exporter implements Command
 			N5Utils.save( channelImg , n5, datasetString, blockSize, compression );
 			meta.metadataToN5( image, n5, datasetString );
 		}
-
 	}
 
 	@Override
@@ -133,13 +138,22 @@ public class N5Exporter implements Command
 		styles.put( N5Importer.MetadataN5ViewerKey, new N5ViewerMetadata());
 		styles.put( N5Importer.MetadataSimpleKey, new N5ImagePlusMetadata());
 
-		try
+		if( metadataStyle.equals(  N5Importer.MetadataCustomKey  ))
 		{
-			process();
+			metaSpecDialog = new N5MetadataSpecDialog( this );
+			//metaSpecDialog.show( MetadataTemplateMapper.RESOLUTION_ONLY_MAPPER );
+			metaSpecDialog.show( MetadataTemplateMapper.COSEM_MAPPER );
 		}
-		catch ( IOException e )
+		else
 		{
-			e.printStackTrace();
+			try
+			{
+				process();
+			}
+			catch ( IOException e )
+			{
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -171,5 +185,37 @@ public class N5Exporter implements Command
 		}
 		return null;
 	}
+
+	@Override
+	public void windowOpened(WindowEvent e) { }
+
+	@Override
+	public void windowIconified(WindowEvent e) { }
+
+	@Override
+	public void windowDeiconified(WindowEvent e) { }
+
+	@Override
+	public void windowDeactivated(WindowEvent e) { }
+
+	@Override
+	public void windowClosing(WindowEvent e)
+	{
+		styles.put( N5Importer.MetadataCustomKey, metaSpecDialog.getMapper() );
+		try
+		{
+			process();
+		}
+		catch ( IOException e1 )
+		{
+			e1.printStackTrace();
+		}
+	}
+
+	@Override
+	public void windowClosed(WindowEvent e) { }
+
+	@Override
+	public void windowActivated(WindowEvent e) { }
 
 }
