@@ -70,8 +70,9 @@ public class N5Importer implements Command, WindowListener
     		description="If not specified, you can select which datasets to open with from a dialog")
     private String datasetArg = "";
     
-    @Parameter( label = "Interactive crop")
-    private boolean doInteractiveCrop = false;
+    // TODO consider implementing this later
+//    @Parameter( label = "Interactive crop")
+//    private boolean doInteractiveCrop = false;
 
     @Parameter( label = "Subset", required=false, 
     		description="Specify the subset of the volume to open. xmin,ymin,zmin;xmax,ymax,zmax" )
@@ -178,7 +179,7 @@ public class N5Importer implements Command, WindowListener
 			}
 			else if( c.numDimensions() != nd )
 			{
-				System.err.println( "Channel images must have identical dimensionality" );
+				log.error( "Channel images must have identical dimensionality" );
 				return null;
 			}
 
@@ -188,10 +189,9 @@ public class N5Importer implements Command, WindowListener
 			}
 			else if( !Arrays.equals( size , Intervals.dimensionsAsLongArray( c )))
 			{
-				System.err.println( "Channel images must all be the same size." );
+				log.error( "Channel images must all be the same size." );
 				return null;
 			}
-			System.out.println( "channel " + c + " size: " + Arrays.toString( Intervals.dimensionsAsIntArray( c )) );
 		}
 
 		RandomAccessibleInterval<T> stackedImages = Views.stack( channelImages );
@@ -201,7 +201,6 @@ public class N5Importer implements Command, WindowListener
 		ImagePlus imp;
 		if( isVirtual )
 		{
-			System.out.println( "stacked Image size: " + Arrays.toString( Intervals.dimensionsAsIntArray( stackedImages )));
 			imp = ImageJFunctions.wrap( stackedImages, title );
 		}
 		else
@@ -214,6 +213,14 @@ public class N5Importer implements Command, WindowListener
 		imp.setDimensions( (int)stackedImages.dimension( 2 ), (int)stackedImages.dimension( 3 ), 1 );
 
 		return imp;
+	}
+
+	public static Interval containingBlockAlignedInterval(
+			final N5Reader n5, 
+			final String dataset, 
+			final Interval interval ) throws IOException
+	{
+		return containingBlockAlignedInterval( n5, dataset, interval, null );
 	}
 
 	/**
@@ -229,13 +236,15 @@ public class N5Importer implements Command, WindowListener
 	public static Interval containingBlockAlignedInterval(
 			final N5Reader n5, 
 			final String dataset, 
-			final Interval interval ) throws IOException
+			final Interval interval,
+			final LogService log ) throws IOException
 	{
 		// TODO move to N5Utils?
-
 		if ( !n5.datasetExists( dataset ) )
 		{
-			System.err.println( "no dataset" );
+			if( log != null )
+				log.error( "no dataset" );
+
 			return null;
 		}
 
