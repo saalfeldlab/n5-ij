@@ -70,6 +70,9 @@ public class N5Importer implements Command, WindowListener
     		description="If not specified, you can select which datasets to open with from a dialog")
     private String datasetArg = "";
     
+    @Parameter( label = "Interactive crop")
+    private boolean doInteractiveCrop = false;
+
     @Parameter( label = "Subset", required=false, 
     		description="Specify the subset of the volume to open. xmin,ymin,zmin;xmax,ymax,zmax" )
     private String subset = "";
@@ -77,7 +80,7 @@ public class N5Importer implements Command, WindowListener
     @Parameter( label = "as virtual?")
     private boolean isVirtual = false;
 
-    @Parameter(label="metadata type", choices={ MetadataN5ViewerKey, MetadataSimpleKey } )
+    @Parameter(label="metadata type", choices={ MetadataN5ViewerKey, MetadataSimpleKey  } )
     private String metadataStyle = MetadataN5ViewerKey;
 
 //    @Parameter( label = "align to blocks", description = "description")
@@ -149,7 +152,6 @@ public class N5Importer implements Command, WindowListener
 				img = imgRaw;
 
 			channelList.add( img );
-			// TODO implement if not virtual
 		}
 
 		ImagePlus imp = combineChannels( channelList, "all_channels" );
