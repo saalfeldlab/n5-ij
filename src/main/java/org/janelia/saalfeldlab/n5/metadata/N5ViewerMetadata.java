@@ -2,83 +2,106 @@ package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.regex.Pattern;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
-//import org.janelia.saalfeldlab.n5.bdv.N5ExportMetadataReader;
-//import org.janelia.saalfeldlab.n5.bdv.N5ExportMetadataWriter;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
 import ij.ImagePlus;
-//import mpicbg.spim.data.sequence.FinalVoxelDimensions;
-//import mpicbg.spim.data.sequence.VoxelDimensions;
 
 public class N5ViewerMetadata implements N5Metadata< ImagePlus >
 {
+	protected static final String nameKey = "name";
+	protected static final String scalesKey = "scales";
+	protected static final String downsamplingFactorsKey = "downsamplingFactors";
+	protected static final String pixelResolutionKey = "pixelResolution";
+
 	public static final String sep = File.separator;
 
 	public N5ViewerMetadata(){}
 
 	public void metadataFromN5( N5Reader n5, String dataset, ImagePlus imp ) throws IOException
 	{
-//		N5ExportMetadataReader meta = new N5ExportMetadataReader( n5 );
-//
-//		// parse channel from dataset according to n5 viewer convention
-//		int channel = datasetToChannel( dataset );
-//
-//		String name = meta.getName();
-//		imp.setTitle( name + " " + dataset );
-//
-//		VoxelDimensions voxdims = meta.getPixelResolution( channel );
-//		if( voxdims.numDimensions() > 0 )
-//			imp.getCalibration().pixelWidth = voxdims.dimension( 0 );
-//
-//		if( voxdims.numDimensions() > 1 )
-//			imp.getCalibration().pixelHeight = voxdims.dimension( 1 );
-//
-//		if( voxdims.numDimensions() > 2 )
-//			imp.getCalibration().pixelDepth = voxdims.dimension( 2 );
-//
-//		imp.getCalibration().setUnit( voxdims.unit() );
-//
-//		/*
-//		 * this only makes sense if we're only opening one image
-//		 * but not if we're combining channels 
-//		 */
-////		imp.setDimensions( 1, imp.getImageStackSize(), 1 );
-	}
+		double[] downsamplingFactors = n5.getAttribute( dataset, downsamplingFactorsKey, double[].class );
+		FinalVoxelDimensions voxdims = n5.getAttribute( dataset, pixelResolutionKey, FinalVoxelDimensions.class );
 
-	private int datasetToChannel( final String dataset )
-	{
-		int channel = -1;
-		Pattern pattern = Pattern.compile("c\\d+");
-		for( String x : dataset.split( sep ))
-			if( pattern.matcher( x ).matches() )
-			{
-				channel = Integer.parseInt( x.substring(1) );
-				break;
-			}
+		if( downsamplingFactors != null )
+		{
+			double[] newres = new double[ voxdims.numDimensions() ];
+			for( int i = 0; i < voxdims.numDimensions(); i++ )
+				newres[ i ] = voxdims.dimension( i ) * downsamplingFactors[ i ];
 
-		return channel;
+			voxdims = new FinalVoxelDimensions( voxdims.unit(), newres );
+		}
+
+		String name = n5.getAttribute( dataset, nameKey, String.class );
+		imp.setTitle( name + " " + dataset );
+
+		if( voxdims.numDimensions() > 0 )
+			imp.getCalibration().pixelWidth = voxdims.dimension( 0 );
+
+		if( voxdims.numDimensions() > 1 )
+			imp.getCalibration().pixelHeight = voxdims.dimension( 1 );
+
+		if( voxdims.numDimensions() > 2 )
+			imp.getCalibration().pixelDepth = voxdims.dimension( 2 );
+
+		imp.getCalibration().setUnit( voxdims.unit() );
+
+		/*
+		 * this only makes sense if we're only opening one image
+		 * but not if we're combining channels 
+		 */
+//		imp.setDimensions( 1, imp.getImageStackSize(), 1 );
 	}
 
 	public void metadataToN5( ImagePlus imp, N5Writer n5, String dataset ) throws IOException
 	{
-		// TODO fill this in
+		double[] pixelResolution = new double[]{
+				imp.getCalibration().pixelWidth,
+				imp.getCalibration().pixelHeight,
+				imp.getCalibration().pixelDepth
+		};
+		String unit = imp.getCalibration().getUnit();
 
-//		double[] pixelResolution = new double[]{
-//				imp.getCalibration().pixelWidth,
-//				imp.getCalibration().pixelHeight,
-//				imp.getCalibration().pixelDepth
-//		};
-//		String unit = imp.getCalibration().getUnit();
-//
-//		N5ExportMetadataWriter meta = new N5ExportMetadataWriter( n5 );
-//		meta.setName( imp.getTitle() );
-//
-//		FinalVoxelDimensions voxdims = new FinalVoxelDimensions(unit, pixelResolution );
-//		meta.setPixelResolution( datasetToChannel( dataset ), voxdims );
+		n5.setAttribute( dataset, nameKey, imp.getTitle() );
+
+		FinalVoxelDimensions voxdims = new FinalVoxelDimensions( unit, pixelResolution );
+		n5.setAttribute( dataset, pixelResolutionKey, voxdims );
+	}
+
+	public static class FinalVoxelDimensions
+	{
+		private final String unit;
+
+		private final double[] dimensions;
+
+		public FinalVoxelDimensions( final String unit, final double... dimensions )
+		{
+			this.unit = unit;
+			this.dimensions = dimensions.clone();
+		}
+
+		public int numDimensions()
+		{
+			return dimensions.length;
+		}
+
+		public String unit()
+		{
+			return unit;
+		}
+
+		public void dimensions( final double[] dims )
+		{
+			for ( int d = 0; d < dims.length; ++d )
+				dims[ d ] = this.dimensions[ d ];
+		}
+
+		public double dimension( final int d )
+		{
+			return dimensions[ d ];
+		}
 	}
 
 }
