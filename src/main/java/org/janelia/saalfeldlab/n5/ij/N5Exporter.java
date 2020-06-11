@@ -17,6 +17,7 @@ import org.janelia.saalfeldlab.n5.XzCompression;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
@@ -74,11 +75,12 @@ public class N5Exporter implements Command, WindowListener
     @Parameter( label = "container type", choices={N5FS, N5H5}, style="listBox")
     private String type = N5FS;
     
-    @Parameter(	label="metadata type", 
-    			choices={ 	N5Importer.MetadataN5ViewerKey,
-							N5Importer.MetadataSimpleKey,
-							N5Importer.MetadataCustomKey } )
-    private String metadataStyle = N5Importer.MetadataSimpleKey;
+    @Parameter( label="metadata type", 
+    		description = "The style for metadata to be stored in the exported N5.",
+    		choices={ 	N5Importer.MetadataN5ViewerKey, 
+    					N5Importer.MetadataN5CosemKey,
+    					N5Importer.MetadataSimpleKey } )
+    private String metadataStyle = N5Importer.MetadataN5ViewerKey;
 
     private int[] blockSize;
 
@@ -118,6 +120,10 @@ public class N5Exporter implements Command, WindowListener
 			{
 				datasetString = String.format( "/c%d/s0", c );
 			}
+			else if( image.getNChannels() > 1 )
+			{
+				datasetString = String.format( "%s/c%d", n5Dataset, c );
+			}
 			else
 			{
 				datasetString = n5Dataset;
@@ -133,6 +139,7 @@ public class N5Exporter implements Command, WindowListener
 	{
 		styles = new HashMap<String,N5Metadata<ImagePlus>>();
 		styles.put( N5Importer.MetadataN5ViewerKey, new N5ViewerMetadata());
+		styles.put( N5Importer.MetadataN5CosemKey, new N5CosemMetadata());
 		styles.put( N5Importer.MetadataSimpleKey, new N5ImagePlusMetadata());
 
 		if( metadataStyle.equals(  N5Importer.MetadataCustomKey  ))
