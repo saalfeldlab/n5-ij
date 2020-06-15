@@ -87,6 +87,7 @@
 
 		<n5.version>2.0.2</n5.version>
 		<n5-imglib2.version>2.1.1</n5-imglib2.version>
+		<alphanumeric-comparator.version>1.4.1</alphanumeric-comparator.version>
 	</properties>
 
 	<dependencies>
@@ -123,6 +124,11 @@
 		<dependency>
 			<groupId>net.imglib2</groupId>
 			<artifactId>imglib2-ij</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>se.sawano.java</groupId>
+			<artifactId>alphanumeric-comparator</artifactId>
+			<version>${alphanumeric-comparator.version}</version>
 		</dependency>
 	</dependencies>
 
