@@ -9,18 +9,26 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.swing.JFrame;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataParser;
+import org.janelia.saalfeldlab.n5.ui.DataSelection;
+import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetSelectorDialog;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
@@ -50,6 +58,7 @@ public class N5Importer implements Command, WindowListener
 	public static final String BDV_OPTION = "BigDataViewer";
 	public static final String IP_OPTION = "ImagePlus";
 
+	public static final String MetadataAutoKey = "Auto-detect";
 	public static final String MetadataN5ViewerKey = "N5Viewer Metadata";
 	public static final String MetadataCustomKey = "CustomMetadata";
 	public static final String MetadataN5CosemKey = "Cosem Metadata";
@@ -78,7 +87,7 @@ public class N5Importer implements Command, WindowListener
     @Parameter( label = "Subset", required=false, 
     		description="Specify the subset of the volume to open. xmin,ymin,zmin;xmax,ymax,zmax" )
     private String subset = "";
-    
+
     @Parameter( label = "as virtual?")
     private boolean isVirtual = false;
 
@@ -87,7 +96,7 @@ public class N5Importer implements Command, WindowListener
     		choices={ 	MetadataN5ViewerKey, 
     					MetadataN5CosemKey,
     					MetadataSimpleKey } )
-    private String metadataStyle = MetadataN5ViewerKey;
+    private String metadataStyle = MetadataN5CosemKey;
 
     // TODO
     //@Parameter( label = "align to blocks", description = "description")
@@ -97,18 +106,34 @@ public class N5Importer implements Command, WindowListener
 
     private List<String> datasetList;
 
-	private N5DatasetSelectorDialog selectionDialog;
-	
-	public Map<String, N5Metadata<ImagePlus>> styles;
+//	private N5DatasetSelectorDialog selectionDialog;
 
+	private DatasetSelectorDialog selectionDialogNew;
+	
+	private DataSelection selection;
+	
+	private Map<String, N5MetadataParser<?>> styles;
+
+	private Map<String, ImageplusMetadata<?>> impMetaWriterTypes;
+
+	public void setN5Root( String n5Root )
+	{
+		n5RootLocation = n5Root;
+	}
 
 	@Override
 	public void run()
 	{
-		styles = new HashMap<String,N5Metadata<ImagePlus>>();
-		styles.put( MetadataN5ViewerKey, new N5ViewerMetadata());
-		styles.put( MetadataN5CosemKey, new N5CosemMetadata());
-		styles.put( MetadataSimpleKey, new N5ImagePlusMetadata());
+		System.out.println("run");
+
+		styles = new HashMap<String,N5MetadataParser<?>>();
+//		styles.put( MetadataN5ViewerKey, new N5ViewerMetadata());
+		styles.put( MetadataN5CosemKey, new N5CosemMetadata("", null, null));
+		styles.put( MetadataSimpleKey, new N5ImagePlusMetadata(""));
+		
+		impMetaWriterTypes = new HashMap<String,ImageplusMetadata<?>>();
+		impMetaWriterTypes.put( MetadataN5CosemKey, new N5CosemMetadata("", null, null));
+		impMetaWriterTypes.put( MetadataSimpleKey, new N5ImagePlusMetadata(""));
 
 		try
 		{
@@ -121,9 +146,25 @@ public class N5Importer implements Command, WindowListener
 
 			if( datasetArg == null || datasetArg.isEmpty() )
 			{
-				selectionDialog = new N5DatasetSelectorDialog( n5 );
-				JFrame frame = selectionDialog.show();
-				frame.addWindowListener( this );
+//				selectionDialog = new N5DatasetSelectorDialog( n5 );
+//				JFrame frame = selectionDialog.show();
+//				frame.addWindowListener( this );
+
+				selectionDialogNew = new DatasetSelectorDialog( n5,
+						new N5ViewerMetadataParser( false ));
+
+				selectionDialogNew.run(
+						selection -> {
+							this.selection = selection;
+							try
+							{
+								process();
+							}
+							catch ( Exception e )
+							{
+								e.printStackTrace();
+							}
+						});
 			}
 			else
 			{
@@ -138,9 +179,15 @@ public class N5Importer implements Command, WindowListener
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T extends NumericType<T> & NativeType<T>> void process() throws ImgLibException, IOException
+	public <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > void process() throws ImgLibException, IOException
 	{
-		N5Metadata<ImagePlus> metadata = styles.get( metadataStyle );
+//		N5MetadataWriter<?> writer = styles.get( metadataStyle );
+		N5MetadataParser<M> parser = ( N5MetadataParser< M > ) styles.get( metadataStyle );
+		ImageplusMetadata< ? > impMeta = impMetaWriterTypes.get( metadataStyle );
+		
+		datasetList = selection.metadata.stream()
+				.map( x -> x.getPath() )
+				.collect( Collectors.toList() );
 
 		int nd = -1;
 		ArrayList< RandomAccessibleInterval<T>> channelList = new ArrayList<>();
@@ -163,12 +210,32 @@ public class N5Importer implements Command, WindowListener
 		}
 
 		ImagePlus imp = combineChannels( channelList, "all_channels" );
-
 		if( imp == null )
 			return;
 
 		// TODO check that all metadata are the same
-		metadata.metadataFromN5( n5, datasetList.get( 0 ), imp );
+		try
+		{
+			final String dataset = datasetList.get( 0 );
+			M meta = parser.parseMetadata( n5, new N5TreeNode( dataset, n5.datasetExists( dataset )));
+			( ( ImageplusMetadata< M > ) impMeta ).writeMetadata( meta, imp );
+		}
+		catch ( Exception e )
+		{
+			e.printStackTrace();
+		}
+
+		try
+		{
+			final String dataset = datasetList.get( 0 );
+			M meta = parser.parseMetadata( n5, new N5TreeNode( dataset, n5.datasetExists( dataset )));
+			((ImageplusMetadata< M >)impMeta).writeMetadata( meta, imp );
+		}
+		catch ( Exception e )
+		{
+			e.printStackTrace();
+		}
+//		metadata.metadataFromN5( n5, datasetList.get( 0 ), imp );
 
 		imp.show();
 	}
@@ -310,17 +377,17 @@ public class N5Importer implements Command, WindowListener
 	@Override
 	public void windowClosing(WindowEvent e)
 	{
-		if( selectionDialog.getSelectedDatasets() != null && 
-				selectionDialog.getSelectedDatasets().size() > 0 )
-		{
-//			dataset = selectionDialog.getSelectedDatasets().get( 0 );
-			datasetList = selectionDialog.getSelectedDatasets();
-		}
-		else
-		{
-			log.info("No dataset selected");
-			return;
-		}
+//		if( selectionDialog.getSelectedDatasets() != null && 
+//				selectionDialog.getSelectedDatasets().size() > 0 )
+//		{
+////			dataset = selectionDialog.getSelectedDatasets().get( 0 );
+//			datasetList = selectionDialog.getSelectedDatasets();
+//		}
+//		else
+//		{
+//			log.info("No dataset selected");
+//			return;
+//		}
 
 		try
 		{

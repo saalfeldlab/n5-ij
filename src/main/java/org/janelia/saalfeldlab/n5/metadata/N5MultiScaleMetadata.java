@@ -16,25 +16,35 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import com.google.gson.GsonBuilder;
 import net.imglib2.realtransform.AffineTransform3D;
 
-/**
- * Marker interface for single-scale or multi-scale N5 metadata (and possibly more).
- */
-public interface N5Metadata {
+import java.util.Objects;
 
-    static GsonBuilder getGsonBuilder()
+public class N5MultiScaleMetadata implements N5Metadata {
+
+    public final String basePath;
+
+    public final String[] paths;
+
+    public final AffineTransform3D[] transforms;
+
+    public N5MultiScaleMetadata( final String basePath, final String[] paths, final AffineTransform3D[] transforms)
     {
-        final GsonBuilder gsonBuilder = new GsonBuilder();
-        registerGsonTypeAdapters( gsonBuilder );
-        return gsonBuilder;
+        Objects.requireNonNull(paths);
+        Objects.requireNonNull(transforms);
+        for (final String path : paths)
+            Objects.requireNonNull(path);
+        for (final AffineTransform3D transform : transforms)
+            Objects.requireNonNull(transform);
+
+        this.basePath = basePath;
+        this.paths = paths;
+        this.transforms = transforms;
     }
 
-    static void registerGsonTypeAdapters( final GsonBuilder gsonBuilder )
-    {
-        gsonBuilder.registerTypeAdapter( AffineTransform3D.class, new AffineTransform3DJsonAdapter() );
-    }
-    
-    public String getPath();
+	@Override
+	public String getPath()
+	{
+		return basePath;
+	}
 }

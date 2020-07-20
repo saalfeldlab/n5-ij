@@ -69,9 +69,5 @@ public class ImagePlusMetadataTemplate
 				otherMetadata.put( k.toString(), props.get( k ).toString() );
 
 	}
-	
-	public String toSpec( final String spec )
-	{
-		return "face";
-	}
+
 }

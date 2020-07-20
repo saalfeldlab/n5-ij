@@ -29,7 +29,7 @@ import net.thisptr.jackson.jq.exception.JsonQueryException;
 import net.thisptr.jackson.jq.internal.misc.Strings;
 import net.thisptr.jackson.jq.path.Path;
 
-public class MetadataTemplateMapper implements N5Metadata< ImagePlus >
+public class MetadataTemplateMapper //implements N5MetadataWriter< ImagePlus >
 {
 	public ImagePlusMetadataTemplate template;
 
@@ -52,33 +52,33 @@ public class MetadataTemplateMapper implements N5Metadata< ImagePlus >
 	{
 		this( buildRootScope(), query );
 	}
-
-	public String map( final String input ) throws IOException
-	{
-		JsonQuery q = JsonQuery.compile( query, Versions.JQ_1_5 );
-		JsonNode in = MAPPER.readTree( input );
-		
-		final List<JsonNode> out = new ArrayList<>();
-		q.apply( scope, in, out::add);
-
-		StringBuffer stringOutput = new StringBuffer();
-		for( JsonNode node : out )
-		{
-			stringOutput.append( node.toString() + "\n" );
-		}
-
-		return stringOutput.toString();
-	}
-
-	public Object computeToMap( final String json ) throws IOException
-	{
-		return gson.fromJson( map( json ), Object.class);
-	}
-
-	public JsonElement computeToJson( final String input ) throws IOException
-	{
-		return new JsonParser().parse( map( input ));
-	}
+//
+//	public String map( final String input ) throws IOException
+//	{
+//		JsonQuery q = JsonQuery.compile( query, Versions.JQ_1_5 );
+//		JsonNode in = MAPPER.readTree( input );
+//		
+//		final List<JsonNode> out = new ArrayList<>();
+//		q.apply( scope, in, out::add);
+//
+//		StringBuffer stringOutput = new StringBuffer();
+//		for( JsonNode node : out )
+//		{
+//			stringOutput.append( node.toString() + "\n" );
+//		}
+//
+//		return stringOutput.toString();
+//	}
+//
+//	public Object computeToMap( final String json ) throws IOException
+//	{
+//		return gson.fromJson( map( json ), Object.class);
+//	}
+//
+//	public JsonElement computeToJson( final String input ) throws IOException
+//	{
+//		return new JsonParser().parse( map( input ));
+//	}
 
 	public static Scope buildRootScope()
 	{
@@ -100,20 +100,20 @@ public class MetadataTemplateMapper implements N5Metadata< ImagePlus >
 		return rootScope;
 	}
 
-	@Override
-	public void metadataToN5( ImagePlus t, N5Writer n5, String dataset ) throws IOException
-	{
-		template = new ImagePlusMetadataTemplate( t );
-		Map< String, ? > map = ( Map< String, ? > ) computeToMap( gson.toJson( template ));
-		n5.setAttributes( dataset, map );
-	}
-
-	@Override
-	public void metadataFromN5( N5Reader n5, String dataset, ImagePlus t ) throws IOException
-	{
-		// Not dealing with this now
-		System.err.println( "Reading custom metadata not yet supported" );
-	}
+//	@Override
+//	public void metadataToN5( ImagePlus t, N5Writer n5, String dataset ) throws IOException
+//	{
+//		template = new ImagePlusMetadataTemplate( t );
+//		Map< String, ? > map = ( Map< String, ? > ) computeToMap( gson.toJson( template ));
+//		n5.setAttributes( dataset, map );
+//	}
+//
+//	@Override
+//	public void metadataFromN5( N5Reader n5, String dataset, ImagePlus t ) throws IOException
+//	{
+//		// Not dealing with this now
+//		System.err.println( "Reading custom metadata not yet supported" );
+//	}
 
 	public static final String RESOLUTION_ONLY_MAPPER = 
 			"{\n\"resolution\" : [.xResolution, .yResolution, .zResolution ]\n}";
