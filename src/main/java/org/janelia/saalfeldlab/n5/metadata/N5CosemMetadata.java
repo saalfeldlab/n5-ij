@@ -103,6 +103,7 @@ public class N5CosemMetadata implements N5Metadata,
 				imp.getCalibration().pixelDepth = transform.scale[ 2 ];
 				imp.getCalibration().setZUnit( transform.units[ 2 ] );
 				imp.getCalibration().zOrigin = transform.translate[ 2 ];
+				imp.setDimensions( 1, imp.getStackSize(), 1 );
 			}
 
 			imp.getCalibration().setUnit( transform.units[ 0 ] );
@@ -117,7 +118,10 @@ public class N5CosemMetadata implements N5Metadata,
 				imp.getCalibration().pixelHeight = voxdims.dimension( 1 );
 
 			if ( voxdims.numDimensions() > 2 )
+			{
 				imp.getCalibration().pixelDepth = voxdims.dimension( 2 );
+				imp.setDimensions( 1, imp.getStackSize(), 1 );
+			}
 
 			imp.getCalibration().setUnit( voxdims.unit() );
 		}

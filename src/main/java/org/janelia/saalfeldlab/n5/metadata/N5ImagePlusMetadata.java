@@ -48,6 +48,10 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 	private double xOrigin;
 	private double yOrigin;
 	private double zOrigin;
+	
+	private int numChannels;
+	private int numSlices;
+	private int numFrames;
 
 	private String unit;
 	
@@ -138,6 +142,8 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 		cal.yOrigin = t.yOrigin;
 		cal.zOrigin = t.zOrigin;
 
+		ip.setDimensions( t.numChannels, t.numSlices, t.numFrames );
+
 		Properties props = ip.getProperties();
 		if ( properties != null )
 		{
@@ -167,6 +173,10 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 		t.pixelHeight = cal.pixelHeight;
 		t.pixelDepth = cal.pixelDepth;
 		t.unit = cal.getUnit();
+		
+		t.numChannels = ip.getNChannels();
+		t.numSlices = ip.getNSlices();
+		t.numFrames = ip.getNFrames();
 		
 		xfm.set( t.pixelWidth, 0, 0 );
 		xfm.set( t.pixelHeight, 1, 1 );

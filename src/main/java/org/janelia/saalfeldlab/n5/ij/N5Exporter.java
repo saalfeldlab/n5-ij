@@ -85,7 +85,7 @@ public class N5Exporter implements Command, WindowListener
     		description = "The style for metadata to be stored in the exported N5.",
     		choices={ 	N5Importer.MetadataN5ViewerKey, 
     					N5Importer.MetadataN5CosemKey,
-    					N5Importer.MetadataSimpleKey } )
+    					N5Importer.MetadataImageJKey } )
     private String metadataStyle = N5Importer.MetadataN5ViewerKey;
 
     private int[] blockSize;
@@ -158,7 +158,7 @@ public class N5Exporter implements Command, WindowListener
 		styles = new HashMap<String,N5MetadataWriter<?>>();
 		styles.put( N5Importer.MetadataN5ViewerKey, new N5ViewerMetadataWriter() );
 		styles.put( N5Importer.MetadataN5CosemKey, new N5CosemMetadata( "", null, null ) );
-		styles.put( N5Importer.MetadataSimpleKey, new N5ImagePlusMetadata("") );
+		styles.put( N5Importer.MetadataImageJKey, new N5ImagePlusMetadata("") );
 
 		// TODO expand with more options
 		impMeta = new N5ImagePlusMetadata("");

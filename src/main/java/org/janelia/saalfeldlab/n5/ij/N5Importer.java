@@ -19,14 +19,18 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.AutoDetectMetadata;
+import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
 import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
+import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetSelectorDialog;
@@ -59,10 +63,11 @@ public class N5Importer implements Command, WindowListener
 	public static final String IP_OPTION = "ImagePlus";
 
 	public static final String MetadataAutoKey = "Auto-detect";
+	public static final String MetadataImageJKey = "ImageJMetadata";
+	public static final String MetadataN5CosemKey = "Cosem Metadata";
 	public static final String MetadataN5ViewerKey = "N5Viewer Metadata";
 	public static final String MetadataCustomKey = "CustomMetadata";
-	public static final String MetadataN5CosemKey = "Cosem Metadata";
-	public static final String MetadataSimpleKey = "SimpleMetadata";
+	public static final String MetadataDefaultKey = "DefaultMetadata";
 
 	@Parameter
 	private LogService log;
@@ -93,10 +98,11 @@ public class N5Importer implements Command, WindowListener
 
     @Parameter(label="metadata type", 
     		description = "The style for metadata stored in the N5 to import.",
-    		choices={ 	MetadataN5ViewerKey, 
+    		choices={ 	MetadataAutoKey,
+    					MetadataN5ViewerKey, 
     					MetadataN5CosemKey,
-    					MetadataSimpleKey } )
-    private String metadataStyle = MetadataN5CosemKey;
+    					MetadataImageJKey } )
+    private String metadataStyle = MetadataAutoKey;
 
     // TODO
     //@Parameter( label = "align to blocks", description = "description")
@@ -112,9 +118,9 @@ public class N5Importer implements Command, WindowListener
 	
 	private DataSelection selection;
 	
-	private Map<String, N5MetadataParser<?>> styles;
+	private Map< String, N5MetadataParser< ? > > styles;
 
-	private Map<String, ImageplusMetadata<?>> impMetaWriterTypes;
+	private Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes;
 
 	public void setN5Root( String n5Root )
 	{
@@ -127,13 +133,18 @@ public class N5Importer implements Command, WindowListener
 		System.out.println("run");
 
 		styles = new HashMap<String,N5MetadataParser<?>>();
-//		styles.put( MetadataN5ViewerKey, new N5ViewerMetadata());
+		styles.put( MetadataAutoKey, new AutoDetectMetadata() );
+		styles.put( MetadataImageJKey, new N5ImagePlusMetadata(""));
 		styles.put( MetadataN5CosemKey, new N5CosemMetadata("", null, null));
-		styles.put( MetadataSimpleKey, new N5ImagePlusMetadata(""));
+		styles.put( MetadataN5ViewerKey, new N5ViewerMetadataParser());
+		styles.put( MetadataDefaultKey, new DefaultMetadata( "", 1 ));
 		
-		impMetaWriterTypes = new HashMap<String,ImageplusMetadata<?>>();
-		impMetaWriterTypes.put( MetadataN5CosemKey, new N5CosemMetadata("", null, null));
-		impMetaWriterTypes.put( MetadataSimpleKey, new N5ImagePlusMetadata(""));
+		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
+		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
+		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
+		impMetaWriterTypes.put( N5ViewerMetadataParser.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
 
 		try
 		{
@@ -181,18 +192,9 @@ public class N5Importer implements Command, WindowListener
 	@SuppressWarnings("unchecked")
 	public <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > void process() throws ImgLibException, IOException
 	{
-//		N5MetadataWriter<?> writer = styles.get( metadataStyle );
-		N5MetadataParser<M> parser = ( N5MetadataParser< M > ) styles.get( metadataStyle );
-		ImageplusMetadata< ? > impMeta = impMetaWriterTypes.get( metadataStyle );
-		
-		datasetList = selection.metadata.stream()
-				.map( x -> x.getPath() )
-				.collect( Collectors.toList() );
-
-		int nd = -1;
-		ArrayList< RandomAccessibleInterval<T>> channelList = new ArrayList<>();
-		for( String d : datasetList )
+		for( N5Metadata datasetMeta : selection.metadata )
 		{
+			String d = datasetMeta.getPath();
 			RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
 
 			RandomAccessibleInterval<T> img;
@@ -206,87 +208,20 @@ public class N5Importer implements Command, WindowListener
 			else
 				img = imgRaw;
 
-			channelList.add( img );
-		}
+			ImagePlus imp = ImageJFunctions.wrap( img, d );
 
-		ImagePlus imp = combineChannels( channelList, "all_channels" );
-		if( imp == null )
-			return;
-
-		// TODO check that all metadata are the same
-		try
-		{
-			final String dataset = datasetList.get( 0 );
-			M meta = parser.parseMetadata( n5, new N5TreeNode( dataset, n5.datasetExists( dataset )));
-			( ( ImageplusMetadata< M > ) impMeta ).writeMetadata( meta, imp );
-		}
-		catch ( Exception e )
-		{
-			e.printStackTrace();
-		}
-
-		try
-		{
-			final String dataset = datasetList.get( 0 );
-			M meta = parser.parseMetadata( n5, new N5TreeNode( dataset, n5.datasetExists( dataset )));
-			((ImageplusMetadata< M >)impMeta).writeMetadata( meta, imp );
-		}
-		catch ( Exception e )
-		{
-			e.printStackTrace();
-		}
-//		metadata.metadataFromN5( n5, datasetList.get( 0 ), imp );
-
-		imp.show();
-	}
-
-	public <T extends NumericType<T> & NativeType<T>> ImagePlus combineChannels( final List<RandomAccessibleInterval<T>> channelImages, String title )
-	{
-		int nd = -1;
-		long[] size = null;
-		// check dimensions and sizes
-		for( RandomAccessibleInterval<?> c : channelImages )
-		{
-			if( nd < 0 )
-			{
-				nd = c.numDimensions();
+			try
+			{ 
+				ImageplusMetadata< M > ipMeta = ( ImageplusMetadata< M > ) impMetaWriterTypes.get( datasetMeta.getClass() );
+				ipMeta.writeMetadata( ( M ) datasetMeta, imp );
 			}
-			else if( c.numDimensions() != nd )
+			catch( Exception e )
 			{
-				log.error( "Channel images must have identical dimensionality" );
-				return null;
+				System.err.println("Failed to convert metadata to Imageplus for " + d );
 			}
 
-			if( size == null )
-			{
-				size = Intervals.dimensionsAsLongArray( c );
-			}
-			else if( !Arrays.equals( size , Intervals.dimensionsAsLongArray( c )))
-			{
-				log.error( "Channel images must all be the same size." );
-				return null;
-			}
+			imp.show();
 		}
-
-		RandomAccessibleInterval<T> stackedImages = Views.stack( channelImages );
-		if( nd == 3 )
-			stackedImages = Views.permute( stackedImages, 2, 3 );
-
-		ImagePlus imp;
-		if( isVirtual )
-		{
-			imp = ImageJFunctions.wrap( stackedImages, title );
-		}
-		else
-		{
-			ImagePlusImg<T,?> ipi = new ImagePlusImgFactory<T>( Util.getTypeFromInterval( stackedImages )).create( stackedImages );
-			LoopBuilder.setImages( stackedImages, ipi).forEachPixel((x,y) -> y.set(x));
-			imp = ipi.getImagePlus();
-		}
-
-		imp.setDimensions( (int)stackedImages.dimension( 2 ), (int)stackedImages.dimension( 3 ), 1 );
-
-		return imp;
 	}
 
 	public static Interval containingBlockAlignedInterval(

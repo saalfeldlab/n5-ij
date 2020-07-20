@@ -44,6 +44,7 @@ public class N5ViewerMetadataWriter implements N5MetadataWriter< N5SingleScaleMe
 		ip.getCalibration().pixelHeight = t.transform.get( 1, 1 );
 		ip.getCalibration().pixelDepth = t.transform.get( 2, 2 );
 		ip.getCalibration().setUnit( t.unit );
+		ip.setDimensions( 1, ip.getStackSize(), 1 );
 	}
 
 	@Override
@@ -59,56 +60,5 @@ public class N5ViewerMetadataWriter implements N5MetadataWriter< N5SingleScaleMe
 
 		return new N5SingleScaleMetadata( "", xfm, unit );
 	}
-
-//	public void metadataFromN5( N5Reader n5, String dataset, ImagePlus imp ) throws IOException
-//	{
-//		double[] downsamplingFactors = n5.getAttribute( dataset, downsamplingFactorsKey, double[].class );
-//		FinalVoxelDimensions voxdims = n5.getAttribute( dataset, pixelResolutionKey, FinalVoxelDimensions.class );
-//
-//		if( downsamplingFactors != null )
-//		{
-//			double[] newres = new double[ voxdims.numDimensions() ];
-//			for( int i = 0; i < voxdims.numDimensions(); i++ )
-//				newres[ i ] = voxdims.dimension( i ) * downsamplingFactors[ i ];
-//
-//			voxdims = new FinalVoxelDimensions( voxdims.unit(), newres );
-//		}
-//
-//		String name = n5.getAttribute( dataset, nameKey, String.class );
-//		imp.setTitle( name + " " + dataset );
-//
-//		if( voxdims.numDimensions() > 0 )
-//			imp.getCalibration().pixelWidth = voxdims.dimension( 0 );
-//
-//		if( voxdims.numDimensions() > 1 )
-//			imp.getCalibration().pixelHeight = voxdims.dimension( 1 );
-//
-//		if( voxdims.numDimensions() > 2 )
-//			imp.getCalibration().pixelDepth = voxdims.dimension( 2 );
-//
-//		imp.getCalibration().setUnit( voxdims.unit() );
-//
-//		/*
-//		 * this only makes sense if we're only opening one image
-//		 * but not if we're combining channels 
-//		 */
-////		imp.setDimensions( 1, imp.getImageStackSize(), 1 );
-//	}
-//
-//	public void metadataToN5( ImagePlus imp, N5Writer n5, String dataset ) throws IOException
-//	{
-//		double[] pixelResolution = new double[]{
-//				imp.getCalibration().pixelWidth,
-//				imp.getCalibration().pixelHeight,
-//				imp.getCalibration().pixelDepth
-//		};
-//		String unit = imp.getCalibration().getUnit();
-//
-//		n5.setAttribute( dataset, nameKey, imp.getTitle() );
-//
-//		FinalVoxelDimensions voxdims = new FinalVoxelDimensions( unit, pixelResolution );
-//		n5.setAttribute( dataset, pixelResolutionKey, voxdims );
-//	}
-
 
 }

@@ -52,16 +52,21 @@ public class N5ViewerMetadataParser implements N5MetadataParser {
     }
 
     @Override
-    public N5Metadata parseMetadata(final N5Reader n5, final N5TreeNode node) throws IOException {
+    public N5Metadata parseMetadata(final N5Reader n5, final N5TreeNode node) throws IOException
+    {
 
-        if (node.isDataset)
-        {
-            final long[] downsamplingFactors = n5.getAttribute(node.path, DOWNSAMPLING_FACTORS_KEY, long[].class);
-            final double[] pixelResolution = getPixelResolution(n5, node);
-            final AffineTransform3D extraTransform = n5.getAttribute(node.path, AFFINE_TRANSFORM_KEY, AffineTransform3D.class);
-            final AffineTransform3D transform = buildTransform(downsamplingFactors, pixelResolution, extraTransform);
-            return new N5SingleScaleMetadata(node.path, transform);
-        }
+		if ( node.isDataset )
+		{
+			final long[] downsamplingFactors = n5.getAttribute( node.path, DOWNSAMPLING_FACTORS_KEY, long[].class );
+
+			FinalVoxelDimensions voxdim = getVoxelDimensions( n5, node );
+			final double[] pixelResolution = new double[ voxdim.numDimensions() ];
+			voxdim.dimensions( pixelResolution );
+
+			final AffineTransform3D extraTransform = n5.getAttribute( node.path, AFFINE_TRANSFORM_KEY, AffineTransform3D.class );
+			final AffineTransform3D transform = buildTransform( downsamplingFactors, pixelResolution, extraTransform );
+			return new N5SingleScaleMetadata( node.path, transform, voxdim.unit() );
+		}
 
         if( ! parseMultiscale )
         	return null;
@@ -92,7 +97,10 @@ public class N5ViewerMetadataParser implements N5MetadataParser {
         final double[][] deprecatedScales = n5.getAttribute(node.path, SCALES_KEY, double[][].class);
         if (deprecatedScales != null) {
             // this is a multiscale group in deprecated format
-            final double[] pixelResolution = getPixelResolution(n5, node);
+			FinalVoxelDimensions voxdim = getVoxelDimensions( n5, node );
+			final double[] pixelResolution = new double[ voxdim.numDimensions() ];
+			voxdim.dimensions( pixelResolution );
+
             final AffineTransform3D extraTransform = n5.getAttribute(node.path, AFFINE_TRANSFORM_KEY, AffineTransform3D.class);
             for (int i = 0; i < Math.min(deprecatedScales.length, scaleLevelNodes.size()); ++i) {
                 final long[] downsamplingFactors = new long[deprecatedScales[i].length];
@@ -159,6 +167,27 @@ public class N5ViewerMetadataParser implements N5MetadataParser {
         if (extraTransform != null)
             transform.preConcatenate(extraTransform);
         return transform;
+    }
+
+    private static FinalVoxelDimensions getVoxelDimensions(final N5Reader n5, final N5TreeNode node) throws IOException
+    {
+        // try to read the pixel resolution attribute as VoxelDimensions (resolution and unit)
+        try {
+            final FinalVoxelDimensions voxelDimensions = n5.getAttribute(node.path, PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class);
+            if (voxelDimensions != null) {
+            	return voxelDimensions;
+            }
+        } catch (final JsonSyntaxException e) {
+            // the attribute exists but its value is structured differently, try parsing as an array
+        }
+
+        // try to read the pixel resolution attribute as a plain array
+        double[] res = n5.getAttribute(node.path, PIXEL_RESOLUTION_KEY, double[].class);
+        if( res != null )
+        {
+        	return new FinalVoxelDimensions( "pixel", res );
+        }
+        return null;
     }
 
     private static double[] getPixelResolution(final N5Reader n5, final N5TreeNode node) throws IOException
