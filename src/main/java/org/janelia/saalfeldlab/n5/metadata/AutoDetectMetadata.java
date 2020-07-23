@@ -20,7 +20,7 @@ public class AutoDetectMetadata implements N5MetadataParser< N5Metadata >
 		{
 			new N5ImagePlusMetadata( "" ),
 			new N5CosemMetadata( "", null, null ),
-			new N5ViewerMetadataParser(),
+			new N5ViewerMetadataParser( false ),
 			new DefaultMetadata( "", 1 )
 		});
 	}

@@ -31,8 +31,8 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 @SuppressWarnings( "rawtypes" )
-public class N5ViewerMetadataParser implements N5MetadataParser {
-
+public class N5ViewerMetadataParser implements N5MetadataParser
+{
     public static final String DOWNSAMPLING_FACTORS_KEY = "downsamplingFactors";
     public static final String PIXEL_RESOLUTION_KEY = "pixelResolution";
     public static final String SCALES_KEY = "scales";

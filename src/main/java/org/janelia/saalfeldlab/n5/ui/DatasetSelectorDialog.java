@@ -17,7 +17,11 @@
 package org.janelia.saalfeldlab.n5.ui;
 
 import ij.IJ;
+import net.imglib2.FinalInterval;
+import net.imglib2.Interval;
+import scala.tools.nsc.settings.Final;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
@@ -34,13 +38,11 @@ import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class DatasetSelectorDialog
@@ -60,6 +62,11 @@ public class DatasetSelectorDialog
     private JFrame dialog;
     private JTextField containerPathTxt;
 
+	private List< JSpinner > minSpinners;
+	private List< JSpinner > maxSpinners;
+
+	private JCheckBox virtualBox;
+
     private JTree containerTree;
     private JList selectedList;
 
@@ -71,46 +78,61 @@ public class DatasetSelectorDialog
     private DefaultTreeModel treeModel;
     private DefaultListModel listModel;
 
-    private String lastBrowsePath;
+	private String lastBrowsePath;
 
-    private Function<String,N5Reader> n5Fun;
-    private N5Reader n5;
+	private Function< String, N5Reader > n5Fun;
 
-    private N5TreeNode selectedNode;
+	private N5Reader n5;
 
-//	private final Predicate< N5TreeNode > filter;
-  
-    public DatasetSelectorDialog( final Function<String,N5Reader> n5Fun,
-//    		final Predicate<N5TreeNode > filter,
-    		final N5MetadataParser<?>... parsers )
-    {
-    	this.n5Fun = n5Fun;
-//    	this.filter = filter;
+	private N5TreeNode selectedNode;
+
+	private boolean virtualOption = false;
+
+	private int nd;
+
+	public DatasetSelectorDialog( final Function< String, N5Reader > n5Fun, final N5MetadataParser< ? >... parsers )
+	{
+		this.n5Fun = n5Fun;
 		datasetDiscoverer = new N5DatasetDiscoverer( parsers );
-    }
+	}
 
-    public DatasetSelectorDialog( final Function<String,N5Reader> n5Fun )
-    {
-//    	this( n5Fun, x -> x.isDataset, new N5ViewerMetadataParser() );
-    	this( n5Fun, new N5ViewerMetadataParser() );
-    }
+	public DatasetSelectorDialog( final Function< String, N5Reader > n5Fun )
+	{
+		this( n5Fun, new N5ViewerMetadataParser() );
+	}
 
-    public DatasetSelectorDialog( final N5Reader n5,
-    		//final Predicate<N5TreeNode > filter,
-    		final N5MetadataParser<?>... parsers )
-
-    {
-    	this.n5 = n5;
-//    	this.filter = filter;
+	public DatasetSelectorDialog( final N5Reader n5, final N5MetadataParser< ? >... parsers )
+	{
+		this.n5 = n5;
 		datasetDiscoverer = new N5DatasetDiscoverer( parsers );
-    }
+	}
 
-    public DatasetSelectorDialog( final N5Reader n5 )
-    {
-//    	this( n5, x -> x.isDataset, new N5ViewerMetadataParser() );
-    	this( n5, new N5ViewerMetadataParser() );
-    }
+	public DatasetSelectorDialog( final N5Reader n5 )
+	{
+		this( n5, new N5ViewerMetadataParser() );
+	}
 
+	public void virtualOption()
+	{
+		virtualOption = true;
+	}
+
+	public boolean isVirtual()
+	{
+		return ( virtualBox != null ) && virtualBox.isSelected();
+	}
+
+	public Interval getMinMax()
+	{
+		long[] min = new long[ nd ];
+		long[] max = new long[ nd ];
+		for ( int i = 0; i < nd; i++ )
+		{
+			min[ i ] = ( Integer ) minSpinners.get( i ).getValue();
+			max[ i ] = ( Integer ) maxSpinners.get( i ).getValue();
+		}
+		return new FinalInterval( min, max );
+	}
 
     public void run( final Consumer< DataSelection > okCallback )
     {
@@ -118,7 +140,7 @@ public class DatasetSelectorDialog
 
         dialog = new JFrame("N5 Viewer");
         dialog.setLayout(new BoxLayout(dialog.getContentPane(), BoxLayout.PAGE_AXIS));
-        dialog.setMinimumSize(new Dimension(750, 500));
+        dialog.setMinimumSize(new Dimension(800, 600));
         dialog.setPreferredSize(dialog.getMinimumSize());
 
         if( n5 == null )
@@ -138,7 +160,27 @@ public class DatasetSelectorDialog
 			linkBtn.addActionListener(e -> openContainer( n5Fun, this::openLinkDialog));
 			containerPanel.add(linkBtn);
 
-			dialog.getContentPane().add(containerPanel);
+			dialog.getContentPane().add( containerPanel );
+
+			// add min/max options
+			final JPanel minMaxPanel = new JPanel();
+			minMaxPanel.setLayout( new GridLayout( 2, 4 ));
+
+			minSpinners = new ArrayList<>();
+			maxSpinners = new ArrayList<>();
+			for( int i = 0; i < 3; i++ )
+			{
+				minSpinners.add( new JSpinner() );
+				maxSpinners.add( new JSpinner() );
+			}
+			defaultMinMax();
+
+			minMaxPanel.add( new JLabel( "Min: "));
+			minSpinners.stream().forEach( x -> minMaxPanel.add( x ) );
+			minMaxPanel.add( new JLabel( "Max: "));
+			maxSpinners.stream().forEach( x -> minMaxPanel.add( x ) );
+
+			dialog.add( minMaxPanel );
         }
 //        else
 //        {
@@ -150,6 +192,18 @@ public class DatasetSelectorDialog
 //
 //			dialog.getContentPane().add(containerPanel);
 //        }
+
+		if ( virtualOption )
+		{
+			final JPanel virtualPanel = new JPanel();
+			virtualPanel.add( new JLabel( "Open as virtual: " ) );
+
+			virtualBox = new JCheckBox();
+			virtualBox.setSelected( true );
+			virtualPanel.add( virtualBox );
+
+			dialog.add( virtualPanel );
+		}
 
         final JPanel datasetsPanel = new JPanel();
 
@@ -219,11 +273,9 @@ public class DatasetSelectorDialog
         containerTree.addTreeSelectionListener(e -> {
             final DefaultMutableTreeNode node = (DefaultMutableTreeNode) containerTree.getLastSelectedPathComponent();
             selectedNode = (node == null ? null : (N5TreeNode) node.getUserObject());
-//            addSourceBtn.setEnabled( selectedNode != null );
             addSourceBtn.setEnabled( selectedNode != null && selectedNode.metadata != null );
-//            addSourceBtn.setEnabled( selectedNode != null && filter.test( selectedNode ) );
         });
-        
+
         if( n5 != null )
 			openContainer( x -> n5, () -> "" );
     }
@@ -244,18 +296,21 @@ public class DatasetSelectorDialog
     {
         return JOptionPane.showInputDialog(dialog, "Link: ", "N5 Viewer", JOptionPane.PLAIN_MESSAGE);
     }
-    
+
 	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener )
     {
-        final String n5Path = opener.get();
-        n5 = n5Fun.apply( n5Path );
+		final String n5Path = opener.get();
+		n5 = n5Fun.apply( n5Path );
+		if ( n5 == null )
+			return;
 
         final N5TreeNode n5RootNode;
         try
         {
 			n5RootNode = datasetDiscoverer.discover( n5 );
         }
-        catch (final IOException e) {
+		catch ( final IOException e )
+        {
             IJ.handleException(e);
             return;
         }
@@ -272,11 +327,45 @@ public class DatasetSelectorDialog
         okBtn.setEnabled(false);
     }
 
+	private void defaultMinMax()
+	{
+		for ( int i = 0; i < 3; i++ )
+		{
+			minSpinners.get( i ).setModel( new SpinnerListModel( new String[] { "-" } ) );
+			maxSpinners.get( i ).setModel( new SpinnerListModel( new String[] { "-" } ) );
+		}
+	}
+
+	private void updateMinMax( final N5TreeNode node )
+	{
+        // add min/max options
+		try
+		{ 
+			if ( !n5.datasetExists( node.path ) )
+			{
+				return;
+			}
+			DatasetAttributes attr = n5.getDatasetAttributes( node.path );
+			nd = attr.getNumDimensions();
+			for( int i = 0; i < nd; i++ )
+			{
+				int max = (int)attr.getDimensions()[ i ] - 1;
+				minSpinners.get( i ).setModel( new SpinnerNumberModel( 0, 0, max, 1 ));
+				maxSpinners.get( i ).setModel( new SpinnerNumberModel( max, 0, max, 1 ));
+			}
+		}
+		catch ( Exception e )
+		{
+			return;
+		}
+	}
+
     private void addSource()
     {
         if (selectedNode != null)
         {
             addSourceRecursive(selectedNode);
+            updateMinMax( selectedNode );
 
             selectedNode = null;
             containerTree.clearSelection();
@@ -288,20 +377,27 @@ public class DatasetSelectorDialog
 
     private void addSourceRecursive(final N5TreeNode node)
     {
-        if (node.metadata != null) {
-            listModel.addElement(new SelectedListElement(node.path, node.metadata));
-        } else {
-            for (final N5TreeNode childNode : node.children)
-                addSourceRecursive(childNode);
-        }
+		if ( node.metadata != null )
+		{
+			listModel.addElement( new SelectedListElement( node.path, node.metadata ) );
+		}
+		else
+		{
+			for ( final N5TreeNode childNode : node.children )
+				addSourceRecursive( childNode );
+		}
     }
 
     private void removeSource()
     {
-        for (final Object selectedObject : selectedList.getSelectedValuesList())
-            listModel.removeElement(selectedObject);
-        removeSourceBtn.setEnabled(!listModel.isEmpty());
-        okBtn.setEnabled(!listModel.isEmpty());
+		for ( final Object selectedObject : selectedList.getSelectedValuesList() )
+			listModel.removeElement( selectedObject );
+
+		removeSourceBtn.setEnabled( !listModel.isEmpty() );
+		okBtn.setEnabled( !listModel.isEmpty() );
+
+		if ( listModel.size() == 0 )
+			defaultMinMax();
     }
 
     private void ok()
