@@ -85,7 +85,8 @@ public class N5Importer implements PlugIn
 	public void run( String arg )
 	{
 		selectionDialogNew = new DatasetSelectorDialog( N5Importer::getReader, PARSERS );
-		selectionDialogNew.virtualOption();
+		selectionDialogNew.setVirtualOption( true );
+		selectionDialogNew.setMinMaxOption( true );
 		selectionDialogNew.run(
 				selection -> {
 					this.selection = selection;

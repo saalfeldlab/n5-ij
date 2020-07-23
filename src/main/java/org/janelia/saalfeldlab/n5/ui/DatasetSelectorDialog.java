@@ -88,6 +88,8 @@ public class DatasetSelectorDialog
 
 	private boolean virtualOption = false;
 
+	private boolean minMaxOption = false;
+
 	private int nd;
 
 	public DatasetSelectorDialog( final Function< String, N5Reader > n5Fun, final N5MetadataParser< ? >... parsers )
@@ -112,9 +114,14 @@ public class DatasetSelectorDialog
 		this( n5, new N5ViewerMetadataParser() );
 	}
 
-	public void virtualOption()
+	public void setVirtualOption( boolean arg )
 	{
-		virtualOption = true;
+		virtualOption = arg;
+	}
+
+	public void setMinMaxOption( boolean arg )
+	{
+		minMaxOption = arg;
 	}
 
 	public boolean isVirtual()
@@ -124,6 +131,9 @@ public class DatasetSelectorDialog
 
 	public Interval getMinMax()
 	{
+		if( !minMaxOption )
+			return null;
+
 		long[] min = new long[ nd ];
 		long[] max = new long[ nd ];
 		for ( int i = 0; i < nd; i++ )
@@ -162,25 +172,28 @@ public class DatasetSelectorDialog
 
 			dialog.getContentPane().add( containerPanel );
 
-			// add min/max options
-			final JPanel minMaxPanel = new JPanel();
-			minMaxPanel.setLayout( new GridLayout( 2, 4 ));
-
-			minSpinners = new ArrayList<>();
-			maxSpinners = new ArrayList<>();
-			for( int i = 0; i < 3; i++ )
+			if( minMaxOption )
 			{
-				minSpinners.add( new JSpinner() );
-				maxSpinners.add( new JSpinner() );
+				// add min/max options
+				final JPanel minMaxPanel = new JPanel();
+				minMaxPanel.setLayout( new GridLayout( 2, 4 ));
+
+				minSpinners = new ArrayList<>();
+				maxSpinners = new ArrayList<>();
+				for( int i = 0; i < 3; i++ )
+				{
+					minSpinners.add( new JSpinner() );
+					maxSpinners.add( new JSpinner() );
+				}
+				defaultMinMax();
+
+				minMaxPanel.add( new JLabel( "Min: "));
+				minSpinners.stream().forEach( x -> minMaxPanel.add( x ) );
+				minMaxPanel.add( new JLabel( "Max: "));
+				maxSpinners.stream().forEach( x -> minMaxPanel.add( x ) );
+
+				dialog.add( minMaxPanel );
 			}
-			defaultMinMax();
-
-			minMaxPanel.add( new JLabel( "Min: "));
-			minSpinners.stream().forEach( x -> minMaxPanel.add( x ) );
-			minMaxPanel.add( new JLabel( "Max: "));
-			maxSpinners.stream().forEach( x -> minMaxPanel.add( x ) );
-
-			dialog.add( minMaxPanel );
         }
 //        else
 //        {
@@ -329,6 +342,9 @@ public class DatasetSelectorDialog
 
 	private void defaultMinMax()
 	{
+		if( !minMaxOption )
+			return;
+
 		for ( int i = 0; i < 3; i++ )
 		{
 			minSpinners.get( i ).setModel( new SpinnerListModel( new String[] { "-" } ) );
@@ -338,6 +354,9 @@ public class DatasetSelectorDialog
 
 	private void updateMinMax( final N5TreeNode node )
 	{
+		if( !minMaxOption )
+			return;
+
         // add min/max options
 		try
 		{ 

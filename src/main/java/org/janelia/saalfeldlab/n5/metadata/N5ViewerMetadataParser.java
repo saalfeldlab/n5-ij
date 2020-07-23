@@ -73,7 +73,6 @@ public class N5ViewerMetadataParser implements N5MetadataParser
 
         // Could be a multiscale group, need to check if it contains datasets named s0..sN
         String basePath = node.path;
-        System.out.println( "basePath: " + basePath );
         final Map<String, N5TreeNode> scaleLevelNodes = new HashMap<>();
         for (final N5TreeNode childNode : node.children)
             if (scaleLevelPredicate.test(childNode.getNodeName()))
