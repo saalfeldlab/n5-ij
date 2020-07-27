@@ -19,7 +19,6 @@ package org.janelia.saalfeldlab.n5.ui;
 import ij.IJ;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
-import scala.tools.nsc.settings.Final;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
