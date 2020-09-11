@@ -10,13 +10,14 @@ import java.util.Map;
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
-import org.janelia.saalfeldlab.n5.N5FSWriter;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
-import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
 import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
@@ -24,8 +25,8 @@ import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
-import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerSingleMetadataParser;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
@@ -37,7 +38,6 @@ import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
@@ -45,10 +45,6 @@ import net.imglib2.view.Views;
 @Plugin( type = Command.class, menuPath = "File>Save As>Export N5" )
 public class N5Exporter implements Command, WindowListener
 {
-	public static final String N5FS = "Filesystem";
-	public static final String N5H5 = "Hdf5";
-	public static final String N5Zarr = "Zarr"; // TODO
-
 	public static final String GZIP_COMPRESSION = "gzip";
 	public static final String RAW_COMPRESSION = "raw";
 	public static final String LZ4_COMPRESSION = "lz4";
@@ -75,11 +71,14 @@ public class N5Exporter implements Command, WindowListener
     private String blockSizeArg;
 
     @Parameter( label = "compresstion",
-    		choices={GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION}, style="listBox")
+    		choices={GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION},
+    		style="listBox" )
     private String compressionArg = GZIP_COMPRESSION;
 
-    @Parameter( label = "container type", choices={N5FS, N5H5}, style="listBox")
-    private String type = N5FS;
+    @Parameter( label = "container type", 
+    		choices={ "FILESYSTEM", "HDF5", "GOOGLE_CLOUD", "AMAZON_S3" },
+    		style="listBox" )
+    private String type = "FILESYSTEM";
     
     @Parameter( label="metadata type", 
     		description = "The style for metadata to be stored in the exported N5.",
@@ -96,21 +95,53 @@ public class N5Exporter implements Command, WindowListener
 
 	private N5MetadataSpecDialog metaSpecDialog;
 
-	@SuppressWarnings( "unchecked" )
-	public < T extends RealType< T > & NativeType< T >, M extends N5Metadata > void process() throws IOException
-	{
-		if( image.getNFrames() > 1 && metadataStyle.equals( N5Importer.MetadataN5ViewerKey ))
-		{
-			log.error("Writer does not yet support time points");
-			return;
-		}
+	private HashMap< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes;
 
+	public N5Exporter()
+	{
+		styles = new HashMap<String,N5MetadataWriter<?>>();
+		styles.put( N5Importer.MetadataN5ViewerKey, new N5ViewerMetadataWriter() );
+		styles.put( N5Importer.MetadataN5CosemKey, new N5CosemMetadata( "", null, null ) );
+		styles.put( N5Importer.MetadataImageJKey, new N5ImagePlusMetadata("") );
+		
+		// default image plus metadata writers
+		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
+		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
+		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
+		impMetaWriterTypes.put( N5ViewerSingleMetadataParser.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
+	}
+	
+	public void setOptions( 
+			final ImagePlus image,
+			final String n5RootLocation,
+			final String n5Dataset,
+			final String blockSizeArg,
+			final String type,
+			final String metadataStyle,
+			final String compression )
+	{
+		this.image = image;
+		this.n5RootLocation = n5RootLocation;
+		this.n5Dataset = n5Dataset;
+
+		this.blockSizeArg = blockSizeArg;
+		this.type = type;
+		this.metadataStyle = metadataStyle;
+		this.compressionArg = compression;
+	}
+
+	@SuppressWarnings( "unchecked" )
+	public < T extends RealType< T > & NativeType< T >, M extends N5Metadata > void process() throws IOException, DataAccessException
+	{
 		N5Writer n5 = getWriter();
 		Compression compression = getCompression();
 		blockSize = Arrays.stream( blockSizeArg.split( "," )).mapToInt( x -> Integer.parseInt( x ) ).toArray();
 
 		Img<T> img = ImageJFunctions.wrap( image );
 		N5MetadataWriter<M> writer = ( N5MetadataWriter< M > ) styles.get( metadataStyle );
+		impMeta = impMetaWriterTypes.get( writer.getClass() );
 
 		String datasetString = "";
 		for( int c = 0; c < image.getNChannels(); c++ )
@@ -155,19 +186,11 @@ public class N5Exporter implements Command, WindowListener
 	@Override
 	public void run()
 	{
-		styles = new HashMap<String,N5MetadataWriter<?>>();
-		styles.put( N5Importer.MetadataN5ViewerKey, new N5ViewerMetadataWriter() );
-		styles.put( N5Importer.MetadataN5CosemKey, new N5CosemMetadata( "", null, null ) );
-		styles.put( N5Importer.MetadataImageJKey, new N5ImagePlusMetadata("") );
-
-		// TODO expand with more options
-		impMeta = new N5ImagePlusMetadata("");
-
+		// add more options
 		if( metadataStyle.equals(  N5Importer.MetadataCustomKey  ))
 		{
 			metaSpecDialog = new N5MetadataSpecDialog( this );
 			metaSpecDialog.show( MetadataTemplateMapper.RESOLUTION_ONLY_MAPPER );
-//			metaSpecDialog.show( MetadataTemplateMapper.COSEM_MAPPER );
 		}
 		else
 		{
@@ -176,6 +199,10 @@ public class N5Exporter implements Command, WindowListener
 				process();
 			}
 			catch ( IOException e )
+			{
+				e.printStackTrace();
+			}
+			catch ( DataAccessException e )
 			{
 				e.printStackTrace();
 			}
@@ -199,16 +226,9 @@ public class N5Exporter implements Command, WindowListener
 		}
 	}
 	
-	private N5Writer getWriter() throws IOException
+	private N5Writer getWriter() throws IOException, DataAccessException
 	{
-		switch( type )
-		{
-		case N5FS:
-			return new N5FSWriter( n5RootLocation );
-		case N5H5:
-			return new N5HDF5Writer( n5RootLocation, blockSize );
-		}
-		return null;
+		return new DataAccessFactory( DataAccessType.valueOf( type ), n5RootLocation ).createN5Writer( n5RootLocation );
 	}
 
 	@Override
@@ -233,6 +253,10 @@ public class N5Exporter implements Command, WindowListener
 			process();
 		}
 		catch ( IOException e1 )
+		{
+			e1.printStackTrace();
+		}
+		catch ( DataAccessException e1 )
 		{
 			e1.printStackTrace();
 		}

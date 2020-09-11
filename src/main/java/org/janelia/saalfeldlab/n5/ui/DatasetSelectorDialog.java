@@ -27,7 +27,6 @@ import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5MultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataParser;
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -75,11 +74,14 @@ public class DatasetSelectorDialog
     private JButton okBtn;
 
     private DefaultTreeModel treeModel;
+
     private DefaultListModel listModel;
 
 	private String lastBrowsePath;
 
 	private Function< String, N5Reader > n5Fun;
+
+	private Function< String, String > pathFun;
 
 	private N5Reader n5;
 
@@ -91,26 +93,27 @@ public class DatasetSelectorDialog
 
 	private int nd;
 
-	public DatasetSelectorDialog( final Function< String, N5Reader > n5Fun, final N5MetadataParser< ? >... parsers )
+	public DatasetSelectorDialog( 
+			final Function< String, N5Reader > n5Fun, 
+			final Function< String, String > pathFun, 
+			final N5MetadataParser< ? >... parsers )
 	{
 		this.n5Fun = n5Fun;
+		this.pathFun = pathFun;
 		datasetDiscoverer = new N5DatasetDiscoverer( parsers );
 	}
 
-	public DatasetSelectorDialog( final Function< String, N5Reader > n5Fun )
+	public DatasetSelectorDialog( 
+			final Function< String, N5Reader > n5Fun, 
+			final N5MetadataParser< ? >... parsers )
 	{
-		this( n5Fun, new N5ViewerMetadataParser() );
+		this( n5Fun, x -> "", parsers );
 	}
 
 	public DatasetSelectorDialog( final N5Reader n5, final N5MetadataParser< ? >... parsers )
 	{
 		this.n5 = n5;
 		datasetDiscoverer = new N5DatasetDiscoverer( parsers );
-	}
-
-	public DatasetSelectorDialog( final N5Reader n5 )
-	{
-		this( n5, new N5ViewerMetadataParser() );
 	}
 
 	public void setVirtualOption( boolean arg )
@@ -137,8 +140,11 @@ public class DatasetSelectorDialog
 		long[] max = new long[ nd ];
 		for ( int i = 0; i < nd; i++ )
 		{
-			min[ i ] = ( Integer ) minSpinners.get( i ).getValue();
-			max[ i ] = ( Integer ) maxSpinners.get( i ).getValue();
+			if( i < 3 ) // limiting to 3d cropping for now
+			{
+				min[ i ] = ( Integer ) minSpinners.get( i ).getValue();
+				max[ i ] = ( Integer ) maxSpinners.get( i ).getValue();
+			}
 		}
 		return new FinalInterval( min, max );
 	}
@@ -194,16 +200,6 @@ public class DatasetSelectorDialog
 				dialog.add( minMaxPanel );
 			}
         }
-//        else
-//        {
-//			final JPanel containerPanel = new JPanel();
-//			containerPanel.add(new JLabel("N5 container:"));
-//
-//			containerPathTxt = new JTextField();
-//			containerPathTxt.setText( n5.toString()  );
-//
-//			dialog.getContentPane().add(containerPanel);
-//        }
 
 		if ( virtualOption )
 		{
@@ -310,6 +306,12 @@ public class DatasetSelectorDialog
     }
 
 	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener )
+	{
+		openContainer( n5Fun, opener, pathFun );
+	}
+
+	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener,
+			final Function<String,String> pathToRoot )
     {
 		final String n5Path = opener.get();
 		n5 = n5Fun.apply( n5Path );
@@ -319,7 +321,7 @@ public class DatasetSelectorDialog
         final N5TreeNode n5RootNode;
         try
         {
-			n5RootNode = datasetDiscoverer.discover( n5 );
+			n5RootNode = datasetDiscoverer.discoverRecursive( n5, pathToRoot.apply( n5Path ));
         }
 		catch ( final IOException e )
         {
@@ -420,11 +422,11 @@ public class DatasetSelectorDialog
 
     private void ok()
     {
-        final List<N5Metadata> selectedMetadata = new ArrayList<>();
-        for (final Enumeration enumeration = listModel.elements(); enumeration.hasMoreElements();)
-            selectedMetadata.add(((SelectedListElement) enumeration.nextElement()).metadata);
-        okCallback.accept(new DataSelection(n5, selectedMetadata));
+		final List< N5Metadata > selectedMetadata = new ArrayList<>();
+		for ( final Enumeration enumeration = listModel.elements(); enumeration.hasMoreElements(); )
+			selectedMetadata.add( ( ( SelectedListElement ) enumeration.nextElement() ).metadata );
 
+		okCallback.accept( new DataSelection( n5, selectedMetadata ) );
         dialog.setVisible(false);
         dialog.dispose();
     }

@@ -1,15 +1,15 @@
 package org.janelia.saalfeldlab.n5.ij;
 
-import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
 import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
@@ -18,12 +18,15 @@ import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
-import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerSingleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.scijava.log.LogService;
 
+import com.amazonaws.services.s3.AmazonS3URI;
+
+import ij.IJ;
 import ij.ImagePlus;
 import ij.plugin.PlugIn;
 import net.imglib2.FinalInterval;
@@ -36,7 +39,6 @@ import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.NumericType;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn
@@ -54,14 +56,14 @@ public class N5Importer implements PlugIn
 	public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 					new N5ImagePlusMetadata( "" ),
 					new N5CosemMetadata( "", null, null ),
-					new N5ViewerMetadataParser( false ),
+					new N5ViewerSingleMetadataParser( false ),
 					new DefaultMetadata( "", 1 )
 				};
 
     private N5Reader n5;
 
 	private DatasetSelectorDialog selectionDialogNew;
-	
+
 	private DataSelection selection;
 
 	private Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes;
@@ -76,7 +78,7 @@ public class N5Importer implements PlugIn
 		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
 		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
 		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
-		impMetaWriterTypes.put( N5ViewerMetadataParser.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( N5ViewerSingleMetadataParser.class, new N5ViewerMetadataWriter());
 		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerMetadataWriter());
 		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
 	}
@@ -84,7 +86,10 @@ public class N5Importer implements PlugIn
 	@Override
 	public void run( String arg )
 	{
-		selectionDialogNew = new DatasetSelectorDialog( N5Importer::getReader, PARSERS );
+		selectionDialogNew = new DatasetSelectorDialog(
+				new N5ViewerReaderFun(), 
+				new N5BasePathFun(),
+				PARSERS );
 		selectionDialogNew.setVirtualOption( true );
 		selectionDialogNew.setMinMaxOption( true );
 		selectionDialogNew.run(
@@ -98,36 +103,45 @@ public class N5Importer implements PlugIn
 				});
 	}
 
-	public static N5Reader getReader( final String path )
+	@SuppressWarnings( "unchecked" )
+	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read( 
+			final N5Reader n5, 
+			final N5Metadata datasetMeta, final Interval subset, final boolean asVirtual,
+			final ImageplusMetadata<M> ipMeta ) throws IOException
 	{
-		if( path == null )
-			return null;
+		String d = datasetMeta.getPath();
+		RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
 
-		File f = new File( path );
-		if( f.isDirectory() && path.endsWith( ".n5" ))
+		RandomAccessibleInterval<T> img;
+		if( subset != null )
+			img = Views.interval( imgRaw, subset );
+		else
+			img = imgRaw;
+
+		ImagePlus imp;
+		if( asVirtual )
+		{
+			imp = ImageJFunctions.wrap( img, d );
+		}
+		else
+		{
+			ImagePlusImg<T,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( img ).firstElement()).create( img );
+			LoopBuilder.setImages( img, ipImg ).forEachPixel( (x,y) -> y.set( x ) );
+			imp = ipImg.getImagePlus();
+		}
+
+		if( ipMeta != null )
 		{
 			try
-			{
-				return new N5FSReader( path );
+			{ 
+				ipMeta.writeMetadata( ( M ) datasetMeta, imp );
 			}
-			catch ( IOException e1 )
+			catch( Exception e )
 			{
-				 e1.printStackTrace();
-			}
-		}
-		else if( f.isFile() && 
-				( path.endsWith( ".h5"  ) || path.endsWith( ".hdf" ) || path.endsWith( ".hdf5" )))
-		{
-			try
-			{
-				return new N5HDF5Reader( path, 32, 32, 32 );
-			}
-			catch ( IOException e )
-			{
-				 e.printStackTrace();
+				System.err.println("Failed to convert metadata to Imageplus for " + d );
 			}
 		}
-		return null;
+		return imp;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -223,4 +237,84 @@ public class N5Importer implements PlugIn
 
 		return new FinalInterval( min, max );
 	}
+
+	public static class N5ViewerReaderFun implements Function< String, N5Reader >
+	{
+		public String message;
+
+		@Override
+		public N5Reader apply( String n5Path )
+		{
+
+			N5Reader n5;
+			if ( n5Path == null || n5Path.isEmpty() )
+				return null;
+
+			final DataAccessType type = DataAccessType.detectType( n5Path );
+			if ( type == null )
+			{
+				message = "Not a valid path or link to an N5 container.";
+				return null;
+			}
+
+			String n5BasePath = n5Path;
+			if( type == DataAccessType.FILESYSTEM )
+			{
+				if( n5Path.contains( ".n5" ))
+					n5BasePath = n5Path.substring( 0, 3 + n5Path.indexOf( ".n5" ));
+			}
+
+			n5 = null;
+			try
+			{
+				n5 = new DataAccessFactory( type, n5BasePath ).createN5Reader( n5BasePath );
+
+				/* 
+				 * Do we need this check?
+				 */
+//				if ( !n5.exists( "/" ) || n5.getVersion().equals( new N5Reader.Version( null ) ) )
+//				{
+////					JOptionPane.showMessageDialog( dialog, "Not a valid path or link to an N5 container.", "N5 Viewer", JOptionPane.ERROR_MESSAGE );
+//					return null;
+//				}
+
+			}
+			catch ( final DataAccessException | IOException e )
+			{
+				IJ.handleException( e );
+				return null;
+			}
+			return n5;
+		}
+	}
+
+	public static class N5BasePathFun implements Function< String, String >
+	{
+		public String message;
+
+		@Override
+		public String apply( String n5Path )
+		{
+			final DataAccessType type = DataAccessType.detectType( n5Path );
+			if ( type == null )
+			{
+				message = "Not a valid path or link to an N5 container.";
+				return null;
+			}
+
+			switch ( type )
+			{
+			case FILESYSTEM:
+				if( n5Path.contains( ".n5" ))
+					return n5Path.substring( 3 + n5Path.indexOf( ".n5" ));
+				return "";
+			case AMAZON_S3:
+				final AmazonS3URI s3Uri = new AmazonS3URI( n5Path );
+				return s3Uri.getKey();
+			default:
+				return "";
+			}
+		}
+	}
+
 }

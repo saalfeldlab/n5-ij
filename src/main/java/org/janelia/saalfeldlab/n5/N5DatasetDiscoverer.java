@@ -16,10 +16,9 @@
  */
 package org.janelia.saalfeldlab.n5;
 
-import net.imglib2.realtransform.AffineTransform3D;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import se.sawano.java.text.AlphanumericComparator;
 
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -29,20 +28,20 @@ import java.text.Collator;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 public class N5DatasetDiscoverer {
 
-    private final N5MetadataParser[] metadataParsers;
+    @SuppressWarnings( "rawtypes" )
+	private final N5MetadataParser[] metadataParsers;
 
     private final Comparator<? super String> comparator;
-
 
     /**
      * Creates an N5 discoverer with alphanumeric sorting order of groups/datasets (such as, s9 goes before s10).
      *
      * @param metadataParsers
      */
+	@SuppressWarnings( "rawtypes" )
 	public N5DatasetDiscoverer( final N5MetadataParser... metadataParsers )
     {
         this(
@@ -59,7 +58,8 @@ public class N5DatasetDiscoverer {
      * @param comparator
      * @param metadataParsers
      */
-    public N5DatasetDiscoverer(
+    @SuppressWarnings( "rawtypes" )
+	public N5DatasetDiscoverer(
             final Optional<Comparator<? super String>> comparator,
 			final N5MetadataParser... metadataParsers)
     {
@@ -67,9 +67,9 @@ public class N5DatasetDiscoverer {
         this.metadataParsers = metadataParsers;
     }
 
-    public N5TreeNode discover(final N5Reader n5) throws IOException
+	public N5TreeNode discoverRecursive( final N5Reader n5, final String base ) throws IOException
     {
-		final N5TreeNode root = new N5TreeNode( "/", n5.datasetExists( "/" ));
+		final N5TreeNode root = new N5TreeNode( base, n5.datasetExists( base ));
 		discover( n5, root );
 		parseMetadata( n5, root, metadataParsers );
 		trim( root );
@@ -78,7 +78,7 @@ public class N5DatasetDiscoverer {
 		return root;
     }
 
-    public static DefaultMutableTreeNode toJTreeNode(final N5TreeNode n5Node)
+	public static DefaultMutableTreeNode toJTreeNode( final N5TreeNode n5Node )
     {
         final DefaultMutableTreeNode node = new DefaultMutableTreeNode(n5Node);
         for (final N5TreeNode n5ChildNode : n5Node.children)
@@ -90,29 +90,34 @@ public class N5DatasetDiscoverer {
     {
         if( !node.isDataset )
         {
-            for (final String childGroup : n5.list(node.path)) {
-                final String childPath = Paths.get(node.path, childGroup).toString();
-                final N5TreeNode childNode = new N5TreeNode(childPath, n5.datasetExists( childPath ));
-                node.children.add(childNode);
-                discover(n5, childNode);
+			for ( final String childGroup : n5.list( node.path ) )
+			{
+				final String childPath = Paths.get( node.path, childGroup ).toString();
+				final N5TreeNode childNode = new N5TreeNode( childPath, n5.datasetExists( childPath ) );
+				node.children.add( childNode );
+				discover( n5, childNode );
             }
         }
     }
 
-    private static void parseMetadata(final N5Reader n5, final N5TreeNode node, final N5MetadataParser[] metadataParsers) throws IOException {
+    @SuppressWarnings( "rawtypes" )
+	private static void parseMetadata(final N5Reader n5, final N5TreeNode node, final N5MetadataParser[] metadataParsers) throws IOException {
 
         // Recursively parse metadata for children nodes
         for (final N5TreeNode childNode : node.children)
-            parseMetadata(n5, childNode, metadataParsers);
+            parseMetadata( n5, childNode, metadataParsers );
 
         // Go through all parsers to populate metadata
         for (final N5MetadataParser parser : metadataParsers)
         {
         	try
         	{
-				node.metadata = parser.parseMetadata(n5, node);
+				node.metadata = parser.parseMetadata( n5, node );
 				if (node.metadata != null)
+				{
+					System.out.println( "Found metadata for " + node.path );
 					break;
+				}
         	}
         	catch( Exception e ) {}
         }
@@ -122,7 +127,7 @@ public class N5DatasetDiscoverer {
         if (node.metadata == null && node.isDataset)
         {
         	System.out.println( "Warning: using default metadata for " + node.path );
-            node.metadata = new N5SingleScaleMetadata(node.path, new AffineTransform3D());
+            node.metadata = new DefaultMetadata( node.path, 3 ); // TODO fix
         }
     }
 
