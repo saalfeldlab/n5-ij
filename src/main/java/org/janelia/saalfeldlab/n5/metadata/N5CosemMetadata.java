@@ -2,15 +2,15 @@ package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
 
 public class N5CosemMetadata implements N5Metadata, 
-	N5MetadataParser< N5CosemMetadata >, N5MetadataWriter< N5CosemMetadata >, ImageplusMetadata< N5CosemMetadata >
+	N5GsonMetadataParser< N5CosemMetadata >, N5MetadataWriter< N5CosemMetadata >, ImageplusMetadata< N5CosemMetadata >
 {
 	public static final String pixelResolutionKey = "pixelResolution";
 
@@ -21,6 +21,13 @@ public class N5CosemMetadata implements N5Metadata,
 	private final CosemTransform cosemTransformMeta;
 
 	private final FinalVoxelDimensions voxDims;
+
+	private final HashMap< String, Class<?>> keysToTypes;
+
+	public N5CosemMetadata()
+	{
+		this( "", null, null );
+	}
 
 	public N5CosemMetadata( final CosemTransform cosemTransformMeta )
 	{
@@ -39,9 +46,13 @@ public class N5CosemMetadata implements N5Metadata,
 
 	public N5CosemMetadata( final String path, final CosemTransform cosemTransformMeta, final FinalVoxelDimensions voxDims )
 	{
-		this.path = "";
+		this.path = path;
 		this.cosemTransformMeta = cosemTransformMeta;
 		this.voxDims = voxDims;
+
+		keysToTypes = new HashMap<>();
+		keysToTypes.put( pixelResolutionKey, FinalVoxelDimensions.class );
+		keysToTypes.put( CosemTransform.KEY, CosemTransform.class );
 	}
 	
 	public void setSeparateChannels( final boolean separateChannels )
@@ -50,22 +61,29 @@ public class N5CosemMetadata implements N5Metadata,
 	}
 	
 	@Override
-	public N5CosemMetadata parseMetadata( N5Reader n5, N5TreeNode node ) throws Exception
+	public HashMap<String,Class<?>> keysToTypes()
 	{
-		String dataset = node.path;
-		CosemTransform transform = n5.getAttribute( dataset, CosemTransform.KEY, CosemTransform.class );
-		FinalVoxelDimensions voxdims = n5.getAttribute( dataset, pixelResolutionKey, FinalVoxelDimensions.class );
+		return keysToTypes;
+	}
 
-		if( transform == null && voxdims == null )
-		{
-			throw new Exception( "Could not read Cosem metadata from: " + dataset );
-		}
+	@Override
+	public N5CosemMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
+	{
+		if( !N5MetadataParser.hasRequiredKeys( keysToTypes(), metaMap ))
+			throw new Exception( "Could not parse as N5CosemMetadata.");
+
+		String dataset = ( String ) metaMap.get( "dataset" );
+		CosemTransform transform = ( CosemTransform ) metaMap.get( CosemTransform.KEY );
+		FinalVoxelDimensions voxdims = ( FinalVoxelDimensions ) metaMap.get( pixelResolutionKey );
+
+		if( transform == null && voxdims == null)
+			return null;
 
 		return new N5CosemMetadata( dataset, transform, voxdims );
 	}
 
 	@Override
-	public void writeMetadata( N5CosemMetadata t, N5Writer n5, String dataset ) throws Exception
+	public void writeMetadata( final N5CosemMetadata t, final N5Writer n5, final String dataset ) throws Exception
 	{
 		if( t.cosemTransformMeta != null )
 			n5.setAttribute( dataset, CosemTransform.KEY, t.cosemTransformMeta );
@@ -75,7 +93,7 @@ public class N5CosemMetadata implements N5Metadata,
 	}
 
 	@Override
-	public void writeMetadata( N5CosemMetadata t, ImagePlus imp ) throws IOException
+	public void writeMetadata( final N5CosemMetadata t, final ImagePlus imp ) throws IOException
 	{
 		CosemTransform transform = t.cosemTransformMeta;
 		FinalVoxelDimensions voxdims = t.voxDims;

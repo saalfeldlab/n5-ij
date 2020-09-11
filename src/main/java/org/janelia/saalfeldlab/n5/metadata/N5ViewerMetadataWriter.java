@@ -34,7 +34,7 @@ public class N5ViewerMetadataWriter implements N5MetadataWriter< N5SingleScaleMe
 				t.transform.get( 2, 2 ) };
 
 		FinalVoxelDimensions voxdims = new FinalVoxelDimensions( t.unit, pixelResolution );
-		n5.setAttribute( dataset, N5ViewerMetadataParser.PIXEL_RESOLUTION_KEY, voxdims );
+		n5.setAttribute( dataset, N5ViewerSingleMetadataParser.PIXEL_RESOLUTION_KEY, voxdims );
 	}
 
 	@Override

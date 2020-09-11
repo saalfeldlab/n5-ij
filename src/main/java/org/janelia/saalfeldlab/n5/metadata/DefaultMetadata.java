@@ -1,22 +1,29 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.DoubleStream;
 
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.AbstractGsonReader;
+import org.janelia.saalfeldlab.n5.GsonAttributesParser;
 import org.janelia.saalfeldlab.n5.N5Writer;
+
+import com.google.gson.JsonElement;
 
 import ij.ImagePlus;
 
 public class DefaultMetadata implements N5Metadata, 
-	N5MetadataParser< DefaultMetadata >, N5MetadataWriter< DefaultMetadata >, ImageplusMetadata< DefaultMetadata >
+	N5GsonMetadataParser< DefaultMetadata >, N5MetadataWriter< DefaultMetadata >, ImageplusMetadata< DefaultMetadata >
 {
 	private String path;
 
 	private final FinalVoxelDimensions voxDims;
-	
+
+	private HashMap<String,Class<?>> keysToTypes;
+
+	public static final String dimensionsKey = "dimensions";
+
 	public DefaultMetadata( int nd )
 	{
 		this( "", nd );
@@ -27,13 +34,30 @@ public class DefaultMetadata implements N5Metadata,
 		this.path = path;
 		voxDims = new FinalVoxelDimensions( "pixel", 
 			DoubleStream.iterate( 1, x -> x ).limit( nd ).toArray());
+
+		keysToTypes = new HashMap<>();
+		keysToTypes.put( dimensionsKey, long[].class ); // n5 datasets need this
 	}
-	
+
 	@Override
-	public DefaultMetadata parseMetadata( N5Reader n5, N5TreeNode node ) throws Exception
+	public HashMap<String,Class<?>> keysToTypes()
 	{
-		return new DefaultMetadata( node.path, 
-				n5.getDatasetAttributes( node.path ).getNumDimensions() );
+		return keysToTypes;
+	}
+
+	@Override
+	public < R extends AbstractGsonReader> DefaultMetadata parseMetadataGson( final R n5, final String dataset, final HashMap< String, JsonElement > map ) throws Exception
+	{
+		final long[] dimensions = GsonAttributesParser.parseAttribute(map, "dimensions", long[].class, n5.getGson());
+		return new DefaultMetadata( dataset, dimensions.length );
+	}
+
+	@Override
+	public DefaultMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
+	{
+		String dataset = ( String ) metaMap.get( "dataset" );
+		long[] dims = ( long[] ) metaMap.get( dimensionsKey );
+		return new DefaultMetadata( dataset, dims.length );
 	}
 
 	@Override

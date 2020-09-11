@@ -1,17 +1,18 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
-
-public class AutoDetectMetadata implements N5MetadataParser< N5Metadata >
+public class AutoDetectMetadata implements N5GsonMetadataParser< N5Metadata >
 {
 	private N5MetadataParser<?>[] parsers;
+	private HashMap<String,Class<?>> keysToTypes;
 
 	public AutoDetectMetadata( N5MetadataParser<?>[] parsers )
 	{
 		this.parsers = parsers;
+		keysToTypes = new HashMap<>();
 	}
 
 	public AutoDetectMetadata()
@@ -19,21 +20,27 @@ public class AutoDetectMetadata implements N5MetadataParser< N5Metadata >
 		this( new N5MetadataParser[]
 		{
 			new N5ImagePlusMetadata( "" ),
-			new N5CosemMetadata( "", null, null ),
-			new N5ViewerMetadataParser( false ),
-			new DefaultMetadata( "", 1 )
+			new N5CosemMetadata(),
+			new N5ViewerSingleMetadataParser( false ),
+			new DefaultMetadata( "", -1 )
 		});
 	}
 
 	@Override
-	public N5Metadata parseMetadata( N5Reader n5, N5TreeNode node ) throws Exception
+	public HashMap<String,Class<?>> keysToTypes()
+	{
+		return keysToTypes;
+	}
+
+	@Override
+	public N5Metadata parseMetadata( Map< String, Object > metaMap ) throws Exception
 	{
 		ArrayList<Exception> elist = new ArrayList<>();
 		for( N5MetadataParser< ? > p : parsers )
 		{
 			try 
 			{
-				N5Metadata meta = p.parseMetadata( n5, node );
+				N5Metadata meta = p.parseMetadata( metaMap );
 				if( meta != null )
 					return meta;
 			}
@@ -42,9 +49,9 @@ public class AutoDetectMetadata implements N5MetadataParser< N5Metadata >
 				elist.add( e );
 			}
 		}
+
 		for( Exception e : elist )
 		{
-			System.err.println( "" );
 			e.printStackTrace();
 		}
 		return null;

@@ -16,13 +16,25 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 
-import java.io.IOException;
+public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractGsonReader & N5Reader >
+{
 
-@FunctionalInterface
-public interface N5MetadataParser < T extends N5Metadata >{
+	/**
+	 * Returns a map of keys to class types needed for parsing. 
+	 * 
+	 * Optional in general, but used by default implementations.
+	 * @return
+	 */
+	public HashMap<String,Class<?>> keysToTypes();
+
+	public T parseMetadata( final Map< String, Object > keys ) throws Exception;
 
     /**
      * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
@@ -36,5 +48,50 @@ public interface N5MetadataParser < T extends N5Metadata >{
      * @return
      * @throws Exception
      */
-    T parseMetadata(N5Reader n5, N5TreeNode node) throws Exception;
+	public default T parseMetadata( final N5Reader n5, final N5TreeNode... nodes ) throws Exception
+	{
+		return parseMetadata( n5, nodes[ 0 ].path );
+	}
+
+	public default T parseMetadata( final N5Reader n5, final String dataset ) throws Exception
+	{
+		Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, dataset, keysToTypes() );
+		return parseMetadata( keys );	
+	}
+
+	public static Map< String, Object > parseMetadataStatic( 
+			final N5Reader n5, final String dataset, final Map< String, Class<?> > keys )
+	{
+		HashMap< String, Object > map = new HashMap<>();
+		map.put( "dataset", dataset ); // TODO doc this
+		for( String k : keys.keySet() )
+		{
+			if( !map.containsKey( k ))
+				return null;
+
+			try
+			{
+				map.put( k, n5.getAttribute( dataset, k, keys.get( k ) ) );
+			}
+			catch ( IOException e )
+			{ 
+				return null;
+			}
+		}
+
+		return map;
+	}
+	
+	public static boolean hasRequiredKeys(
+			final Map<String,Class<?>> keysToTypes,
+			final Map<String,?> metaMap )
+	{
+		for( String k : keysToTypes.keySet() )
+		{
+			if( !metaMap.containsKey( k ))
+				return false;
+		}
+		return true;
+	}
+
 }
