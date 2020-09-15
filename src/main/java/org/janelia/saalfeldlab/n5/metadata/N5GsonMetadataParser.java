@@ -47,7 +47,7 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		HashMap< String, Object > objMap = new HashMap< String, Object >();
 		HashMap< String, Class< ? > > typeMap = keysToTypes();
 		objMap.put( "dataset", dataset );
-		for( String k :typeMap.keySet() )
+		for( String k : typeMap.keySet() )
 		{
 			objMap.put( k , parser.getGson().fromJson( map.get( k ), typeMap.get( k )));
 		}

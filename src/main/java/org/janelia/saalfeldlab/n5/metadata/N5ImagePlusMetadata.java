@@ -70,7 +70,6 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 		pixelDepth = transform.get( 2, 2 );
 
 		keysToTypes = new HashMap<>();
-		keysToTypes.put( "dataset", String.class );
 		keysToTypes.put( titleKey, String.class );
 		keysToTypes.put( pixelWidthKey, Double.class );
 		keysToTypes.put( pixelHeightKey, Double.class );
