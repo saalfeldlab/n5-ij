@@ -108,7 +108,7 @@ public class N5Exporter implements Command, WindowListener
 		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
 		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
 		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
-		impMetaWriterTypes.put( N5ViewerSingleMetadataParser.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( N5ViewerMetadataWriter.class, new N5ViewerMetadataWriter());
 		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerMetadataWriter());
 		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
 	}
