@@ -32,17 +32,12 @@ public class N5ViewerSingleMetadataParser implements N5GsonMetadataParser< N5Sin
     public static final String AFFINE_TRANSFORM_KEY = "affineTransform";
 
 	private final HashMap< String, Class< ? > > keysToTypes;
-  
-    public N5ViewerSingleMetadataParser()
-    {
-    	this( true );
-    }
 
-    public N5ViewerSingleMetadataParser( final boolean parseMultiscale )
+    public N5ViewerSingleMetadataParser()
     {
     	keysToTypes = new HashMap<>();
 		keysToTypes.put( DOWNSAMPLING_FACTORS_KEY, long[].class );
-		keysToTypes.put( PIXEL_RESOLUTION_KEY, FinalVoxelDimensions[].class );
+		keysToTypes.put( PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class );
 		keysToTypes.put( AFFINE_TRANSFORM_KEY, AffineTransform3D.class );
     }
 
@@ -71,7 +66,7 @@ public class N5ViewerSingleMetadataParser implements N5GsonMetadataParser< N5Sin
 		return new N5SingleScaleMetadata( dataset, transform, voxdim.unit() );
 	}
 
-    private static AffineTransform3D buildTransform(
+   public static AffineTransform3D buildTransform(
             long[] downsamplingFactors,
             double[] pixelResolution,
             final AffineTransform3D extraTransform)

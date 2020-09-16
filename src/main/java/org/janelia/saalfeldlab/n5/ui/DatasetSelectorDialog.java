@@ -24,6 +24,7 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5MultiScaleMetadata;
@@ -96,24 +97,29 @@ public class DatasetSelectorDialog
 	public DatasetSelectorDialog( 
 			final Function< String, N5Reader > n5Fun, 
 			final Function< String, String > pathFun, 
+			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
 		this.n5Fun = n5Fun;
 		this.pathFun = pathFun;
-		datasetDiscoverer = new N5DatasetDiscoverer( parsers );
+		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
 	}
 
 	public DatasetSelectorDialog( 
 			final Function< String, N5Reader > n5Fun, 
+			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
-		this( n5Fun, x -> "", parsers );
+		this( n5Fun, x -> "", groupParsers, parsers );
 	}
 
-	public DatasetSelectorDialog( final N5Reader n5, final N5MetadataParser< ? >... parsers )
+	public DatasetSelectorDialog( 
+			final N5Reader n5, 
+			final N5GroupParser<?>[] groupParsers,
+			final N5MetadataParser< ? >... parsers )
 	{
 		this.n5 = n5;
-		datasetDiscoverer = new N5DatasetDiscoverer( parsers );
+		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
 	}
 
 	public void setVirtualOption( boolean arg )

@@ -18,6 +18,8 @@ package org.janelia.saalfeldlab.n5;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
+import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import se.sawano.java.text.AlphanumericComparator;
 
@@ -34,6 +36,8 @@ public class N5DatasetDiscoverer {
     @SuppressWarnings( "rawtypes" )
 	private final N5MetadataParser[] metadataParsers;
 
+	private final N5GroupParser<?>[] groupParsers;
+
     private final Comparator<? super String> comparator;
 
     /**
@@ -42,10 +46,11 @@ public class N5DatasetDiscoverer {
      * @param metadataParsers
      */
 	@SuppressWarnings( "rawtypes" )
-	public N5DatasetDiscoverer( final N5MetadataParser... metadataParsers )
+	public N5DatasetDiscoverer( final N5GroupParser[] groupParsers, final N5MetadataParser... metadataParsers )
     {
         this(
                 Optional.of(new AlphanumericComparator(Collator.getInstance())),
+                groupParsers,
                 metadataParsers);
     }
 
@@ -61,9 +66,11 @@ public class N5DatasetDiscoverer {
     @SuppressWarnings( "rawtypes" )
 	public N5DatasetDiscoverer(
             final Optional<Comparator<? super String>> comparator,
+            final N5GroupParser[] groupParsers,
 			final N5MetadataParser... metadataParsers)
     {
 		this.comparator = comparator.orElseGet( null );
+		this.groupParsers = groupParsers;
         this.metadataParsers = metadataParsers;
     }
 
@@ -71,7 +78,7 @@ public class N5DatasetDiscoverer {
     {
 		final N5TreeNode root = new N5TreeNode( base, n5.datasetExists( base ));
 		discover( n5, root );
-		parseMetadata( n5, root, metadataParsers );
+		parseMetadata( n5, root, metadataParsers, groupParsers );
 		trim( root );
 		if ( comparator != null )
 			sort( root, comparator );
@@ -101,11 +108,13 @@ public class N5DatasetDiscoverer {
     }
 
     @SuppressWarnings( "rawtypes" )
-	private static void parseMetadata(final N5Reader n5, final N5TreeNode node, final N5MetadataParser[] metadataParsers) throws IOException {
+	private static void parseMetadata(final N5Reader n5, final N5TreeNode node, 
+			final N5MetadataParser[] metadataParsers,
+			final N5GroupParser[] groupParsers ) throws IOException {
 
         // Recursively parse metadata for children nodes
         for (final N5TreeNode childNode : node.children)
-            parseMetadata( n5, childNode, metadataParsers );
+            parseMetadata( n5, childNode, metadataParsers, groupParsers );
 
         // Go through all parsers to populate metadata
         for (final N5MetadataParser parser : metadataParsers)
@@ -129,6 +138,21 @@ public class N5DatasetDiscoverer {
         	System.out.println( "Warning: using default metadata for " + node.path );
             node.metadata = new DefaultMetadata( node.path, 3 ); // TODO fix
         }
+		else if ( groupParsers != null )
+		{
+			// this is not a dataset but may be a group (e.g. multiscale
+			// pyramid)
+			// try to parse groups
+			for ( N5GroupParser gp : groupParsers )
+			{
+				N5Metadata groupMeta = gp.parseMetadataGroup( node );
+				if ( groupMeta != null )
+				{
+					node.metadata = groupMeta;
+				}
+			}
+		}
+
     }
 
     /**

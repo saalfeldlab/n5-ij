@@ -56,7 +56,7 @@ public class N5Importer implements PlugIn
 	public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 					new N5ImagePlusMetadata( "" ),
 					new N5CosemMetadata( "", null, null ),
-					new N5ViewerSingleMetadataParser( false ),
+					new N5ViewerSingleMetadataParser(),
 					new DefaultMetadata( "", 1 )
 				};
 
@@ -89,6 +89,7 @@ public class N5Importer implements PlugIn
 		selectionDialogNew = new DatasetSelectorDialog(
 				new N5ViewerReaderFun(), 
 				new N5BasePathFun(),
+				null,
 				PARSERS );
 		selectionDialogNew.setVirtualOption( true );
 		selectionDialogNew.setMinMaxOption( true );
