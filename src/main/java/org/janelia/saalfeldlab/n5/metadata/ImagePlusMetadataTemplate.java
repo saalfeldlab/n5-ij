@@ -6,8 +6,9 @@ import java.util.Properties;
 
 import ij.ImagePlus;
 
-public class ImagePlusMetadataTemplate
+public class ImagePlusMetadataTemplate implements N5Metadata, ImageplusMetadata< ImagePlusMetadataTemplate >
 {
+	public final String path;
 	public final String name;
 
 	public final double xResolution;
@@ -34,9 +35,42 @@ public class ImagePlusMetadataTemplate
 	public final String axis4;
 
 	public final Map<String,String> otherMetadata;
-	
-	public ImagePlusMetadataTemplate( final ImagePlus imp )
+
+	public ImagePlusMetadataTemplate( final String path )
 	{
+		this.path = path;
+
+		name = "";
+
+		xResolution = -1;
+		yResolution = -1;
+		zResolution = -1;
+		tResolution = -1;
+
+		xOrigin = -1;
+		yOrigin = -1;
+		zOrigin = -1;
+		tOrigin = -1;
+
+		xUnit = "";
+		yUnit = "";
+		zUnit = "";
+		tUnit = "";
+
+		globalUnit = "";
+
+		axis0 = "x";
+		axis1 = "y";
+		axis2 = "c";
+		axis3 = "z";
+		axis4 = "t";
+	
+		otherMetadata = new HashMap<>();
+	}
+
+	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp )
+	{
+		this.path = path;
 		name = imp.getTitle();
 
 		xResolution = imp.getCalibration().pixelWidth;
@@ -61,13 +95,51 @@ public class ImagePlusMetadataTemplate
 		axis2 = "c";
 		axis3 = "z";
 		axis4 = "t";
-		
+
 		otherMetadata = new HashMap<>();
 		Properties props = imp.getProperties();
 		if ( props != null )
 			for ( Object k : props.keySet() )
 				otherMetadata.put( k.toString(), props.get( k ).toString() );
 
+	}
+
+	@Override
+	public String getPath()
+	{
+		return path;
+	}
+
+	@Override
+	public void writeMetadata( ImagePlusMetadataTemplate t, ImagePlus ip )
+	{
+		ip.setTitle( t.name );
+		ip.getCalibration().pixelWidth = t.xResolution;
+		ip.getCalibration().pixelDepth = t.yResolution;
+		ip.getCalibration().pixelHeight = t.zResolution;
+
+		ip.getCalibration().xOrigin = t.xOrigin;
+		ip.getCalibration().yOrigin = t.yOrigin;
+		ip.getCalibration().zOrigin = t.zOrigin;
+
+		ip.getCalibration().setXUnit( t.xUnit );
+		ip.getCalibration().setYUnit( t.yUnit );
+		ip.getCalibration().setZUnit( t.zUnit );
+		ip.getCalibration().setUnit( t.globalUnit );
+
+		ip.getCalibration().setTimeUnit( t.tUnit );
+
+		Properties props = ip.getProperties();
+		if( t.otherMetadata != null )
+			for( String k : t.otherMetadata.keySet() )
+				props.put( k, t.otherMetadata.get( k ));
+
+	}
+
+	@Override
+	public ImagePlusMetadataTemplate readMetadata( ImagePlus ip )
+	{
+		return new ImagePlusMetadataTemplate( "", ip );
 	}
 
 }

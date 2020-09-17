@@ -18,6 +18,7 @@ import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
+import org.janelia.saalfeldlab.n5.metadata.ImagePlusMetadataTemplate;
 import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
@@ -75,16 +76,12 @@ public class N5Exporter implements Command, WindowListener
     		style="listBox" )
     private String compressionArg = GZIP_COMPRESSION;
 
-    @Parameter( label = "container type", 
-    		choices={ "FILESYSTEM", "HDF5", "GOOGLE_CLOUD", "AMAZON_S3" },
-    		style="listBox" )
-    private String type = "FILESYSTEM";
-    
     @Parameter( label="metadata type", 
     		description = "The style for metadata to be stored in the exported N5.",
     		choices={ 	N5Importer.MetadataN5ViewerKey, 
     					N5Importer.MetadataN5CosemKey,
-    					N5Importer.MetadataImageJKey } )
+    					N5Importer.MetadataImageJKey,
+    					N5Importer.MetadataCustomKey } )
     private String metadataStyle = N5Importer.MetadataN5ViewerKey;
 
     private int[] blockSize;
@@ -127,9 +124,19 @@ public class N5Exporter implements Command, WindowListener
 		this.n5Dataset = n5Dataset;
 
 		this.blockSizeArg = blockSizeArg;
-		this.type = type;
 		this.metadataStyle = metadataStyle;
 		this.compressionArg = compression;
+	}
+
+	/**
+	 * Set the custom metadata mapper to use programmically. 
+	 * 
+	 * @param metadataMapper
+	 */
+	public void setMetadataMapper( final MetadataTemplateMapper metadataMapper )
+	{
+		styles.put( N5Importer.MetadataCustomKey, metadataMapper );
+		impMetaWriterTypes.put( MetadataTemplateMapper.class, new ImagePlusMetadataTemplate( "" ));
 	}
 
 	@SuppressWarnings( "unchecked" )
@@ -228,7 +235,8 @@ public class N5Exporter implements Command, WindowListener
 	
 	private N5Writer getWriter() throws IOException, DataAccessException
 	{
-		return new DataAccessFactory( DataAccessType.valueOf( type ), n5RootLocation ).createN5Writer( n5RootLocation );
+		final DataAccessType type = DataAccessType.detectType( n5RootLocation );
+		return new DataAccessFactory( type, n5RootLocation ).createN5Writer( n5RootLocation );
 	}
 
 	@Override
@@ -246,8 +254,8 @@ public class N5Exporter implements Command, WindowListener
 	@Override
 	public void windowClosing(WindowEvent e)
 	{
-		// TODO fix
-//		styles.put( N5Importer.MetadataCustomKey, metaSpecDialog.getMapper() );
+		styles.put( N5Importer.MetadataCustomKey, metaSpecDialog.getMapper() );
+		impMetaWriterTypes.put( MetadataTemplateMapper.class, new ImagePlusMetadataTemplate( "" ));
 		try
 		{
 			process();
