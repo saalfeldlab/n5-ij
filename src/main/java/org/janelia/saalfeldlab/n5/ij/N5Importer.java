@@ -74,7 +74,7 @@ public class N5Importer implements PlugIn
 
 	public N5Importer()
 	{
-		// default image plus metadata writers
+		// default image plus metadata parsers
 		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
 		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
 		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
@@ -88,7 +88,7 @@ public class N5Importer implements PlugIn
 	{
 		selectionDialogNew = new DatasetSelectorDialog(
 				new N5ViewerReaderFun(), 
-				new N5BasePathFun(),
+				(x) -> "",
 				null,
 				PARSERS );
 		selectionDialogNew.setVirtualOption( true );
@@ -309,9 +309,9 @@ public class N5Importer implements PlugIn
 				if( n5Path.contains( ".n5" ))
 					return n5Path.substring( 3 + n5Path.indexOf( ".n5" ));
 				return "";
-			case AMAZON_S3:
-				final AmazonS3URI s3Uri = new AmazonS3URI( n5Path );
-				return s3Uri.getKey();
+//			case AMAZON_S3:
+//				final AmazonS3URI s3Uri = new AmazonS3URI( n5Path );
+//				return s3Uri.getKey();
 			default:
 				return "";
 			}

@@ -124,7 +124,6 @@ public class N5DatasetDiscoverer {
 				node.metadata = parser.parseMetadata( n5, node );
 				if (node.metadata != null)
 				{
-					System.out.println( "Found metadata for " + node.path );
 					break;
 				}
         	}

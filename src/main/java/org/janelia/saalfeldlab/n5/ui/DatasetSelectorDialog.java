@@ -321,13 +321,15 @@ public class DatasetSelectorDialog
     {
 		final String n5Path = opener.get();
 		n5 = n5Fun.apply( n5Path );
+		final String rootPath = pathToRoot.apply( n5Path );
+
 		if ( n5 == null )
 			return;
 
         final N5TreeNode n5RootNode;
         try
         {
-			n5RootNode = datasetDiscoverer.discoverRecursive( n5, pathToRoot.apply( n5Path ));
+			n5RootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
         }
 		catch ( final IOException e )
         {
