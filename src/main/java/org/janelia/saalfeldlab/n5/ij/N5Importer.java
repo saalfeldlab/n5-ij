@@ -1,35 +1,34 @@
 package org.janelia.saalfeldlab.n5.ij;
 
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-
-import javax.swing.JFrame;
+import java.util.function.Function;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
+import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
+import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadata;
-import org.janelia.saalfeldlab.n5.ui.N5DatasetSelectorDialog;
-import org.scijava.ItemVisibility;
-import org.scijava.command.Command;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerSingleMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
+import org.janelia.saalfeldlab.n5.ui.DataSelection;
+import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.scijava.log.LogService;
-import org.scijava.plugin.Parameter;
-import org.scijava.plugin.Plugin;
-import org.scijava.ui.UIService;
 
+import com.amazonaws.services.s3.AmazonS3URI;
+
+import ij.IJ;
 import ij.ImagePlus;
+import ij.plugin.PlugIn;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -40,186 +39,150 @@ import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.NumericType;
-import net.imglib2.util.Intervals;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
-@Plugin( type = Command.class, menuPath = "File>Import>Import N5" )
-public class N5Importer implements Command, WindowListener
+public class N5Importer implements PlugIn
 {
 	public static final String BDV_OPTION = "BigDataViewer";
 	public static final String IP_OPTION = "ImagePlus";
 
+	public static final String MetadataAutoKey = "Auto-detect";
+	public static final String MetadataImageJKey = "ImageJMetadata";
+	public static final String MetadataN5CosemKey = "Cosem Metadata";
 	public static final String MetadataN5ViewerKey = "N5Viewer Metadata";
 	public static final String MetadataCustomKey = "CustomMetadata";
-	public static final String MetadataN5CosemKey = "Cosem Metadata";
-	public static final String MetadataSimpleKey = "SimpleMetadata";
-
-	@Parameter
-	private LogService log;
+	public static final String MetadataDefaultKey = "DefaultMetadata";
 	
-	@Parameter
-	private UIService ui;
-
-    @Parameter(visibility=ItemVisibility.MESSAGE, required=false)
-    private String message = "Read an N5 container to an ImagePlus";
-	
-    @Parameter( label = "N5 root location")
-    private String n5RootLocation;
-
-    @Parameter( label = "N5 datasets (optional)", required=false, 
-    		description="If not specified, you can select which datasets to open with from a dialog")
-    private String datasetArg = "";
-    
-    // TODO consider implementing this later
-//    @Parameter( label = "Interactive crop")
-//    private boolean doInteractiveCrop = false;
-
-    @Parameter( label = "Subset", required=false, 
-    		description="Specify the subset of the volume to open. xmin,ymin,zmin;xmax,ymax,zmax" )
-    private String subset = "";
-    
-    @Parameter( label = "as virtual?")
-    private boolean isVirtual = false;
-
-    @Parameter(label="metadata type", 
-    		description = "The style for metadata stored in the N5 to import.",
-    		choices={ 	MetadataN5ViewerKey, 
-    					MetadataN5CosemKey,
-    					MetadataSimpleKey } )
-    private String metadataStyle = MetadataN5ViewerKey;
-
-    // TODO
-    //@Parameter( label = "align to blocks", description = "description")
-    //private boolean alignToBlockGrid;
+	public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
+					new N5ImagePlusMetadata( "" ),
+					new N5CosemMetadata( "", null, null ),
+					new N5ViewerSingleMetadataParser(),
+					new DefaultMetadata( "", 1 )
+				};
 
     private N5Reader n5;
 
-    private List<String> datasetList;
+	private DatasetSelectorDialog selectionDialogNew;
 
-	private N5DatasetSelectorDialog selectionDialog;
-	
-	public Map<String, N5Metadata<ImagePlus>> styles;
+	private DataSelection selection;
 
+	private Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes;
+
+	private Interval subset;
+
+	private boolean asVirtual;
+
+	public N5Importer()
+	{
+		// default image plus metadata parsers
+		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
+		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
+		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
+		impMetaWriterTypes.put( N5ViewerSingleMetadataParser.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
+	}
 
 	@Override
-	public void run()
+	public void run( String arg )
 	{
-		styles = new HashMap<String,N5Metadata<ImagePlus>>();
-		styles.put( MetadataN5ViewerKey, new N5ViewerMetadata());
-		styles.put( MetadataN5CosemKey, new N5CosemMetadata());
-		styles.put( MetadataSimpleKey, new N5ImagePlusMetadata());
-
-		try
-		{
-			n5 = getReader();
-			if( n5 == null )
-			{
-				log.error("Could not open as n5 root");
-				return;
-			}
-
-			if( datasetArg == null || datasetArg.isEmpty() )
-			{
-				selectionDialog = new N5DatasetSelectorDialog( n5 );
-				JFrame frame = selectionDialog.show();
-				frame.addWindowListener( this );
-			}
-			else
-			{
-				datasetList = Arrays.asList( datasetArg.split(","));
-				process();
-			}
-		}
-		catch ( IOException e )
-		{
-			e.printStackTrace();
-		}
+		selectionDialogNew = new DatasetSelectorDialog(
+				new N5ViewerReaderFun(), 
+				(x) -> "",
+				null,
+				PARSERS );
+		selectionDialogNew.setVirtualOption( true );
+		selectionDialogNew.setMinMaxOption( true );
+		selectionDialogNew.run(
+				selection -> {
+					this.selection = selection;
+					this.n5 = selection.n5;
+					this.asVirtual = selectionDialogNew.isVirtual();
+					this.subset = selectionDialogNew.getMinMax();
+					try { process(); }
+					catch ( Exception e ) { e.printStackTrace(); }
+				});
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T extends NumericType<T> & NativeType<T>> void process() throws ImgLibException, IOException
+	@SuppressWarnings( "unchecked" )
+	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read( 
+			final N5Reader n5, 
+			final N5Metadata datasetMeta, final Interval subset, final boolean asVirtual,
+			final ImageplusMetadata<M> ipMeta ) throws IOException
 	{
-		N5Metadata<ImagePlus> metadata = styles.get( metadataStyle );
+		String d = datasetMeta.getPath();
+		RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
 
-		int nd = -1;
-		ArrayList< RandomAccessibleInterval<T>> channelList = new ArrayList<>();
-		for( String d : datasetList )
-		{
-			RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
-
-			RandomAccessibleInterval<T> img;
-			if( !subset.isEmpty() )
-			{
-				String[] minmax = subset.split(";");
-				long[] min = Arrays.stream( minmax[ 0 ].split(",")).mapToLong( Long::parseLong ).toArray();
-				long[] max = Arrays.stream( minmax[ 1 ].split(",")).mapToLong( Long::parseLong ).toArray();
-				img = Views.interval( imgRaw, new FinalInterval( min, max ));
-			}
-			else
-				img = imgRaw;
-
-			channelList.add( img );
-		}
-
-		ImagePlus imp = combineChannels( channelList, "all_channels" );
-
-		if( imp == null )
-			return;
-
-		// TODO check that all metadata are the same
-		metadata.metadataFromN5( n5, datasetList.get( 0 ), imp );
-
-		imp.show();
-	}
-
-	public <T extends NumericType<T> & NativeType<T>> ImagePlus combineChannels( final List<RandomAccessibleInterval<T>> channelImages, String title )
-	{
-		int nd = -1;
-		long[] size = null;
-		// check dimensions and sizes
-		for( RandomAccessibleInterval<?> c : channelImages )
-		{
-			if( nd < 0 )
-			{
-				nd = c.numDimensions();
-			}
-			else if( c.numDimensions() != nd )
-			{
-				log.error( "Channel images must have identical dimensionality" );
-				return null;
-			}
-
-			if( size == null )
-			{
-				size = Intervals.dimensionsAsLongArray( c );
-			}
-			else if( !Arrays.equals( size , Intervals.dimensionsAsLongArray( c )))
-			{
-				log.error( "Channel images must all be the same size." );
-				return null;
-			}
-		}
-
-		RandomAccessibleInterval<T> stackedImages = Views.stack( channelImages );
-		if( nd == 3 )
-			stackedImages = Views.permute( stackedImages, 2, 3 );
+		RandomAccessibleInterval<T> img;
+		if( subset != null )
+			img = Views.interval( imgRaw, subset );
+		else
+			img = imgRaw;
 
 		ImagePlus imp;
-		if( isVirtual )
+		if( asVirtual )
 		{
-			imp = ImageJFunctions.wrap( stackedImages, title );
+			imp = ImageJFunctions.wrap( img, d );
 		}
 		else
 		{
-			ImagePlusImg<T,?> ipi = new ImagePlusImgFactory<T>( Util.getTypeFromInterval( stackedImages )).create( stackedImages );
-			LoopBuilder.setImages( stackedImages, ipi).forEachPixel((x,y) -> y.set(x));
-			imp = ipi.getImagePlus();
+			ImagePlusImg<T,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( img ).firstElement()).create( img );
+			LoopBuilder.setImages( img, ipImg ).forEachPixel( (x,y) -> y.set( x ) );
+			imp = ipImg.getImagePlus();
 		}
 
-		imp.setDimensions( (int)stackedImages.dimension( 2 ), (int)stackedImages.dimension( 3 ), 1 );
-
+		if( ipMeta != null )
+		{
+			try
+			{ 
+				ipMeta.writeMetadata( ( M ) datasetMeta, imp );
+			}
+			catch( Exception e )
+			{
+				System.err.println("Failed to convert metadata to Imageplus for " + d );
+			}
+		}
 		return imp;
+	}
+
+	@SuppressWarnings("unchecked")
+	public <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > void process() throws ImgLibException, IOException
+	{
+		for( N5Metadata datasetMeta : selection.metadata )
+		{
+			String d = datasetMeta.getPath();
+			RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
+
+			RandomAccessibleInterval<T> img;
+			if( subset != null )
+				img = Views.interval( imgRaw, subset );
+			else
+				img = imgRaw;
+
+			ImagePlus imp;
+			if( asVirtual )
+			{
+				imp = ImageJFunctions.wrap( img, d );
+			}
+			else
+			{
+				ImagePlusImg<T,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( img ).firstElement()).create( img );
+				LoopBuilder.setImages( img, ipImg ).forEachPixel( (x,y) -> y.set( x ) );
+				imp = ipImg.getImagePlus();
+			}
+
+			try
+			{ 
+				ImageplusMetadata< M > ipMeta = ( ImageplusMetadata< M > ) impMetaWriterTypes.get( datasetMeta.getClass() );
+				ipMeta.writeMetadata( ( M ) datasetMeta, imp );
+			}
+			catch( Exception e )
+			{
+				System.err.println("Failed to convert metadata to Imageplus for " + d );
+			}
+
+			imp.show();
+		}
 	}
 
 	public static Interval containingBlockAlignedInterval(
@@ -262,8 +225,6 @@ public class N5Importer implements Command, WindowListener
 
 		long[] min = new long[ nd ];
 		long[] max = new long[ nd ];
-		
-		
 		for( int d = 0; d < nd; d++ )
 		{
 			// check that interval aligns with blocks
@@ -278,64 +239,83 @@ public class N5Importer implements Command, WindowListener
 		return new FinalInterval( min, max );
 	}
 
-	private N5Reader getReader() throws IOException 
+	public static class N5ViewerReaderFun implements Function< String, N5Reader >
 	{
-		File f = new File( n5RootLocation );
+		public String message;
 
-		// TODO add extension requirements if more reader types are supported
-		if( f.exists() && f.isDirectory())
+		@Override
+		public N5Reader apply( String n5Path )
 		{
-			return new N5FSReader( n5RootLocation );
-		}
-		else if( f.exists() && f.isFile() )
-		{
-			return new N5HDF5Reader( n5RootLocation );
-		}
 
-		return null;
-	}
+			N5Reader n5;
+			if ( n5Path == null || n5Path.isEmpty() )
+				return null;
 
-	@Override
-	public void windowOpened(WindowEvent e) { }
-	
-	@Override
-	public void windowIconified(WindowEvent e) { }
-	
-	@Override
-	public void windowDeiconified(WindowEvent e) { }
-	
-	@Override
-	public void windowDeactivated(WindowEvent e) { }
-	
-	@Override
-	public void windowClosing(WindowEvent e)
-	{
-		if( selectionDialog.getSelectedDatasets() != null && 
-				selectionDialog.getSelectedDatasets().size() > 0 )
-		{
-//			dataset = selectionDialog.getSelectedDatasets().get( 0 );
-			datasetList = selectionDialog.getSelectedDatasets();
-		}
-		else
-		{
-			log.info("No dataset selected");
-			return;
-		}
+			final DataAccessType type = DataAccessType.detectType( n5Path );
+			if ( type == null )
+			{
+				message = "Not a valid path or link to an N5 container.";
+				return null;
+			}
 
-		try
-		{
-			process();
-		}
-		catch (ImgLibException | IOException e1)
-		{
-			e1.printStackTrace();
+			String n5BasePath = n5Path;
+			if( type == DataAccessType.FILESYSTEM )
+			{
+				if( n5Path.contains( ".n5" ))
+					n5BasePath = n5Path.substring( 0, 3 + n5Path.indexOf( ".n5" ));
+			}
+
+			n5 = null;
+			try
+			{
+				n5 = new DataAccessFactory( type, n5BasePath ).createN5Reader( n5BasePath );
+
+				/* 
+				 * Do we need this check?
+				 */
+//				if ( !n5.exists( "/" ) || n5.getVersion().equals( new N5Reader.Version( null ) ) )
+//				{
+////					JOptionPane.showMessageDialog( dialog, "Not a valid path or link to an N5 container.", "N5 Viewer", JOptionPane.ERROR_MESSAGE );
+//					return null;
+//				}
+
+			}
+			catch ( final DataAccessException | IOException e )
+			{
+				IJ.handleException( e );
+				return null;
+			}
+			return n5;
 		}
 	}
 
-	@Override
-	public void windowClosed(WindowEvent e) { }
+	public static class N5BasePathFun implements Function< String, String >
+	{
+		public String message;
 
-	@Override
-	public void windowActivated(WindowEvent e) { }
+		@Override
+		public String apply( String n5Path )
+		{
+			final DataAccessType type = DataAccessType.detectType( n5Path );
+			if ( type == null )
+			{
+				message = "Not a valid path or link to an N5 container.";
+				return null;
+			}
+
+			switch ( type )
+			{
+			case FILESYSTEM:
+				if( n5Path.contains( ".n5" ))
+					return n5Path.substring( 3 + n5Path.indexOf( ".n5" ));
+				return "";
+//			case AMAZON_S3:
+//				final AmazonS3URI s3Uri = new AmazonS3URI( n5Path );
+//				return s3Uri.getKey();
+			default:
+				return "";
+			}
+		}
+	}
 
 }

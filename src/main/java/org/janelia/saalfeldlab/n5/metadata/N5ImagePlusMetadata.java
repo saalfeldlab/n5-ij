@@ -1,17 +1,20 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
-import java.util.Optional;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 
 import ij.ImagePlus;
 import ij.measure.Calibration;
+import net.imglib2.realtransform.AffineTransform3D;
 
-public class N5ImagePlusMetadata implements N5Metadata< ImagePlus >
+public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Metadata, ImageplusMetadata<N5ImagePlusMetadata>, 
+	N5MetadataWriter< N5ImagePlusMetadata >, N5GsonMetadataParser< N5ImagePlusMetadata >
 {
 	public static final String titleKey = "title";
 	public static final String fpsKey = "fps";
@@ -31,6 +34,58 @@ public class N5ImagePlusMetadata implements N5Metadata< ImagePlus >
 	public static final String imagePropertiesKey = "imageProperties";
 
 	public static final String downsamplingFactorsKey = "downsamplingFactors";
+	
+	private String name;
+	
+	private double fps;
+	private double frameInterval;
+
+	private double pixelWidth;
+	private double pixelHeight;
+	private double pixelDepth;
+	private double xOrigin;
+	private double yOrigin;
+	private double zOrigin;
+	
+	private int numChannels;
+	private int numSlices;
+	private int numFrames;
+
+	private String unit;
+	
+	private Map< String, Object > properties;
+
+	private HashMap< String, Class< ? > > keysToTypes;
+
+	public N5ImagePlusMetadata( String path )
+	{
+		this( path, new AffineTransform3D() );
+	}
+
+	public N5ImagePlusMetadata( String path, AffineTransform3D transform )
+	{
+		super( path, transform );
+		pixelWidth = transform.get( 0, 0 );
+		pixelHeight = transform.get( 1, 1 );
+		pixelDepth = transform.get( 2, 2 );
+
+		keysToTypes = new HashMap<>();
+		keysToTypes.put( titleKey, String.class );
+		keysToTypes.put( pixelWidthKey, Double.class );
+		keysToTypes.put( pixelHeightKey, Double.class );
+		keysToTypes.put( pixelDepthKey, Double.class );
+		keysToTypes.put( pixelUnitKey, String.class );
+		keysToTypes.put( xOriginKey, Double.class );
+		keysToTypes.put( yOriginKey, Double.class );
+		keysToTypes.put( zOriginKey, Double.class );
+		keysToTypes.put( fpsKey, Double.class );
+	}
+
+	@Override
+	public HashMap<String,Class<?>> keysToTypes()
+	{
+		return keysToTypes;
+	}
 
 	public void metadataToN5( ImagePlus imp, N5Writer n5, String dataset ) throws IOException
 	{
@@ -73,50 +128,145 @@ public class N5ImagePlusMetadata implements N5Metadata< ImagePlus >
 		double rz = n5.getAttribute( dataset, pixelDepthKey, double.class );
 		return new double[] { rx, ry, rz };
 	}
-	
-	private <T> Optional<T> readAttribute( final N5Reader n5, final String pathName, final String key, Class<T> clazz )
-	{
-		try
-		{
-			T obj = n5.getAttribute(pathName, key, clazz );
-			return Optional.ofNullable( obj );
-		}
-		catch (IOException e) { }
 
-		return Optional.empty();
+	@Override
+	public void writeMetadata( N5ImagePlusMetadata t, ImagePlus ip ) throws IOException
+	{
+		Calibration cal = ip.getCalibration();
+
+		ip.setTitle( t.name );
+
+		cal.fps = t.fps;
+		cal.frameInterval = t.frameInterval ;
+		cal.pixelWidth = t.pixelWidth;
+		cal.pixelHeight = t.pixelHeight;
+		cal.pixelDepth = t.pixelDepth;
+		cal.setUnit( t.unit );
+
+		cal.xOrigin = t.xOrigin;
+		cal.yOrigin = t.yOrigin;
+		cal.zOrigin = t.zOrigin;
+
+		ip.setDimensions( t.numChannels, t.numSlices, t.numFrames );
+
+		Properties props = ip.getProperties();
+		if ( properties != null )
+		{
+			for ( String k : properties.keySet() )
+			{
+				try
+				{
+					props.put( k, properties.get( k ));
+				}
+				catch ( Exception e ){}
+			}
+		}
 	}
 
-	public void metadataFromN5( N5Reader n5, String dataset, ImagePlus imp ) throws IOException
+	@Override
+	public N5ImagePlusMetadata readMetadata( ImagePlus ip ) throws IOException
 	{
-		imp.setTitle( readAttribute( n5, dataset, titleKey, String.class ).orElse( "ImagePlus" ));
+		Calibration cal = ip.getCalibration();
 
-		imp.getCalibration().pixelWidth = readAttribute( n5, dataset, pixelWidthKey, Double.class ).orElse( 1.0 );
-		imp.getCalibration().pixelHeight = readAttribute( n5, dataset, pixelHeightKey, Double.class ).orElse( 1.0 );
-		imp.getCalibration().pixelDepth = readAttribute( n5, dataset, pixelDepthKey, Double.class ).orElse( 1.0 );
-		imp.getCalibration().setUnit( readAttribute( n5, dataset, pixelUnitKey, String.class ).orElse( "pixel" ));
+		AffineTransform3D xfm = new AffineTransform3D();
+		N5ImagePlusMetadata t = new N5ImagePlusMetadata( "", xfm );
+		t.name = ip.getTitle();
 
-		imp.getCalibration().xOrigin = readAttribute( n5, dataset, xOriginKey, Double.class ).orElse( 0.0 );
-		imp.getCalibration().yOrigin = readAttribute( n5, dataset, yOriginKey, Double.class ).orElse( 0.0 );
-		imp.getCalibration().zOrigin = readAttribute( n5, dataset, zOriginKey, Double.class ).orElse( 0.0 );
-
-		imp.getCalibration().fps = readAttribute( n5, dataset, fpsKey, Double.class ).orElse( 1.0 );
-		imp.getCalibration().frameInterval = readAttribute( n5, dataset, fpsKey, Double.class ).orElse( 1.0 );
+		t.fps = cal.fps;
+		t.frameInterval = cal.frameInterval;
+		t.pixelWidth = cal.pixelWidth;
+		t.pixelHeight = cal.pixelHeight;
+		t.pixelDepth = cal.pixelDepth;
+		t.unit = cal.getUnit();
 		
-		int numChannels = imp.getNChannels();
-		int numSlices = imp.getNSlices();
-		int numFrames = imp.getNFrames();
-		numChannels = readAttribute( n5, dataset, numChannelsKey, Integer.class ).orElse( numChannels );
-		numSlices = readAttribute( n5, dataset, numSlicesKey, Integer.class ).orElse( numSlices );
-		numFrames = readAttribute( n5, dataset, numFramesKey, Integer.class ).orElse( numFrames );
-		imp.setDimensions( numChannels, numSlices, numFrames );
+		t.numChannels = ip.getNChannels();
+		t.numSlices = ip.getNSlices();
+		t.numFrames = ip.getNFrames();
+		
+		xfm.set( t.pixelWidth, 0, 0 );
+		xfm.set( t.pixelHeight, 1, 1 );
+		xfm.set( t.pixelDepth, 2, 2 );
 
-		Optional<Properties> readProperties = readAttribute( n5, dataset, imagePropertiesKey, Properties.class );
-		if( readProperties.isPresent())
+		t.xOrigin = cal.xOrigin;
+		t.yOrigin = cal.yOrigin;
+		t.zOrigin = cal.zOrigin;
+
+		Properties props = ip.getProperties();
+		if ( props != null )
 		{
-			Properties rprops = readProperties.get();
-			for( Object k : rprops.keySet() )
-				imp.setProperty( k.toString(), rprops.get( k ));
+			properties = new HashMap< String, Object >();
+			for ( Object k : props.keySet() )
+			{
+				try
+				{
+					properties.put( k.toString(), props.get( k ) );
+				}
+				catch ( Exception e )
+				{}
+			}
 		}
+		return t;
+	}
+
+	@Override
+	public N5ImagePlusMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
+	{
+		if( !N5MetadataParser.hasRequiredKeys( keysToTypes(), metaMap ))
+			throw new Exception( "Could not parse as N5ImagePlusMetadata.");
+
+		String dataset = ( String ) metaMap.get( "dataset" );
+
+		N5ImagePlusMetadata meta = new N5ImagePlusMetadata( dataset );
+		meta.name = ( String ) metaMap.get( titleKey );
+
+		meta.pixelWidth = ( Double ) metaMap.get( pixelWidthKey );
+		meta.pixelHeight = ( Double ) metaMap.get( pixelHeightKey );
+		meta.pixelDepth = ( Double ) metaMap.get( pixelDepthKey );
+		meta.unit = ( String ) metaMap.get( pixelUnitKey );
+
+		meta.xOrigin = ( Double ) metaMap.get( xOriginKey );
+		meta.yOrigin = ( Double ) metaMap.get( yOriginKey );
+		meta.zOrigin = ( Double ) metaMap.get( zOriginKey );
+		
+		meta.fps = ( Double ) metaMap.get( fpsKey );
+		meta.frameInterval = ( Double ) metaMap.get( fpsKey );
+
+		return meta;
+	}
+
+	@Override
+	public void writeMetadata( N5ImagePlusMetadata t, N5Writer n5, String dataset ) throws Exception
+	{
+		if( !n5.datasetExists( dataset ))
+		{
+			throw new Exception( "Can't write into " + dataset + ".  Must be dataset." );
+		}
+
+		n5.setAttribute( dataset, titleKey, name );
+
+		n5.setAttribute( dataset, fpsKey, fps );
+		n5.setAttribute( dataset, frameIntervalKey, frameInterval );
+		n5.setAttribute( dataset, pixelWidthKey, pixelWidth );
+		n5.setAttribute( dataset, pixelHeightKey, pixelHeight );
+		n5.setAttribute( dataset, pixelDepthKey, pixelDepth );
+		n5.setAttribute( dataset, pixelUnitKey, unit );
+
+		n5.setAttribute( dataset, xOriginKey, xOrigin );
+		n5.setAttribute( dataset, yOriginKey, yOrigin );
+		n5.setAttribute( dataset, zOriginKey, zOrigin );
+
+		if ( properties != null )
+		{
+			for ( Object k : properties.keySet() )
+			{
+				try
+				{
+					n5.setAttribute( dataset, k.toString(), properties.get( k ).toString() );
+				}
+				catch ( Exception e )
+				{}
+			}
+		}	
 	}
 
 }

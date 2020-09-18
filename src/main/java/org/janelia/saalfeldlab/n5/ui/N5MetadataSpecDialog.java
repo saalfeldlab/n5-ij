@@ -108,8 +108,8 @@ public class N5MetadataSpecDialog
 	
 	public static void main( String[] args ) throws IOException
 	{
-		System.out.println( MetadataTemplateMapper.COSEM_MAPPER);
-
+//		System.out.println( MetadataTemplateMapper.COSEM_MAPPER);
+//
 //		N5MetadataSpecDialog dialog = new N5MetadataSpecDialog( );
 //
 //		String templateJsonF = "/home/john/dev/json/jq_Examples/template.json";
