@@ -16,7 +16,17 @@
  */
 package org.janelia.saalfeldlab.n5.dataaccess;
 
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.AnonymousAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.internal.StaticCredentialsProvider;
+import com.amazonaws.regions.Region;
+import com.amazonaws.regions.RegionUtils;
+import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.AmazonS3URI;
 import com.google.cloud.resourcemanager.Project;
 import com.google.cloud.resourcemanager.ResourceManager;
@@ -44,6 +54,7 @@ import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Writer;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Optional;
 
 public class DataAccessFactory
 {
@@ -68,26 +79,33 @@ public class DataAccessFactory
 			break;
 		case AMAZON_S3:
 
-			AmazonS3 s3tmp = null;
-			DataAccessException exception = new DataAccessException( "" );
+			Optional<String> region = Optional.empty();
+			Optional< AWSCredentials > credentials = Optional.empty();
+
+			DefaultAWSCredentialsProviderChain credProverChain = new DefaultAWSCredentialsProviderChain();
+			Exception credException = null;
 			try
-			{
-				s3tmp = AmazonS3ClientBuilderWithDefaultCredentials.create();
+			{ 
+				credentials = Optional.of( credProverChain.getCredentials() );
 			}
-			catch ( DataAccessException e )
+			catch( Exception e )
 			{
-				exception = e;
+				System.out.println( "Could not load AWS credentials, falling back to anonymous." );
+				credException = e;
 			}
 
-			if ( s3tmp == null )
+			AmazonS3URI uri = null;
+			if( path != null && !path.isEmpty() )
 			{
-				System.out.println( "fall back to default region, no credentials" );
-				s3tmp = AmazonS3ClientBuilderWithDefaultRegion.create();
+				uri = new AmazonS3URI( path );
+				region = Optional.ofNullable( uri.getRegion() );
 			}
-			if ( s3tmp == null )
-				throw exception;
 
-			s3 = s3tmp;
+			s3 = AmazonS3ClientBuilder.standard()
+				.withCredentials( new AWSStaticCredentialsProvider( credentials.orElse( new AnonymousAWSCredentials() )))
+				.withRegion( region.map( Regions::fromName ).orElse( Regions.US_EAST_1 ))
+				.build();
+
 			googleCloudStorage = null;
 			break;
 		case GOOGLE_CLOUD:
