@@ -88,7 +88,7 @@ public class N5Importer implements PlugIn
 	{
 		selectionDialogNew = new DatasetSelectorDialog(
 				new N5ViewerReaderFun(), 
-				(x) -> "",
+				new N5BasePathFun(),
 				null,
 				PARSERS );
 		selectionDialogNew.setVirtualOption( true );
@@ -309,9 +309,6 @@ public class N5Importer implements PlugIn
 				if( n5Path.contains( ".n5" ))
 					return n5Path.substring( 3 + n5Path.indexOf( ".n5" ));
 				return "";
-//			case AMAZON_S3:
-//				final AmazonS3URI s3Uri = new AmazonS3URI( n5Path );
-//				return s3Uri.getKey();
 			default:
 				return "";
 			}

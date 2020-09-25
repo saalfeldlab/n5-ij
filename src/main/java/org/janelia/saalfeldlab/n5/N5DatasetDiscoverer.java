@@ -78,11 +78,18 @@ public class N5DatasetDiscoverer {
     {
 		final N5TreeNode root = new N5TreeNode( base, n5.datasetExists( base ));
 		discover( n5, root );
-		parseMetadata( n5, root, metadataParsers, groupParsers );
+		parseMetadataRecursive( n5, root, metadataParsers, groupParsers );
 		trim( root );
 		if ( comparator != null )
 			sort( root, comparator );
 		return root;
+    }
+
+	public N5TreeNode parse( final N5Reader n5, final String dataset ) throws IOException
+    {
+		final N5TreeNode node = new N5TreeNode( dataset, n5.datasetExists( dataset ));
+		parseMetadata( n5, node, metadataParsers, null );
+		return node;
     }
 
 	public static DefaultMutableTreeNode toJTreeNode( final N5TreeNode n5Node )
@@ -107,17 +114,12 @@ public class N5DatasetDiscoverer {
         }
     }
 
-    @SuppressWarnings( "rawtypes" )
-	private static void parseMetadata(final N5Reader n5, final N5TreeNode node, 
-			final N5MetadataParser[] metadataParsers,
-			final N5GroupParser[] groupParsers ) throws IOException {
-
-        // Recursively parse metadata for children nodes
-        for (final N5TreeNode childNode : node.children)
-            parseMetadata( n5, childNode, metadataParsers, groupParsers );
-
+	public static void parseMetadata(final N5Reader n5, final N5TreeNode node, 
+			final N5MetadataParser< ? >[] metadataParsers,
+			final N5GroupParser< ? >[] groupParsers ) throws IOException
+	{
         // Go through all parsers to populate metadata
-        for (final N5MetadataParser parser : metadataParsers)
+        for (final N5MetadataParser< ? > parser : metadataParsers)
         {
         	try
         	{
@@ -142,7 +144,7 @@ public class N5DatasetDiscoverer {
 			// this is not a dataset but may be a group (e.g. multiscale
 			// pyramid)
 			// try to parse groups
-			for ( N5GroupParser gp : groupParsers )
+			for ( N5GroupParser< ? > gp : groupParsers )
 			{
 				N5Metadata groupMeta = gp.parseMetadataGroup( node );
 				if ( groupMeta != null )
@@ -151,7 +153,17 @@ public class N5DatasetDiscoverer {
 				}
 			}
 		}
+	}
 
+	public static void parseMetadataRecursive(final N5Reader n5, final N5TreeNode node, 
+			final N5MetadataParser<?>[] metadataParsers,
+			final N5GroupParser<?>[] groupParsers ) throws IOException {
+
+        // Recursively parse metadata for children nodes
+        for (final N5TreeNode childNode : node.children)
+			parseMetadataRecursive( n5, childNode, metadataParsers, groupParsers );
+
+        parseMetadata( n5, node, metadataParsers, groupParsers );
     }
 
     /**

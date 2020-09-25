@@ -74,6 +74,8 @@ public class DatasetSelectorDialog
 
     private JButton okBtn;
 
+    private JButton cancelBtn;
+
     private DefaultTreeModel treeModel;
 
     private DefaultListModel listModel;
@@ -139,7 +141,7 @@ public class DatasetSelectorDialog
 
 	public Interval getMinMax()
 	{
-		if( !minMaxOption )
+		if( !minMaxOption || nd < 1 )
 			return null;
 
 		long[] min = new long[ nd ];
@@ -177,9 +179,12 @@ public class DatasetSelectorDialog
 			browseBtn.addActionListener(e -> openContainer( n5Fun, this::openBrowseDialog));
 			containerPanel.add(browseBtn);
 
-			final JButton linkBtn = new JButton("Open link...");
-			linkBtn.addActionListener(e -> openContainer( n5Fun, this::openLinkDialog));
-			containerPanel.add(linkBtn);
+			final JButton detectBtn = new JButton("Detect datasets");
+			detectBtn.addActionListener( e -> openContainer( 
+					n5Fun,
+					() -> containerPathTxt.getText(),
+					pathFun ));
+			containerPanel.add( detectBtn );
 
 			dialog.getContentPane().add( containerPanel );
 
@@ -275,9 +280,12 @@ public class DatasetSelectorDialog
 
         final JPanel okButtonPanel = new JPanel();
         okBtn = new JButton("OK");
-        okBtn.setEnabled(false);
         okBtn.addActionListener(e -> ok());
         okButtonPanel.add(okBtn);
+
+		cancelBtn = new JButton( "Cancel" );
+		cancelBtn.addActionListener( e -> cancel() );
+		okButtonPanel.add( cancelBtn );
 
         dialog.getContentPane().add(okButtonPanel);
 
@@ -306,11 +314,6 @@ public class DatasetSelectorDialog
         return fileChooser.getSelectedFile().getAbsolutePath();
     }
 
-    private String openLinkDialog()
-    {
-        return JOptionPane.showInputDialog(dialog, "Link: ", "N5 Viewer", JOptionPane.PLAIN_MESSAGE);
-    }
-
 	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener )
 	{
 		openContainer( n5Fun, opener, pathFun );
@@ -330,6 +333,8 @@ public class DatasetSelectorDialog
         try
         {
 			n5RootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
+			if( n5RootNode.isDataset )
+				okBtn.setEnabled( true );
         }
 		catch ( final IOException e )
         {
@@ -346,7 +351,11 @@ public class DatasetSelectorDialog
         containerTree.setEnabled(true);
         selectedList.setEnabled(true);
         removeSourceBtn.setEnabled(false);
-        okBtn.setEnabled(false);
+
+		if ( n5RootNode.isDataset )
+			okBtn.setEnabled( true );
+		else
+			okBtn.setEnabled( false );
     }
 
 	private void defaultMinMax()
@@ -431,10 +440,39 @@ public class DatasetSelectorDialog
     private void ok()
     {
 		final List< N5Metadata > selectedMetadata = new ArrayList<>();
-		for ( final Enumeration enumeration = listModel.elements(); enumeration.hasMoreElements(); )
-			selectedMetadata.add( ( ( SelectedListElement ) enumeration.nextElement() ).metadata );
+		if ( listModel.isEmpty() )
+		{
+			final String n5Path = containerPathTxt.getText();
+			n5 = n5Fun.apply( n5Path );
+			final String dataset = pathFun.apply( n5Path );
+			N5TreeNode node = null;
+			try
+			{
+				node = datasetDiscoverer.parse( n5, dataset );
+				if ( node.isDataset && node.metadata != null )
+					selectedMetadata.add( node.metadata );
+			}
+			catch ( Exception e ){}
+
+			if ( node == null || !node.isDataset || node.metadata == null )
+			{
+				JOptionPane.showMessageDialog( null, "Could not find a dataset / metadata at the provided path." );
+				return;
+			}
+		}
+		else
+		{
+			for ( final Enumeration enumeration = listModel.elements(); enumeration.hasMoreElements(); )
+				selectedMetadata.add( ( ( SelectedListElement ) enumeration.nextElement() ).metadata );
+		}
 
 		okCallback.accept( new DataSelection( n5, selectedMetadata ) );
+        dialog.setVisible(false);
+        dialog.dispose();
+    }
+
+    private void cancel()
+    {
         dialog.setVisible(false);
         dialog.dispose();
     }
