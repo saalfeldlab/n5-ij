@@ -19,27 +19,58 @@ package org.janelia.saalfeldlab.n5;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-public class N5TreeNode {
+import javax.swing.tree.DefaultMutableTreeNode;
 
-    public final String path;
-    public final List<N5TreeNode> children = new ArrayList<>();
+public class N5TreeNode extends DefaultMutableTreeNode
+{
+	private static final long serialVersionUID = -6433341489220400345L;
 
-    public boolean isDataset;
-    public N5Metadata metadata;
+	public final String path;
 
-    public N5TreeNode(final String path, final boolean isDataset )
-    {
-        this.path = path;
-        this.isDataset = isDataset;
-    }
+	private boolean isDataset;
+
+	private N5Metadata metadata;
+
+	public N5TreeNode( final String path, final boolean isDataset )
+	{
+		super();
+		this.path = path;
+		this.isDataset = isDataset;
+	}
 
     public String getNodeName() {
 
         return Paths.get(removeLeadingSlash(path)).getFileName().toString();
     }
+
+	@SuppressWarnings( "unchecked" )
+	public List< N5TreeNode > childrenList()
+	{
+		return Collections.list( children() );
+	}
+
+	public void setIsDataset( final boolean isDataset )
+	{
+		this.isDataset = isDataset;
+	}
+
+	public boolean isDataset()
+	{
+		return isDataset;
+	}
+
+	public void setMetadata( final N5Metadata metadata )
+	{
+		this.metadata = metadata;
+	}
+
+	public N5Metadata getMetadata()
+	{
+		return metadata;
+	}
 
     @Override
     public String toString() {

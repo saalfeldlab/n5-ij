@@ -92,13 +92,14 @@ public class N5Importer implements PlugIn
 				null,
 				PARSERS );
 		selectionDialogNew.setVirtualOption( true );
-		selectionDialogNew.setMinMaxOption( true );
+		selectionDialogNew.setCropOption( true );
+//		selectionDialogNew.setMinMaxOption( true );
 		selectionDialogNew.run(
 				selection -> {
 					this.selection = selection;
 					this.n5 = selection.n5;
 					this.asVirtual = selectionDialogNew.isVirtual();
-					this.subset = selectionDialogNew.getMinMax();
+//					this.subset = selectionDialogNew.getMinMax();
 					try { process(); }
 					catch ( Exception e ) { e.printStackTrace(); }
 				});

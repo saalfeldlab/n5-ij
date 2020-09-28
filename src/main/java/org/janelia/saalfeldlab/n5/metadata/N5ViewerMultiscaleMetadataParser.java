@@ -41,12 +41,12 @@ public class N5ViewerMultiscaleMetadataParser implements N5GroupParser< N5MultiS
 	public N5MultiScaleMetadata parseMetadataGroup( final N5TreeNode node )
 	{
 		final Map< String, N5TreeNode > scaleLevelNodes = new HashMap<>();
-		for ( final N5TreeNode childNode : node.children )
+		for ( final N5TreeNode childNode : node.childrenList() )
 		{
 			System.out.println( childNode.getNodeName());
 			if ( scaleLevelPredicate.test( childNode.getNodeName() ) &&
-				 childNode.isDataset && 
-				 childNode.metadata instanceof N5SingleScaleMetadata )
+				 childNode.isDataset() &&
+				 childNode.getMetadata() instanceof N5SingleScaleMetadata )
 			{
 				scaleLevelNodes.put( childNode.getNodeName(), childNode );
 			}
@@ -59,7 +59,7 @@ public class N5ViewerMultiscaleMetadataParser implements N5GroupParser< N5MultiS
 		List<String> paths = new ArrayList<>();
 		scaleLevelNodes.forEach( (k,v) -> {
 			paths.add( v.path );
-			transforms.add( ((N5SingleScaleMetadata)v.metadata).transform );
+			transforms.add( ((N5SingleScaleMetadata)v.getMetadata()).transform );
 		});
 
 		return new N5MultiScaleMetadata( 
