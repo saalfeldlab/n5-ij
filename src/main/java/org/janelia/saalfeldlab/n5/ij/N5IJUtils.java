@@ -115,7 +115,6 @@ public class N5IJUtils {
 		{
 			writer.writeMetadata( metadata, imp );
 		}
-//		metadata.metadataFromN5( n5, dataset, imp );
 
 		return imp;
 	}

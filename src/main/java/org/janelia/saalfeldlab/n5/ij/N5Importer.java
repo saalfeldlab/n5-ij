@@ -1,12 +1,19 @@
 package org.janelia.saalfeldlab.n5.ij;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
+
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
@@ -22,13 +29,13 @@ import org.janelia.saalfeldlab.n5.metadata.N5ViewerSingleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
+import org.janelia.saalfeldlab.n5.ui.LoadSingleDatasetDialog;
 import org.scijava.log.LogService;
-
-import com.amazonaws.services.s3.AmazonS3URI;
 
 import ij.IJ;
 import ij.ImagePlus;
 import ij.plugin.PlugIn;
+import ij.plugin.frame.Recorder;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -62,7 +69,7 @@ public class N5Importer implements PlugIn
 
     private N5Reader n5;
 
-	private DatasetSelectorDialog selectionDialogNew;
+	private DatasetSelectorDialog selectionDialog;
 
 	private DataSelection selection;
 
@@ -72,8 +79,17 @@ public class N5Importer implements PlugIn
 
 	private boolean asVirtual;
 
+	private boolean cropOption;
+
+	private Thread loaderThread;
+
+	private boolean record;
+
 	public N5Importer()
 	{
+		record = Recorder.record;
+		Recorder.record = false;
+
 		// default image plus metadata parsers
 		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
 		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
@@ -83,23 +99,27 @@ public class N5Importer implements PlugIn
 		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
 	}
 
-	@Override
-	public void run( String arg )
+	public Map< Class< ? >, ImageplusMetadata< ? > > getImagePlusMetadataWriterMap()
 	{
-		selectionDialogNew = new DatasetSelectorDialog(
+		return impMetaWriterTypes;
+	}
+
+	@Override
+    public void run( String args )
+	{
+		selectionDialog = new DatasetSelectorDialog(
 				new N5ViewerReaderFun(), 
 				new N5BasePathFun(),
-				null,
+				null, // no group parsers
 				PARSERS );
-		selectionDialogNew.setVirtualOption( true );
-		selectionDialogNew.setCropOption( true );
-//		selectionDialogNew.setMinMaxOption( true );
-		selectionDialogNew.run(
+		selectionDialog.setVirtualOption( true );
+		selectionDialog.setCropOption( true );
+		selectionDialog.run(
 				selection -> {
 					this.selection = selection;
 					this.n5 = selection.n5;
-					this.asVirtual = selectionDialogNew.isVirtual();
-//					this.subset = selectionDialogNew.getMinMax();
+					this.asVirtual = selectionDialog.isVirtual();
+					this.cropOption = selectionDialog.getCropOption();
 					try { process(); }
 					catch ( Exception e ) { e.printStackTrace(); }
 				});
@@ -116,7 +136,9 @@ public class N5Importer implements PlugIn
 
 		RandomAccessibleInterval<T> img;
 		if( subset != null )
+		{
 			img = Views.interval( imgRaw, subset );
+		}
 		else
 			img = imgRaw;
 
@@ -135,7 +157,7 @@ public class N5Importer implements PlugIn
 		if( ipMeta != null )
 		{
 			try
-			{ 
+			{
 				ipMeta.writeMetadata( ( M ) datasetMeta, imp );
 			}
 			catch( Exception e )
@@ -146,8 +168,47 @@ public class N5Importer implements PlugIn
 		return imp;
 	}
 
+	public <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > void process() 
+	{
+		Recorder.record = record;
+		loaderThread = new Thread()
+		{
+			public void run()
+			{
+				for ( N5Metadata datasetMeta : selection.metadata )
+				{
+					String d = datasetMeta.getPath();
+					String pathToN5Dataset = selectionDialog.getN5RootPath() + File.separator + d;
+
+					if( cropOption )
+					{
+						new LoadSingleDatasetDialog( pathToN5Dataset, asVirtual, cropOption, null, record ).run( "" );
+					}
+					else
+					{
+						ImageplusMetadata< ? > impMeta = impMetaWriterTypes.get( datasetMeta.getClass() );
+						ImagePlus imp;
+						try
+						{
+							imp = N5Importer.read( n5, datasetMeta, subset, asVirtual, impMeta );
+							imp.show();
+							LoadSingleDatasetDialog.record( record, pathToN5Dataset, asVirtual, null );
+						}
+						catch ( IOException e )
+						{
+							IJ.error( "failed to read n5" );
+						}
+					}
+
+				}
+			}
+		};
+		loaderThread.run();
+		Recorder.record = record;
+	}
+
 	@SuppressWarnings("unchecked")
-	public <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > void process() throws ImgLibException, IOException
+	public <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > void processOld() throws ImgLibException, IOException
 	{
 		for( N5Metadata datasetMeta : selection.metadata )
 		{
@@ -247,7 +308,6 @@ public class N5Importer implements PlugIn
 		@Override
 		public N5Reader apply( String n5Path )
 		{
-
 			N5Reader n5;
 			if ( n5Path == null || n5Path.isEmpty() )
 				return null;
@@ -312,6 +372,43 @@ public class N5Importer implements PlugIn
 				return "";
 			default:
 				return "";
+			}
+		}
+	}
+
+	/**
+	 * Removes selected nodes that do not have metadata, and are therefore not openable.
+	 */
+	public static class N5IjTreeSelectionListener implements TreeSelectionListener
+	{
+		private TreeSelectionModel selectionModel;
+
+		public N5IjTreeSelectionListener( TreeSelectionModel selectionModel )
+		{
+			this.selectionModel = selectionModel;
+		}
+
+		@Override
+		public void valueChanged( TreeSelectionEvent sel )
+		{
+			int i = 0;
+			for( TreePath path : sel.getPaths())
+			{
+				if( !sel.isAddedPath( i ))
+					continue;
+
+				Object last = path.getLastPathComponent();
+				if( last instanceof N5TreeNode )
+				{
+					N5TreeNode node = (N5TreeNode)last;
+
+					//if(!node.isDataset())
+					if( node.getMetadata() == null )
+					{
+						selectionModel.removeSelectionPath( path );
+					}
+				}
+				i++;
 			}
 		}
 	}

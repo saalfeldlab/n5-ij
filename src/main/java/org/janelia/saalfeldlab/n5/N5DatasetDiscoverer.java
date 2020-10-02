@@ -145,8 +145,8 @@ public class N5DatasetDiscoverer {
 
 	public static void parseMetadataRecursive(final N5Reader n5, final N5TreeNode node, 
 			final N5MetadataParser<?>[] metadataParsers,
-			final N5GroupParser<?>[] groupParsers ) throws IOException {
-
+			final N5GroupParser<?>[] groupParsers ) throws IOException
+	{
         // Recursively parse metadata for children nodes
 		for ( final N5TreeNode childNode : node.childrenList() )
 			parseMetadataRecursive( n5, childNode, metadataParsers, groupParsers );

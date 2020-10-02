@@ -3,7 +3,6 @@ package org.janelia.saalfeldlab.n5.ui;
 import java.util.Collections;
 import java.util.List;
 
-import org.janelia.saalfeldlab.n5.AbstractGsonReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 

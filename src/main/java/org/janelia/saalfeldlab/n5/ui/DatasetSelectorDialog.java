@@ -22,18 +22,19 @@ import ij.Prefs;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.N5MultiScaleMetadata;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -55,17 +56,17 @@ public class DatasetSelectorDialog
 
 	private Consumer< DataSelection > okCallback;
 
-    private JFrame dialog;
-    private JTextField containerPathTxt;
+	private JFrame dialog;
 
-//	private List< JSpinner > minSpinners;
-//	private List< JSpinner > maxSpinners;
+	private JTextField containerPathText;
 
 	private JCheckBox virtualBox;
 
 	private JCheckBox cropBox;
 
     private JTree containerTree;
+
+//    private JLabel loadingIcon;
 
     private JButton okBtn;
 
@@ -81,17 +82,13 @@ public class DatasetSelectorDialog
 
 	private N5Reader n5;
 
-	private N5TreeNode selectedNode;
-
 	private boolean virtualOption = false;
 
 	private boolean cropOption = false;
 
 	private double guiScale;
 
-//	private boolean minMaxOption = false;
-
-//	private int nd;
+	private Thread loaderThread;
 
 	public DatasetSelectorDialog( 
 			final Function< String, N5Reader > n5Fun, 
@@ -132,42 +129,34 @@ public class DatasetSelectorDialog
 		cropOption = arg;
 	}
 
-//	public void setMinMaxOption( boolean arg )
-//	{
-//		minMaxOption = arg;
-//	}
+	public boolean getCropOption()
+	{
+		return cropBox.isSelected();
+	}
 
 	public boolean isVirtual()
 	{
 		return ( virtualBox != null ) && virtualBox.isSelected();
 	}
 
-//	public Interval getMinMax()
-//	{
-//		if( !minMaxOption || nd < 1 )
-//			return null;
-//
-//		long[] min = new long[ nd ];
-//		long[] max = new long[ nd ];
-//		for ( int i = 0; i < nd; i++ )
-//		{
-//			if( i < 3 ) // limiting to 3d cropping for now
-//			{
-//				min[ i ] = ( Integer ) minSpinners.get( i ).getValue();
-//				max[ i ] = ( Integer ) maxSpinners.get( i ).getValue();
-//			}
-//		}
-//		return new FinalInterval( min, max );
-//	}
+	public String getN5RootPath()
+	{
+		return containerPathText.getText();
+	}
+
+	public void setLoaderThread( final Thread loaderThread )
+	{
+		this.loaderThread = loaderThread;
+	}
 
     public void run( final Consumer< DataSelection > okCallback )
     {
         this.okCallback = okCallback;
 
         dialog = new JFrame("N5 Viewer");
-        dialog.setLayout(new BoxLayout(dialog.getContentPane(), BoxLayout.PAGE_AXIS));
+        dialog.setLayout( new BoxLayout(dialog.getContentPane(), BoxLayout.PAGE_AXIS ));
 		dialog.setMinimumSize(
-				new Dimension( ( int ) guiScale * 600, ( int ) guiScale * 400 ) );
+				new Dimension( ( int ) guiScale * 600, ( int ) guiScale * 320 ) );
         dialog.setPreferredSize(dialog.getMinimumSize());
 
         if( n5 == null )
@@ -175,14 +164,13 @@ public class DatasetSelectorDialog
 			final JPanel containerPanel = new JPanel();
 			containerPanel.add( scale( new JLabel("N5 container:" )));
 
-			containerPathTxt = new JTextField();
-			System.out.println( containerPathTxt.getPreferredSize().height );
-			containerPathTxt.setPreferredSize( 
+			containerPathText = new JTextField();
+			containerPathText.setPreferredSize( 
 					new Dimension( 
 							( int ) ( guiScale * 200 ),
-							( int ) ( guiScale * containerPathTxt.getPreferredSize().height ) ) );
-			scale( containerPathTxt );
-			containerPanel.add(containerPathTxt);
+							( int ) ( guiScale * containerPathText.getPreferredSize().height ) ) );
+			scale( containerPathText );
+			containerPanel.add(containerPathText);
 
 			final JButton browseBtn = scaleFont( new JButton("Browse..."));
 			browseBtn.addActionListener(e -> openContainer( n5Fun, this::openBrowseDialog));
@@ -191,50 +179,31 @@ public class DatasetSelectorDialog
 			final JButton detectBtn = scaleFont( new JButton("Detect datasets"));
 			detectBtn.addActionListener( e -> openContainer( 
 					n5Fun,
-					() -> containerPathTxt.getText(),
+					() -> getN5RootPath(),
 					pathFun ));
 			containerPanel.add( detectBtn );
 
 			dialog.getContentPane().add( containerPanel );
-
-//			if( minMaxOption )
-//			{
-//				// add min/max options
-//				final JPanel minMaxPanel = new JPanel();
-//				minMaxPanel.setLayout( new GridLayout( 2, 4 ));
-//
-//				minSpinners = new ArrayList<>();
-//				maxSpinners = new ArrayList<>();
-//				for( int i = 0; i < 3; i++ )
-//				{
-//					minSpinners.add( new JSpinner() );
-//					maxSpinners.add( new JSpinner() );
-//				}
-//				defaultMinMax();
-//
-//				minMaxPanel.add( new JLabel( "Min: "));
-//				minSpinners.stream().forEach( x -> minMaxPanel.add( x ) );
-//				minMaxPanel.add( new JLabel( "Max: "));
-//				maxSpinners.stream().forEach( x -> minMaxPanel.add( x ) );
-//
-//				dialog.add( minMaxPanel );
-//			}
         }
-
 
 		final JPanel containerTreePanel = new JPanel();
 		containerTreePanel.setBorder( BorderFactory.createTitledBorder( "N5 dataset tree" ) );
-//		containerTreePanel.setLayout( new BoxLayout( containerTreePanel, BoxLayout.Y_AXIS ) );
-		containerTreePanel.setLayout( new GridBagLayout() );
+		containerTreePanel.setLayout( new BoxLayout( containerTreePanel, BoxLayout.Y_AXIS ) );
+
 		treeModel = new DefaultTreeModel( null );
 		containerTree = new JTree( treeModel );
 		containerTree.setEnabled( false );
+		containerTree.getSelectionModel().setSelectionMode( 
+				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION );
 
-        // TODO disable selection of nodes that are not datasets
-		containerTree.getSelectionModel().setSelectionMode( TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION );
+        // disable selection of nodes that are not open-able
+		containerTree.addTreeSelectionListener( 
+				new N5Importer.N5IjTreeSelectionListener( containerTree.getSelectionModel() ));
+
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
         final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
         treeCellRenderer.setLeafIcon(treeCellRenderer.getOpenIcon());
+        scaleFont( treeCellRenderer );
 
 		final JScrollPane containerTreeScroller = new JScrollPane( containerTree );
 		containerTreeScroller.setPreferredSize( 
@@ -268,11 +237,20 @@ public class DatasetSelectorDialog
 			buttonPanel.add( scaleFont( new JLabel( "Crop" )));
 		}
 
-        // ok and cancel buttons
+		// space goes here
 		buttonPanel.setLayout( new BoxLayout( buttonPanel, BoxLayout.LINE_AXIS ) );
 		buttonPanel.setBorder( BorderFactory.createEmptyBorder( 0,  (int) guiScale * 10,  (int) guiScale * 10, 10 ) );
 		buttonPanel.add( Box.createHorizontalGlue() );
 
+//		String grifPath = "/home/john/Pictures/load_small.gif";
+//		//BufferedImage loadingGif = ImageIO.read( new File( 
+//		Icon imgIcon = new ImageIcon( grifPath );
+//		loadingIcon = new JLabel( imgIcon );
+//
+//		if( loadingIcon != null )
+//			buttonPanel.add( loadingIcon );
+
+        // ok and cancel buttons
         okBtn = scaleFont( new JButton("OK"));
         okBtn.addActionListener(e -> ok());
         buttonPanel.add(okBtn);
@@ -286,11 +264,6 @@ public class DatasetSelectorDialog
 
         dialog.pack();
         dialog.setVisible(true);
-
-        containerTree.addTreeSelectionListener(e -> {
-            final DefaultMutableTreeNode node = (DefaultMutableTreeNode) containerTree.getLastSelectedPathComponent();
-            selectedNode = (node == null ? null : (N5TreeNode) node.getUserObject());
-        });
 
         if( n5 != null )
 			openContainer( x -> n5, () -> "" );
@@ -317,6 +290,9 @@ public class DatasetSelectorDialog
 			final Function<String,String> pathToRoot )
     {
 		final String n5Path = opener.get();
+		if( n5Path == null )
+			return;
+
 		n5 = n5Fun.apply( n5Path );
 		final String rootPath = pathToRoot.apply( n5Path );
 
@@ -327,100 +303,52 @@ public class DatasetSelectorDialog
         try
         {
 			n5RootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
-			if( n5RootNode.isDataset() )
-				okBtn.setEnabled( true );
-        }
+			okBtn.setEnabled( true );
+	}
 		catch ( final IOException e )
         {
             IJ.handleException(e);
             return;
         }
 
-		if ( containerPathTxt != null )
-			containerPathTxt.setText( n5Path );
+		if ( containerPathText != null )
+			containerPathText.setText( n5Path );
 
 		treeModel.setRoot( n5RootNode );
 		containerTree.setEnabled( true );
-
-		if ( n5RootNode.isDataset() )
-			okBtn.setEnabled( true );
-//		else
-//			okBtn.setEnabled( false );
     }
-
-//	private void defaultMinMax()
-//	{
-//		if( !minMaxOption )
-//			return;
-//
-//		for ( int i = 0; i < 3; i++ )
-//		{
-//			minSpinners.get( i ).setModel( new SpinnerListModel( new String[] { "-" } ) );
-//			maxSpinners.get( i ).setModel( new SpinnerListModel( new String[] { "-" } ) );
-//		}
-//	}
-
-//	private void updateMinMax( final N5TreeNode node )
-//	{
-//		if( !minMaxOption )
-//			return;
-//
-//        // add min/max options
-//		try
-//		{ 
-//			if ( !n5.datasetExists( node.path ) )
-//			{
-//				return;
-//			}
-//			DatasetAttributes attr = n5.getDatasetAttributes( node.path );
-//			nd = attr.getNumDimensions();
-//			for( int i = 0; i < nd; i++ )
-//			{
-//				int max = (int)attr.getDimensions()[ i ] - 1;
-//				minSpinners.get( i ).setModel( new SpinnerNumberModel( 0, 0, max, 1 ));
-//				maxSpinners.get( i ).setModel( new SpinnerNumberModel( max, 0, max, 1 ));
-//			}
-//		}
-//		catch ( Exception e )
-//		{
-//			return;
-//		}
-//	}
 
     private void ok()
     {
-		// TODO FIX
 		final ArrayList< N5Metadata > selectedMetadata = new ArrayList<>();
 
-		// TODO what condition to check here to skip explicit selection?
-//		if ( containerTree.getSelectionCount() == 0 )
-		if ( false )
+		// check if we can skip explicit dataset detection
+		if ( containerTree.getSelectionCount() == 0 )
 		{
-//			final String n5Path = containerPathTxt.getText();
-//			n5 = n5Fun.apply( n5Path );
-//			final String dataset = pathFun.apply( n5Path );
-//			N5TreeNode node = null;
-//			try
-//			{
-//				node = datasetDiscoverer.parse( n5, dataset );
-//				if ( node.isDataset && node.metadata != null )
-//					selectedMetadata.add( node.metadata );
-//			}
-//			catch ( Exception e ){}
-//
-//			if ( node == null || !node.isDataset || node.metadata == null )
-//			{
-//				JOptionPane.showMessageDialog( null, "Could not find a dataset / metadata at the provided path." );
-//				return;
-//			}
+			final String n5Path = getN5RootPath();
+			n5 = n5Fun.apply( n5Path );
+			final String dataset = pathFun.apply( n5Path );
+			N5TreeNode node = null;
+			try
+			{
+				node = datasetDiscoverer.parse( n5, dataset );
+				if ( node.isDataset() && node.getMetadata() != null )
+					selectedMetadata.add( node.getMetadata() );
+			}
+			catch ( Exception e ){}
+
+			if ( node == null || !node.isDataset() || node.getMetadata() == null )
+			{
+				JOptionPane.showMessageDialog( null, "Could not find a dataset / metadata at the provided path." );
+				return;
+			}
 		}
 		else
 		{
-			TreePath[] selectedPaths = containerTree.getSelectionPaths();
+			// datasets were selected by the user
 			for( TreePath path : containerTree.getSelectionPaths() )
 				selectedMetadata.add( ((N5TreeNode)path.getLastPathComponent()).getMetadata() );
 		}
-
 		okCallback.accept( new DataSelection( n5, selectedMetadata ) );
         dialog.setVisible(false);
         dialog.dispose();
@@ -428,28 +356,12 @@ public class DatasetSelectorDialog
 
     private void cancel()
     {
-        dialog.setVisible(false);
+		dialog.setVisible( false );
         dialog.dispose();
+
+        if( loaderThread != null )
+			loaderThread.interrupt();
     }
-
-    private static class SelectedListElement
-    {
-        private final String path;
-        private final N5Metadata metadata;
-
-        SelectedListElement(final String path, final N5Metadata metadata)
-        {
-            this.path = path;
-            this.metadata = metadata;
-        }
-
-        @Override
-        public String toString()
-        {
-            return path + (metadata instanceof N5MultiScaleMetadata ? " (multiscale)" : "");
-        }
-    }
-
 
 	private static final Font DEFAULT_FONT = new Font( Font.SANS_SERIF, Font.PLAIN, 12 );
 
