@@ -38,6 +38,12 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -68,6 +74,12 @@ public class DatasetSelectorDialog
 
 //    private JLabel loadingIcon;
 
+    private JButton browseBtn;
+
+    private JButton detectBtn;
+
+    private JLabel messageLabel;
+
     private JButton okBtn;
 
     private JButton cancelBtn;
@@ -89,6 +101,9 @@ public class DatasetSelectorDialog
 	private double guiScale;
 
 	private Thread loaderThread;
+
+//	private Thread parserThread;
+	private Future< N5TreeNode > parserFuture;
 
 	public DatasetSelectorDialog( 
 			final Function< String, N5Reader > n5Fun, 
@@ -152,46 +167,14 @@ public class DatasetSelectorDialog
     public void run( final Consumer< DataSelection > okCallback )
     {
         this.okCallback = okCallback;
-
-        dialog = new JFrame("N5 Viewer");
-        dialog.setLayout( new BoxLayout(dialog.getContentPane(), BoxLayout.PAGE_AXIS ));
-		dialog.setMinimumSize(
-				new Dimension( ( int ) guiScale * 600, ( int ) guiScale * 320 ) );
-        dialog.setPreferredSize(dialog.getMinimumSize());
+        dialog = buildDialog();
 
         if( n5 == null )
         {
-			final JPanel containerPanel = new JPanel();
-			containerPanel.add( scale( new JLabel("N5 container:" )));
-
-			containerPathText = new JTextField();
-			containerPathText.setPreferredSize( 
-					new Dimension( 
-							( int ) ( guiScale * 200 ),
-							( int ) ( guiScale * containerPathText.getPreferredSize().height ) ) );
-			scale( containerPathText );
-			containerPanel.add(containerPathText);
-
-			final JButton browseBtn = scaleFont( new JButton("Browse..."));
-			browseBtn.addActionListener(e -> openContainer( n5Fun, this::openBrowseDialog));
-			containerPanel.add(browseBtn);
-
-			final JButton detectBtn = scaleFont( new JButton("Detect datasets"));
-			detectBtn.addActionListener( e -> openContainer( 
-					n5Fun,
-					() -> getN5RootPath(),
-					pathFun ));
-			containerPanel.add( detectBtn );
-
-			dialog.getContentPane().add( containerPanel );
+			browseBtn.addActionListener( e -> openContainer( n5Fun, this::openBrowseDialog ));
+			detectBtn.addActionListener( e -> openContainer( n5Fun, () -> getN5RootPath(), pathFun ));
         }
 
-		final JPanel containerTreePanel = new JPanel();
-		containerTreePanel.setBorder( BorderFactory.createTitledBorder( "N5 dataset tree" ) );
-		containerTreePanel.setLayout( new BoxLayout( containerTreePanel, BoxLayout.Y_AXIS ) );
-
-		treeModel = new DefaultTreeModel( null );
-		containerTree = new JTree( treeModel );
 		containerTree.setEnabled( false );
 		containerTree.getSelectionModel().setSelectionMode( 
 				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION );
@@ -200,73 +183,127 @@ public class DatasetSelectorDialog
 		containerTree.addTreeSelectionListener( 
 				new N5Importer.N5IjTreeSelectionListener( containerTree.getSelectionModel() ));
 
+        // ok and cancel buttons
+		okBtn.addActionListener( e -> ok() );
+		cancelBtn.addActionListener( e -> cancel() );
+		dialog.setVisible( true );
+    }
+
+    private JFrame buildDialog()
+    {
+		int frameSizeX = 600;
+		int frameSizeY = 400;
+
+		dialog = new JFrame( "Open N5" );
+		dialog.setPreferredSize( new Dimension( frameSizeX, frameSizeY ) );
+		dialog.setMinimumSize( dialog.getPreferredSize() );
+
+		Container pane = dialog.getContentPane();
+		pane.setLayout( new GridBagLayout() );
+
+		containerPathText = new JTextField();
+		containerPathText.setPreferredSize( new Dimension( frameSizeX / 3, containerPathText.getPreferredSize().height ));
+
+		GridBagConstraints ctxt = new GridBagConstraints();
+		ctxt.gridx = 0;
+		ctxt.gridy = 0;
+		ctxt.gridwidth = 3;
+		ctxt.gridheight = 1;
+		ctxt.weightx = 0.8;
+		ctxt.weighty = 0.1;
+		ctxt.fill = GridBagConstraints.HORIZONTAL;
+		ctxt.insets = new Insets( 0, 8, 0, 2 );
+		pane.add( containerPathText, ctxt );
+
+		browseBtn = new JButton( "Browse" );
+		GridBagConstraints cbrowse = new GridBagConstraints();
+		cbrowse.gridx = 3;
+		cbrowse.gridy = 0;
+		cbrowse.gridwidth = 1;
+		cbrowse.gridheight = 1;
+		cbrowse.weightx = 0.1;
+		cbrowse.weighty = 0.1;
+		pane.add( browseBtn, cbrowse );
+
+		detectBtn = new JButton( "Detect datasets" );
+		GridBagConstraints cdetect = new GridBagConstraints();
+		cdetect.gridx = 4;
+		cdetect.gridy = 0;
+		cdetect.gridwidth = 2;
+		cdetect.gridheight = 1;
+		cdetect.weightx = 0.1;
+		cdetect.weighty = 0.1;
+		pane.add( detectBtn, cdetect );
+
+		GridBagConstraints ctree = new GridBagConstraints();
+		ctree.gridx = 0;
+		ctree.gridy = 1;
+		ctree.gridwidth = 6;
+		ctree.gridheight = 3;
+		ctree.weightx = 0.9;
+		ctree.weighty = 0.9;
+		ctree.ipadx = 5;
+		ctree.ipady = 10;
+		ctree.fill = GridBagConstraints.BOTH;
+
+		treeModel = new DefaultTreeModel( null );
+		containerTree = new JTree( treeModel );
+		containerTree.setMinimumSize( new Dimension( 550, 230 ));
+		containerTree.setPreferredSize( new Dimension( 550, 230 ));
+
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
         final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
         treeCellRenderer.setLeafIcon(treeCellRenderer.getOpenIcon());
-        scaleFont( treeCellRenderer );
 
-		final JScrollPane containerTreeScroller = new JScrollPane( containerTree );
-		containerTreeScroller.setPreferredSize( 
-				new Dimension( ( int ) guiScale * 550, ( int ) guiScale * 200 ) );
-        containerTreeScroller.setMinimumSize(containerTreeScroller.getPreferredSize());
-        containerTreeScroller.setMaximumSize(containerTreeScroller.getPreferredSize());
-        containerTreePanel.add(containerTreeScroller, new GridBagConstraints() );
+		final JScrollPane treeScroller = new JScrollPane( containerTree );
+		JScrollPane scroll = new JScrollPane( treeScroller );
+		scroll.setVerticalScrollBarPolicy( ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS );
+		pane.add( scroll, ctree );
 
-        dialog.getContentPane().add(containerTreePanel, new GridBagConstraints() );
+		// bottom button
+		GridBagConstraints cbot = new GridBagConstraints();
+		cbot.gridx = 0;
+		cbot.gridy = 4;
+		cbot.gridwidth = 1;
+		cbot.gridheight = 1;
+		cbot.weightx = 0.0;
+		cbot.weighty = 0.1;
+		cbot.anchor = GridBagConstraints.CENTER;
 
-        // bottom panel
-        final JPanel buttonPanel = new JPanel();
+		JPanel virtPanel = new JPanel();
+		virtualBox = new JCheckBox();
+		JLabel virtLabel = new JLabel( "Open as virtual" );
+		virtPanel.add( virtualBox );
+		virtPanel.add( virtLabel );
+		pane.add( virtPanel, cbot );
 
-        // add is virtual checkbox if requested
-		if ( virtualOption )
-		{
-			virtualBox = new JCheckBox();
-			virtualBox.setSelected( true );
-			buttonPanel.add( virtualBox );
-			buttonPanel.add( scaleFont( new JLabel( "Open as virtual" ) ));
-		}
+		JPanel cropPanel = new JPanel();
+		cropBox = new JCheckBox();
+		JLabel cropLabel = new JLabel( "Crop" );
+		cbot.gridx = 1;
+		cbot.anchor = GridBagConstraints.WEST;
+		cropPanel.add( cropBox );
+		cropPanel.add( cropLabel );
+		pane.add( cropPanel, cbot );
 
-		if ( cropOption )
-		{
-			if ( virtualOption )
-				buttonPanel.add( Box.createRigidArea( new Dimension( ( int ) guiScale * 15, 0 ) ) );
+		messageLabel = new JLabel("message");
+		messageLabel.setVisible( false );
+		cbot.gridx = 3;
+		cbot.anchor = GridBagConstraints.CENTER;
+		pane.add( messageLabel, cbot );
 
-			cropBox = new JCheckBox();
-			cropBox.setSelected( true );
-			buttonPanel.add( cropBox );
-			buttonPanel.add( scaleFont( new JLabel( "Crop" )));
-		}
+		okBtn = new JButton( "Ok" );
+		cbot.gridx = 4;
+		cbot.anchor = GridBagConstraints.EAST;
+		pane.add( okBtn, cbot );
 
-		// space goes here
-		buttonPanel.setLayout( new BoxLayout( buttonPanel, BoxLayout.LINE_AXIS ) );
-		buttonPanel.setBorder( BorderFactory.createEmptyBorder( 0,  (int) guiScale * 10,  (int) guiScale * 10, 10 ) );
-		buttonPanel.add( Box.createHorizontalGlue() );
+		cancelBtn = new JButton( "Cancel" );
+		cbot.gridx = 5;
+		cbot.anchor = GridBagConstraints.CENTER;
+		pane.add( cancelBtn, cbot );
 
-//		String grifPath = "/home/john/Pictures/load_small.gif";
-//		//BufferedImage loadingGif = ImageIO.read( new File( 
-//		Icon imgIcon = new ImageIcon( grifPath );
-//		loadingIcon = new JLabel( imgIcon );
-//
-//		if( loadingIcon != null )
-//			buttonPanel.add( loadingIcon );
-
-        // ok and cancel buttons
-        okBtn = scaleFont( new JButton("OK"));
-        okBtn.addActionListener(e -> ok());
-        buttonPanel.add(okBtn);
-		buttonPanel.add( Box.createRigidArea( new Dimension( ( int ) guiScale * 10, 0 ) ) );
-
-		cancelBtn = scaleFont( new JButton( "Cancel" ));
-		cancelBtn.addActionListener( e -> cancel() );
-		buttonPanel.add( cancelBtn );
-
-        dialog.getContentPane().add(buttonPanel);
-
-        dialog.pack();
-        dialog.setVisible(true);
-
-        if( n5 != null )
-			openContainer( x -> n5, () -> "" );
+		dialog.pack();
+		return dialog;
     }
 
     private String openBrowseDialog()
@@ -299,22 +336,32 @@ public class DatasetSelectorDialog
 		if ( n5 == null )
 			return;
 
-        final N5TreeNode n5RootNode;
-        try
-        {
-			n5RootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
-			okBtn.setEnabled( true );
-	}
-		catch ( final IOException e )
-        {
-            IJ.handleException(e);
-            return;
-        }
+		messageLabel.setText( "Discovering datasets..." );
+		messageLabel.setVisible( true );
+
+		DiscoverRunner discoverRunner = new DiscoverRunner( datasetDiscoverer, n5, rootPath );
+	    ExecutorService executor = Executors.newSingleThreadExecutor();
+		ExecutorCompletionService<N5TreeNode> ecs = new ExecutorCompletionService<>( executor );
+		ecs.submit( discoverRunner );
+
+		try
+		{
+			parserFuture = ecs.take();
+			treeModel.setRoot( parserFuture.get() );
+			messageLabel.setVisible( false );
+		}
+		catch ( InterruptedException e )
+		{
+			e.printStackTrace();
+		}
+		catch ( ExecutionException e )
+		{
+			e.printStackTrace();
+		}
 
 		if ( containerPathText != null )
 			containerPathText.setText( n5Path );
 
-		treeModel.setRoot( n5RootNode );
 		containerTree.setEnabled( true );
     }
 
@@ -361,6 +408,12 @@ public class DatasetSelectorDialog
 
         if( loaderThread != null )
 			loaderThread.interrupt();
+ 
+		if ( parserFuture != null )
+		{
+			//System.out.println( "cancelling parse" );
+			parserFuture.cancel( true );
+		}
     }
 
 	private static final Font DEFAULT_FONT = new Font( Font.SANS_SERIF, Font.PLAIN, 12 );
@@ -385,6 +438,39 @@ public class DatasetSelectorDialog
 	private < T extends Component > T scale( T c )
 	{
 		return scaleSize( scaleFont( c ) );
+	}
+
+	private static class DiscoverRunner implements Callable< N5TreeNode >
+	{
+		private final N5Reader n5;
+
+		private final String rootPath;
+
+		private final N5DatasetDiscoverer datasetDiscoverer;
+
+		public DiscoverRunner(
+				final N5DatasetDiscoverer datasetDiscoverer,
+				final N5Reader n5, final String rootPath )
+		{
+			this.n5 = n5;
+			this.rootPath = rootPath;
+			this.datasetDiscoverer = datasetDiscoverer;
+		}
+
+		@Override
+		public N5TreeNode call()
+		{
+			try
+			{
+//				Thread.sleep( 2000 );
+				return datasetDiscoverer.discoverRecursive( n5, rootPath );
+			}
+			catch ( final IOException e )
+			{
+				IJ.handleException( e );
+			}
+			return null;
+		}
 	}
 
 }
