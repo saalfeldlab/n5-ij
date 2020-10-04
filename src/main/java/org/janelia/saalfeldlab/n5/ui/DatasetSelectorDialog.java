@@ -191,8 +191,8 @@ public class DatasetSelectorDialog
 
     private JFrame buildDialog()
     {
-		int frameSizeX = 600;
-		int frameSizeY = 400;
+		int frameSizeX = (int)(guiScale * 600);
+		int frameSizeY = (int)(guiScale * 400);
 
 		dialog = new JFrame( "Open N5" );
 		dialog.setPreferredSize( new Dimension( frameSizeX, frameSizeY ) );
@@ -203,6 +203,7 @@ public class DatasetSelectorDialog
 
 		containerPathText = new JTextField();
 		containerPathText.setPreferredSize( new Dimension( frameSizeX / 3, containerPathText.getPreferredSize().height ));
+		scale( containerPathText );
 
 		GridBagConstraints ctxt = new GridBagConstraints();
 		ctxt.gridx = 0;
@@ -215,7 +216,7 @@ public class DatasetSelectorDialog
 		ctxt.insets = new Insets( 0, 8, 0, 2 );
 		pane.add( containerPathText, ctxt );
 
-		browseBtn = new JButton( "Browse" );
+		browseBtn = scaleFont( new JButton( "Browse" ));
 		GridBagConstraints cbrowse = new GridBagConstraints();
 		cbrowse.gridx = 3;
 		cbrowse.gridy = 0;
@@ -225,7 +226,7 @@ public class DatasetSelectorDialog
 		cbrowse.weighty = 0.1;
 		pane.add( browseBtn, cbrowse );
 
-		detectBtn = new JButton( "Detect datasets" );
+		detectBtn = scaleFont( new JButton( "Detect datasets" ) );
 		GridBagConstraints cdetect = new GridBagConstraints();
 		cdetect.gridx = 4;
 		cdetect.gridy = 0;
@@ -272,32 +273,32 @@ public class DatasetSelectorDialog
 
 		JPanel virtPanel = new JPanel();
 		virtualBox = new JCheckBox();
-		JLabel virtLabel = new JLabel( "Open as virtual" );
+		JLabel virtLabel = scaleFont(new JLabel( "Open as virtual" ));
 		virtPanel.add( virtualBox );
 		virtPanel.add( virtLabel );
 		pane.add( virtPanel, cbot );
 
 		JPanel cropPanel = new JPanel();
 		cropBox = new JCheckBox();
-		JLabel cropLabel = new JLabel( "Crop" );
+		JLabel cropLabel = scaleFont( new JLabel( "Crop" ));
 		cbot.gridx = 1;
 		cbot.anchor = GridBagConstraints.WEST;
 		cropPanel.add( cropBox );
 		cropPanel.add( cropLabel );
 		pane.add( cropPanel, cbot );
 
-		messageLabel = new JLabel("message");
+		messageLabel = scaleFont( new JLabel(""));
 		messageLabel.setVisible( false );
 		cbot.gridx = 3;
 		cbot.anchor = GridBagConstraints.CENTER;
 		pane.add( messageLabel, cbot );
 
-		okBtn = new JButton( "Ok" );
+		okBtn = scaleFont( new JButton( "OK" ));
 		cbot.gridx = 4;
 		cbot.anchor = GridBagConstraints.EAST;
 		pane.add( okBtn, cbot );
 
-		cancelBtn = new JButton( "Cancel" );
+		cancelBtn = scaleFont( new JButton( "Cancel" ));
 		cbot.gridx = 5;
 		cbot.anchor = GridBagConstraints.CENTER;
 		pane.add( cancelBtn, cbot );
@@ -411,7 +412,6 @@ public class DatasetSelectorDialog
  
 		if ( parserFuture != null )
 		{
-			//System.out.println( "cancelling parse" );
 			parserFuture.cancel( true );
 		}
     }
@@ -430,8 +430,13 @@ public class DatasetSelectorDialog
 
 	private < T extends Component > T scaleSize( T c )
 	{
-		Dimension sz = c.getSize();
-		c.setSize( ( int ) ( guiScale * sz.width ), ( int ) ( guiScale * sz.height ) );
+//		Dimension sz = c.getSize();
+//		c.setSize( ( int ) ( guiScale * sz.width ), ( int ) ( guiScale * sz.height ) );
+		Dimension prefSz = c.getPreferredSize();
+		c.setPreferredSize(
+				new Dimension( 
+						( int ) ( guiScale * prefSz.width ),
+						( int ) ( guiScale * prefSz.height )));
 		return c;
 	}
 
@@ -462,7 +467,6 @@ public class DatasetSelectorDialog
 		{
 			try
 			{
-//				Thread.sleep( 2000 );
 				return datasetDiscoverer.discoverRecursive( n5, rootPath );
 			}
 			catch ( final IOException e )
