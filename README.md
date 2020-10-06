@@ -40,7 +40,8 @@ increasing amount of parallelism.
 Time in seconds to write the image data. Increased parallelism speeds
 up writing substantially when the total number of blocks is high.
 
-|  Image size  | Block size |  1  |  2  |  4  |  8  |  16  |
+|  Image size  | Block size |  1 thread  |  2 threads  |  4 threads  |  8 threads  |  16 threads  |
+| ------------ | ---------- | ---------- | ----------- | ----------- | ----------- | ----------- |
 |  64x64x64  | 32x32x32 | 0.98 | 0.60 | 0.45 | 0.50 | 0.51 | 
 |  128x128x128  | 32x32x32 | 4.72 | 2.64 | 1.62 | 1.00 |
 |  256x256x256  | 32x32x32 | 37.09 | 19.11 | 9.09 | 5.20 | 3.2 |
