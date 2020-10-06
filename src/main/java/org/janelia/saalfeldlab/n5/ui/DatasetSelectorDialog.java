@@ -27,14 +27,12 @@ import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -102,7 +100,6 @@ public class DatasetSelectorDialog
 
 	private Thread loaderThread;
 
-//	private Thread parserThread;
 	private Future< N5TreeNode > parserFuture;
 
 	public DatasetSelectorDialog( 
@@ -251,6 +248,7 @@ public class DatasetSelectorDialog
 		containerTree = new JTree( treeModel );
 		containerTree.setMinimumSize( new Dimension( 550, 230 ));
 		containerTree.setPreferredSize( new Dimension( 550, 230 ));
+		scaleFont( containerTree, (float)guiScale * 1.2f );
 
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
         final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
@@ -327,41 +325,38 @@ public class DatasetSelectorDialog
 	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener,
 			final Function<String,String> pathToRoot )
     {
+		messageLabel.setText( "Building reader..." );
+		messageLabel.setVisible( true );
+		dialog.repaint();
+		dialog.revalidate();
+
 		final String n5Path = opener.get();
 		if( n5Path == null )
+		{
+			messageLabel.setVisible( false );
+			dialog.repaint();
 			return;
+		}
 
 		n5 = n5Fun.apply( n5Path );
 		final String rootPath = pathToRoot.apply( n5Path );
 
 		if ( n5 == null )
+		{
+			messageLabel.setVisible( false );
+			dialog.repaint();
 			return;
+		}
 
 		messageLabel.setText( "Discovering datasets..." );
 		messageLabel.setVisible( true );
+		dialog.repaint();
 
-		DiscoverRunner discoverRunner = new DiscoverRunner( datasetDiscoverer, n5, rootPath );
+		DiscoverRunner discoverRunner = new DiscoverRunner( datasetDiscoverer, n5, rootPath, treeModel, messageLabel );
+
 	    ExecutorService executor = Executors.newSingleThreadExecutor();
 		ExecutorCompletionService<N5TreeNode> ecs = new ExecutorCompletionService<>( executor );
 		ecs.submit( discoverRunner );
-
-		try
-		{
-			parserFuture = ecs.take();
-			treeModel.setRoot( parserFuture.get() );
-			messageLabel.setVisible( false );
-		}
-		catch ( InterruptedException e )
-		{
-			e.printStackTrace();
-		}
-		catch ( ExecutionException e )
-		{
-			e.printStackTrace();
-		}
-
-		if ( containerPathText != null )
-			containerPathText.setText( n5Path );
 
 		containerTree.setEnabled( true );
     }
@@ -375,7 +370,8 @@ public class DatasetSelectorDialog
 		{
 			final String n5Path = getN5RootPath();
 			n5 = n5Fun.apply( n5Path );
-			final String dataset = pathFun.apply( n5Path );
+//			final String dataset = pathFun.apply( n5Path );
+			final String dataset = "";
 			N5TreeNode node = null;
 			try
 			{
@@ -428,10 +424,18 @@ public class DatasetSelectorDialog
 		return c;
     }
 
+	private static < T extends Component > T scaleFont( T c, float scale )
+    {
+		Font font = c.getFont();
+		if (font == null)
+			font = DEFAULT_FONT;
+		font = font.deriveFont( (float)( scale * font.getSize()) );
+		c.setFont(font);
+		return c;
+    }
+
 	private < T extends Component > T scaleSize( T c )
 	{
-//		Dimension sz = c.getSize();
-//		c.setSize( ( int ) ( guiScale * sz.width ), ( int ) ( guiScale * sz.height ) );
 		Dimension prefSz = c.getPreferredSize();
 		c.setPreferredSize(
 				new Dimension( 
@@ -453,13 +457,21 @@ public class DatasetSelectorDialog
 
 		private final N5DatasetDiscoverer datasetDiscoverer;
 
+		private final JLabel message;
+
+		private final DefaultTreeModel treeModel;
+
 		public DiscoverRunner(
 				final N5DatasetDiscoverer datasetDiscoverer,
-				final N5Reader n5, final String rootPath )
+				final N5Reader n5, final String rootPath,
+				final DefaultTreeModel treeModel,
+				final JLabel message )
 		{
 			this.n5 = n5;
 			this.rootPath = rootPath;
 			this.datasetDiscoverer = datasetDiscoverer;
+			this.message = message;
+			this.treeModel = treeModel;
 		}
 
 		@Override
@@ -467,7 +479,15 @@ public class DatasetSelectorDialog
 		{
 			try
 			{
-				return datasetDiscoverer.discoverRecursive( n5, rootPath );
+				N5TreeNode node = datasetDiscoverer.discoverRecursive( n5, rootPath );
+				SwingUtilities.invokeLater( new Runnable() {
+					public void run()
+					{
+						treeModel.setRoot( node );
+						message.setVisible( false );
+					}
+				});
+				return node;
 			}
 			catch ( final IOException e )
 			{

@@ -29,7 +29,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5ViewerSingleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
-import org.janelia.saalfeldlab.n5.ui.LoadSingleDatasetDialog;
+import org.janelia.saalfeldlab.n5.ui.N5LoadSingleDatasetPlugin;
 import org.scijava.log.LogService;
 
 import ij.IJ;
@@ -109,7 +109,7 @@ public class N5Importer implements PlugIn
 	{
 		selectionDialog = new DatasetSelectorDialog(
 				new N5ViewerReaderFun(), 
-				new N5BasePathFun(),
+				x -> "",
 				null, // no group parsers
 				PARSERS );
 		selectionDialog.setVirtualOption( true );
@@ -182,7 +182,7 @@ public class N5Importer implements PlugIn
 
 					if( cropOption )
 					{
-						new LoadSingleDatasetDialog( pathToN5Dataset, asVirtual, cropOption, null, record ).run( "" );
+						new N5LoadSingleDatasetPlugin( pathToN5Dataset, asVirtual, null, record ).run( "" );
 					}
 					else
 					{
@@ -192,7 +192,7 @@ public class N5Importer implements PlugIn
 						{
 							imp = N5Importer.read( n5, datasetMeta, subset, asVirtual, impMeta );
 							imp.show();
-							LoadSingleDatasetDialog.record( record, pathToN5Dataset, asVirtual, null );
+							N5LoadSingleDatasetPlugin.record( record, pathToN5Dataset, asVirtual, null );
 						}
 						catch ( IOException e )
 						{
@@ -205,46 +205,6 @@ public class N5Importer implements PlugIn
 		};
 		loaderThread.run();
 		Recorder.record = record;
-	}
-
-	@SuppressWarnings("unchecked")
-	public <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > void processOld() throws ImgLibException, IOException
-	{
-		for( N5Metadata datasetMeta : selection.metadata )
-		{
-			String d = datasetMeta.getPath();
-			RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
-
-			RandomAccessibleInterval<T> img;
-			if( subset != null )
-				img = Views.interval( imgRaw, subset );
-			else
-				img = imgRaw;
-
-			ImagePlus imp;
-			if( asVirtual )
-			{
-				imp = ImageJFunctions.wrap( img, d );
-			}
-			else
-			{
-				ImagePlusImg<T,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( img ).firstElement()).create( img );
-				LoopBuilder.setImages( img, ipImg ).forEachPixel( (x,y) -> y.set( x ) );
-				imp = ipImg.getImagePlus();
-			}
-
-			try
-			{ 
-				ImageplusMetadata< M > ipMeta = ( ImageplusMetadata< M > ) impMetaWriterTypes.get( datasetMeta.getClass() );
-				ipMeta.writeMetadata( ( M ) datasetMeta, imp );
-			}
-			catch( Exception e )
-			{
-				System.err.println("Failed to convert metadata to Imageplus for " + d );
-			}
-
-			imp.show();
-		}
 	}
 
 	public static Interval containingBlockAlignedInterval(
@@ -320,11 +280,11 @@ public class N5Importer implements PlugIn
 			}
 
 			String n5BasePath = n5Path;
-			if( type == DataAccessType.FILESYSTEM )
-			{
-				if( n5Path.contains( ".n5" ))
-					n5BasePath = n5Path.substring( 0, 3 + n5Path.indexOf( ".n5" ));
-			}
+//			if( type == DataAccessType.FILESYSTEM )
+//			{
+//				if( n5Path.contains( ".n5" ))
+//					n5BasePath = n5Path.substring( 0, 3 + n5Path.indexOf( ".n5" ));
+//			}
 
 			n5 = null;
 			try
@@ -367,8 +327,8 @@ public class N5Importer implements PlugIn
 			switch ( type )
 			{
 			case FILESYSTEM:
-				if( n5Path.contains( ".n5" ))
-					return n5Path.substring( 3 + n5Path.indexOf( ".n5" ));
+//				if( n5Path.contains( ".n5" ))
+//					return n5Path.substring( 3 + n5Path.indexOf( ".n5" ));
 				return "";
 			default:
 				return "";

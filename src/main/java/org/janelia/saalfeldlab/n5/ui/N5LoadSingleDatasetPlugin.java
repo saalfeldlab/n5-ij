@@ -2,7 +2,6 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -14,32 +13,25 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 
 import ij.IJ;
-import ij.ImageJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
-import ij.io.OpenDialog;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.util.Intervals;
 
-public class LoadSingleDatasetDialog implements PlugIn
+public class N5LoadSingleDatasetPlugin implements PlugIn
 {
-//	private final boolean editable;
-//	OpenDialog od;
+	private static final String COMMAND_NAME = "N5 Open simple";
 
 	private String n5Path;
 
 	private boolean asVirtual;
 
-	private boolean doCrop;
-
 	private N5Reader n5;
 
 	private String dataset;
-	
-	private Interval initialCrop;
 	
 	private double[] initMin; 
 
@@ -55,22 +47,19 @@ public class LoadSingleDatasetDialog implements PlugIn
 
 	private boolean record;
 
-	public LoadSingleDatasetDialog()
+	public N5LoadSingleDatasetPlugin()
 	{
-		this( "", true, true, null, false );
+		this( "", true, null, false );
 	}
 
-	public LoadSingleDatasetDialog(
+	public N5LoadSingleDatasetPlugin(
 			final String initN5Path,
 			final boolean initVirtual,
-			final boolean crop,
 			final Interval initialCrop,
 			final boolean record )
 	{
 		this.n5Path = initN5Path;
 		this.asVirtual = initVirtual;
-		this.doCrop = crop;
-		this.initialCrop = initialCrop;
 		this.record = record;
 		
 		if( initialCrop != null )
@@ -107,22 +96,16 @@ public class LoadSingleDatasetDialog implements PlugIn
 		gd.addStringField( "N5 path", n5Path );
 		gd.addCheckbox( "Virtual", asVirtual );
 
-		if( doCrop )
-		{
-			gd.addMessage( " ");
-			gd.addMessage( "Crop parameters.");
-			gd.addMessage( "[0,Infinity] loads the whole volume.");
-			gd.addMessage( "Min:");
-			for( int i = 0; i < initMin.length; i++ )
-				gd.addNumericField( axisNames[ i ], initMin[ i ] );
+		gd.addMessage( " ");
+		gd.addMessage( "Crop parameters.");
+		gd.addMessage( "[0,Infinity] loads the whole volume.");
+		gd.addMessage( "Min:");
+		for( int i = 0; i < initMin.length; i++ )
+			gd.addNumericField( axisNames[ i ], initMin[ i ] );
 
-			gd.addMessage( "Max:");
-			for( int i = 0; i < initMin.length; i++ )
-				gd.addNumericField( axisNames[ i ], initMax[ i ] );
-		}
-
-//		TextField tf = (TextField)this.stringField.get( 0 );
-//		tf.setEditable( editable );
+		gd.addMessage( "Max:");
+		for( int i = 0; i < initMin.length; i++ )
+			gd.addNumericField( axisNames[ i ], initMax[ i ] );
 
 		gd.showDialog();
 		if ( gd.wasCanceled() )
@@ -132,36 +115,34 @@ public class LoadSingleDatasetDialog implements PlugIn
 		asVirtual = gd.getNextBoolean();
 		
 		Interval subset = null;
-		if( doCrop )
+
+		// we dont know ahead of time the dimensionality
+		long[] cropMin = new long[ numDimensions ];
+		long[] cropMax = new long[ numDimensions ];
+
+		for( int i = 0; i < numDimensions; i++ )
+			cropMin[ i ] = Math.max( 0, (long)Math.floor( gd.getNextNumber()));
+
+		boolean setInterval = true;
+		for( int i = 0; i < numDimensions; i++ )
 		{
-			// we dont know ahead of time the dimensionality
-			long[] cropMin = new long[ numDimensions ];
-			long[] cropMax = new long[ numDimensions ];
-
-			for( int i = 0; i < numDimensions; i++ )
-				cropMin[ i ] = Math.max( 0, (long)Math.floor( gd.getNextNumber()));
-
-			boolean setInterval = true;
-			for( int i = 0; i < numDimensions; i++ )
+			double num = gd.getNextNumber();
+			if( Double.isInfinite( num ))
 			{
-				double num = gd.getNextNumber();
-				if( Double.isInfinite( num ))
-				{
-					subset = null;
-					setInterval = false;
-					break;
-				}
+				subset = null;
+				setInterval = false;
+				break;
+			}
 
-				cropMax[ i ] = (long)Math.ceil( num );
-				if( cropMax[ i ] < cropMin[ i ])
-				{
-					IJ.error( "Crop max must be greater than or equal to min" );
-					return;
-				}
+			cropMax[ i ] = (long)Math.ceil( num );
+			if( cropMax[ i ] < cropMin[ i ])
+			{
+				IJ.error( "Crop max must be greater than or equal to min" );
+				return;
+			}
 			}
 			if( setInterval )
 				subset = new FinalInterval( cropMin, cropMax );
-		}
 
 		n5 = new N5ViewerReaderFun().apply( n5Path );
 		dataset = new N5BasePathFun().apply( n5Path ) ;
@@ -188,7 +169,7 @@ public class LoadSingleDatasetDialog implements PlugIn
 		if( !record )
 			return;
 
-		Recorder.setCommand( "N5single" );
+		Recorder.setCommand( COMMAND_NAME );
 		Recorder.recordOption( "n5", n5RootAndDataset );
 
 		if( virtual )
@@ -196,6 +177,7 @@ public class LoadSingleDatasetDialog implements PlugIn
 
 		if( cropInterval != null )
 		{
+			System.out.println( "record crop" );
 			for( int i = 0; i < cropInterval.numDimensions(); i++ )
 			{
 				Recorder.recordOption( axisNames[i],  Long.toString( cropInterval.min( i )));
@@ -225,16 +207,7 @@ public class LoadSingleDatasetDialog implements PlugIn
 		}
 
 		String virtualString = virtual ? "virtual" : "";
-
 		return String.format( "n5=%s %s %s", n5RootAndDataset, virtualString, cropString );
-	}
-
-	public static void main( String[] args )
-	{
-		new ImageJ();
-
-//		new LoadSingleDatasetDialog().run( "" );
-		new LoadSingleDatasetDialog( "hi", true, true, new FinalInterval(5,6,7,8), false ).run( "" );
 	}
 
 }
