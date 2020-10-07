@@ -2,7 +2,9 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -11,7 +13,7 @@ import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
@@ -29,17 +31,16 @@ import org.janelia.saalfeldlab.n5.metadata.N5ViewerSingleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
-import org.janelia.saalfeldlab.n5.ui.N5LoadSingleDatasetPlugin;
-import org.scijava.log.LogService;
 
 import ij.IJ;
 import ij.ImagePlus;
+import ij.Macro;
+import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.exception.ImgLibException;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
@@ -50,6 +51,11 @@ import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn
 {
+	private static final String[] axisNames = new String[] { "x", "y", "z", "c", "t" };
+
+	public static final String n5PathKey = "n5";
+	public static final String COMMAND_NAME = "N5";
+
 	public static final String BDV_OPTION = "BigDataViewer";
 	public static final String IP_OPTION = "ImagePlus";
 
@@ -75,7 +81,9 @@ public class N5Importer implements PlugIn
 
 	private Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes;
 
-	private Interval subset;
+	private ImageplusMetadata< ? > impMeta;
+
+	private Interval cropInterval;
 
 	private boolean asVirtual;
 
@@ -107,37 +115,168 @@ public class N5Importer implements PlugIn
 	@Override
     public void run( String args )
 	{
-		selectionDialog = new DatasetSelectorDialog(
-				new N5ViewerReaderFun(), 
-				x -> "",
-				null, // no group parsers
-				PARSERS );
-		selectionDialog.setVirtualOption( true );
-		selectionDialog.setCropOption( true );
-		selectionDialog.run(
-				selection -> {
-					this.selection = selection;
-					this.n5 = selection.n5;
-					this.asVirtual = selectionDialog.isVirtual();
-					this.cropOption = selectionDialog.getCropOption();
-					try { process(); }
-					catch ( Exception e ) { e.printStackTrace(); }
-				});
+		String options = Macro.getOptions();
+		boolean isMacro = ( options != null && !options.isEmpty() );
+		boolean isCrop = ( args != null && !args.isEmpty() );
+
+		if ( !isMacro && !isCrop )
+		{
+			// the fancy selector dialog
+			selectionDialog = new DatasetSelectorDialog(
+					new N5ViewerReaderFun(), 
+					x -> "",
+					null, // no group parsers
+					PARSERS );
+			selectionDialog.setVirtualOption( true );
+			selectionDialog.setCropOption( true );
+			selectionDialog.run( this::datasetSelectorCallBack );
+		}
+		else
+		{
+			// the simple dialog
+			int numDimensions = 3; // TODO fix
+
+			String n5Path = Macro.getValue( args, n5PathKey, "" );
+			boolean dialogAsVirtual = args.contains( " virtual" );
+
+			final GenericDialog gd = new GenericDialog( "Import N5" );
+			gd.addStringField( "N5 path", n5Path );
+			gd.addCheckbox( "Virtual", dialogAsVirtual );
+
+			gd.addMessage( " ");
+			gd.addMessage( "Crop parameters.");
+			gd.addMessage( "[0,Infinity] loads the whole volume.");
+			gd.addMessage( "Min:");
+			for( int i = 0; i < numDimensions; i++ )
+				gd.addNumericField( axisNames[ i ], 0 );
+
+			gd.addMessage( "Max:");
+			for( int i = 0; i < numDimensions; i++ )
+				gd.addNumericField( axisNames[ i ], Double.POSITIVE_INFINITY );
+
+			gd.showDialog();
+			if ( gd.wasCanceled() )
+				return;
+
+			n5Path = gd.getNextString();
+			boolean openAsVirtual = gd.getNextBoolean();
+
+			// we don't know ahead of time the dimensionality
+			long[] cropMin = new long[ numDimensions ];
+			long[] cropMax = new long[ numDimensions ];
+
+			for( int i = 0; i < numDimensions; i++ )
+				cropMin[ i ] = Math.max( 0, (long)Math.floor( gd.getNextNumber()));
+
+			boolean setInterval = true;
+
+			// TODO this needs fixing,
+			// what if only one dimension is inf for max - cropping could still be needed
+			Interval thisDatasetCropInterval = null;
+			for( int i = 0; i < numDimensions; i++ )
+			{
+				double num = gd.getNextNumber();
+				if( Double.isInfinite( num ))
+				{
+					thisDatasetCropInterval = null;
+					setInterval = false;
+					break;
+				}
+
+				cropMax[ i ] = (long)Math.ceil( num );
+				if( cropMax[ i ] < cropMin[ i ])
+				{
+					IJ.error( "Crop max must be greater than or equal to min" );
+					return;
+				}
+			}
+
+			if( setInterval )
+				thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
+
+			N5Reader n5ForThisDataset  = new N5ViewerReaderFun().apply( n5Path );
+			N5Metadata meta;
+			try
+			{
+				meta = new N5DatasetDiscoverer( null, PARSERS ).parse( n5ForThisDataset, "" ).getMetadata();
+				process( n5ForThisDataset, n5Path, Collections.singletonList( meta ), openAsVirtual, thisDatasetCropInterval,
+						impMetaWriterTypes );
+			}
+			catch ( IOException e )
+			{
+				e.printStackTrace();
+			}
+		}
 	}
 
+	private void datasetSelectorCallBack( final DataSelection selection )
+	{
+		Recorder.record = record;
+		this.selection = selection;
+		this.n5 = selection.n5;
+		this.asVirtual = selectionDialog.isVirtual();
+		this.cropOption = selectionDialog.getCropOption();
+
+		if( cropOption )
+			processWithCrops();
+		else
+			processThread();
+	}
+
+	public static String generateAndStoreOptions( final String n5RootAndDataset, final boolean virtual, final Interval cropInterval )
+	{
+		Recorder.resetCommandOptions();
+		Recorder.recordOption( "n5", n5RootAndDataset );
+
+		if( virtual )
+			Recorder.recordOption( "virtual" );
+
+		if( cropInterval != null )
+		{
+			for( int i = 0; i < cropInterval.numDimensions(); i++ )
+			{
+				Recorder.recordOption( axisNames[i],  Long.toString( cropInterval.min( i )));
+				Recorder.recordOption( axisNames[i] + "_0",  Long.toString( cropInterval.max( i )));
+			}
+		}
+		return Recorder.getCommandOptions();
+	}
+
+	public static void record( final String n5RootAndDataset, final boolean virtual, final Interval cropInterval )
+	{
+		if ( !Recorder.record )
+			return;
+
+		Recorder.setCommand( COMMAND_NAME );
+		generateAndStoreOptions( n5RootAndDataset, virtual, cropInterval );
+
+		Recorder.saveCommand();
+	}
+
+	/**
+	 * Read a single N5 dataset into a ImagePlus and show it
+	 * 
+	 * @param n5 the n5Reader
+	 * @param datasetMeta datasetMetadata containing the path
+	 * @param cropInterval 
+	 * @param asVirtual
+	 * @param ipMeta
+	 * @return
+	 * @throws IOException
+	 */
 	@SuppressWarnings( "unchecked" )
 	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read( 
 			final N5Reader n5, 
-			final N5Metadata datasetMeta, final Interval subset, final boolean asVirtual,
+			final N5Metadata datasetMeta, final Interval cropInterval, final boolean asVirtual,
 			final ImageplusMetadata<M> ipMeta ) throws IOException
 	{
 		String d = datasetMeta.getPath();
 		RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
 
 		RandomAccessibleInterval<T> img;
-		if( subset != null )
+		if( cropInterval != null )
 		{
-			img = Views.interval( imgRaw, subset );
+			img = Views.interval( imgRaw, cropInterval );
 		}
 		else
 			img = imgRaw;
@@ -168,52 +307,85 @@ public class N5Importer implements PlugIn
 		return imp;
 	}
 
-	public <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > void process() 
+	/**
+	 * Read one or more N5 dataset into ImagePlus object(s),
+	 * first prompting the user to specify crop parameters.
+	 */
+	public void processWithCrops()
 	{
-		Recorder.record = record;
+		asVirtual = selectionDialog.isVirtual();
+		final String rootPath = selectionDialog.getN5RootPath();
+		for ( N5Metadata datasetMeta : selection.metadata )
+		{
+			// Macro.getOptions() does not return what I'd expect after this call.  why?
+			// Macro.setOptions( String.format( "n5=%s", datasetMeta.getPath() ));
+
+			final String datasetPath = datasetMeta.getPath();
+			final String pathToN5Dataset = datasetPath.isEmpty() ? rootPath : rootPath + File.separator + datasetPath;
+			this.run( generateAndStoreOptions( pathToN5Dataset, asVirtual, null ));
+		}
+	}
+
+	/**
+	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
+	 * Parameters are stored in this object. 
+	 */
+	public static void process( final N5Reader n5, 
+			final String rootPath,
+			final List< N5Metadata> datasetMetadataList,
+			final boolean asVirtual,
+			final Interval cropInterval,
+			final Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes ) 
+	{
+		for ( N5Metadata datasetMeta : datasetMetadataList )
+		{
+			String d = datasetMeta.getPath();
+			String pathToN5Dataset = d.isEmpty() ? rootPath : rootPath + File.separator + d;
+
+			ImageplusMetadata< ? > impMeta = impMetaWriterTypes.get( datasetMeta.getClass() );
+			ImagePlus imp;
+			try
+			{
+				imp = N5Importer.read( n5, datasetMeta, cropInterval, asVirtual, impMeta );
+				record( pathToN5Dataset, asVirtual, cropInterval );
+				imp.show();
+			}
+			catch ( IOException e )
+			{
+				IJ.error( "failed to read n5" );
+			}
+
+		}
+	}
+
+	/*
+	 * Convenience method to process using the current state of this object.
+	 * Can not be used directly when this plugin shows the crop dialog.
+	 */
+	public void process() 
+	{
+		process( n5, selectionDialog.getN5RootPath(), selection.metadata, asVirtual, cropInterval, impMetaWriterTypes );
+	}
+
+	public void processThread() 
+	{
 		loaderThread = new Thread()
 		{
 			public void run()
 			{
-				for ( N5Metadata datasetMeta : selection.metadata )
-				{
-					String d = datasetMeta.getPath();
-					String pathToN5Dataset = selectionDialog.getN5RootPath() + File.separator + d;
-
-					if( cropOption )
-					{
-						new N5LoadSingleDatasetPlugin( pathToN5Dataset, asVirtual, null, record ).run( "" );
-					}
-					else
-					{
-						ImageplusMetadata< ? > impMeta = impMetaWriterTypes.get( datasetMeta.getClass() );
-						ImagePlus imp;
-						try
-						{
-							imp = N5Importer.read( n5, datasetMeta, subset, asVirtual, impMeta );
-							imp.show();
-							N5LoadSingleDatasetPlugin.record( record, pathToN5Dataset, asVirtual, null );
-						}
-						catch ( IOException e )
-						{
-							IJ.error( "failed to read n5" );
-						}
-					}
-
-				}
+				process();
 			}
 		};
 		loaderThread.run();
-		Recorder.record = record;
 	}
 
-	public static Interval containingBlockAlignedInterval(
-			final N5Reader n5, 
-			final String dataset, 
-			final Interval interval ) throws IOException
-	{
-		return containingBlockAlignedInterval( n5, dataset, interval, null );
-	}
+//	public static Interval containingBlockAlignedInterval(
+//			final N5Reader n5, 
+//			final String dataset, 
+//			final Interval interval ) throws IOException
+//	{
+//		return containingBlockAlignedInterval( n5, dataset, interval );
+//	}
 
 	/**
 	 * Returns the smallest {@link Interval} that contains the input interval
@@ -225,41 +397,40 @@ public class N5Importer implements PlugIn
 	 * @return the smallest containing interval
 	 * @throws IOException 
 	 */
-	public static Interval containingBlockAlignedInterval(
-			final N5Reader n5, 
-			final String dataset, 
-			final Interval interval,
-			final LogService log ) throws IOException
-	{
-		// TODO move to N5Utils?
-		if ( !n5.datasetExists( dataset ) )
-		{
-			if( log != null )
-				log.error( "no dataset" );
-
-			return null;
-		}
-
-		DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
-		int nd = attrs.getNumDimensions();
-		int[] blockSize = attrs.getBlockSize();
-		long[] dims = attrs.getDimensions();
-
-		long[] min = new long[ nd ];
-		long[] max = new long[ nd ];
-		for( int d = 0; d < nd; d++ )
-		{
-			// check that interval aligns with blocks
-			min[ d ] = interval.min( d )- (interval.min( d ) % blockSize[ d ]);
-			max[ d ] = interval.max( d )  + ((interval.max( d )  + blockSize[ d ] - 1 ) % blockSize[ d ]);
-
-			// check that interval is contained in the dataset dimensions
-			min[ d ] = Math.max( 0, interval.min( d ) );
-			max[ d ] = Math.min( dims[ d ] - 1, interval.max( d ) );
-		}
-
-		return new FinalInterval( min, max );
-	}
+//	public static Interval containingBlockAlignedInterval(
+//			final N5Reader n5, 
+//			final String dataset, 
+//			final Interval interval) throws IOException
+//	{
+//		// TODO move to N5Utils?
+//		if ( !n5.datasetExists( dataset ) )
+//		{
+////			if( log != null )
+////				log.error( "no dataset" );
+//
+//			return null;
+//		}
+//
+//		DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
+//		int nd = attrs.getNumDimensions();
+//		int[] blockSize = attrs.getBlockSize();
+//		long[] dims = attrs.getDimensions();
+//
+//		long[] min = new long[ nd ];
+//		long[] max = new long[ nd ];
+//		for( int d = 0; d < nd; d++ )
+//		{
+//			// check that interval aligns with blocks
+//			min[ d ] = interval.min( d )- (interval.min( d ) % blockSize[ d ]);
+//			max[ d ] = interval.max( d )  + ((interval.max( d )  + blockSize[ d ] - 1 ) % blockSize[ d ]);
+//
+//			// check that interval is contained in the dataset dimensions
+//			min[ d ] = Math.max( 0, interval.min( d ) );
+//			max[ d ] = Math.min( dims[ d ] - 1, interval.max( d ) );
+//		}
+//
+//		return new FinalInterval( min, max );
+//	}
 
 	public static class N5ViewerReaderFun implements Function< String, N5Reader >
 	{
@@ -280,12 +451,6 @@ public class N5Importer implements PlugIn
 			}
 
 			String n5BasePath = n5Path;
-//			if( type == DataAccessType.FILESYSTEM )
-//			{
-//				if( n5Path.contains( ".n5" ))
-//					n5BasePath = n5Path.substring( 0, 3 + n5Path.indexOf( ".n5" ));
-//			}
-
 			n5 = null;
 			try
 			{
