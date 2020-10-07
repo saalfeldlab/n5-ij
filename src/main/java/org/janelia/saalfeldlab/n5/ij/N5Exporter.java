@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.GzipCompression;
@@ -27,7 +29,6 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
-import org.janelia.saalfeldlab.n5.metadata.N5ViewerSingleMetadataParser;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
 import org.scijava.command.Command;
@@ -58,20 +59,20 @@ public class N5Exporter implements Command, WindowListener
 	@Parameter
 	private LogService log;
 
-	@Parameter
-	private ImagePlus image; // or use Dataset?
+	@Parameter( label = "Image" )
+	private ImagePlus image; // or use Dataset? - maybe later
 	
-    @Parameter( label = "n5 root")
+    @Parameter( label = "N5 root")
     private String n5RootLocation;
 
-    @Parameter( label = "dataset", required = false, 
+    @Parameter( label = "Dataset", required = false, 
     		description = "This argument is ignored if the N5ViewerMetadata style is selected" )
     private String n5Dataset;
 
-    @Parameter( label = "block size")
+    @Parameter( label = "Block size")
     private String blockSizeArg;
 
-    @Parameter( label = "compresstion",
+    @Parameter( label = "Compresstion",
     		choices={GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION},
     		style="listBox" )
     private String compressionArg = GZIP_COMPRESSION;
@@ -83,6 +84,9 @@ public class N5Exporter implements Command, WindowListener
     					N5Importer.MetadataImageJKey,
     					N5Importer.MetadataCustomKey } )
     private String metadataStyle = N5Importer.MetadataN5ViewerKey;
+
+    @Parameter( label = "Thread count", required = false, min="1", max="64" )
+    private int nThreads = 1;
 
     private int[] blockSize;
 
@@ -140,7 +144,7 @@ public class N5Exporter implements Command, WindowListener
 	}
 
 	@SuppressWarnings( "unchecked" )
-	public < T extends RealType< T > & NativeType< T >, M extends N5Metadata > void process() throws IOException, DataAccessException
+	public < T extends RealType< T > & NativeType< T >, M extends N5Metadata > void process() throws IOException, DataAccessException, InterruptedException, ExecutionException
 	{
 		N5Writer n5 = getWriter();
 		Compression compression = getCompression();
@@ -176,7 +180,7 @@ public class N5Exporter implements Command, WindowListener
 				datasetString = n5Dataset;
 			}
 
-			N5Utils.save( channelImg , n5, datasetString, blockSize, compression );
+			N5Utils.save( channelImg , n5, datasetString, blockSize, compression, Executors.newFixedThreadPool( nThreads ));
 
 			try
 			{
@@ -210,6 +214,14 @@ public class N5Exporter implements Command, WindowListener
 				e.printStackTrace();
 			}
 			catch ( DataAccessException e )
+			{
+				e.printStackTrace();
+			}
+			catch ( InterruptedException e )
+			{
+				e.printStackTrace();
+			}
+			catch ( ExecutionException e )
 			{
 				e.printStackTrace();
 			}
@@ -265,6 +277,14 @@ public class N5Exporter implements Command, WindowListener
 			e1.printStackTrace();
 		}
 		catch ( DataAccessException e1 )
+		{
+			e1.printStackTrace();
+		}
+		catch ( InterruptedException e1 )
+		{
+			e1.printStackTrace();
+		}
+		catch ( ExecutionException e1 )
 		{
 			e1.printStackTrace();
 		}
