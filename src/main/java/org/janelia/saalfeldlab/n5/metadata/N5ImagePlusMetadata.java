@@ -170,7 +170,11 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 
 		AffineTransform3D xfm = new AffineTransform3D();
 		N5ImagePlusMetadata t = new N5ImagePlusMetadata( "", xfm );
-		t.name = ip.getTitle();
+
+		if( ip.getTitle() == null )
+			t.name = "ImagePlus";
+		else
+			t.name = ip.getTitle();
 
 		t.fps = cal.fps;
 		t.frameInterval = cal.frameInterval;
@@ -242,26 +246,26 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 			throw new Exception( "Can't write into " + dataset + ".  Must be dataset." );
 		}
 
-		n5.setAttribute( dataset, titleKey, name );
+		n5.setAttribute( dataset, titleKey, t.name );
 
-		n5.setAttribute( dataset, fpsKey, fps );
-		n5.setAttribute( dataset, frameIntervalKey, frameInterval );
-		n5.setAttribute( dataset, pixelWidthKey, pixelWidth );
-		n5.setAttribute( dataset, pixelHeightKey, pixelHeight );
-		n5.setAttribute( dataset, pixelDepthKey, pixelDepth );
-		n5.setAttribute( dataset, pixelUnitKey, unit );
+		n5.setAttribute( dataset, fpsKey, t.fps );
+		n5.setAttribute( dataset, frameIntervalKey, t.frameInterval );
+		n5.setAttribute( dataset, pixelWidthKey, t.pixelWidth );
+		n5.setAttribute( dataset, pixelHeightKey, t.pixelHeight );
+		n5.setAttribute( dataset, pixelDepthKey, t.pixelDepth );
+		n5.setAttribute( dataset, pixelUnitKey, t.unit );
 
-		n5.setAttribute( dataset, xOriginKey, xOrigin );
-		n5.setAttribute( dataset, yOriginKey, yOrigin );
-		n5.setAttribute( dataset, zOriginKey, zOrigin );
+		n5.setAttribute( dataset, xOriginKey, t.xOrigin );
+		n5.setAttribute( dataset, yOriginKey, t.yOrigin );
+		n5.setAttribute( dataset, zOriginKey, t.zOrigin );
 
-		if ( properties != null )
+		if ( t.properties != null )
 		{
-			for ( Object k : properties.keySet() )
+			for ( Object k : t.properties.keySet() )
 			{
 				try
 				{
-					n5.setAttribute( dataset, k.toString(), properties.get( k ).toString() );
+					n5.setAttribute( dataset, k.toString(), t.properties.get( k ).toString() );
 				}
 				catch ( Exception e )
 				{}
