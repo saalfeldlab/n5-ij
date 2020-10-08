@@ -33,8 +33,29 @@ public enum DataAccessType
 	public static DataAccessType detectType( final String link )
 	{
 		// check if it is a valid directory path
-		if ( new File( link ).isDirectory() )
-			return FILESYSTEM;
+		File f = new File( link );
+		if ( f.isDirectory() )
+		{
+			if ( link.endsWith( "n5" ) )
+				return FILESYSTEM;
+			else if ( link.endsWith( "zarr" ) )
+				return ZARR;
+			else if ( new File( f, "attributes.json" ).exists() )
+				return FILESYSTEM;
+			else if ( 	new File( f, ".zarray" ).exists() || 
+						new File( f, ".zgroups" ).exists() ||
+						new File( f, ".zattrs" ).exists() )
+			{
+				return ZARR;
+			}
+//			else
+//				search parent folders?	
+		}
+
+		if ( f.isFile() &&
+			 ( link.endsWith( "h5" ) || link.endsWith( "hdf5" ) || link.endsWith( "hdf" ) ) ){
+			return HDF5;
+		}
 
 		final URI uri;
 		try

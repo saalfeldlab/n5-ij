@@ -70,7 +70,7 @@ public class N5Importer implements PlugIn
 					new N5ImagePlusMetadata( "" ),
 					new N5CosemMetadata( "", null, null ),
 					new N5ViewerSingleMetadataParser(),
-					new DefaultMetadata( "", 1 )
+					new DefaultMetadata( "", -1 )
 				};
 
     private N5Reader n5;

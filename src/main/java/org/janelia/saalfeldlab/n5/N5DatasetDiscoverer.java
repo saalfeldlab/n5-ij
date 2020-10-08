@@ -126,8 +126,10 @@ public class N5DatasetDiscoverer {
         // Create a single-scale metadata entry with an identity transform.
         if (node.getMetadata() == null && node.isDataset())
         {
-        	System.out.println( "Warning: using default metadata for " + node.path );
-			node.setMetadata( new DefaultMetadata( node.path, 3 ) ); // TODO fix
+			System.out.println( "Warning: using default metadata for " + node.path );
+			// could be made more efficient if metadata store dataset attributes?
+			int nd = n5.getDatasetAttributes( node.path ).getNumDimensions();
+			node.setMetadata( new DefaultMetadata( node.path, nd ) );
         }
 		else if ( groupParsers != null )
 		{

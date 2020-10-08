@@ -32,8 +32,14 @@ public class DefaultMetadata implements N5Metadata,
 	public DefaultMetadata( final String path, final int nd )
 	{
 		this.path = path;
-		voxDims = new FinalVoxelDimensions( "pixel", 
-			DoubleStream.iterate( 1, x -> x ).limit( nd ).toArray());
+		if( nd > 0 )
+		{
+			voxDims = new FinalVoxelDimensions( "pixel", 
+				DoubleStream.iterate( 1, x -> x ).limit( nd ).toArray());
+		}
+		else
+			voxDims = null;
+
 
 		keysToTypes = new HashMap<>();
 		keysToTypes.put( dimensionsKey, long[].class ); // n5 datasets need this

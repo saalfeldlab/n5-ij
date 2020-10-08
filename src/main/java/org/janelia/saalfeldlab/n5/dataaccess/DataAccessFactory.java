@@ -20,10 +20,6 @@ import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.internal.StaticCredentialsProvider;
-import com.amazonaws.regions.Region;
-import com.amazonaws.regions.RegionUtils;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
@@ -43,13 +39,13 @@ import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.dataaccess.googlecloud.GoogleCloudClientBuilderWithDefaultCredentials;
-import org.janelia.saalfeldlab.n5.dataaccess.s3.AmazonS3ClientBuilderWithDefaultCredentials;
-import org.janelia.saalfeldlab.n5.dataaccess.s3.AmazonS3ClientBuilderWithDefaultRegion;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageReader;
 import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageWriter;
+import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
 import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Reader;
 import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Writer;
+import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,6 +70,14 @@ public class DataAccessFactory
 		switch ( type )
 		{
 		case FILESYSTEM:
+			s3 = null;
+			googleCloudStorage = null;
+			break;
+		case ZARR:
+			s3 = null;
+			googleCloudStorage = null;
+			break;
+		case HDF5:
 			s3 = null;
 			googleCloudStorage = null;
 			break;
@@ -154,6 +158,10 @@ public class DataAccessFactory
 		{
 		case FILESYSTEM:
 			return new N5FSReader( basePath, gsonBuilder );
+		case ZARR:
+			return new N5ZarrReader( basePath, gsonBuilder );
+		case HDF5:
+			return new N5HDF5Reader( basePath, 64, 64, 64 );
 		case AMAZON_S3:
 			final AmazonS3URI s3Uri = new AmazonS3URI( basePath );
 			return new N5AmazonS3Reader( s3, s3Uri.getBucket(), s3Uri.getKey(), gsonBuilder );
