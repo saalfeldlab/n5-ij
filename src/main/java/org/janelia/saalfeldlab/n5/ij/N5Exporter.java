@@ -55,6 +55,8 @@ public class N5Exporter implements Command, WindowListener
 	public static final String XZ_COMPRESSION = "xz";
 	public static final String BLOSC_COMPRESSION = "blosc";
 
+	public static final String NONE = "None";
+
     @Parameter(visibility=ItemVisibility.MESSAGE, required=false)
     private String message = "Export an ImagePlus to an N5 container.";
 
@@ -92,7 +94,8 @@ public class N5Exporter implements Command, WindowListener
     		choices={ 	N5Importer.MetadataN5ViewerKey, 
     					N5Importer.MetadataN5CosemKey,
     					N5Importer.MetadataImageJKey,
-    					N5Importer.MetadataCustomKey } )
+    					N5Importer.MetadataCustomKey,
+    					NONE } )
     private String metadataStyle = N5Importer.MetadataN5ViewerKey;
 
     @Parameter( label = "Thread count", required = false, min="1", max="64" )
@@ -177,7 +180,7 @@ public class N5Exporter implements Command, WindowListener
 		else if ( rootPath.endsWith( "h5" ) || rootPath.endsWith( "hdf5" ) || rootPath.endsWith( "hdf" ))
 		{
 			System.out.println( "h5" );
-			return DataAccessType.ZARR;
+			return DataAccessType.HDF5;
 		}
 		else
 			return null;
@@ -202,8 +205,13 @@ public class N5Exporter implements Command, WindowListener
 		blockSize = Arrays.stream( blockSizeArg.split( "," )).mapToInt( x -> Integer.parseInt( x ) ).toArray();
 
 		Img<T> img = ImageJFunctions.wrap( image );
-		N5MetadataWriter<M> writer = ( N5MetadataWriter< M > ) styles.get( metadataStyle );
-		impMeta = impMetaWriterTypes.get( writer.getClass() );
+
+		N5MetadataWriter<M> writer = null;
+		if( !metadataStyle.equals( NONE ))
+		{
+			writer = ( N5MetadataWriter< M > ) styles.get( metadataStyle );
+			impMeta = impMetaWriterTypes.get( writer.getClass() );
+		}
 
 		String datasetString = "";
 		for( int c = 0; c < image.getNChannels(); c++ )
@@ -231,16 +239,22 @@ public class N5Exporter implements Command, WindowListener
 				datasetString = n5Dataset;
 			}
 
-			N5Utils.save( channelImg , n5, datasetString, blockSize, compression, Executors.newFixedThreadPool( nThreads ));
+			if( nThreads > 1 )
+				N5Utils.save( channelImg , n5, datasetString, blockSize, compression, Executors.newFixedThreadPool( nThreads ));
+			else 
+				N5Utils.save( channelImg , n5, datasetString, blockSize, compression );
 
-			try
+			if( !metadataStyle.equals( NONE ))
 			{
-				M meta = ( M ) impMeta.readMetadata( image );
-				writer.writeMetadata( meta, n5, datasetString );
-			}
-			catch ( Exception e )
-			{
-				e.printStackTrace();
+				try
+				{
+					M meta = ( M ) impMeta.readMetadata( image );
+					writer.writeMetadata( meta, n5, datasetString );
+				}
+				catch ( Exception e )
+				{
+					e.printStackTrace();
+				}
 			}
 		}
 	}
