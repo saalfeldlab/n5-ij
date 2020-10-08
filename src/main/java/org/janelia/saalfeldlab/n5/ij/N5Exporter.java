@@ -15,6 +15,7 @@ import org.janelia.saalfeldlab.n5.Lz4Compression;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
+import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
@@ -31,6 +32,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
+import org.scijava.app.StatusService;
 import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
@@ -59,6 +61,9 @@ public class N5Exporter implements Command, WindowListener
 	@Parameter
 	private LogService log;
 
+	@Parameter
+	private StatusService status;
+
 	@Parameter( label = "Image" )
 	private ImagePlus image; // or use Dataset? - maybe later
 	
@@ -73,9 +78,14 @@ public class N5Exporter implements Command, WindowListener
     private String blockSizeArg;
 
     @Parameter( label = "Compresstion",
-    		choices={GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION},
+    		choices={GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION},
     		style="listBox" )
     private String compressionArg = GZIP_COMPRESSION;
+    
+    @Parameter( label = "Type",
+    			choices = { "Auto", "N5", "Zarr", "HDF5" },
+    			style="listBox" )
+    private String containerType = "Auto";
 
     @Parameter( label="metadata type", 
     		description = "The style for metadata to be stored in the exported N5.",
@@ -89,6 +99,8 @@ public class N5Exporter implements Command, WindowListener
     private int nThreads = 1;
 
     private int[] blockSize;
+
+    private DataAccessType dataType;
 
 	private Map<String, N5MetadataWriter<?>> styles;
 
@@ -130,6 +142,45 @@ public class N5Exporter implements Command, WindowListener
 		this.blockSizeArg = blockSizeArg;
 		this.metadataStyle = metadataStyle;
 		this.compressionArg = compression;
+		setType( type );
+	}
+
+	public void setType( final String type )
+	{
+		try
+		{
+			dataType = DataAccessType.valueOf( type.toUpperCase() );
+		}
+		catch ( IllegalArgumentException e )
+		{
+			if( type.equals( "N5" ))
+				dataType = DataAccessType.FILESYSTEM;
+			else
+				dataType = null;
+		}
+	}
+
+	public DataAccessType detectType( final String rootPath )
+	{
+		System.out.println( "exporter detect type: " );
+		System.out.println( "rootpath: " + rootPath );
+		if( rootPath.endsWith( "n5" ) )
+		{
+			System.out.println( "FS" );
+			return DataAccessType.FILESYSTEM;
+		}
+		else if ( rootPath.endsWith( "zarr" ))
+		{
+			System.out.println( "Zar" );
+			return DataAccessType.ZARR;
+		}
+		else if ( rootPath.endsWith( "h5" ) || rootPath.endsWith( "hdf5" ) || rootPath.endsWith( "hdf" ))
+		{
+			System.out.println( "h5" );
+			return DataAccessType.ZARR;
+		}
+		else
+			return null;
 	}
 
 	/**
@@ -240,6 +291,8 @@ public class N5Exporter implements Command, WindowListener
 			return new XzCompression();
 		case RAW_COMPRESSION:
 			return new RawCompression();
+		case BLOSC_COMPRESSION:
+			return new BloscCompression();
 		default:
 			return new RawCompression();
 		}
@@ -247,8 +300,15 @@ public class N5Exporter implements Command, WindowListener
 	
 	private N5Writer getWriter() throws IOException, DataAccessException
 	{
-		final DataAccessType type = DataAccessType.detectType( n5RootLocation );
-		return new DataAccessFactory( type, n5RootLocation ).createN5Writer( n5RootLocation );
+		if( containerType.equals( "Auto"))
+			dataType = detectType( n5RootLocation );
+		else
+			setType( containerType );
+
+		if( dataType == null )
+			status.warn( "Could not detect container type from location." );
+
+		return new DataAccessFactory( dataType, n5RootLocation ).createN5Writer( n5RootLocation );
 	}
 
 	@Override

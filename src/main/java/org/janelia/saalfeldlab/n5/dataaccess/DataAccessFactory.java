@@ -43,9 +43,11 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageReader;
 import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageWriter;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
+import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Reader;
 import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Writer;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
+import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -186,6 +188,10 @@ public class DataAccessFactory
 		{
 		case FILESYSTEM:
 			return new N5FSWriter( basePath, gsonBuilder );
+		case ZARR:
+			return new N5ZarrWriter( basePath, gsonBuilder );
+		case HDF5:
+			return new N5HDF5Writer( basePath, 64, 64, 64 );
 		case AMAZON_S3:
 			final AmazonS3URI s3Uri = new AmazonS3URI( basePath );
 			return new N5AmazonS3Writer( s3, s3Uri.getBucket(), s3Uri.getKey(), gsonBuilder );
