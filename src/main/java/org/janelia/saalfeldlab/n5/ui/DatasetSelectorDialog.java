@@ -37,7 +37,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -128,6 +127,7 @@ public class DatasetSelectorDialog
 			final N5MetadataParser< ? >... parsers )
 	{
 		this.n5 = n5;
+		this.pathFun = x -> "";
 		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
 	}
 
@@ -315,9 +315,10 @@ public class DatasetSelectorDialog
     {
         final JFileChooser fileChooser = new JFileChooser();
         /*
-         *  Need to allow files so h5 containers can be opened 
+         *  Need to allow files so h5 containers can be opened,
+         *  and directories so that filesystem n5's and zarrs can be opened.
          */
-        //fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fileChooser.setFileSelectionMode( JFileChooser.FILES_AND_DIRECTORIES );
 
         if (lastBrowsePath != null && !lastBrowsePath.isEmpty())
             fileChooser.setCurrentDirectory(new File(lastBrowsePath));
