@@ -308,7 +308,11 @@ public class DatasetSelectorDialog
     private String openBrowseDialog()
     {
         final JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        /*
+         *  Need to allow files so h5 containers can be opened 
+         */
+        //fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+
         if (lastBrowsePath != null && !lastBrowsePath.isEmpty())
             fileChooser.setCurrentDirectory(new File(lastBrowsePath));
         int ret = fileChooser.showOpenDialog(dialog);
