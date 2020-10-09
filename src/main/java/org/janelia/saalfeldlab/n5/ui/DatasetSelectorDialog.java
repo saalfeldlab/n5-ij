@@ -269,21 +269,27 @@ public class DatasetSelectorDialog
 		cbot.weighty = 0.1;
 		cbot.anchor = GridBagConstraints.CENTER;
 
-		JPanel virtPanel = new JPanel();
-		virtualBox = new JCheckBox();
-		JLabel virtLabel = scaleFont(new JLabel( "Open as virtual" ));
-		virtPanel.add( virtualBox );
-		virtPanel.add( virtLabel );
-		pane.add( virtPanel, cbot );
+		if( virtualOption )
+		{
+			JPanel virtPanel = new JPanel();
+			virtualBox = new JCheckBox();
+			JLabel virtLabel = scaleFont(new JLabel( "Open as virtual" ));
+			virtPanel.add( virtualBox );
+			virtPanel.add( virtLabel );
+			pane.add( virtPanel, cbot );
+		}
 
-		JPanel cropPanel = new JPanel();
-		cropBox = new JCheckBox();
-		JLabel cropLabel = scaleFont( new JLabel( "Crop" ));
-		cbot.gridx = 1;
-		cbot.anchor = GridBagConstraints.WEST;
-		cropPanel.add( cropBox );
-		cropPanel.add( cropLabel );
-		pane.add( cropPanel, cbot );
+		if( cropOption )
+		{
+			JPanel cropPanel = new JPanel();
+			cropBox = new JCheckBox();
+			JLabel cropLabel = scaleFont( new JLabel( "Crop" ));
+			cbot.gridx = 1;
+			cbot.anchor = GridBagConstraints.WEST;
+			cropPanel.add( cropBox );
+			cropPanel.add( cropLabel );
+			pane.add( cropPanel, cbot );
+		}
 
 		messageLabel = scaleFont( new JLabel(""));
 		messageLabel.setVisible( false );
