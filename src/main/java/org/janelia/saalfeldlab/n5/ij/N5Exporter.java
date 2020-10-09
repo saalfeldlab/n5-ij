@@ -204,8 +204,6 @@ public class N5Exporter implements Command, WindowListener
 		Compression compression = getCompression();
 		blockSize = Arrays.stream( blockSizeArg.split( "," )).mapToInt( x -> Integer.parseInt( x ) ).toArray();
 
-		Img<T> img = ImageJFunctions.wrap( image );
-
 		N5MetadataWriter<M> writer = null;
 		if( !metadataStyle.equals( NONE ))
 		{
@@ -213,12 +211,39 @@ public class N5Exporter implements Command, WindowListener
 			impMeta = impMetaWriterTypes.get( writer.getClass() );
 		}
 
+		if( metadataStyle.equals( NONE ) || metadataStyle.equals( N5Importer.MetadataImageJKey ))
+		{
+			write( n5, compression, writer );
+		}
+		else
+		{
+			writeSplitChannels( n5, compression, writer );
+		}
+	}
+
+	private < T extends RealType< T > & NativeType< T >,  M extends N5Metadata> void write( 
+			final N5Writer n5,
+			final Compression compression,
+			final N5MetadataWriter<M> writer ) throws IOException, InterruptedException, ExecutionException
+	{
+		N5IJUtils.save( image, n5, n5Dataset, blockSize, compression );
+		writeMetadata( n5, n5Dataset, writer );
+	}
+
+	private < T extends RealType< T > & NativeType< T >, M extends N5Metadata> void writeSplitChannels( 
+			final N5Writer n5,
+			final Compression compression, 
+			final N5MetadataWriter<M> writer ) 
+					throws IOException, InterruptedException, ExecutionException
+	{
+		Img<T> img = ImageJFunctions.wrap( image );
 		String datasetString = "";
 		for( int c = 0; c < image.getNChannels(); c++ )
 		{
-			RandomAccessibleInterval<T> channelImg;
+			RandomAccessibleInterval< T > channelImg;
 			if( img.numDimensions() >= 4 )
 			{
+				System.out.println( "hyperslice" );
 				channelImg = Views.hyperSlice( img, 2, c );
 			}
 			else
@@ -228,7 +253,7 @@ public class N5Exporter implements Command, WindowListener
 
 			if( metadataStyle.equals( N5Importer.MetadataN5ViewerKey ))
 			{
-				datasetString = String.format( "/c%d/s0", c );
+				datasetString = String.format( "%s/c%d/s0", n5Dataset, c );
 			}
 			else if( image.getNChannels() > 1 )
 			{
@@ -244,17 +269,26 @@ public class N5Exporter implements Command, WindowListener
 			else 
 				N5Utils.save( channelImg , n5, datasetString, blockSize, compression );
 
-			if( !metadataStyle.equals( NONE ))
+			writeMetadata( n5, datasetString, writer );
+		}
+	}
+
+	private < M extends N5Metadata> void writeMetadata(
+			final N5Writer n5,
+			final String datasetString,
+			final N5MetadataWriter<M> writer)
+	{
+		if ( writer != null )
+		{
+			try
 			{
-				try
-				{
-					M meta = ( M ) impMeta.readMetadata( image );
-					writer.writeMetadata( meta, n5, datasetString );
-				}
-				catch ( Exception e )
-				{
-					e.printStackTrace();
-				}
+				@SuppressWarnings( "unchecked" )
+				M meta = ( M ) impMeta.readMetadata( image );
+				writer.writeMetadata( meta, n5, datasetString );
+			}
+			catch ( Exception e )
+			{
+				e.printStackTrace();
 			}
 		}
 	}
