@@ -27,6 +27,7 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 
 import ij.ImagePlus;
@@ -73,7 +74,7 @@ public class N5IJUtils {
 	public static <T extends NativeType<T> & NumericType<T>, M extends N5Metadata > ImagePlus load(
 			final N5Reader n5,
 			final String dataset,
-			final M metadata,
+			final N5MetadataParser< M > metadataParser,
 			final ImageplusMetadata< M > writer ) throws IOException, ImgLibException {
 
 		final RandomAccessibleInterval<T> rai = N5Utils.open(n5, dataset);
@@ -111,9 +112,14 @@ public class N5IJUtils {
 			pair.getB().set(pair.getA());
 
 		ImagePlus imp = impImg.getImagePlus();
-		if( writer != null && metadata != null )
+		if( writer != null && metadataParser != null )
 		{
-			writer.writeMetadata( metadata, imp );
+			try
+			{
+				M metadata = metadataParser.parseMetadata( n5, dataset );
+				writer.writeMetadata( metadata, imp );
+			}
+			catch ( Exception e ) { System.err.println( "Warning: could not read metadata." );}
 		}
 
 		return imp;

@@ -165,8 +165,6 @@ public class N5Exporter implements Command, WindowListener
 
 	public DataAccessType detectType( final String rootPath )
 	{
-		System.out.println( "exporter detect type: " );
-		System.out.println( "rootpath: " + rootPath );
 		if( rootPath.endsWith( "n5" ) )
 		{
 			System.out.println( "FS" );
