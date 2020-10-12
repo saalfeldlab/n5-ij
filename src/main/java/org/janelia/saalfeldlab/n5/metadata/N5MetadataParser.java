@@ -66,9 +66,6 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 		map.put( "dataset", dataset ); // TODO doc this
 		for( String k : keys.keySet() )
 		{
-			if( !map.containsKey( k ))
-				return null;
-
 			try
 			{
 				map.put( k, n5.getAttribute( dataset, k, keys.get( k ) ) );

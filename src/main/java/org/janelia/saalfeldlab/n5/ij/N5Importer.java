@@ -2,6 +2,7 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -92,6 +93,8 @@ public class N5Importer implements PlugIn
 	private Thread loaderThread;
 
 	private boolean record;
+	
+	private ImagePlus lastResult;
 
 	public N5Importer()
 	{
@@ -124,7 +127,7 @@ public class N5Importer implements PlugIn
 			// the fancy selector dialog
 			selectionDialog = new DatasetSelectorDialog(
 					new N5ViewerReaderFun(), 
-					x -> "",
+					new N5BasePathFun(),
 					null, // no group parsers
 					PARSERS );
 			selectionDialog.setVirtualOption( true );
@@ -330,13 +333,14 @@ public class N5Importer implements PlugIn
 	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
 	 * Parameters are stored in this object. 
 	 */
-	public static void process( final N5Reader n5, 
+	public static List<ImagePlus> process( final N5Reader n5, 
 			final String rootPath,
 			final List< N5Metadata> datasetMetadataList,
 			final boolean asVirtual,
 			final Interval cropInterval,
 			final Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes ) 
 	{
+		ArrayList<ImagePlus> imgList = new ArrayList<>();
 		for ( N5Metadata datasetMeta : datasetMetadataList )
 		{
 			String d = datasetMeta.getPath();
@@ -348,14 +352,15 @@ public class N5Importer implements PlugIn
 			{
 				imp = N5Importer.read( n5, datasetMeta, cropInterval, asVirtual, impMeta );
 				record( pathToN5Dataset, asVirtual, cropInterval );
+				imgList.add( imp );
 				imp.show();
 			}
 			catch ( IOException e )
 			{
 				IJ.error( "failed to read n5" );
 			}
-
 		}
+		return imgList;
 	}
 
 	/*
@@ -365,6 +370,30 @@ public class N5Importer implements PlugIn
 	public void process() 
 	{
 		process( n5, selectionDialog.getN5RootPath(), selection.metadata, asVirtual, cropInterval, impMetaWriterTypes );
+	}
+
+	public List< ImagePlus > process( final String n5FullPath, final boolean asVirtual )
+	{
+		return process( n5FullPath, asVirtual, null );
+	}
+
+	public List<ImagePlus> process( final String n5FullPath, final boolean asVirtual, final Interval cropInterval )
+	{
+		n5 = new N5ViewerReaderFun().apply( n5FullPath );
+		String dataset = new N5BasePathFun().apply( n5FullPath );
+		N5Metadata metadata;
+		try
+		{
+			metadata = new N5DatasetDiscoverer( null, PARSERS ).parse( n5, dataset ).getMetadata();
+		}
+		catch ( IOException e )
+		{
+			System.err.println( "Could not parse metadata.");
+			return null;
+		}
+
+		return process( n5, dataset, Collections.singletonList( metadata ),
+				asVirtual, cropInterval, getImagePlusMetadataWriterMap() );
 	}
 
 	public void processThread() 
@@ -451,6 +480,9 @@ public class N5Importer implements PlugIn
 			}
 
 			String n5BasePath = n5Path;
+			if( type.equals( DataAccessType.HDF5 ))
+				n5BasePath = N5Importer.h5DatasetPath( n5Path, true );
+
 			n5 = null;
 			try
 			{
@@ -491,14 +523,44 @@ public class N5Importer implements PlugIn
 
 			switch ( type )
 			{
-			case FILESYSTEM:
-//				if( n5Path.contains( ".n5" ))
-//					return n5Path.substring( 3 + n5Path.indexOf( ".n5" ));
-				return "";
+			case HDF5:
+				return h5DatasetPath( n5Path );
+//			case FILESYSTEM:
+//				return "";
 			default:
 				return "";
 			}
 		}
+	}
+
+	public static String h5DatasetPath( final String h5PathAndDataset )
+	{
+		return h5DatasetPath( h5PathAndDataset, false );
+	}
+
+	public static String h5DatasetPath( final String h5PathAndDataset, boolean getFilePath )
+	{
+		int len = 3;
+		int i = h5PathAndDataset.lastIndexOf( ".h5" );
+
+		if( i < 0 )
+		{
+			i = h5PathAndDataset.lastIndexOf( ".hdf5" );
+			len =  5;
+		}
+
+		if( i < 0 )
+		{
+			i = h5PathAndDataset.lastIndexOf( ".hdf" );
+			len =  4;
+		}
+
+		if( i < 0 )
+			return "";
+		else if( getFilePath )
+			return h5PathAndDataset.substring( 0, i + len );
+		else
+			return h5PathAndDataset.substring( i + len );
 	}
 
 	/**

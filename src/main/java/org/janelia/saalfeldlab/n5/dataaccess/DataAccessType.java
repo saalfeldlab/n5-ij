@@ -18,6 +18,7 @@ package org.janelia.saalfeldlab.n5.dataaccess;
 
 import com.amazonaws.services.s3.AmazonS3URI;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
+import org.janelia.saalfeldlab.n5.ij.N5Importer;
 
 import java.io.File;
 import java.net.URI;
@@ -36,9 +37,9 @@ public enum DataAccessType
 		File f = new File( link );
 		if ( f.isDirectory() )
 		{
-			if ( link.endsWith( "n5" ) )
+			if ( link.contains( ".n5" ) )
 				return FILESYSTEM;
-			else if ( link.endsWith( "zarr" ) )
+			else if ( link.contains( ".zarr" ) )
 				return ZARR;
 			else if ( new File( f, "attributes.json" ).exists() )
 				return FILESYSTEM;
@@ -52,9 +53,10 @@ public enum DataAccessType
 //				search parent folders?	
 		}
 
-		if ( f.isFile() &&
-			 ( link.endsWith( "h5" ) || link.endsWith( "hdf5" ) || link.endsWith( "hdf" ) ) ){
-			return HDF5;
+		if ( link.contains( ".h5" ) || link.contains( ".hdf5" ) || link.contains( ".hdf" ) )
+		{
+			if( new File( N5Importer.h5DatasetPath( link, true )).exists() )
+				return HDF5;
 		}
 
 		final URI uri;

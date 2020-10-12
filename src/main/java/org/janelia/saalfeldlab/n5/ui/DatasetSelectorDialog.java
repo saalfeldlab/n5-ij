@@ -381,8 +381,7 @@ public class DatasetSelectorDialog
 		{
 			final String n5Path = getN5RootPath();
 			n5 = n5Fun.apply( n5Path );
-//			final String dataset = pathFun.apply( n5Path );
-			final String dataset = "";
+			final String dataset = pathFun.apply( n5Path );
 			N5TreeNode node = null;
 			try
 			{
