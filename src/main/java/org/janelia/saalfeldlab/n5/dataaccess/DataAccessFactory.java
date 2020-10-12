@@ -33,6 +33,7 @@ import ij.gui.GenericDialog;
 
 import org.apache.commons.lang.NotImplementedException;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudResourceManagerClient;
+import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageClient;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
@@ -116,18 +117,26 @@ public class DataAccessFactory
 			break;
 		case GOOGLE_CLOUD:
 			s3 = null;
-			googleCloudUri = new GoogleCloudStorageURI( path );
+//			googleCloudUri = new GoogleCloudStorageURI( path );
+//
+//			String project = googleCloudUri.getProject() ;
+//			if( project == null || project.isEmpty() )
+//			{
+//				project = googleCloudProjectDialog();
+//			}
+//
+//			if( project != null && !project.isEmpty() )
+//				googleCloudStorage = GoogleCloudClientBuilderWithDefaultCredentials.createStorage( project );
+//			else
+//				googleCloudStorage = GoogleCloudClientBuilderWithDefaultCredentials.createStorage();
 
-			String project = googleCloudUri.getProject() ;
-			if( project == null || project.isEmpty() )
-			{
-				project = googleCloudProjectDialog();
-			}
+			System.out.println( "new gcloud loader" );
+			GoogleCloudStorageClient storageClient = new GoogleCloudStorageClient();
+//			final Storage storage = storageClient.create();
+			googleCloudStorage = storageClient.create();
+//			final GoogleCloudStorageURI googleCloudUri = new GoogleCloudStorageURI( path );
+//			final String bucketName = googleCloudUri.getBucket();
 
-			if( project != null && !project.isEmpty() )
-				googleCloudStorage = GoogleCloudClientBuilderWithDefaultCredentials.createStorage( project );
-			else
-				googleCloudStorage = GoogleCloudClientBuilderWithDefaultCredentials.createStorage();
 
 			break;
 		default:
