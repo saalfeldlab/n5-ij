@@ -21,7 +21,7 @@ public class AutoDetectMetadata implements N5GsonMetadataParser< N5Metadata >
 		{
 			new N5ImagePlusMetadata( "" ),
 			new N5CosemMetadata(),
-			new N5ViewerSingleMetadataParser( ),
+			new N5SingleScaleMetadata( ),
 			new DefaultMetadata( "", -1 )
 		});
 	}

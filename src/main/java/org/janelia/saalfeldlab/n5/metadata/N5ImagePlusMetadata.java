@@ -13,7 +13,7 @@ import ij.ImagePlus;
 import ij.measure.Calibration;
 import net.imglib2.realtransform.AffineTransform3D;
 
-public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Metadata, ImageplusMetadata<N5ImagePlusMetadata>, 
+public class N5ImagePlusMetadata implements N5Metadata, ImageplusMetadata<N5ImagePlusMetadata>, 
 	N5MetadataWriter< N5ImagePlusMetadata >, N5GsonMetadataParser< N5ImagePlusMetadata >
 {
 	public static final String titleKey = "title";
@@ -35,6 +35,8 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 
 	public static final String downsamplingFactorsKey = "downsamplingFactors";
 	
+	private String path;
+
 	private String name;
 	
 	private double fps;
@@ -59,15 +61,25 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 
 	public N5ImagePlusMetadata( String path )
 	{
-		this( path, new AffineTransform3D() );
+		this( path, "pixel" );
 	}
 
-	public N5ImagePlusMetadata( String path, AffineTransform3D transform )
+	public N5ImagePlusMetadata( String path, String unit, double... resolution )
 	{
-		super( path, transform );
-		pixelWidth = transform.get( 0, 0 );
-		pixelHeight = transform.get( 1, 1 );
-		pixelDepth = transform.get( 2, 2 );
+		this.path = path;
+		this.unit = unit;
+		pixelWidth = 1.0;
+		pixelHeight = 1.0;
+		pixelDepth = 1.0;
+
+		if( resolution.length > 0 )
+			pixelWidth = resolution[ 0 ];
+
+		if( resolution.length > 1 )
+			pixelWidth = resolution[ 1 ];
+
+		if( resolution.length > 2 )
+			pixelDepth = resolution[ 2 ];
 
 		keysToTypes = new HashMap<>();
 		keysToTypes.put( titleKey, String.class );
@@ -91,38 +103,10 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 		return keysToTypes;
 	}
 
-	public void metadataToN5( ImagePlus imp, N5Writer n5, String dataset ) throws IOException
+	@Override
+	public String getPath()
 	{
-		Calibration cal = imp.getCalibration();
-
-		n5.setAttribute( dataset, titleKey, imp.getTitle() );
-
-		n5.setAttribute( dataset, fpsKey, cal.fps );
-		n5.setAttribute( dataset, frameIntervalKey, cal.frameInterval );
-		n5.setAttribute( dataset, pixelWidthKey, cal.pixelWidth );
-		n5.setAttribute( dataset, pixelHeightKey, cal.pixelHeight );
-		n5.setAttribute( dataset, pixelDepthKey, cal.pixelDepth );
-		n5.setAttribute( dataset, pixelUnitKey, cal.getUnit() );
-
-		n5.setAttribute( dataset, xOriginKey, cal.xOrigin );
-		n5.setAttribute( dataset, yOriginKey, cal.yOrigin );
-		n5.setAttribute( dataset, zOriginKey, cal.zOrigin );
-
-		n5.setAttribute( dataset, imagePropertiesKey, imp.getProperties() );
-
-		Properties props = imp.getProperties();
-		if ( props != null )
-		{
-			for ( Object k : props.keySet() )
-			{
-				try
-				{
-					n5.setAttribute( dataset, k.toString(), props.get( k ).toString() );
-				}
-				catch ( Exception e )
-				{}
-			}
-		}
+		return path;
 	}
 
 	public static double[] getPixelSpacing( final N5Reader n5, final String dataset ) throws IOException
@@ -173,7 +157,7 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 		Calibration cal = ip.getCalibration();
 
 		AffineTransform3D xfm = new AffineTransform3D();
-		N5ImagePlusMetadata t = new N5ImagePlusMetadata( "", xfm );
+		N5ImagePlusMetadata t = new N5ImagePlusMetadata( "" );
 
 		if( ip.getTitle() == null )
 			t.name = "ImagePlus";
@@ -235,7 +219,11 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 		meta.xOrigin = ( Double ) metaMap.get( xOriginKey );
 		meta.yOrigin = ( Double ) metaMap.get( yOriginKey );
 		meta.zOrigin = ( Double ) metaMap.get( zOriginKey );
-		
+
+		meta.numChannels = ( Integer ) metaMap.get( numChannelsKey );
+		meta.numSlices = ( Integer ) metaMap.get( numSlicesKey );
+		meta.numFrames = ( Integer ) metaMap.get( numFramesKey );
+
 		meta.fps = ( Double ) metaMap.get( fpsKey );
 		meta.frameInterval = ( Double ) metaMap.get( fpsKey );
 
@@ -246,9 +234,7 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 	public void writeMetadata( N5ImagePlusMetadata t, N5Writer n5, String dataset ) throws Exception
 	{
 		if( !n5.datasetExists( dataset ))
-		{
-			throw new Exception( "Can't write into " + dataset + ".  Must be dataset." );
-		}
+			throw new Exception( "Can't write into " + dataset + ".  Must be a dataset." );
 
 		n5.setAttribute( dataset, titleKey, t.name );
 
@@ -262,6 +248,10 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 		n5.setAttribute( dataset, xOriginKey, t.xOrigin );
 		n5.setAttribute( dataset, yOriginKey, t.yOrigin );
 		n5.setAttribute( dataset, zOriginKey, t.zOrigin );
+
+		n5.setAttribute( dataset, numChannelsKey, t.numChannels );
+		n5.setAttribute( dataset, numSlicesKey, t.numSlices );
+		n5.setAttribute( dataset, numFramesKey, t.numFrames );
 
 		if ( t.properties != null )
 		{

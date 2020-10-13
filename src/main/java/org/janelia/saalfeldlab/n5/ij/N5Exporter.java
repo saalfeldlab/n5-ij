@@ -31,7 +31,6 @@ import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
-import org.janelia.saalfeldlab.n5.metadata.N5ViewerMetadataWriter;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
 import org.scijava.app.StatusService;
@@ -120,7 +119,7 @@ public class N5Exporter implements Command, WindowListener
 	public N5Exporter()
 	{
 		styles = new HashMap<String,N5MetadataWriter<?>>();
-		styles.put( N5Importer.MetadataN5ViewerKey, new N5ViewerMetadataWriter() );
+		styles.put( N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadata() );
 		styles.put( N5Importer.MetadataN5CosemKey, new N5CosemMetadata( "", null, null ) );
 		styles.put( N5Importer.MetadataImageJKey, new N5ImagePlusMetadata("") );
 		
@@ -128,8 +127,7 @@ public class N5Exporter implements Command, WindowListener
 		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
 		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
 		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
-		impMetaWriterTypes.put( N5ViewerMetadataWriter.class, new N5ViewerMetadataWriter());
-		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerMetadataWriter());
+		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5SingleScaleMetadata());
 		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
 	}
 	
