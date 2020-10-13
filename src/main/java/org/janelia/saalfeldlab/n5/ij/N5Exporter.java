@@ -3,12 +3,14 @@ package org.janelia.saalfeldlab.n5.ij;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
+import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
+import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
@@ -37,6 +39,8 @@ import org.scijava.command.Command;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+
+import com.amazonaws.services.s3.AmazonS3URI;
 
 import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
@@ -84,9 +88,9 @@ public class N5Exporter implements Command, WindowListener
     		style="listBox" )
     private String compressionArg = GZIP_COMPRESSION;
     
-    @Parameter( label = "Type",
-    			choices = { "Auto", "N5", "Zarr", "HDF5" },
-    			style="listBox" )
+//    @Parameter( label = "Type",
+//    			choices = { "Auto", "N5", "Zarr", "HDF5" },
+//    			style="listBox" )
     private String containerType = "Auto";
 
     @Parameter( label="metadata type", 
@@ -165,19 +169,55 @@ public class N5Exporter implements Command, WindowListener
 
 	public DataAccessType detectType( final String rootPath )
 	{
+		URI uri = null;
+		try
+		{
+			uri = URI.create( rootPath );
+		}
+		catch ( final IllegalArgumentException e ) { }
+
+		// try parsing as S3 link
+		AmazonS3URI s3Uri;
+		try
+		{
+			s3Uri = new AmazonS3URI( uri );
+		}
+		catch ( final Exception e )
+		{
+			s3Uri = null;
+		}
+		if ( s3Uri != null )
+		{
+			return DataAccessType.AMAZON_S3;
+		}
+
+
+		// try parsing as Google Cloud link
+		GoogleCloudStorageURI googleCloudUri;
+		try
+		{
+			googleCloudUri = new GoogleCloudStorageURI( uri );
+		}
+		catch ( final Exception e )
+		{
+			googleCloudUri = null;
+		}
+		if ( googleCloudUri != null )
+		{
+			return DataAccessType.GOOGLE_CLOUD;
+		}
+
+
 		if( rootPath.endsWith( "n5" ) )
 		{
-			System.out.println( "FS" );
 			return DataAccessType.FILESYSTEM;
 		}
 		else if ( rootPath.endsWith( "zarr" ))
 		{
-			System.out.println( "Zar" );
 			return DataAccessType.ZARR;
 		}
 		else if ( rootPath.endsWith( "h5" ) || rootPath.endsWith( "hdf5" ) || rootPath.endsWith( "hdf" ))
 		{
-			System.out.println( "h5" );
 			return DataAccessType.HDF5;
 		}
 		else
@@ -241,7 +281,6 @@ public class N5Exporter implements Command, WindowListener
 			RandomAccessibleInterval< T > channelImg;
 			if( img.numDimensions() >= 4 )
 			{
-				System.out.println( "hyperslice" );
 				channelImg = Views.hyperSlice( img, 2, c );
 			}
 			else
