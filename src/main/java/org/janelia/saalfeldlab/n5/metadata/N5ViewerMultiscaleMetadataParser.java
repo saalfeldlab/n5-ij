@@ -43,7 +43,6 @@ public class N5ViewerMultiscaleMetadataParser implements N5GroupParser< N5MultiS
 		final Map< String, N5TreeNode > scaleLevelNodes = new HashMap<>();
 		for ( final N5TreeNode childNode : node.childrenList() )
 		{
-			System.out.println( childNode.getNodeName());
 			if ( scaleLevelPredicate.test( childNode.getNodeName() ) &&
 				 childNode.isDataset() &&
 				 childNode.getMetadata() instanceof N5SingleScaleMetadata )

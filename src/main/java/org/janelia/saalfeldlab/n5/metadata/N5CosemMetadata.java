@@ -54,7 +54,17 @@ public class N5CosemMetadata implements N5Metadata,
 		keysToTypes.put( pixelResolutionKey, FinalVoxelDimensions.class );
 		keysToTypes.put( CosemTransform.KEY, CosemTransform.class );
 	}
-	
+
+	public FinalVoxelDimensions getVoxelDimensions()
+	{
+		return voxDims;
+	}
+
+	public CosemTransform getTransform()
+	{
+		return cosemTransformMeta;
+	}
+
 	public void setSeparateChannels( final boolean separateChannels )
 	{
 		this.separateChannels = separateChannels;
@@ -190,12 +200,10 @@ public class N5CosemMetadata implements N5Metadata,
 	public static class CosemTransform
 	{
 		public transient static final String KEY = "transform";
-		private String[] axes;
-		private double[] scale;
-		private double[] translate;
-		private String[] units;
-
-		public CosemTransform(){}
+		public final String[] axes;
+		public final double[] scale;
+		public final double[] translate;
+		public final String[] units;
 
 		public CosemTransform( final String[] axes, final double[] scale, final double[] translate, final String[] units )
 		{
