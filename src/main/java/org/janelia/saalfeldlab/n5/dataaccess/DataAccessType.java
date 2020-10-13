@@ -31,8 +31,14 @@ public enum DataAccessType
 	HDF5,
 	ZARR;
 
+	/**
+	 * Detects the type of N5 container for readers
+	 * @param link the link or path
+	 * @return the container type
+	 */
 	public static DataAccessType detectType( final String link )
 	{
+
 		// check if it is a valid directory path
 		File f = new File( link );
 		if ( f.isDirectory() )
