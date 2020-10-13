@@ -39,7 +39,6 @@ import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.dataaccess.googlecloud.GoogleCloudClientBuilderWithDefaultCredentials;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageReader;
 import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageWriter;
@@ -69,6 +68,7 @@ public class DataAccessFactory
 
 	public DataAccessFactory( final DataAccessType type, final String path ) throws DataAccessException
 	{
+		// TODO replace or combine with N5Factory in n5-utils
 		this.type = type;
 		switch ( type )
 		{
@@ -90,7 +90,6 @@ public class DataAccessFactory
 			Optional< AWSCredentials > credentials = Optional.empty();
 
 			DefaultAWSCredentialsProviderChain credProverChain = new DefaultAWSCredentialsProviderChain();
-			Exception credException = null;
 			try
 			{ 
 				credentials = Optional.of( credProverChain.getCredentials() );
@@ -98,7 +97,6 @@ public class DataAccessFactory
 			catch( Exception e )
 			{
 				System.out.println( "Could not load AWS credentials, falling back to anonymous." );
-				credException = e;
 			}
 
 			AmazonS3URI uri = null;
@@ -117,26 +115,7 @@ public class DataAccessFactory
 			break;
 		case GOOGLE_CLOUD:
 			s3 = null;
-//			googleCloudUri = new GoogleCloudStorageURI( path );
-//
-//			String project = googleCloudUri.getProject() ;
-//			if( project == null || project.isEmpty() )
-//			{
-//				project = googleCloudProjectDialog();
-//			}
-//
-//			if( project != null && !project.isEmpty() )
-//				googleCloudStorage = GoogleCloudClientBuilderWithDefaultCredentials.createStorage( project );
-//			else
-//				googleCloudStorage = GoogleCloudClientBuilderWithDefaultCredentials.createStorage();
-
-			System.out.println( "new gcloud loader" );
-			GoogleCloudStorageClient storageClient = new GoogleCloudStorageClient();
-//			final Storage storage = storageClient.create();
-			googleCloudStorage = storageClient.create();
-//			final GoogleCloudStorageURI googleCloudUri = new GoogleCloudStorageURI( path );
-//			final String bucketName = googleCloudUri.getBucket();
-
+			googleCloudStorage = new GoogleCloudStorageClient().create();
 
 			break;
 		default:

@@ -26,6 +26,10 @@ import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 
 import java.io.IOException;
 
+/**
+ * Use {@link org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageClient} instead.
+ */
+@Deprecated
 public class GoogleCloudClientBuilderWithDefaultCredentials
 {
     private static final String googleCloudSdkLink = "https://cloud.google.com/sdk/docs";
