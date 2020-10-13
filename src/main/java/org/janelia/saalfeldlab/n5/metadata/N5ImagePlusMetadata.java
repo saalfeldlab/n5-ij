@@ -79,6 +79,10 @@ public class N5ImagePlusMetadata extends N5SingleScaleMetadata implements N5Meta
 		keysToTypes.put( yOriginKey, Double.class );
 		keysToTypes.put( zOriginKey, Double.class );
 		keysToTypes.put( fpsKey, Double.class );
+
+		keysToTypes.put( numChannelsKey, Integer.class );
+		keysToTypes.put( numSlicesKey, Integer.class );
+		keysToTypes.put( numFramesKey, Integer.class );
 	}
 
 	@Override
