@@ -131,6 +131,11 @@ public class DatasetSelectorDialog
 		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
 	}
 
+	public void setMessage( final String message )
+	{
+		messageLabel.setText( message );
+	}
+
 	public void setVirtualOption( boolean arg )
 	{
 		virtualOption = arg;

@@ -24,11 +24,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
 
-public class N5SingleScaleMetadata implements N5Metadata, N5GsonMetadataParser< N5SingleScaleMetadata >,
+public class N5SingleScaleMetadata extends AbstractN5Metadata implements N5GsonMetadataParser< N5SingleScaleMetadata >,
 N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetadata >
 {
     public static final String DOWNSAMPLING_FACTORS_KEY = "downsamplingFactors";
@@ -38,18 +39,18 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 
 	private final HashMap< String, Class< ? > > keysToTypes;
 
-    public final String path;
-
     public final AffineTransform3D transform;
 
     public final String unit;
 
-    public N5SingleScaleMetadata(final String path, final AffineTransform3D transform, final String unit )
+    public N5SingleScaleMetadata( final String path, final AffineTransform3D transform,
+    		final String unit,
+    		final DatasetAttributes attributes )
     {
+		super( path, attributes );
+
 		Objects.requireNonNull( path );
 		Objects.requireNonNull( transform );
-
-        this.path = path;
         this.transform = transform;
 
         if( unit == null )
@@ -61,6 +62,11 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 		keysToTypes.put( DOWNSAMPLING_FACTORS_KEY, long[].class );
 		keysToTypes.put( PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class );
 		keysToTypes.put( AFFINE_TRANSFORM_KEY, AffineTransform3D.class );
+    }
+
+    public N5SingleScaleMetadata(final String path, final AffineTransform3D transform, final String unit )
+    {
+    	this( path, transform, unit, null );
     }
 
     public N5SingleScaleMetadata( final String path, final AffineTransform3D transform )
@@ -79,13 +85,6 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
     }
 
 	@Override
-	public String getPath()
-	{
-		return path;
-	}
-
-
-	@Override
 	public HashMap<String,Class<?>> keysToTypes()
 	{
 		return keysToTypes;
@@ -98,6 +97,7 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 			throw new Exception( "Could not parse as N5SingleScaleMetadata.");
 
 		String dataset = ( String ) metaMap.get( "dataset" );
+		DatasetAttributes attributes = ( DatasetAttributes ) metaMap.get( "attributes" );
 
 		final long[] downsamplingFactors = ( long[] ) metaMap.get( DOWNSAMPLING_FACTORS_KEY );
 		FinalVoxelDimensions voxdim = ( FinalVoxelDimensions ) metaMap.get( PIXEL_RESOLUTION_KEY );
@@ -107,7 +107,7 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 
 		final AffineTransform3D extraTransform = ( AffineTransform3D ) metaMap.get( AFFINE_TRANSFORM_KEY );
 		final AffineTransform3D transform = buildTransform( downsamplingFactors, pixelResolution, extraTransform );
-		return new N5SingleScaleMetadata( dataset, transform, voxdim.unit() );
+		return new N5SingleScaleMetadata( dataset, transform, voxdim.unit(), attributes );
 	}
 
 	@Override

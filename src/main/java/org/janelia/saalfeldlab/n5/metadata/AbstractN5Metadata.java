@@ -16,44 +16,43 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import net.imglib2.realtransform.AffineTransform3D;
-
-import java.util.Objects;
-
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
-public class N5MultiScaleMetadata implements N5Metadata {
+/**
+ * Abstract class for single-scale or multi-scale N5 metadata.
+ */
+public abstract class AbstractN5Metadata implements N5Metadata
+{
+	private DatasetAttributes attributes;
+	
+	private String path;
+	
+	public AbstractN5Metadata( final String path, final DatasetAttributes attributes )
+	{
+		this.path = path;
+		this.attributes = attributes;
+	}
 
-    public final String basePath;
+	public AbstractN5Metadata( final String path )
+	{
+		this( path, null );
+	}
 
-    public final String[] paths;
-
-    public final AffineTransform3D[] transforms;
-
-    public N5MultiScaleMetadata( final String basePath, final String[] paths, final AffineTransform3D[] transforms)
-    {
-        Objects.requireNonNull(paths);
-        Objects.requireNonNull(transforms);
-        for (final String path : paths)
-            Objects.requireNonNull(path);
-        for (final AffineTransform3D transform : transforms)
-            Objects.requireNonNull(transform);
-
-        this.basePath = basePath;
-        this.paths = paths;
-        this.transforms = transforms;
-    }
+	public AbstractN5Metadata( final DatasetAttributes attributes )
+	{
+		this( "", attributes );
+	}
 
 	@Override
-	public String getPath()
-	{
-		return basePath;
-	}
+    public String getPath()
+    {
+    	return path;
+    }
 
 	@Override
 	public DatasetAttributes getAttributes()
 	{
-		return null;
+		return attributes;
 	}
 	
 }

@@ -17,9 +17,20 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
+import org.janelia.saalfeldlab.n5.Bzip2Compression;
+import org.janelia.saalfeldlab.n5.Compression;
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.GsonAttributesParser;
+import org.janelia.saalfeldlab.n5.GzipCompression;
+import org.janelia.saalfeldlab.n5.Lz4Compression;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.RawCompression;
+import org.janelia.saalfeldlab.n5.XzCompression;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
 import java.io.IOException;
@@ -74,6 +85,41 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		}
 
 		HashMap< String, Object > outmap = new HashMap<>();
+		
+		final Gson gson = new GsonBuilder().create();
+		String compressionString = "";
+		try
+		{
+			final int[] blockSize = GsonAttributesParser.parseAttribute( map, "blockSize", int[].class, gson);
+			final long[] dimensions = GsonAttributesParser.parseAttribute( map, "dimensions", long[].class, gson);
+			final DataType dataType = GsonAttributesParser.parseAttribute( map, "dataType", DataType.class, gson);
+			compressionString = GsonAttributesParser.parseAttribute( map, "compression", String.class, gson);
+
+			Compression compression = null;
+			if (compression == null) {
+				switch ( compressionString ){
+				case "raw":
+					compression = new RawCompression();
+					break;
+				case "gzip":
+					compression = new GzipCompression();
+					break;
+				case "bzip2":
+					compression = new Bzip2Compression();
+					break;
+				case "lz4":
+					compression = new Lz4Compression();
+					break;
+				case "xz":
+					compression = new XzCompression();
+					break;
+				}
+			}
+			DatasetAttributes attributes = new DatasetAttributes( dimensions, blockSize, dataType, compression );
+			outmap.put( "attributes", attributes );
+		}
+		catch ( IOException e ) { }
+
 		for( String k : keys.keySet() )
 			outmap.put( k, map.get( k ));
 

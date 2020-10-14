@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
@@ -13,7 +14,7 @@ import ij.ImagePlus;
 import ij.measure.Calibration;
 import net.imglib2.realtransform.AffineTransform3D;
 
-public class N5ImagePlusMetadata implements N5Metadata, ImageplusMetadata<N5ImagePlusMetadata>, 
+public class N5ImagePlusMetadata extends AbstractN5Metadata implements ImageplusMetadata<N5ImagePlusMetadata>, 
 	N5MetadataWriter< N5ImagePlusMetadata >, N5GsonMetadataParser< N5ImagePlusMetadata >
 {
 	public static final String titleKey = "title";
@@ -35,8 +36,6 @@ public class N5ImagePlusMetadata implements N5Metadata, ImageplusMetadata<N5Imag
 
 	public static final String downsamplingFactorsKey = "downsamplingFactors";
 	
-	private String path;
-
 	private String name;
 	
 	private double fps;
@@ -64,9 +63,20 @@ public class N5ImagePlusMetadata implements N5Metadata, ImageplusMetadata<N5Imag
 		this( path, "pixel" );
 	}
 
+	public N5ImagePlusMetadata( String path, final DatasetAttributes attributes )
+	{
+		super( path, attributes );
+	}
+
 	public N5ImagePlusMetadata( String path, String unit, double... resolution )
 	{
-		this.path = path;
+		this( path, unit, null, resolution );
+	}
+
+	public N5ImagePlusMetadata( String path, String unit, final DatasetAttributes attributes,
+			double... resolution )
+	{
+		super( path, attributes );
 		this.unit = unit;
 		pixelWidth = 1.0;
 		pixelHeight = 1.0;
@@ -101,12 +111,6 @@ public class N5ImagePlusMetadata implements N5Metadata, ImageplusMetadata<N5Imag
 	public HashMap<String,Class<?>> keysToTypes()
 	{
 		return keysToTypes;
-	}
-
-	@Override
-	public String getPath()
-	{
-		return path;
 	}
 
 	public static double[] getPixelSpacing( final N5Reader n5, final String dataset ) throws IOException
@@ -208,7 +212,9 @@ public class N5ImagePlusMetadata implements N5Metadata, ImageplusMetadata<N5Imag
 
 		String dataset = ( String ) metaMap.get( "dataset" );
 
-		N5ImagePlusMetadata meta = new N5ImagePlusMetadata( dataset );
+		DatasetAttributes attributes = ( DatasetAttributes ) metaMap.get( "attributes" );
+
+		N5ImagePlusMetadata meta = new N5ImagePlusMetadata( dataset, attributes );
 		meta.name = ( String ) metaMap.get( titleKey );
 
 		meta.pixelWidth = ( Double ) metaMap.get( pixelWidthKey );

@@ -16,6 +16,8 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+
 import com.google.gson.GsonBuilder;
 import net.imglib2.realtransform.AffineTransform3D;
 
@@ -37,4 +39,12 @@ public interface N5Metadata {
     }
     
     public String getPath();
+
+    /**
+     * Return the dataset attributes if this metadata object represents a single dataset.
+     * Can return null if this metadata object represents multiscale set of datasets, for example.
+     *
+     * @return the attributes
+     */
+    public DatasetAttributes getAttributes();
 }

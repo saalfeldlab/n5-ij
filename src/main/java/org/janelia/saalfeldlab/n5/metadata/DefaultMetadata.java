@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.DoubleStream;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GsonAttributesParser;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
@@ -13,11 +14,9 @@ import com.google.gson.JsonElement;
 
 import ij.ImagePlus;
 
-public class DefaultMetadata implements N5Metadata, 
-	N5GsonMetadataParser< DefaultMetadata >, N5MetadataWriter< DefaultMetadata >, ImageplusMetadata< DefaultMetadata >
+public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadataParser< DefaultMetadata >, 
+	N5MetadataWriter< DefaultMetadata >, ImageplusMetadata< DefaultMetadata >
 {
-	private String path;
-
 	private final FinalVoxelDimensions voxDims;
 
 	private HashMap<String,Class<?>> keysToTypes;
@@ -29,9 +28,10 @@ public class DefaultMetadata implements N5Metadata,
 		this( "", nd );
 	}
 
-	public DefaultMetadata( final String path, final int nd )
+	public DefaultMetadata( final String path, final DatasetAttributes attributes )
 	{
-		this.path = path;
+		super( path, attributes );
+		int nd = attributes.getNumDimensions();
 		if( nd > 0 )
 		{
 			voxDims = new FinalVoxelDimensions( "pixel", 
@@ -40,6 +40,20 @@ public class DefaultMetadata implements N5Metadata,
 		else
 			voxDims = null;
 
+		keysToTypes = new HashMap<>();
+		keysToTypes.put( dimensionsKey, long[].class ); // n5 datasets need this
+	}
+
+	public DefaultMetadata( final String path, final int nd )
+	{
+		super( path, null );
+		if( nd > 0 )
+		{
+			voxDims = new FinalVoxelDimensions( "pixel", 
+				DoubleStream.iterate( 1, x -> x ).limit( nd ).toArray());
+		}
+		else
+			voxDims = null;
 
 		keysToTypes = new HashMap<>();
 		keysToTypes.put( dimensionsKey, long[].class ); // n5 datasets need this
@@ -63,7 +77,11 @@ public class DefaultMetadata implements N5Metadata,
 	{
 		String dataset = ( String ) metaMap.get( "dataset" );
 		long[] dims = ( long[] ) metaMap.get( dimensionsKey );
-		return new DefaultMetadata( dataset, dims.length );
+		DatasetAttributes attributes = ( DatasetAttributes ) metaMap.get( "attributes" );
+		if( attributes == null )
+			return new DefaultMetadata( dataset, dims.length );
+		else
+			return new DefaultMetadata( dataset, attributes );
 	}
 
 	@Override
@@ -96,12 +114,6 @@ public class DefaultMetadata implements N5Metadata,
 		if( imp.getNFrames() > 1 ){ nd++; }
 
 		return new DefaultMetadata( "", nd );
-	}
-
-	@Override
-	public String getPath()
-	{
-		return path;
 	}
 
 }

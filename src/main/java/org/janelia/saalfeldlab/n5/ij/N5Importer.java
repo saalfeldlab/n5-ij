@@ -93,7 +93,11 @@ public class N5Importer implements PlugIn
 	private Thread loaderThread;
 
 	private boolean record;
-	
+
+	private int numDimensionsForCrop;
+
+	private double[] initMaxValuesForCrop;
+
 	public N5Importer()
 	{
 		record = Recorder.record;
@@ -110,6 +114,11 @@ public class N5Importer implements PlugIn
 	public Map< Class< ? >, ImageplusMetadata< ? > > getImagePlusMetadataWriterMap()
 	{
 		return impMetaWriterTypes;
+	}
+	
+	public void setNumDimensionsForCropDialog( final int numDimensionsForCrop )
+	{
+		this.numDimensionsForCrop = numDimensionsForCrop; 
 	}
 
 	@Override
@@ -134,7 +143,7 @@ public class N5Importer implements PlugIn
 		else
 		{
 			// the simple dialog
-			int numDimensions = 3; // TODO fix
+			int numDimensionsForCrop = 3; // TODO fix
 
 			String n5Path = Macro.getValue( args, n5PathKey, "" );
 			boolean dialogAsVirtual = args.contains( " virtual" );
@@ -147,11 +156,11 @@ public class N5Importer implements PlugIn
 			gd.addMessage( "Crop parameters.");
 			gd.addMessage( "[0,Infinity] loads the whole volume.");
 			gd.addMessage( "Min:");
-			for( int i = 0; i < numDimensions; i++ )
+			for( int i = 0; i < numDimensionsForCrop; i++ )
 				gd.addNumericField( axisNames[ i ], 0 );
 
 			gd.addMessage( "Max:");
-			for( int i = 0; i < numDimensions; i++ )
+			for( int i = 0; i < numDimensionsForCrop; i++ )
 				gd.addNumericField( axisNames[ i ], Double.POSITIVE_INFINITY );
 
 			gd.showDialog();
@@ -162,13 +171,13 @@ public class N5Importer implements PlugIn
 			boolean openAsVirtual = gd.getNextBoolean();
 
 			// we don't always know ahead of time the dimensionality
-			long[] cropMin = new long[ numDimensions ];
-			long[] cropMax = new long[ numDimensions ];
+			long[] cropMin = new long[ numDimensionsForCrop ];
+			long[] cropMax = new long[ numDimensionsForCrop ];
 
-			for( int i = 0; i < numDimensions; i++ )
+			for( int i = 0; i < numDimensionsForCrop; i++ )
 				cropMin[ i ] = Math.max( 0, (long)Math.floor( gd.getNextNumber()));
 
-			for( int i = 0; i < numDimensions; i++ )
+			for( int i = 0; i < numDimensionsForCrop; i++ )
 			{
 				double v = gd.getNextNumber();
 				cropMax[ i ] = Double.isInfinite( v ) ? Long.MAX_VALUE : (long)Math.ceil( v );
@@ -176,31 +185,6 @@ public class N5Importer implements PlugIn
 
 			Interval thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
 			System.out.println( "thisDatasetCropInterval: " + Intervals.toString( thisDatasetCropInterval ));
-
-//			boolean setInterval = true;
-//
-//			// what if only one dimension is inf for max - cropping could still be needed
-//			Interval thisDatasetCropInterval = null;
-//			for( int i = 0; i < numDimensions; i++ )
-//			{
-//				double num = gd.getNextNumber();
-//				if( Double.isInfinite( num ))
-//				{
-//					thisDatasetCropInterval = null;
-//					setInterval = false;
-//					break;
-//				}
-//
-//				cropMax[ i ] = (long)Math.ceil( num );
-//				if( cropMax[ i ] < cropMin[ i ])
-//				{
-//					IJ.error( "Crop max must be greater than or equal to min" );
-//					return;
-//				}
-//			}
-//
-//			if( setInterval )
-//				thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
 
 			N5Reader n5ForThisDataset  = new N5ViewerReaderFun().apply( n5Path );
 			N5Metadata meta;
@@ -349,6 +333,8 @@ public class N5Importer implements PlugIn
 
 			final String datasetPath = datasetMeta.getPath();
 			final String pathToN5Dataset = datasetPath.isEmpty() ? rootPath : rootPath + File.separator + datasetPath;
+
+//			selectionDialog.setMessage( "Loading\n" + datasetPath );
 			this.run( generateAndStoreOptions( pathToN5Dataset, asVirtual, null ));
 		}
 	}
@@ -422,6 +408,8 @@ public class N5Importer implements PlugIn
 
 	public void processThread() 
 	{
+//		String datasetPath = selection.metadata.get( 0 ).getPath();
+//		selectionDialog.setMessage( "Loading\n" + datasetPath );
 		loaderThread = new Thread()
 		{
 			public void run()

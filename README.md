@@ -11,7 +11,11 @@ A Fiji plugin for loading and saving image data to N5 containers. Supports [HDF5
 
 ## Open N5 datasets 
 
-Open N5 datasets from Fiji with `File > Import > N5`.
+Open N5 datasets from Fiji with `File > Import > N5`. 
+
+Quickly open a dataset by pasting the full path to the dataset and press `Ok`.
+For example, try `gs://example_multi-n5_bucket/mitosis.n5/raw` to open the sample mitosis image from google
+cloud storage.
 
 Click the `Browse` button to select a folder on your filesystem.
 
