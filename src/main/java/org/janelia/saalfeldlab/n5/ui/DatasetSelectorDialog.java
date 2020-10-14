@@ -325,7 +325,10 @@ public class DatasetSelectorDialog
         int ret = fileChooser.showOpenDialog(dialog);
         if (ret != JFileChooser.APPROVE_OPTION)
             return null;
-        return fileChooser.getSelectedFile().getAbsolutePath();
+
+        final String path = fileChooser.getSelectedFile().getAbsolutePath();
+        containerPathText.setText( path );
+        return path;
     }
 
 	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener )
