@@ -1,4 +1,37 @@
 # n5-ij [![Build Status](https://travis-ci.com/saalfeldlab/n5-ij.svg?branch=master)](https://travis-ci.com/saalfeldlab/n5-ij)
+
+A Fiji plugin for loading and saving image data to N5 containers. Supports [HDF5](https://www.hdfgroup.org/solutions/hdf5/), [Zarr](https://zarr.readthedocs.io/en/stable/#), [Amazon S3](https://aws.amazon.com/s3/), and [Google cloud storage](https://cloud.google.com/storage).
+
+## Contents
+1. [Open N5 datasets](#open-n5-datasets)
+2. [Save N5 datasets](#save-n5-datasets)
+3. [Metadata](#metadata)
+4. [For developers](#for-developers)
+5. [Cloud writing benchmarks](#cloud-writing-benchmarks)
+
+## Open N5 datasets 
+
+Open N5 datasets from Fiji with `File > Import > N5`.
+
+Click the `Browse` button to select a folder on your filesystem.
+
+![OpenDialogBrowse](doc/OpenN5DialogWithBrowse.png)
+
+The detected datasets will be displayed in the dialog. Selected (highlight) the datasets you would like to open
+and press `Ok`. In the example below, we will open the datasets `/blobs`, and `/t1-head/c0/s0`.
+
+![OpenDialogTree](doc/OpenN5DialogWithTree.png)
+
+## Save N5 datasets 
+
+Save images open in Fiji as N5 datasets with `File > Save As > Export N5`.
+
+![SaveDialog](doc/SaveN5Dialog.png)
+
+## Metadata 
+
+## For developers
+
 ImageJ convenience layer for N5
 
 Build into your Fiji installation:
