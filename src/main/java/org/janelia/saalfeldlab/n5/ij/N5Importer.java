@@ -3,6 +3,7 @@ package org.janelia.saalfeldlab.n5.ij;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -46,6 +47,7 @@ import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.NumericType;
+import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn
@@ -64,7 +66,7 @@ public class N5Importer implements PlugIn
 	public static final String MetadataN5ViewerKey = "N5Viewer Metadata";
 	public static final String MetadataCustomKey = "CustomMetadata";
 	public static final String MetadataDefaultKey = "DefaultMetadata";
-	
+
 	public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 					new N5ImagePlusMetadata( "" ),
 					new N5CosemMetadata( "", null, null ),
@@ -159,38 +161,46 @@ public class N5Importer implements PlugIn
 			n5Path = gd.getNextString();
 			boolean openAsVirtual = gd.getNextBoolean();
 
-			// we don't know ahead of time the dimensionality
+			// we don't always know ahead of time the dimensionality
 			long[] cropMin = new long[ numDimensions ];
 			long[] cropMax = new long[ numDimensions ];
 
 			for( int i = 0; i < numDimensions; i++ )
 				cropMin[ i ] = Math.max( 0, (long)Math.floor( gd.getNextNumber()));
 
-			boolean setInterval = true;
-
-			// TODO this needs fixing,
-			// what if only one dimension is inf for max - cropping could still be needed
-			Interval thisDatasetCropInterval = null;
 			for( int i = 0; i < numDimensions; i++ )
 			{
-				double num = gd.getNextNumber();
-				if( Double.isInfinite( num ))
-				{
-					thisDatasetCropInterval = null;
-					setInterval = false;
-					break;
-				}
-
-				cropMax[ i ] = (long)Math.ceil( num );
-				if( cropMax[ i ] < cropMin[ i ])
-				{
-					IJ.error( "Crop max must be greater than or equal to min" );
-					return;
-				}
+				double v = gd.getNextNumber();
+				cropMax[ i ] = Double.isInfinite( v ) ? Long.MAX_VALUE : (long)Math.ceil( v );
 			}
 
-			if( setInterval )
-				thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
+			Interval thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
+			System.out.println( "thisDatasetCropInterval: " + Intervals.toString( thisDatasetCropInterval ));
+
+//			boolean setInterval = true;
+//
+//			// what if only one dimension is inf for max - cropping could still be needed
+//			Interval thisDatasetCropInterval = null;
+//			for( int i = 0; i < numDimensions; i++ )
+//			{
+//				double num = gd.getNextNumber();
+//				if( Double.isInfinite( num ))
+//				{
+//					thisDatasetCropInterval = null;
+//					setInterval = false;
+//					break;
+//				}
+//
+//				cropMax[ i ] = (long)Math.ceil( num );
+//				if( cropMax[ i ] < cropMin[ i ])
+//				{
+//					IJ.error( "Crop max must be greater than or equal to min" );
+//					return;
+//				}
+//			}
+//
+//			if( setInterval )
+//				thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
 
 			N5Reader n5ForThisDataset  = new N5ViewerReaderFun().apply( n5Path );
 			N5Metadata meta;
@@ -265,16 +275,16 @@ public class N5Importer implements PlugIn
 	@SuppressWarnings( "unchecked" )
 	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read( 
 			final N5Reader n5, 
-			final N5Metadata datasetMeta, final Interval cropInterval, final boolean asVirtual,
+			final N5Metadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
 			final ImageplusMetadata<M> ipMeta ) throws IOException
 	{
 		String d = datasetMeta.getPath();
 		RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
 
 		RandomAccessibleInterval<T> img;
-		if( cropInterval != null )
+		if( cropIntervalIn != null )
 		{
-			img = Views.interval( imgRaw, cropInterval );
+			img = Views.interval( imgRaw, processCropInterval( imgRaw, cropIntervalIn ));
 		}
 		else
 			img = imgRaw;
@@ -303,6 +313,25 @@ public class N5Importer implements PlugIn
 			}
 		}
 		return imp;
+	}
+
+	private static Interval processCropInterval( final RandomAccessibleInterval< ? > img, final Interval cropInterval )
+	{
+		assert img.numDimensions() == cropInterval.numDimensions();
+
+		int nd = img.numDimensions();
+		long[] min = new long[ nd ];
+		long[] max = new long[ nd ];
+
+		for( int i = 0; i < nd; i++ )
+		{
+			min[ i ] = Math.max( img.min( i ), cropInterval.min( i ) );
+			max[ i ] = Math.min( img.max( i ), cropInterval.max( i ));
+		}
+		System.out.println( "proc crop min: " + Arrays.toString( min ));
+		System.out.println( "proc crop max: " + Arrays.toString( max ));
+
+		return new FinalInterval( min, max );
 	}
 
 	/**
@@ -520,8 +549,6 @@ public class N5Importer implements PlugIn
 			{
 			case HDF5:
 				return h5DatasetPath( n5Path );
-//			case FILESYSTEM:
-//				return "";
 			default:
 				return "";
 			}
