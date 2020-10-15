@@ -19,18 +19,18 @@ cloud storage.
 
 Click the `Browse` button to select a folder on your filesystem.
 
-![OpenDialogBrowse](doc/OpenN5DialogWithBrowse.png)
+<img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/OpenN5DialogWithBrowse.png width="600">
 
 The detected datasets will be displayed in the dialog. Selected (highlight) the datasets you would like to open
 and press `Ok`. In the example below, we will open the datasets `/blobs`, and `/t1-head/c0/s0`.
 
-![OpenDialogTree](doc/OpenN5DialogWithTree.png)
+<img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/OpenN5DialogWithTree.png width="600">
 
 ## Save N5 datasets 
 
 Save images open in Fiji as N5 datasets with `File > Save As > Export N5`.
 
-![SaveDialog](doc/SaveN5Dialog.png)
+<img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/SaveN5Dialog.png width="280">
 
 ## Metadata 
 
