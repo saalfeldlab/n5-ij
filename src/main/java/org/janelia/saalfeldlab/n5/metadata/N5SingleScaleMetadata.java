@@ -62,6 +62,8 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 		keysToTypes.put( DOWNSAMPLING_FACTORS_KEY, long[].class );
 		keysToTypes.put( PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class );
 		keysToTypes.put( AFFINE_TRANSFORM_KEY, AffineTransform3D.class );
+
+		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
     }
 
     public N5SingleScaleMetadata(final String path, final AffineTransform3D transform, final String unit )

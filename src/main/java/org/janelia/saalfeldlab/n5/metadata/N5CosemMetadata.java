@@ -5,7 +5,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.GsonAttributesParser;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
@@ -60,6 +62,7 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		keysToTypes = new HashMap<>();
 		keysToTypes.put( pixelResolutionKey, FinalVoxelDimensions.class );
 		keysToTypes.put( CosemTransform.KEY, CosemTransform.class );
+		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
 
 	public FinalVoxelDimensions getVoxelDimensions()

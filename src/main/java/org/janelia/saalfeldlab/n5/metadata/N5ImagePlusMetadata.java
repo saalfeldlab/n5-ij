@@ -12,6 +12,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 
 import ij.ImagePlus;
 import ij.measure.Calibration;
+import net.imglib2.Interval;
 import net.imglib2.realtransform.AffineTransform3D;
 
 public class N5ImagePlusMetadata extends AbstractN5Metadata implements ImageplusMetadata<N5ImagePlusMetadata>, 
@@ -105,12 +106,27 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 		keysToTypes.put( numChannelsKey, Integer.class );
 		keysToTypes.put( numSlicesKey, Integer.class );
 		keysToTypes.put( numFramesKey, Integer.class );
+
+		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
 
 	@Override
 	public HashMap<String,Class<?>> keysToTypes()
 	{
 		return keysToTypes;
+	}
+
+	public void crop( final Interval cropInterval )
+	{
+		int i = 2;
+		if( numChannels > 1 )
+			numChannels = (int)cropInterval.dimension( i++ );
+
+		if( numSlices > 1 )
+			numSlices = (int)cropInterval.dimension( i++ );
+
+		if( numFrames > 1 )
+			numFrames = (int)cropInterval.dimension( i++ );
 	}
 
 	public static double[] getPixelSpacing( final N5Reader n5, final String dataset ) throws IOException

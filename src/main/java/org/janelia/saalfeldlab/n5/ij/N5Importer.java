@@ -52,7 +52,8 @@ import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn
 {
-	private static final String[] axisNames = new String[] { "x", "y", "z", "c", "t" };
+//	private static final String[] axisNames = new String[] { "x", "y", "c", "z", "t" };
+	private static final String[] axisNames = new String[] { "dim1", "dim2", "dim3", "dim4", "dim5" };
 
 	public static final String n5PathKey = "n5";
 	public static final String COMMAND_NAME = "N5";
@@ -96,7 +97,7 @@ public class N5Importer implements PlugIn
 
 	private int numDimensionsForCrop;
 
-	private double[] initMaxValuesForCrop;
+	private long[] initMaxValuesForCrop;
 
 	public N5Importer()
 	{
@@ -109,10 +110,15 @@ public class N5Importer implements PlugIn
 		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
 		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5SingleScaleMetadata());
 		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
+
+		numDimensionsForCrop = 5;
+		initMaxValuesForCrop = new long[ numDimensionsForCrop ];
+		Arrays.fill( initMaxValuesForCrop, Long.MAX_VALUE );
 	}
 
 	public Map< Class< ? >, ImageplusMetadata< ? > > getImagePlusMetadataWriterMap()
 	{
+		ImageJFunctions impf;
 		return impMetaWriterTypes;
 	}
 	
@@ -142,9 +148,6 @@ public class N5Importer implements PlugIn
 		}
 		else
 		{
-			// the simple dialog
-			int numDimensionsForCrop = 3; // TODO fix
-
 			String n5Path = Macro.getValue( args, n5PathKey, "" );
 			boolean dialogAsVirtual = args.contains( " virtual" );
 
@@ -161,7 +164,12 @@ public class N5Importer implements PlugIn
 
 			gd.addMessage( "Max:");
 			for( int i = 0; i < numDimensionsForCrop; i++ )
-				gd.addNumericField( axisNames[ i ], Double.POSITIVE_INFINITY );
+			{
+				if( initMaxValuesForCrop != null )
+					gd.addNumericField( axisNames[ i ], initMaxValuesForCrop[ i ]);
+				else
+					gd.addNumericField( axisNames[ i ], Double.POSITIVE_INFINITY );
+			}
 
 			gd.showDialog();
 			if ( gd.wasCanceled() )
@@ -184,7 +192,6 @@ public class N5Importer implements PlugIn
 			}
 
 			Interval thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
-			System.out.println( "thisDatasetCropInterval: " + Intervals.toString( thisDatasetCropInterval ));
 
 			N5Reader n5ForThisDataset  = new N5ViewerReaderFun().apply( n5Path );
 			N5Metadata meta;
@@ -269,6 +276,10 @@ public class N5Importer implements PlugIn
 		if( cropIntervalIn != null )
 		{
 			img = Views.interval( imgRaw, processCropInterval( imgRaw, cropIntervalIn ));
+			if( datasetMeta instanceof N5ImagePlusMetadata )
+			{
+				 ((N5ImagePlusMetadata)datasetMeta).crop( cropIntervalIn );
+			}
 		}
 		else
 			img = imgRaw;
@@ -312,8 +323,6 @@ public class N5Importer implements PlugIn
 			min[ i ] = Math.max( img.min( i ), cropInterval.min( i ) );
 			max[ i ] = Math.min( img.max( i ), cropInterval.max( i ));
 		}
-		System.out.println( "proc crop min: " + Arrays.toString( min ));
-		System.out.println( "proc crop max: " + Arrays.toString( max ));
 
 		return new FinalInterval( min, max );
 	}
@@ -333,6 +342,12 @@ public class N5Importer implements PlugIn
 
 			final String datasetPath = datasetMeta.getPath();
 			final String pathToN5Dataset = datasetPath.isEmpty() ? rootPath : rootPath + File.separator + datasetPath;
+
+			numDimensionsForCrop = datasetMeta.getAttributes().getNumDimensions();
+			initMaxValuesForCrop = 
+					Arrays.stream( datasetMeta.getAttributes().getDimensions())
+						.map( x -> x - 1 )
+						.toArray();
 
 //			selectionDialog.setMessage( "Loading\n" + datasetPath );
 			this.run( generateAndStoreOptions( pathToN5Dataset, asVirtual, null ));

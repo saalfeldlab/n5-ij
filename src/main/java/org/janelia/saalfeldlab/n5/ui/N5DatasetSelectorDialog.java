@@ -87,7 +87,6 @@ public class N5DatasetSelectorDialog
 						pathString.append( o.toString() );
 					}
 					selectedDatasets.add( pathString.toString() );
-					System.out.println( pathString );
 				}
 
 				frame.setVisible( false );
