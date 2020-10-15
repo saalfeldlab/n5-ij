@@ -160,15 +160,15 @@ public class N5Importer implements PlugIn
 			gd.addMessage( "[0,Infinity] loads the whole volume.");
 			gd.addMessage( "Min:");
 			for( int i = 0; i < numDimensionsForCrop; i++ )
-				gd.addNumericField( axisNames[ i ], 0 );
+				gd.addNumericField( "min_"+axisNames[ i ], 0 );
 
 			gd.addMessage( "Max:");
 			for( int i = 0; i < numDimensionsForCrop; i++ )
 			{
 				if( initMaxValuesForCrop != null )
-					gd.addNumericField( axisNames[ i ], initMaxValuesForCrop[ i ]);
+					gd.addNumericField( "max_"+axisNames[ i ], initMaxValuesForCrop[ i ]);
 				else
-					gd.addNumericField( axisNames[ i ], Double.POSITIVE_INFINITY );
+					gd.addNumericField( "max_"+axisNames[ i ], Double.POSITIVE_INFINITY );
 			}
 
 			gd.showDialog();
