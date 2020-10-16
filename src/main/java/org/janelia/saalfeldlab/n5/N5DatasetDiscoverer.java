@@ -23,12 +23,12 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import se.sawano.java.text.AlphanumericComparator;
 
-import javax.swing.tree.DefaultMutableTreeNode;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.text.Collator;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 
 public class N5DatasetDiscoverer {
@@ -92,23 +92,15 @@ public class N5DatasetDiscoverer {
 		return node;
     }
 
-	public static DefaultMutableTreeNode toJTreeNode( final N5TreeNode n5Node )
-    {
-        final DefaultMutableTreeNode node = new DefaultMutableTreeNode(n5Node);
-        for (final N5TreeNode n5ChildNode : n5Node.children)
-            node.add(toJTreeNode(n5ChildNode));
-        return node;
-    }
-
     private static void discover(final N5Reader n5, final N5TreeNode node) throws IOException
     {
-        if( !node.isDataset )
+        if( !node.isDataset() )
         {
 			for ( final String childGroup : n5.list( node.path ) )
 			{
 				final String childPath = Paths.get( node.path, childGroup ).toString();
 				final N5TreeNode childNode = new N5TreeNode( childPath, n5.datasetExists( childPath ) );
-				node.children.add( childNode );
+				node.add( childNode );
 				discover( n5, childNode );
             }
         }
@@ -123,21 +115,21 @@ public class N5DatasetDiscoverer {
         {
         	try
         	{
-				node.metadata = parser.parseMetadata( n5, node );
-				if (node.metadata != null)
-				{
+				node.setMetadata(parser.parseMetadata( n5, node )); 
+				if (node.getMetadata() != null)
 					break;
-				}
         	}
         	catch( Exception e ) {}
         }
 
         // If there is no matching metadata but it is a dataset, we should still be able to open it.
         // Create a single-scale metadata entry with an identity transform.
-        if (node.metadata == null && node.isDataset)
+        if (node.getMetadata() == null && node.isDataset())
         {
-        	System.out.println( "Warning: using default metadata for " + node.path );
-            node.metadata = new DefaultMetadata( node.path, 3 ); // TODO fix
+			System.out.println( "Warning: using default metadata for " + node.path );
+			// could be made more efficient if metadata store dataset attributes?
+			int nd = n5.getDatasetAttributes( node.path ).getNumDimensions();
+			node.setMetadata( new DefaultMetadata( node.path, nd ) );
         }
 		else if ( groupParsers != null )
 		{
@@ -148,19 +140,17 @@ public class N5DatasetDiscoverer {
 			{
 				N5Metadata groupMeta = gp.parseMetadataGroup( node );
 				if ( groupMeta != null )
-				{
-					node.metadata = groupMeta;
-				}
+					node.setMetadata( groupMeta );
 			}
 		}
 	}
 
 	public static void parseMetadataRecursive(final N5Reader n5, final N5TreeNode node, 
 			final N5MetadataParser<?>[] metadataParsers,
-			final N5GroupParser<?>[] groupParsers ) throws IOException {
-
+			final N5GroupParser<?>[] groupParsers ) throws IOException
+	{
         // Recursively parse metadata for children nodes
-        for (final N5TreeNode childNode : node.children)
+		for ( final N5TreeNode childNode : node.childrenList() )
 			parseMetadataRecursive( n5, childNode, metadataParsers, groupParsers );
 
         parseMetadata( n5, node, metadataParsers, groupParsers );
@@ -176,11 +166,12 @@ public class N5DatasetDiscoverer {
      */
     private static boolean trim(final N5TreeNode node)
     {
-        if (node.children.isEmpty())
-            return node.metadata != null;
+		List< N5TreeNode > children = node.childrenList();
+		if ( children.isEmpty() )
+			return node.getMetadata() != null;
 
         boolean ret = false;
-        for (final Iterator<N5TreeNode> it = node.children.iterator(); it.hasNext();)
+        for (final Iterator<N5TreeNode> it = children.iterator(); it.hasNext();)
         {
             final N5TreeNode childNode = it.next();
             if (!trim(childNode))
@@ -188,13 +179,14 @@ public class N5DatasetDiscoverer {
             else
                 ret = true;
         }
-        return ret || node.metadata != null;
+        return ret || node.getMetadata() != null;
     }
 
     private static void sort(final N5TreeNode node, final Comparator<? super String> comparator)
     {
-        node.children.sort(Comparator.comparing(N5TreeNode::toString, comparator));
-        for (final N5TreeNode childNode : node.children)
-            sort(childNode, comparator);
+		List< N5TreeNode > children = node.childrenList();
+		children.sort( Comparator.comparing( N5TreeNode::toString, comparator ) );
+		for ( final N5TreeNode childNode : children )
+			sort( childNode, comparator );
     }
 }

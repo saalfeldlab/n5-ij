@@ -20,6 +20,8 @@ import net.imglib2.realtransform.AffineTransform3D;
 
 import java.util.Objects;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+
 public class N5MultiScaleMetadata implements N5Metadata {
 
     public final String basePath;
@@ -47,4 +49,11 @@ public class N5MultiScaleMetadata implements N5Metadata {
 	{
 		return basePath;
 	}
+
+	@Override
+	public DatasetAttributes getAttributes()
+	{
+		return null;
+	}
+	
 }

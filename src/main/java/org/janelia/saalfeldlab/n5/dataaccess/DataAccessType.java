@@ -18,6 +18,7 @@ package org.janelia.saalfeldlab.n5.dataaccess;
 
 import com.amazonaws.services.s3.AmazonS3URI;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
+import org.janelia.saalfeldlab.n5.ij.N5Importer;
 
 import java.io.File;
 import java.net.URI;
@@ -30,11 +31,39 @@ public enum DataAccessType
 	HDF5,
 	ZARR;
 
+	/**
+	 * Detects the type of N5 container for readers
+	 * @param link the link or path
+	 * @return the container type
+	 */
 	public static DataAccessType detectType( final String link )
 	{
+
 		// check if it is a valid directory path
-		if ( new File( link ).isDirectory() )
-			return FILESYSTEM;
+		File f = new File( link );
+		if ( f.isDirectory() )
+		{
+			if ( link.contains( ".n5" ) )
+				return FILESYSTEM;
+			else if ( link.contains( ".zarr" ) )
+				return ZARR;
+			else if ( new File( f, "attributes.json" ).exists() )
+				return FILESYSTEM;
+			else if ( 	new File( f, ".zarray" ).exists() || 
+						new File( f, ".zgroups" ).exists() ||
+						new File( f, ".zattrs" ).exists() )
+			{
+				return ZARR;
+			}
+//			else
+//				search parent folders?	
+		}
+
+		if ( link.contains( ".h5" ) || link.contains( ".hdf5" ) || link.contains( ".hdf" ) )
+		{
+			if( new File( N5Importer.h5DatasetPath( link, true )).exists() )
+				return HDF5;
+		}
 
 		final URI uri;
 		try
