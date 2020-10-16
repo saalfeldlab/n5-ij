@@ -4,10 +4,14 @@ A Fiji plugin for loading and saving image data to N5 containers. Supports [HDF5
 
 ## Contents
 1. [Open N5](#open-n5)
+   1. [Virtual](#virtual)
+   2. [Cropping](#cropping)
 2. [Export N5](#export-n5)
-3. [Metadata](#metadata)
-4. [For developers](#for-developers)
-5. [Cloud writing benchmarks](#cloud-writing-benchmarks)
+3. [Container types](#container-types)
+4. [Metadata](#metadata)
+5. [For developers](#for-developers)
+6. [Details](#details)
+   1. [Cloud writing benchmarks](#cloud-writing-benchmarks)
 
 ## Open N5
 
@@ -86,6 +90,7 @@ This plugin supports three types of image metadata:
 1) ImageJ-style metadata 
 2) [N5-viewer](https://github.com/saalfeldlab/n5-viewer) metadata
 3) [COSEM](https://github.com/janelia-cosem/schemas/blob/master/multiscale.md) metadata
+4) Custom metadata. [Read details here](CustomMetadata.md)
 
 The metadata style for exported N5 datasets is customizable, more detail coming soon.
 
@@ -126,8 +131,6 @@ N5IJUtils.save(
 * This plugin supports images of up to 5 dimensions, and the datatypes supported by Imagej (`uint8`, `uint16`, `float32`) For higher dimensions and other datatypes, we recommend [n5-imglib2](https://github.com/saalfeldlab/n5-imglib2).
 
 * This plugin supports only the datatypes supported by ImageJ, namely uint8, uint16, and float32. For other datatypes[n5-imglib2](https://github.com/saalfeldlab/n5-imglib2).
-
-### Metadata
 
 ### Cloud writing benchmarks
 

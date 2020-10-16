@@ -62,11 +62,11 @@ public class N5Importer implements PlugIn
 	public static final String IP_OPTION = "ImagePlus";
 
 	public static final String MetadataAutoKey = "Auto-detect";
-	public static final String MetadataImageJKey = "ImageJMetadata";
-	public static final String MetadataN5CosemKey = "Cosem Metadata";
-	public static final String MetadataN5ViewerKey = "N5Viewer Metadata";
-	public static final String MetadataCustomKey = "CustomMetadata";
-	public static final String MetadataDefaultKey = "DefaultMetadata";
+	public static final String MetadataImageJKey = "ImageJ";
+	public static final String MetadataN5CosemKey = "Cosem";
+	public static final String MetadataN5ViewerKey = "N5Viewer";
+	public static final String MetadataCustomKey = "Custom";
+	public static final String MetadataDefaultKey = "Default";
 
 	public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 					new N5ImagePlusMetadata( "" ),

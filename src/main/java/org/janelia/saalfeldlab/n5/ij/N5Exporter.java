@@ -136,7 +136,6 @@ public class N5Exporter implements Command, WindowListener
 			final String n5RootLocation,
 			final String n5Dataset,
 			final String blockSizeArg,
-			final String type,
 			final String metadataStyle,
 			final String compression )
 	{
@@ -147,7 +146,6 @@ public class N5Exporter implements Command, WindowListener
 		this.blockSizeArg = blockSizeArg;
 		this.metadataStyle = metadataStyle;
 		this.compressionArg = compression;
-		setType( type );
 	}
 
 	public void setType( final String type )
@@ -247,7 +245,9 @@ public class N5Exporter implements Command, WindowListener
 			impMeta = impMetaWriterTypes.get( writer.getClass() );
 		}
 
-		if( metadataStyle.equals( NONE ) || metadataStyle.equals( N5Importer.MetadataImageJKey ))
+		if( metadataStyle.equals( NONE ) || 
+			metadataStyle.equals( N5Importer.MetadataImageJKey ) ||
+			metadataStyle.equals( N5Importer.MetadataCustomKey ))
 		{
 			write( n5, compression, writer );
 		}
