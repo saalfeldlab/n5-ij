@@ -107,7 +107,7 @@ public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetada
 			"\t{\n" +
 			"\t\"scale\": [.xResolution, .yResolution, .zResolution],\n" +
 			"\t\"translate\": [.xOrigin, .yOrigin, .zOrigin],\n" +
-			"\t\"axes\": [.xAxis, .yAxis, .zAxis],\n" +
+			"\t\"axes\": [.axis0, .axis1, .axis2, .axis3, .axis4],\n" +
 			"\t\"units\": [.xUnit, .yUnit, .zUnit]\n" +
 			"\t}\n" +
 			"}";
@@ -117,6 +117,11 @@ public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetada
 	{
 		Map< String, ? > map = ( Map< String, ? > ) computeToMap( gson.toJson( t ));
 		n5.setAttributes( dataset, map );
+	}
+
+	public String toJsonString( ImagePlusMetadataTemplate t ) throws Exception
+	{
+		return computeToJson( gson.toJson( t )).toString();
 	}
 
 }

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 
@@ -64,11 +65,15 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 	{
 		HashMap< String, Object > map = new HashMap<>();
 		map.put( "dataset", dataset ); // TODO doc this
+		try
+		{ 	
+			// TODO doc this
+			map.put( "attributes", n5.getDatasetAttributes( dataset ));
+		}
+		catch ( IOException e1 ) { } 
+
 		for( String k : keys.keySet() )
 		{
-			if( !map.containsKey( k ))
-				return null;
-
 			try
 			{
 				map.put( k, n5.getAttribute( dataset, k, keys.get( k ) ) );
@@ -81,7 +86,7 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 
 		return map;
 	}
-	
+
 	public static boolean hasRequiredKeys(
 			final Map<String,Class<?>> keysToTypes,
 			final Map<String,?> metaMap )

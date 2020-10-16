@@ -26,7 +26,10 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 
 import ij.ImagePlus;
@@ -54,7 +57,7 @@ public class N5IJUtils {
 	public static <T extends NativeType<T> & NumericType<T>> ImagePlus load(
 			final N5Reader n5,
 			final String dataset ) throws IOException, ImgLibException {
-		return load( n5, dataset, null, null );
+		return load( n5, dataset, null );
 	}
 
 	/**
@@ -70,12 +73,11 @@ public class N5IJUtils {
 	 * @throws ImgLibException
 	 */
 	@SuppressWarnings( { "unchecked", "rawtypes" } )
-	public static <T extends NativeType<T> & NumericType<T>, M extends N5Metadata > ImagePlus load(
+	public static <T extends NativeType<T> & NumericType<T>, M extends N5Metadata, W extends N5MetadataParser< M > & ImageplusMetadata< M > > ImagePlus load(
 			final N5Reader n5,
 			final String dataset,
-			final M metadata,
-			final ImageplusMetadata< M > writer ) throws IOException, ImgLibException {
-
+			final W metaReader ) throws IOException, ImgLibException
+	{
 		final RandomAccessibleInterval<T> rai = N5Utils.open(n5, dataset);
 		final DatasetAttributes attributes = n5.getDatasetAttributes(dataset);
 		final long[] dimensions = attributes.getDimensions();
@@ -111,11 +113,15 @@ public class N5IJUtils {
 			pair.getB().set(pair.getA());
 
 		ImagePlus imp = impImg.getImagePlus();
-		if( writer != null && metadata != null )
+		if( metaReader != null && metaReader != null )
 		{
-			writer.writeMetadata( metadata, imp );
+			try
+			{
+				M metadata = metaReader.parseMetadata( n5, dataset );
+				metaReader.writeMetadata( metadata, imp );
+			}
+			catch ( Exception e ) { System.err.println( "Warning: could not read metadata." );}
 		}
-//		metadata.metadataFromN5( n5, dataset, imp );
 
 		return imp;
 	}
@@ -137,9 +143,8 @@ public class N5IJUtils {
 			final int[] blockSize,
 			final Compression compression) throws IOException
 	{
-		// TODO or use default simple metadata?
-		N5MetadataWriter< ? > nullWriter = null;
-		save( imp, n5, datasetName, blockSize, compression, nullWriter, null );
+		N5ImagePlusMetadata nullWriter = null;
+		save( imp, n5, datasetName, blockSize, compression, nullWriter );
 	}
 
 
@@ -154,14 +159,13 @@ public class N5IJUtils {
 	 * @param metadata
 	 * @throws IOException
 	 */
-	public static <T extends N5Metadata > void save(
+	public static <T extends N5Metadata, W extends N5MetadataWriter< T > & ImageplusMetadata< T >> void save(
 			final ImagePlus imp,
 			final N5Writer n5,
 			final String datasetName,
 			final int[] blockSize,
 			final Compression compression,
-			final N5MetadataWriter< T > writer,
-			final T metadata ) throws IOException
+			final W metaWriter ) throws IOException
 	{
 		final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
 
@@ -172,14 +176,14 @@ public class N5IJUtils {
 				blockSize,
 				compression);
 
-		if( metadata != null && writer !=null )
+		if( metaWriter != null && metaWriter !=null )
 		{
 			try
 			{
-				writer.writeMetadata( metadata, n5, datasetName );
+				T metadata = metaWriter.readMetadata( imp );
+				metaWriter.writeMetadata( metadata, n5, datasetName );
 			}
 			catch ( Exception e ) { e.printStackTrace(); }
-//			metadata.metadataToN5( imp, n5, datasetName );
 		}
 	}
 
@@ -206,7 +210,7 @@ public class N5IJUtils {
 			final ExecutorService exec
 			) throws IOException, InterruptedException, ExecutionException
 	{
-		save( imp, n5, datasetName, blockSize, compression, exec, null, null );
+		save( imp, n5, datasetName, blockSize, compression, exec, null );
 	}
 
 	/**
@@ -224,15 +228,14 @@ public class N5IJUtils {
 	 * @throws InterruptedException
 	 * @throws ExecutionException
 	 */
-	public static <T extends N5Metadata > void save(
+	public static <T extends N5Metadata, W extends N5MetadataWriter< T > & ImageplusMetadata< T >> void save(
 			final ImagePlus imp,
 			final N5Writer n5,
 			final String datasetName,
 			final int[] blockSize,
 			final Compression compression,
 			final ExecutorService exec,
-			final N5MetadataWriter< T > writer,
-			final T metadata ) 
+			final W metaWriter ) 
 					throws IOException, InterruptedException, ExecutionException
 	{
 		final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
@@ -245,17 +248,14 @@ public class N5IJUtils {
 				compression,
 				exec);
 
-//		if( metadata != null )
-//			metadata.metadataToN5( imp, n5, datasetName );
-
-		if( metadata != null && writer !=null )
+		if( metaWriter != null && metaWriter !=null )
 		{
 			try
 			{
-				writer.writeMetadata( metadata, n5, datasetName );
+				T metadata = metaWriter.readMetadata( imp );
+				metaWriter.writeMetadata( metadata, n5, datasetName );
 			}
 			catch ( Exception e ) { e.printStackTrace(); }
-//			metadata.metadataToN5( imp, n5, datasetName );
 		}
 	}
 

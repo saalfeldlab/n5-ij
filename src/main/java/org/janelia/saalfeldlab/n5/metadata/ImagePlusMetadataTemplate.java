@@ -4,11 +4,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+
 import ij.ImagePlus;
 
-public class ImagePlusMetadataTemplate implements N5Metadata, ImageplusMetadata< ImagePlusMetadataTemplate >
+public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements 
+	ImageplusMetadata< ImagePlusMetadataTemplate >
 {
-	public final String path;
 	public final String name;
 
 	public final double xResolution;
@@ -38,7 +40,7 @@ public class ImagePlusMetadataTemplate implements N5Metadata, ImageplusMetadata<
 
 	public ImagePlusMetadataTemplate( final String path )
 	{
-		this.path = path;
+		super( path );
 
 		name = "";
 
@@ -70,7 +72,12 @@ public class ImagePlusMetadataTemplate implements N5Metadata, ImageplusMetadata<
 
 	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp )
 	{
-		this.path = path;
+		this( path, imp, null );
+	}
+
+	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp, final DatasetAttributes attributes )
+	{
+		super( path, attributes );
 		name = imp.getTitle();
 
 		xResolution = imp.getCalibration().pixelWidth;
@@ -102,12 +109,6 @@ public class ImagePlusMetadataTemplate implements N5Metadata, ImageplusMetadata<
 			for ( Object k : props.keySet() )
 				otherMetadata.put( k.toString(), props.get( k ).toString() );
 
-	}
-
-	@Override
-	public String getPath()
-	{
-		return path;
 	}
 
 	@Override

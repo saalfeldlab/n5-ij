@@ -1,32 +1,23 @@
 package org.janelia.saalfeldlab.n5.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.BiPredicate;
-import java.util.function.Consumer;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTable;
 import javax.swing.JTextArea;
-import javax.swing.JTree;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.TreePath;
 
-import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
+
+import ij.Prefs;
 
 public class N5MetadataSpecDialog
 {
@@ -57,7 +48,15 @@ public class N5MetadataSpecDialog
 
 	public JFrame show( final String init )
 	{
-		JFrame frame = new JFrame( "Choose N5 datasets" );
+		JFrame frame = new JFrame( "Metadata translation" );
+
+		double guiScale = Prefs.getGuiScale();
+		int frameSizeX = (int)(guiScale * 600);
+		int frameSizeY = (int)(guiScale * 400);
+
+		frame.setPreferredSize( new Dimension( frameSizeX, frameSizeY ) );
+		frame.setMinimumSize( frame.getPreferredSize() );
+
 		JPanel panel = new JPanel( new BorderLayout() );
 
 		if( listener != null )
@@ -65,7 +64,7 @@ public class N5MetadataSpecDialog
 
 		JTextArea textArea = new JTextArea();
 		textArea.setText( init );
-		textArea.setFont( textArea.getFont().deriveFont(18f) );
+		textArea.setFont( textArea.getFont().deriveFont( (float)guiScale * 18f) );
 
 		JScrollPane textView = new JScrollPane( textArea );
 		panel.add( textView, BorderLayout.CENTER );
