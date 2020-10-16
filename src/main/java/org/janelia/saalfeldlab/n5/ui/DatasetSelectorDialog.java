@@ -252,17 +252,16 @@ public class DatasetSelectorDialog
 		treeModel = new DefaultTreeModel( null );
 		containerTree = new JTree( treeModel );
 		containerTree.setMinimumSize( new Dimension( 550, 230 ));
-		containerTree.setPreferredSize( new Dimension( 550, 230 ));
 		scaleFont( containerTree, (float)guiScale * 1.2f );
 
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
         final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
-        treeCellRenderer.setLeafIcon(treeCellRenderer.getOpenIcon());
+        treeCellRenderer.setLeafIcon(treeCellRenderer.getLeafIcon());
 
 		final JScrollPane treeScroller = new JScrollPane( containerTree );
-		JScrollPane scroll = new JScrollPane( treeScroller );
-		scroll.setVerticalScrollBarPolicy( ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS );
-		pane.add( scroll, ctree );
+		treeScroller.setViewportView( containerTree );
+		treeScroller.setVerticalScrollBarPolicy( ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED );
+		pane.add( treeScroller, ctree );
 
 		// bottom button
 		GridBagConstraints cbot = new GridBagConstraints();
