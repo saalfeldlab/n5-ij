@@ -22,7 +22,6 @@ import ij.Prefs;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
@@ -193,10 +192,18 @@ public class DatasetSelectorDialog
 		dialog.setVisible( true );
     }
 
+    private static final int DEFAULT_OUTER_PAD = 8;
+    private static final int DEFAULT_BUTTON_PAD = 3;
+    private static final int DEFAULT_MID_PAD = 5;
+
     private JFrame buildDialog()
     {
-		int frameSizeX = (int)(guiScale * 600);
-		int frameSizeY = (int)(guiScale * 400);
+    	int OUTER_PAD = (int)( guiScale * DEFAULT_OUTER_PAD );
+    	int BUTTON_PAD = (int)( guiScale * DEFAULT_BUTTON_PAD );
+    	int MID_PAD = (int)( guiScale * DEFAULT_MID_PAD );
+
+		int frameSizeX = (int)( guiScale * 600 );
+		int frameSizeY = (int)( guiScale * 400 );
 
 		dialog = new JFrame( "Open N5" );
 		dialog.setPreferredSize( new Dimension( frameSizeX, frameSizeY ) );
@@ -214,11 +221,11 @@ public class DatasetSelectorDialog
 		ctxt.gridy = 0;
 		ctxt.gridwidth = 3;
 		ctxt.gridheight = 1;
-		ctxt.weightx = 0.8;
-		ctxt.weighty = 0.1;
+		ctxt.weightx = 1.0;
+		ctxt.weighty = 0.0;
 		ctxt.fill = GridBagConstraints.HORIZONTAL;
-		ctxt.insets = new Insets( 0, 8, 0, 2 );
-		pane.add( containerPathText, ctxt );
+		ctxt.insets = new Insets( OUTER_PAD, OUTER_PAD, MID_PAD, BUTTON_PAD );
+		pane.add( containerPathText, ctxt ); 
 
 		browseBtn = scaleFont( new JButton( "Browse" ));
 		GridBagConstraints cbrowse = new GridBagConstraints();
@@ -226,8 +233,10 @@ public class DatasetSelectorDialog
 		cbrowse.gridy = 0;
 		cbrowse.gridwidth = 1;
 		cbrowse.gridheight = 1;
-		cbrowse.weightx = 0.1;
-		cbrowse.weighty = 0.1;
+		cbrowse.weightx = 0.0;
+		cbrowse.weighty = 0.0;
+		cbrowse.fill = GridBagConstraints.HORIZONTAL;
+		cbrowse.insets = new Insets( OUTER_PAD, BUTTON_PAD, MID_PAD, BUTTON_PAD );
 		pane.add( browseBtn, cbrowse );
 
 		detectBtn = scaleFont( new JButton( "Detect datasets" ) );
@@ -236,8 +245,10 @@ public class DatasetSelectorDialog
 		cdetect.gridy = 0;
 		cdetect.gridwidth = 2;
 		cdetect.gridheight = 1;
-		cdetect.weightx = 0.1;
-		cdetect.weighty = 0.1;
+		cdetect.weightx = 0.0;
+		cdetect.weighty = 0.0;
+		cdetect.fill = GridBagConstraints.HORIZONTAL;
+		cdetect.insets = new Insets( OUTER_PAD, BUTTON_PAD, MID_PAD, OUTER_PAD );
 		pane.add( detectBtn, cdetect );
 
 		GridBagConstraints ctree = new GridBagConstraints();
@@ -245,10 +256,11 @@ public class DatasetSelectorDialog
 		ctree.gridy = 1;
 		ctree.gridwidth = 6;
 		ctree.gridheight = 3;
-		ctree.weightx = 0.9;
-		ctree.weighty = 0.9;
-		ctree.ipadx = 5;
-		ctree.ipady = 10;
+		ctree.weightx = 1.0;
+		ctree.weighty = 1.0;
+		ctree.ipadx = 0;
+		ctree.ipady = 0;
+		ctree.insets = new Insets( 0, OUTER_PAD, 0, OUTER_PAD );
 		ctree.fill = GridBagConstraints.BOTH;
 
 		treeModel = new DefaultTreeModel( null );
@@ -258,7 +270,6 @@ public class DatasetSelectorDialog
 
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
         final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
-        treeCellRenderer.setLeafIcon(treeCellRenderer.getLeafIcon());
 
 		final JScrollPane treeScroller = new JScrollPane( containerTree );
 		treeScroller.setViewportView( containerTree );
@@ -272,7 +283,8 @@ public class DatasetSelectorDialog
 		cbot.gridwidth = 1;
 		cbot.gridheight = 1;
 		cbot.weightx = 0.0;
-		cbot.weighty = 0.1;
+		cbot.weighty = 0.0;
+		cbot.insets = new Insets( OUTER_PAD, OUTER_PAD, OUTER_PAD, OUTER_PAD );
 		cbot.anchor = GridBagConstraints.CENTER;
 
 		if( virtualOption )
@@ -299,18 +311,24 @@ public class DatasetSelectorDialog
 
 		messageLabel = scaleFont( new JLabel(""));
 		messageLabel.setVisible( false );
-		cbot.gridx = 3;
+		cbot.gridx = 2;
 		cbot.anchor = GridBagConstraints.CENTER;
 		pane.add( messageLabel, cbot );
 
 		okBtn = scaleFont( new JButton( "OK" ));
 		cbot.gridx = 4;
+		cbot.ipadx = (int) ( 20 * guiScale );
 		cbot.anchor = GridBagConstraints.EAST;
+		cbot.fill = GridBagConstraints.HORIZONTAL;
+		cbot.insets = new Insets( MID_PAD, OUTER_PAD, OUTER_PAD, BUTTON_PAD );
 		pane.add( okBtn, cbot );
 
 		cancelBtn = scaleFont( new JButton( "Cancel" ));
 		cbot.gridx = 5;
-		cbot.anchor = GridBagConstraints.CENTER;
+		cbot.ipadx = 0;
+		cbot.anchor = GridBagConstraints.EAST;
+		cbot.fill = GridBagConstraints.HORIZONTAL;
+		cbot.insets = new Insets( MID_PAD, BUTTON_PAD, OUTER_PAD, OUTER_PAD );
 		pane.add( cancelBtn, cbot );
 
 		dialog.pack();

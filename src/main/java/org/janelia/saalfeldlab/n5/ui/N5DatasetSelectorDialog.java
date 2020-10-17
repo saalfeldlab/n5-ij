@@ -7,10 +7,8 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiPredicate;
-import java.util.function.Consumer;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
