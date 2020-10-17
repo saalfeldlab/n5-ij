@@ -49,7 +49,7 @@ public class N5DatasetDiscoverer {
 	public N5DatasetDiscoverer( final N5GroupParser[] groupParsers, final N5MetadataParser... metadataParsers )
     {
         this(
-                Optional.of(new AlphanumericComparator(Collator.getInstance())),
+                Optional.of( new AlphanumericComparator(Collator.getInstance())),
                 groupParsers,
                 metadataParsers);
     }
@@ -80,8 +80,6 @@ public class N5DatasetDiscoverer {
 		discover( n5, root );
 		parseMetadataRecursive( n5, root, metadataParsers, groupParsers );
 		trim( root );
-		if ( comparator != null )
-			sort( root, comparator );
 		return root;
     }
 
@@ -92,7 +90,7 @@ public class N5DatasetDiscoverer {
 		return node;
     }
 
-    private static void discover(final N5Reader n5, final N5TreeNode node) throws IOException
+    private void discover(final N5Reader n5, final N5TreeNode node) throws IOException
     {
         if( !node.isDataset() )
         {
@@ -103,6 +101,8 @@ public class N5DatasetDiscoverer {
 				node.add( childNode );
 				discover( n5, childNode );
             }
+			if ( comparator != null )
+				sort( node, comparator );
         }
     }
 
@@ -133,8 +133,7 @@ public class N5DatasetDiscoverer {
         }
 		else if ( groupParsers != null )
 		{
-			// this is not a dataset but may be a group (e.g. multiscale
-			// pyramid)
+			// this is not a dataset but may be a group (e.g. multiscale pyramid)
 			// try to parse groups
 			for ( N5GroupParser< ? > gp : groupParsers )
 			{
@@ -174,8 +173,10 @@ public class N5DatasetDiscoverer {
         for (final Iterator<N5TreeNode> it = children.iterator(); it.hasNext();)
         {
             final N5TreeNode childNode = it.next();
-            if (!trim(childNode))
-                it.remove();
+			if ( !trim( childNode ))
+			{
+				node.remove( childNode );
+			}
             else
                 ret = true;
         }
@@ -186,6 +187,12 @@ public class N5DatasetDiscoverer {
     {
 		List< N5TreeNode > children = node.childrenList();
 		children.sort( Comparator.comparing( N5TreeNode::toString, comparator ) );
+
+		// add back the children in order
+		// necessary because the collection of children can't be sorted in place
+		node.removeAllChildren();
+		children.stream().forEach( x -> node.add( x ) );
+
 		for ( final N5TreeNode childNode : children )
 			sort( childNode, comparator );
     }

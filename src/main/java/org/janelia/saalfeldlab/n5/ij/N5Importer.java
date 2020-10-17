@@ -588,41 +588,4 @@ public class N5Importer implements PlugIn
 			return h5PathAndDataset.substring( i + len );
 	}
 
-	/**
-	 * Removes selected nodes that do not have metadata, and are therefore not openable.
-	 */
-	public static class N5IjTreeSelectionListener implements TreeSelectionListener
-	{
-		private TreeSelectionModel selectionModel;
-
-		public N5IjTreeSelectionListener( TreeSelectionModel selectionModel )
-		{
-			this.selectionModel = selectionModel;
-		}
-
-		@Override
-		public void valueChanged( TreeSelectionEvent sel )
-		{
-			int i = 0;
-			for( TreePath path : sel.getPaths())
-			{
-				if( !sel.isAddedPath( i ))
-					continue;
-
-				Object last = path.getLastPathComponent();
-				if( last instanceof N5TreeNode )
-				{
-					N5TreeNode node = (N5TreeNode)last;
-
-					//if(!node.isDataset())
-					if( node.getMetadata() == null )
-					{
-						selectionModel.removeSelectionPath( path );
-					}
-				}
-				i++;
-			}
-		}
-	}
-
 }

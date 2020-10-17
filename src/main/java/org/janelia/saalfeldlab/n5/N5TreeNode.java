@@ -41,8 +41,8 @@ public class N5TreeNode extends DefaultMutableTreeNode
 		this.isDataset = isDataset;
 	}
 
-    public String getNodeName() {
-
+    public String getNodeName()
+    {
         return Paths.get(removeLeadingSlash(path)).getFileName().toString();
     }
 
@@ -73,8 +73,8 @@ public class N5TreeNode extends DefaultMutableTreeNode
 	}
 
     @Override
-    public String toString() {
-
+    public String toString()
+    {
         final String nodeName = getNodeName();
         return !nodeName.isEmpty() ? nodeName : "/";
     }

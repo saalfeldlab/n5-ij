@@ -28,6 +28,8 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 
 import javax.swing.*;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
@@ -183,7 +185,7 @@ public class DatasetSelectorDialog
 
         // disable selection of nodes that are not open-able
 		containerTree.addTreeSelectionListener( 
-				new N5Importer.N5IjTreeSelectionListener( containerTree.getSelectionModel() ));
+				new N5IjTreeSelectionListener( containerTree.getSelectionModel() ));
 
         // ok and cancel buttons
 		okBtn.addActionListener( e -> ok() );
@@ -511,6 +513,43 @@ public class DatasetSelectorDialog
 				IJ.handleException( e );
 			}
 			return null;
+		}
+	}
+
+	/**
+	 * Removes selected nodes that do not have metadata, and are therefore not openable.
+	 */
+	public static class N5IjTreeSelectionListener implements TreeSelectionListener
+	{
+		private TreeSelectionModel selectionModel;
+
+		public N5IjTreeSelectionListener( TreeSelectionModel selectionModel )
+		{
+			this.selectionModel = selectionModel;
+		}
+
+		@Override
+		public void valueChanged( TreeSelectionEvent sel )
+		{
+			int i = 0;
+			for( TreePath path : sel.getPaths())
+			{
+				if( !sel.isAddedPath( i ))
+					continue;
+
+				Object last = path.getLastPathComponent();
+				if( last instanceof N5TreeNode )
+				{
+					N5TreeNode node = (N5TreeNode)last;
+
+					//if(!node.isDataset())
+					if( node.getMetadata() == null )
+					{
+						selectionModel.removeSelectionPath( path );
+					}
+				}
+				i++;
+			}
 		}
 	}
 
