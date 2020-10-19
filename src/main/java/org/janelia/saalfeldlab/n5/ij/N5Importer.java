@@ -10,14 +10,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import javax.swing.event.TreeSelectionEvent;
-import javax.swing.event.TreeSelectionListener;
-import javax.swing.tree.TreePath;
-import javax.swing.tree.TreeSelectionModel;
-
+import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
@@ -101,6 +96,8 @@ public class N5Importer implements PlugIn
 
 	public N5Importer()
 	{
+		// store value of record
+		// necessary to skip initial opening of this dialog
 		record = Recorder.record;
 		Recorder.record = false;
 
@@ -198,6 +195,7 @@ public class N5Importer implements PlugIn
 			try
 			{
 				meta = new N5DatasetDiscoverer( null, PARSERS ).parse( n5ForThisDataset, "" ).getMetadata();
+
 				process( n5ForThisDataset, n5Path, Collections.singletonList( meta ), openAsVirtual, thisDatasetCropInterval,
 						impMetaWriterTypes );
 			}
@@ -208,9 +206,27 @@ public class N5Importer implements PlugIn
 		}
 	}
 
+	public static boolean isTypeOpenable( final N5Metadata meta, boolean showMessage )
+	{
+		DataType type = meta.getAttributes().getDataType();
+		if( ! ( type == DataType.FLOAT32 ) ||
+				type == DataType.UINT8 ||
+				type == DataType.UINT16 )
+		{
+			if( showMessage )
+				IJ.error( "Cannot open datasets of type (" + type + ").\n"
+						+ "ImageJ supports uint8, uint16, or float32.");
+
+			return false;
+		}
+		return true;
+	}
+
 	private void datasetSelectorCallBack( final DataSelection selection )
 	{
+		// set the recorder back to its original value
 		Recorder.record = record;
+
 		this.selection = selection;
 		this.n5 = selection.n5;
 		this.asVirtual = selectionDialog.isVirtual();
@@ -337,6 +353,9 @@ public class N5Importer implements PlugIn
 		final String rootPath = selectionDialog.getN5RootPath();
 		for ( N5Metadata datasetMeta : selection.metadata )
 		{
+			if( !isTypeOpenable( datasetMeta, true ))
+				continue;
+
 			// Macro.getOptions() does not return what I'd expect after this call.  why?
 			// Macro.setOptions( String.format( "n5=%s", datasetMeta.getPath() ));
 
@@ -368,6 +387,9 @@ public class N5Importer implements PlugIn
 		ArrayList<ImagePlus> imgList = new ArrayList<>();
 		for ( N5Metadata datasetMeta : datasetMetadataList )
 		{
+			if( !isTypeOpenable( datasetMeta, true ))
+				continue;
+
 			String d = datasetMeta.getPath();
 			String pathToN5Dataset = d.isEmpty() ? rootPath : rootPath + File.separator + d;
 
