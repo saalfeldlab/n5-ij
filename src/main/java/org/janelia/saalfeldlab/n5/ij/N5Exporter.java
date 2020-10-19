@@ -21,6 +21,7 @@ import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
+import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
 import org.janelia.saalfeldlab.n5.metadata.ImagePlusMetadataTemplate;
@@ -264,6 +265,11 @@ public class N5Exporter implements Command, WindowListener
 	{
 		N5IJUtils.save( image, n5, n5Dataset, blockSize, compression );
 		writeMetadata( n5, n5Dataset, writer );
+
+		if( n5 instanceof N5HDF5Writer )
+		{
+			((N5HDF5Writer)n5).close();
+		}
 	}
 
 	private < T extends RealType< T > & NativeType< T >, M extends N5Metadata> void writeSplitChannels( 
@@ -305,6 +311,10 @@ public class N5Exporter implements Command, WindowListener
 				N5Utils.save( channelImg , n5, datasetString, blockSize, compression );
 
 			writeMetadata( n5, datasetString, writer );
+		}
+		if( n5 instanceof N5HDF5Writer )
+		{
+			((N5HDF5Writer)n5).close();
 		}
 	}
 
