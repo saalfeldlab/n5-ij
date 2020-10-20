@@ -286,14 +286,12 @@ public class DatasetSelectorDialog
 		containerTree.getSelectionModel().setSelectionMode( 
 				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION );
 
-		containerTree.setCellRenderer( new N5DatasetTreeRenderer() );
-
         // disable selection of nodes that are not open-able
 		containerTree.addTreeSelectionListener( 
 				new N5IjTreeSelectionListener( containerTree.getSelectionModel() ));
 
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
-        final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
+//        final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
 
 		final JScrollPane treeScroller = new JScrollPane( containerTree );
 		treeScroller.setViewportView( containerTree );
