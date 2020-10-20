@@ -206,6 +206,7 @@ public class DatasetSelectorDialog
 
 		containerPathText = new JTextField();
 		containerPathText.setPreferredSize( new Dimension( frameSizeX / 3, containerPathText.getPreferredSize().height ));
+		containerPathText.addActionListener( e -> openContainer( n5Fun, () -> getN5RootPath(), pathFun ));
 		scale( containerPathText );
 
 		GridBagConstraints ctxt = new GridBagConstraints();
