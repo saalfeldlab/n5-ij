@@ -102,16 +102,31 @@ public class DatasetSelectorDialog
 
 	private Future< N5TreeNode > parserFuture;
 
+	private final String initialContainerPath;
+
+	private Consumer< String > containerPathUpdateCallback;
+
+	public DatasetSelectorDialog( 
+			final Function< String, N5Reader > n5Fun, 
+			final Function< String, String > pathFun, 
+			final String initialContainerPath,
+			final N5GroupParser<?>[] groupParsers,
+			final N5MetadataParser< ? >... parsers )
+	{
+		this.n5Fun = n5Fun;
+		this.pathFun = pathFun;
+		this.initialContainerPath = initialContainerPath;
+		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+		guiScale = Prefs.getGuiScale();
+	}
+
 	public DatasetSelectorDialog( 
 			final Function< String, N5Reader > n5Fun, 
 			final Function< String, String > pathFun, 
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
-		this.n5Fun = n5Fun;
-		this.pathFun = pathFun;
-		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
-		guiScale = Prefs.getGuiScale();
+		this( n5Fun, pathFun, "", groupParsers, parsers );
 	}
 
 	public DatasetSelectorDialog( 
@@ -129,7 +144,13 @@ public class DatasetSelectorDialog
 	{
 		this.n5 = n5;
 		this.pathFun = x -> "";
+		this.initialContainerPath = "";
 		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+	}
+
+	public void setContainerPathUpdateCallback( final Consumer<String> containerPathUpdateCallback )
+	{
+		this.containerPathUpdateCallback = containerPathUpdateCallback;
 	}
 
 	public void setMessage( final String message )
@@ -205,6 +226,7 @@ public class DatasetSelectorDialog
 		pane.setLayout( new GridBagLayout() );
 
 		containerPathText = new JTextField();
+		containerPathText.setText( initialContainerPath );
 		containerPathText.setPreferredSize( new Dimension( frameSizeX / 3, containerPathText.getPreferredSize().height ));
 		containerPathText.addActionListener( e -> openContainer( n5Fun, () -> getN5RootPath(), pathFun ));
 		scale( containerPathText );
@@ -371,6 +393,7 @@ public class DatasetSelectorDialog
 		dialog.revalidate();
 
 		final String n5Path = opener.get();
+		containerPathUpdateCallback.accept( n5Path );
 		if( n5Path == null )
 		{
 			messageLabel.setVisible( false );
@@ -409,6 +432,8 @@ public class DatasetSelectorDialog
 		if ( containerTree.getSelectionCount() == 0 )
 		{
 			final String n5Path = getN5RootPath();
+			containerPathUpdateCallback.accept( getN5RootPath() );
+
 			n5 = n5Fun.apply( n5Path );
 			final String dataset = pathFun.apply( n5Path );
 			N5TreeNode node = null;

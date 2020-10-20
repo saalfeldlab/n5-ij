@@ -94,6 +94,8 @@ public class N5Importer implements PlugIn
 
 	private long[] initMaxValuesForCrop;
 
+	private static String lastOpenedContainer = "";
+
 	public N5Importer()
 	{
 		// store value of record
@@ -115,10 +117,9 @@ public class N5Importer implements PlugIn
 
 	public Map< Class< ? >, ImageplusMetadata< ? > > getImagePlusMetadataWriterMap()
 	{
-		ImageJFunctions impf;
 		return impMetaWriterTypes;
 	}
-	
+
 	public void setNumDimensionsForCropDialog( final int numDimensionsForCrop )
 	{
 		this.numDimensionsForCrop = numDimensionsForCrop; 
@@ -137,8 +138,13 @@ public class N5Importer implements PlugIn
 			selectionDialog = new DatasetSelectorDialog(
 					new N5ViewerReaderFun(), 
 					new N5BasePathFun(),
+					lastOpenedContainer,
 					null, // no group parsers
 					PARSERS );
+
+			selectionDialog.setContainerPathUpdateCallback( x -> {
+				lastOpenedContainer = x;
+			});
 			selectionDialog.setVirtualOption( true );
 			selectionDialog.setCropOption( true );
 			selectionDialog.run( this::datasetSelectorCallBack );
