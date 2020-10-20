@@ -17,16 +17,20 @@
 package org.janelia.saalfeldlab.n5;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
+import org.janelia.saalfeldlab.n5.metadata.N5GsonMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+
+import com.google.gson.JsonElement;
+
 import se.sawano.java.text.AlphanumericComparator;
 
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.text.Collator;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -110,28 +114,36 @@ public class N5DatasetDiscoverer {
 			final N5MetadataParser< ? >[] metadataParsers,
 			final N5GroupParser< ? >[] groupParsers ) throws IOException
 	{
+		HashMap< String, JsonElement > jsonMap = null;
+		if ( n5 instanceof AbstractGsonReader )
+		{
+			jsonMap = ( ( AbstractGsonReader ) n5 ).getAttributes( node.path );
+		}
+
         // Go through all parsers to populate metadata
-        for (final N5MetadataParser< ? > parser : metadataParsers)
+		for ( final N5MetadataParser< ? > parser : metadataParsers )
         {
         	try
         	{
-				node.setMetadata(parser.parseMetadata( n5, node )); 
-				if (node.getMetadata() != null)
+				N5Metadata parsedMeta;
+				if ( jsonMap != null && parser instanceof N5GsonMetadataParser )
+				{
+					parsedMeta = ( ( N5GsonMetadataParser< ? > ) parser ).parseMetadataGson( node.path, jsonMap );
+				}
+				else
+					parsedMeta = parser.parseMetadata( n5, node );
+
+				if ( parsedMeta != null )
+				{
+					//System.out.println( node.path + " parsed with " + parser.getClass());
+					node.setMetadata( parsedMeta );
 					break;
-        	}
-        	catch( Exception e ) {}
+				}
+			}
+			catch ( Exception e ) {}
         }
 
-        // If there is no matching metadata but it is a dataset, we should still be able to open it.
-        // Create a single-scale metadata entry with an identity transform.
-        if (node.getMetadata() == null && node.isDataset())
-        {
-			System.out.println( "Warning: using default metadata for " + node.path );
-			// could be made more efficient if metadata store dataset attributes?
-			int nd = n5.getDatasetAttributes( node.path ).getNumDimensions();
-			node.setMetadata( new DefaultMetadata( node.path, nd ) );
-        }
-		else if ( groupParsers != null )
+        if( node.getMetadata() == null && groupParsers != null )
 		{
 			// this is not a dataset but may be a group (e.g. multiscale pyramid)
 			// try to parse groups

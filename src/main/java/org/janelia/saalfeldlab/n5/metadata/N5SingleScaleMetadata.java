@@ -92,14 +92,35 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 		return keysToTypes;
 	}
 
+	@Override
+	public boolean check( final Map< String, Object > metaMap )
+	{
+		Map< String, Class< ? > > requiredKeys = AbstractN5Metadata.datasetAtttributeKeys();
+		for( String k : requiredKeys.keySet() )
+		{
+			if ( !metaMap.containsKey( k ) )
+				return false;
+			else if( metaMap.get( k ) == null )
+				return false;
+		}
+
+		// needs to contain one of pixelResolution key
+		if ( !metaMap.containsKey( PIXEL_RESOLUTION_KEY ) ) { return false; }
+
+		return true;
+	}
+
     @Override
 	public N5SingleScaleMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
 	{
-		if( !N5MetadataParser.hasRequiredKeys( keysToTypes(), metaMap ))
-			throw new Exception( "Could not parse as N5SingleScaleMetadata.");
+		if ( !check( metaMap ) )
+			return null;
 
 		String dataset = ( String ) metaMap.get( "dataset" );
-		DatasetAttributes attributes = ( DatasetAttributes ) metaMap.get( "attributes" );
+
+		DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
+		if( attributes == null )
+			return null;
 
 		final long[] downsamplingFactors = ( long[] ) metaMap.get( DOWNSAMPLING_FACTORS_KEY );
 		FinalVoxelDimensions voxdim = ( FinalVoxelDimensions ) metaMap.get( PIXEL_RESOLUTION_KEY );

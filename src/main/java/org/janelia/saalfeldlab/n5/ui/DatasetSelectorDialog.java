@@ -178,14 +178,6 @@ public class DatasetSelectorDialog
 			detectBtn.addActionListener( e -> openContainer( n5Fun, () -> getN5RootPath(), pathFun ));
         }
 
-		containerTree.setEnabled( false );
-		containerTree.getSelectionModel().setSelectionMode( 
-				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION );
-
-        // disable selection of nodes that are not open-able
-		containerTree.addTreeSelectionListener( 
-				new N5IjTreeSelectionListener( containerTree.getSelectionModel() ));
-
         // ok and cancel buttons
 		okBtn.addActionListener( e -> ok() );
 		cancelBtn.addActionListener( e -> cancel() );
@@ -267,6 +259,15 @@ public class DatasetSelectorDialog
 		containerTree = new JTree( treeModel );
 		containerTree.setMinimumSize( new Dimension( 550, 230 ));
 		scaleFont( containerTree, (float)guiScale * 1.2f );
+
+		containerTree.getSelectionModel().setSelectionMode( 
+				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION );
+
+		containerTree.setCellRenderer( new N5DatasetTreeRenderer() );
+
+        // disable selection of nodes that are not open-able
+		containerTree.addTreeSelectionListener( 
+				new N5IjTreeSelectionListener( containerTree.getSelectionModel() ));
 
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
         final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
@@ -559,8 +560,6 @@ public class DatasetSelectorDialog
 				if( last instanceof N5TreeNode )
 				{
 					N5TreeNode node = (N5TreeNode)last;
-
-					//if(!node.isDataset())
 					if( node.getMetadata() == null )
 					{
 						selectionModel.removeSelectionPath( path );

@@ -20,9 +20,13 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.GsonAttributesParser;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+
+import com.google.gson.JsonElement;
 
 public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractGsonReader & N5Reader >
 {
@@ -35,7 +39,19 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 	 */
 	public HashMap<String,Class<?>> keysToTypes();
 
-	public T parseMetadata( final Map< String, Object > keys ) throws Exception;
+	public default boolean check( final Map< String, Object > map ) throws Exception
+	{
+		for( String k : keysToTypes().keySet() )
+		{
+			if ( !map.containsKey( k ) )
+				return false;
+			else if( map.get( k ) == null )
+				return false;
+		}
+		return true;
+	}
+
+	public T parseMetadata( final Map< String, Object > map ) throws Exception;
 
     /**
      * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
@@ -60,17 +76,23 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 		return parseMetadata( keys );	
 	}
 
+	public static DatasetAttributes parseAttributes( final Map< String, Object > map  )
+	{
+		final int[] blockSize = ( int[] ) map.get( "blockSize" );
+		final long[] dimensions = ( long[] ) map.get( "dimensions" );
+		final DataType dataType = DataType.fromString( ( String ) map.get( "dataType" ) );
+
+		if( dimensions != null && dataType != null && dataType != null )
+			return new DatasetAttributes( dimensions, blockSize, dataType, null );	
+
+		return null;
+	}
+
 	public static Map< String, Object > parseMetadataStatic( 
 			final N5Reader n5, final String dataset, final Map< String, Class<?> > keys )
 	{
 		HashMap< String, Object > map = new HashMap<>();
 		map.put( "dataset", dataset ); // TODO doc this
-		try
-		{ 	
-			// TODO doc this
-			map.put( "attributes", n5.getDatasetAttributes( dataset ));
-		}
-		catch ( IOException e1 ) { } 
 
 		for( String k : keys.keySet() )
 		{
@@ -83,6 +105,15 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 				return null;
 			}
 		}
+
+		try
+		{
+			DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
+			map.put( "dimensions", attrs.getDimensions() );
+			map.put( "blockSize", attrs.getBlockSize() );
+			map.put( "dataType", attrs.getDataType().toString() );
+		}
+		catch ( IOException e ) { }
 
 		return map;
 	}

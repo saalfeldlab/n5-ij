@@ -223,12 +223,14 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 	@Override
 	public N5ImagePlusMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
 	{
-		if( !N5MetadataParser.hasRequiredKeys( keysToTypes(), metaMap ))
-			throw new Exception( "Could not parse as N5ImagePlusMetadata.");
+		if ( !check( metaMap ) )
+			return null;
 
 		String dataset = ( String ) metaMap.get( "dataset" );
 
-		DatasetAttributes attributes = ( DatasetAttributes ) metaMap.get( "attributes" );
+		DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
+		if( attributes == null )
+			return null;
 
 		N5ImagePlusMetadata meta = new N5ImagePlusMetadata( dataset, attributes );
 		meta.name = ( String ) metaMap.get( titleKey );

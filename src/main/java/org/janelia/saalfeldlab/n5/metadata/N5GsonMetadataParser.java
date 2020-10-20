@@ -17,17 +17,11 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
-import org.janelia.saalfeldlab.n5.Bzip2Compression;
-import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GsonAttributesParser;
-import org.janelia.saalfeldlab.n5.GzipCompression;
-import org.janelia.saalfeldlab.n5.Lz4Compression;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.RawCompression;
-import org.janelia.saalfeldlab.n5.XzCompression;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -73,6 +67,26 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		return parseMetadata( objMap );
 	}
 
+	public default T parseMetadataGson( final String dataset, final HashMap< String, JsonElement > map ) throws Exception
+	{
+		final Gson gson = new GsonBuilder().create();
+		HashMap< String, Object > objMap = new HashMap< String, Object >();
+		HashMap< String, Class< ? > > typeMap = keysToTypes();
+		objMap.put( "dataset", dataset );
+
+//		try
+//		{ 
+//			objMap.put( "attributes", parseDatasetAttributesJson( map ));
+//		}
+//		catch ( Exception e1 ) { } 
+
+		for( String k : typeMap.keySet() )
+		{
+			objMap.put( k , gson.fromJson( map.get( k ), typeMap.get( k )));
+		}
+		return parseMetadata( objMap );
+	}
+
 	public static DatasetAttributes parseDatasetAttributes( final HashMap< String, Object > map )
 	{
 		try
@@ -80,8 +94,9 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 			final int[] blockSize = ( int[] ) map.get( "blockSize" );
 			final long[] dimensions = ( long[] ) map.get( "dimensions" );
 			final DataType dataType = ( DataType ) map.get( "dataType" );
-			// TODO fix
-//			final Compression compression = ( Compression ) map.get( "compression" );
+
+			// fix compression eventually
+			// final Compression compression = ( Compression ) map.get( "compression" );
 			return new DatasetAttributes( dimensions, blockSize, dataType, null );
 		}
 		catch ( Exception e ) { }
@@ -98,8 +113,11 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 			final long[] dimensions = GsonAttributesParser.parseAttribute( map, "dimensions", long[].class, gson);
 			final DataType dataType = DataType.fromString( GsonAttributesParser.parseAttribute( map, "dataType", String.class, gson));
 
-//			final Compression compression = GsonAttributesParser.parseAttribute( map, "compression", Compression.class, gson);
-			return new DatasetAttributes( dimensions, blockSize, dataType, null );
+			// fix compression eventually...
+			// final Compression compression = GsonAttributesParser.parseAttribute( map, "compression", Compression.class, gson);
+
+			if( dimensions != null && dataType != null && dataType != null )
+				return new DatasetAttributes( dimensions, blockSize, dataType, null );
 		}
 		catch ( IOException e ) { }
 		return null;
@@ -128,13 +146,6 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		HashMap< String, Object > objMap = new HashMap< String, Object >();
 		HashMap< String, Class< ? > > typeMap = keysToTypes();
 		objMap.put( "dataset", dataset );
-
-		try
-		{ 
-			objMap.put( "attributes", parseDatasetAttributesJson( map ));
-		}
-		catch ( Exception e1 ) { }
-
 
 		for( String k : typeMap.keySet() )
 		{
@@ -185,6 +196,7 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 	{
 		if( n5 instanceof AbstractGsonReader )
 		{
+
 			return parseMetadataGson( (AbstractGsonReader) n5, nodes[0].path );
 		}
 		else

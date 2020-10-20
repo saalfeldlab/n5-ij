@@ -17,9 +17,8 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.util.HashMap;
+import java.util.Map;
 
-import org.janelia.saalfeldlab.n5.Compression;
-import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
 /**
@@ -58,13 +57,19 @@ public abstract class AbstractN5Metadata implements N5Metadata
 	{
 		return attributes;
 	}
+
+	public static Map< String, Class<?> > datasetAtttributeKeys()
+	{
+		Map< String, Class<?>> defaultMap =  new HashMap< String, Class<?>>();
+		addDatasetAttributeKeys( defaultMap );
+		return defaultMap;
+	}
 	
-	public static void addDatasetAttributeKeys( final HashMap< String, Class<?>> keysToTypes )
+	public static void addDatasetAttributeKeys( final Map< String, Class<?>> keysToTypes )
 	{
 		keysToTypes.put( "dimensions", long[].class );
 		keysToTypes.put( "blockSize", int[].class );
-		keysToTypes.put( "dataType", DataType.class );
-		keysToTypes.put( "compression", Compression.class );
+		keysToTypes.put( "dataType", String.class );
 	}
 
 }

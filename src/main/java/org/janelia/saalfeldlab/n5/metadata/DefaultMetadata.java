@@ -41,7 +41,7 @@ public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadat
 			voxDims = null;
 
 		keysToTypes = new HashMap<>();
-		keysToTypes.put( dimensionsKey, long[].class ); // n5 datasets need this
+		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
 
 	public DefaultMetadata( final String path, final int nd )
@@ -56,7 +56,7 @@ public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadat
 			voxDims = null;
 
 		keysToTypes = new HashMap<>();
-		keysToTypes.put( dimensionsKey, long[].class ); // n5 datasets need this
+		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
 
 	@Override
@@ -66,22 +66,18 @@ public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadat
 	}
 
 	@Override
-	public < R extends AbstractGsonReader> DefaultMetadata parseMetadataGson( final R n5, final String dataset, final HashMap< String, JsonElement > map ) throws Exception
-	{
-		final long[] dimensions = GsonAttributesParser.parseAttribute(map, "dimensions", long[].class, n5.getGson());
-		return new DefaultMetadata( dataset, dimensions.length );
-	}
-
-	@Override
 	public DefaultMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
 	{
+		if ( !check( metaMap ) )
+			return null;
+
 		String dataset = ( String ) metaMap.get( "dataset" );
-		long[] dims = ( long[] ) metaMap.get( dimensionsKey );
-		DatasetAttributes attributes = ( DatasetAttributes ) metaMap.get( "attributes" );
+
+		DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
 		if( attributes == null )
-			return new DefaultMetadata( dataset, dims.length );
-		else
-			return new DefaultMetadata( dataset, attributes );
+			return null;
+
+		return new DefaultMetadata( dataset, attributes );
 	}
 
 	@Override

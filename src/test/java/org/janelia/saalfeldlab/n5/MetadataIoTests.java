@@ -188,13 +188,6 @@ public class MetadataIoTests
 			Assert.assertArrayEquals( "cosem axes", 
 					new String[] { "x", "y", "z" }, metaS0.getTransform().axes );
 
-			double[] voxdims = new double[ 3 ];
-			metaS0.getVoxelDimensions().dimensions( voxdims );
-			Assert.assertArrayEquals( "cosem voxdim res", 
-					new double[] { 1.5, 1.5, 1.5 }, voxdims, 1e-6 );
-
-			Assert.assertEquals( "cosem voxdim unit", 
-					metaS0.getVoxelDimensions().unit(), "mm" );
 		}
 		catch ( Exception e )
 		{

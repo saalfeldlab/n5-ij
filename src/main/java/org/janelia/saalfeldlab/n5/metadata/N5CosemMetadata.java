@@ -5,9 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.GsonAttributesParser;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
@@ -21,8 +19,6 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 	private boolean separateChannels = true;
 
 	private final CosemTransform cosemTransformMeta;
-
-	private final FinalVoxelDimensions voxDims;
 
 	private final HashMap< String, Class<?>> keysToTypes;
 
@@ -41,33 +37,15 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		this( path, cosemTransformMeta, null );
 	}
 
-	public N5CosemMetadata( final String path, final FinalVoxelDimensions voxelDimensions )
-	{
-		this( path, null, voxelDimensions );
-	}
-
-	public N5CosemMetadata( final String path, final CosemTransform cosemTransformMeta, final FinalVoxelDimensions voxDims )
-	{
-		this( path, cosemTransformMeta, voxDims, null );
-	}
-
 	public N5CosemMetadata( final String path, final CosemTransform cosemTransformMeta, 
-			final FinalVoxelDimensions voxDims,
 			final DatasetAttributes attributes )
 	{
 		super( path, attributes );
 		this.cosemTransformMeta = cosemTransformMeta;
-		this.voxDims = voxDims;
 
 		keysToTypes = new HashMap<>();
-		keysToTypes.put( pixelResolutionKey, FinalVoxelDimensions.class );
 		keysToTypes.put( CosemTransform.KEY, CosemTransform.class );
 		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
-	}
-
-	public FinalVoxelDimensions getVoxelDimensions()
-	{
-		return voxDims;
 	}
 
 	public CosemTransform getTransform()
@@ -86,21 +64,43 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		return keysToTypes;
 	}
 
+	public boolean check( final Map< String, Object > metaMap )
+	{
+		Map< String, Class< ? > > requiredKeys = AbstractN5Metadata.datasetAtttributeKeys();
+		for( String k : requiredKeys.keySet() )
+		{
+			if ( !metaMap.containsKey( k ) )
+				return false;
+			else if( metaMap.get( k ) == null )
+				return false;
+		}
+
+		// needs to contain one of pixelResolution key 
+		if( !metaMap.containsKey( CosemTransform.KEY ))
+		{
+			return false;
+		}
+
+		return true;
+	}
+
 	@Override
 	public N5CosemMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
 	{
-		if( !N5MetadataParser.hasRequiredKeys( keysToTypes(), metaMap ))
-			throw new Exception( "Could not parse as N5CosemMetadata.");
+		if ( !check( metaMap ) )
+			return null;
+
+		DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
+		if( attributes == null )
+			return null;
 
 		String dataset = ( String ) metaMap.get( "dataset" );
 		CosemTransform transform = ( CosemTransform ) metaMap.get( CosemTransform.KEY );
-		FinalVoxelDimensions voxdims = ( FinalVoxelDimensions ) metaMap.get( pixelResolutionKey );
-		DatasetAttributes attributes = ( DatasetAttributes ) metaMap.get( "attributes" );
 
-		if( transform == null && voxdims == null)
+		if( transform == null )
 			return null;
 
-		return new N5CosemMetadata( dataset, transform, voxdims, attributes );
+		return new N5CosemMetadata( dataset, transform, attributes );
 	}
 
 	@Override
@@ -108,16 +108,12 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 	{
 		if( t.cosemTransformMeta != null )
 			n5.setAttribute( dataset, CosemTransform.KEY, t.cosemTransformMeta );
-
-		if( t.voxDims != null )
-			n5.setAttribute( dataset, pixelResolutionKey, t.voxDims );
 	}
 
 	@Override
 	public void writeMetadata( final N5CosemMetadata t, final ImagePlus imp ) throws IOException
 	{
 		CosemTransform transform = t.cosemTransformMeta;
-		FinalVoxelDimensions voxdims = t.voxDims;
 
 		if ( transform != null )
 		{
@@ -146,23 +142,6 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 			}
 
 			imp.getCalibration().setUnit( transform.units[ 0 ] );
-
-		}
-		else if ( voxdims != null )
-		{
-			if ( voxdims.numDimensions() > 0 )
-				imp.getCalibration().pixelWidth = voxdims.dimension( 0 );
-
-			if ( voxdims.numDimensions() > 1 )
-				imp.getCalibration().pixelHeight = voxdims.dimension( 1 );
-
-			if ( voxdims.numDimensions() > 2 )
-			{
-				imp.getCalibration().pixelDepth = voxdims.dimension( 2 );
-				imp.setDimensions( 1, imp.getStackSize(), 1 );
-			}
-
-			imp.getCalibration().setUnit( voxdims.unit() );
 		}
 	}
 
@@ -198,8 +177,7 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		translation[ 1 ] = imp.getCalibration().yOrigin;
 		if( nd > 2 ){ translation[ 2 ] = imp.getCalibration().zOrigin; }
 
-		return new N5CosemMetadata( "", new CosemTransform( axes, scale, translation, units ), 
-				new FinalVoxelDimensions( imp.getCalibration().getUnit(), scale ));
+		return new N5CosemMetadata( "", new CosemTransform( axes, scale, translation, units ) );
 	}
 
 	public static class CosemTransform
