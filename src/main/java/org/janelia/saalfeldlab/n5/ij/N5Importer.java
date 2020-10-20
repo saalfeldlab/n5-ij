@@ -209,14 +209,15 @@ public class N5Importer implements PlugIn
 	public static boolean isTypeOpenable( final N5Metadata meta, boolean showMessage )
 	{
 		DataType type = meta.getAttributes().getDataType();
-		if( ! ( type == DataType.FLOAT32 ) ||
-				type == DataType.UINT8 ||
-				type == DataType.UINT16 )
+		if(	type != DataType.FLOAT32 &&
+			type != DataType.UINT8 &&
+			type != DataType.UINT16 )
 		{
 			if( showMessage )
+			{
 				IJ.error( "Cannot open datasets of type (" + type + ").\n"
 						+ "ImageJ supports uint8, uint16, or float32.");
-
+			}
 			return false;
 		}
 		return true;
