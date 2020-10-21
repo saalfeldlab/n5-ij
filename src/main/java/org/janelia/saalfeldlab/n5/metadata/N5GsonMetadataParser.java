@@ -1,20 +1,33 @@
 /**
- * License: GPL
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 package org.janelia.saalfeldlab.n5.metadata;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
 import org.janelia.saalfeldlab.n5.DataType;
@@ -26,10 +39,6 @@ import org.janelia.saalfeldlab.n5.N5TreeNode;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 public interface N5GsonMetadataParser < T extends N5Metadata > extends N5MetadataParser< T >
 {
@@ -49,18 +58,18 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 	 */
 	public default < R extends AbstractGsonReader > T parseMetadataGson( final R parser, final String dataset, final HashMap< String, JsonElement > map ) throws Exception
 	{
-		HashMap< String, Object > objMap = new HashMap< String, Object >();
-		HashMap< String, Class< ? > > typeMap = keysToTypes();
+		final HashMap< String, Object > objMap = new HashMap< String, Object >();
+		final HashMap< String, Class< ? > > typeMap = keysToTypes();
 		objMap.put( "dataset", dataset );
 
 		try
-		{ 
+		{
 			objMap.put( "attributes", parseDatasetAttributesJson( map ));
 		}
-		catch ( Exception e1 ) { } 
+		catch ( final Exception e1 ) { }
 
 
-		for( String k : typeMap.keySet() )
+		for( final String k : typeMap.keySet() )
 		{
 			objMap.put( k , parser.getGson().fromJson( map.get( k ), typeMap.get( k )));
 		}
@@ -70,17 +79,17 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 	public default T parseMetadataGson( final String dataset, final HashMap< String, JsonElement > map ) throws Exception
 	{
 		final Gson gson = new GsonBuilder().create();
-		HashMap< String, Object > objMap = new HashMap< String, Object >();
-		HashMap< String, Class< ? > > typeMap = keysToTypes();
+		final HashMap< String, Object > objMap = new HashMap< String, Object >();
+		final HashMap< String, Class< ? > > typeMap = keysToTypes();
 		objMap.put( "dataset", dataset );
 
 //		try
-//		{ 
+//		{
 //			objMap.put( "attributes", parseDatasetAttributesJson( map ));
 //		}
-//		catch ( Exception e1 ) { } 
+//		catch ( Exception e1 ) { }
 
-		for( String k : typeMap.keySet() )
+		for( final String k : typeMap.keySet() )
 		{
 			objMap.put( k , gson.fromJson( map.get( k ), typeMap.get( k )));
 		}
@@ -99,11 +108,11 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 			// final Compression compression = ( Compression ) map.get( "compression" );
 			return new DatasetAttributes( dimensions, blockSize, dataType, null );
 		}
-		catch ( Exception e ) { }
+		catch ( final Exception e ) { }
 		return null;
 	}
 
-	public static DatasetAttributes parseDatasetAttributesJson( 
+	public static DatasetAttributes parseDatasetAttributesJson(
 			final HashMap< String, JsonElement > map )
 	{
 		final Gson gson = new GsonBuilder().create();
@@ -119,7 +128,7 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 			if( dimensions != null && dataType != null && dataType != null )
 				return new DatasetAttributes( dimensions, blockSize, dataType, null );
 		}
-		catch ( IOException e ) { }
+		catch ( final IOException e ) { }
 		return null;
 	}
 
@@ -128,7 +137,7 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		return parseMetadataGson( parser, dataset, parser.getAttributes( dataset ));
 	}
 
-	public default < R extends AbstractGsonReader > Map< String, Object > parseMetadataGson( 
+	public default < R extends AbstractGsonReader > Map< String, Object > parseMetadataGson(
 			final R n5, final String dataset, final Map< String, Class<?> > keys )
 	{
 		HashMap< String, JsonElement > map;
@@ -136,18 +145,18 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		{
 			map = n5.getAttributes( dataset );
 		}
-		catch ( IOException e1 )
-		{ 
+		catch ( final IOException e1 )
+		{
 			// empty map, or could be null?
 			return new HashMap<>();
 		}
 
 		final Gson gson = new GsonBuilder().create();
-		HashMap< String, Object > objMap = new HashMap< String, Object >();
-		HashMap< String, Class< ? > > typeMap = keysToTypes();
+		final HashMap< String, Object > objMap = new HashMap< String, Object >();
+		final HashMap< String, Class< ? > > typeMap = keysToTypes();
 		objMap.put( "dataset", dataset );
 
-		for( String k : typeMap.keySet() )
+		for( final String k : typeMap.keySet() )
 		{
 			objMap.put( k , gson.fromJson( map.get( k ), typeMap.get( k )));
 		}
@@ -155,11 +164,11 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		return objMap;
 	}
 
-	public default Map< String, Object > parseMetadata( 
+	public default Map< String, Object > parseMetadata(
 			final N5Reader n5, final String dataset, final Map< String, Class<?> > keys )
 	{
-		HashMap< String, Object > map = new HashMap<>();
-		for( String k : keys.keySet() )
+		final HashMap< String, Object > map = new HashMap<>();
+		for( final String k : keys.keySet() )
 		{
 			if( !map.containsKey( k ))
 				return null;
@@ -168,7 +177,7 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 			{
 				map.put( k, n5.getAttribute( dataset, k, keys.get( k ) ) );
 			}
-			catch ( IOException e )
+			catch ( final IOException e )
 			{
 				return null;
 			}
@@ -178,7 +187,7 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 	}
 
 	@Override
-	public default T parseMetadata( N5Reader n5, String dataset ) throws Exception
+	public default T parseMetadata( final N5Reader n5, final String dataset ) throws Exception
 	{
 		if( n5 instanceof AbstractGsonReader )
 		{
@@ -186,13 +195,13 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		}
 		else
 		{
-			Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, dataset, keysToTypes() );
+			final Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, dataset, keysToTypes() );
 			return parseMetadata( keys );
 		}
 	}
 
 	@Override
-	public default T parseMetadata( N5Reader n5, N5TreeNode... nodes ) throws Exception
+	public default T parseMetadata( final N5Reader n5, final N5TreeNode... nodes ) throws Exception
 	{
 		if( n5 instanceof AbstractGsonReader )
 		{
@@ -201,7 +210,7 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		}
 		else
 		{
-			Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, nodes[0].path, keysToTypes() );
+			final Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, nodes[0].path, keysToTypes() );
 			return parseMetadata( keys );
 		}
 	}

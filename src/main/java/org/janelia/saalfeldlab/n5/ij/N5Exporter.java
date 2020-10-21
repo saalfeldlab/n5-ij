@@ -1,3 +1,28 @@
+/**
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.janelia.saalfeldlab.n5.ij;
 
 import java.awt.event.WindowEvent;
@@ -50,9 +75,9 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
 
-@Plugin( type = Command.class, menuPath = "File>Save As>Export N5" )
-public class N5Exporter implements Command, WindowListener
-{
+@Plugin(type = Command.class, menuPath = "File>Save As>Export N5")
+public class N5Exporter implements Command, WindowListener {
+
 	public static final String GZIP_COMPRESSION = "gzip";
 	public static final String RAW_COMPRESSION = "raw";
 	public static final String LZ4_COMPRESSION = "lz4";
@@ -61,8 +86,8 @@ public class N5Exporter implements Command, WindowListener
 
 	public static final String NONE = "None";
 
-    @Parameter(visibility=ItemVisibility.MESSAGE, required=false)
-    private String message = "Export an ImagePlus to an N5 container.";
+	@Parameter(visibility = ItemVisibility.MESSAGE, required = false)
+	private String message = "Export an ImagePlus to an N5 container.";
 
 	@Parameter
 	private LogService log;
@@ -70,44 +95,48 @@ public class N5Exporter implements Command, WindowListener
 	@Parameter
 	private StatusService status;
 
-	@Parameter( label = "Image" )
+	@Parameter(label = "Image")
 	private ImagePlus image; // or use Dataset? - maybe later
-	
-    @Parameter( label = "N5 root")
-    private String n5RootLocation;
 
-    @Parameter( label = "Dataset", required = false, 
-    		description = "This argument is ignored if the N5ViewerMetadata style is selected" )
-    private String n5Dataset;
+	@Parameter(label = "N5 root")
+	private String n5RootLocation;
 
-    @Parameter( label = "Block size")
-    private String blockSizeArg;
+	@Parameter(
+			label = "Dataset",
+			required = false,
+			description = "This argument is ignored if the N5ViewerMetadata style is selected")
+	private String n5Dataset;
 
-    @Parameter( label = "Compresstion",
-    		choices={GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION},
-    		style="listBox" )
-    private String compressionArg = GZIP_COMPRESSION;
-    
+	@Parameter(label = "Block size")
+	private String blockSizeArg;
+
+	@Parameter(
+			label = "Compresstion",
+			choices = {GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION},
+			style = "listBox")
+	private String compressionArg = GZIP_COMPRESSION;
+
 //    @Parameter( label = "Type",
 //    			choices = { "Auto", "N5", "Zarr", "HDF5" },
 //    			style="listBox" )
-    private String containerType = "Auto";
+	private String containerType = "Auto";
 
-    @Parameter( label="metadata type", 
-    		description = "The style for metadata to be stored in the exported N5.",
-    		choices={ 	N5Importer.MetadataN5ViewerKey, 
-    					N5Importer.MetadataN5CosemKey,
-    					N5Importer.MetadataImageJKey,
-    					N5Importer.MetadataCustomKey,
-    					NONE } )
-    private String metadataStyle = N5Importer.MetadataN5ViewerKey;
+	@Parameter(
+			label = "metadata type",
+			description = "The style for metadata to be stored in the exported N5.",
+			choices = {N5Importer.MetadataN5ViewerKey,
+					N5Importer.MetadataN5CosemKey,
+					N5Importer.MetadataImageJKey,
+					N5Importer.MetadataCustomKey,
+					NONE})
+	private String metadataStyle = N5Importer.MetadataN5ViewerKey;
 
-    @Parameter( label = "Thread count", required = false, min="1", max="64" )
-    private int nThreads = 1;
+	@Parameter(label = "Thread count", required = false, min = "1", max = "64")
+	private int nThreads = 1;
 
-    private int[] blockSize;
+	private int[] blockSize;
 
-    private DataAccessType dataType;
+	private DataAccessType dataType;
 
 	private Map<String, N5MetadataWriter<?>> styles;
 
@@ -115,31 +144,31 @@ public class N5Exporter implements Command, WindowListener
 
 	private N5MetadataSpecDialog metaSpecDialog;
 
-	private HashMap< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes;
+	private HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes;
 
-	public N5Exporter()
-	{
-		styles = new HashMap<String,N5MetadataWriter<?>>();
-		styles.put( N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadata() );
-		styles.put( N5Importer.MetadataN5CosemKey, new N5CosemMetadata( "", null, null ) );
-		styles.put( N5Importer.MetadataImageJKey, new N5ImagePlusMetadata("") );
-		
+	public N5Exporter() {
+
+		styles = new HashMap<String, N5MetadataWriter<?>>();
+		styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadata());
+		styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadata("", null, null));
+		styles.put(N5Importer.MetadataImageJKey, new N5ImagePlusMetadata(""));
+
 		// default image plus metadata writers
-		impMetaWriterTypes = new HashMap< Class<?>, ImageplusMetadata< ? > >();
-		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
-		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
-		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5SingleScaleMetadata());
-		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
+		impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
+		impMetaWriterTypes.put(N5ImagePlusMetadata.class, new N5ImagePlusMetadata(""));
+		impMetaWriterTypes.put(N5CosemMetadata.class, new N5CosemMetadata("", null, null));
+		impMetaWriterTypes.put(N5SingleScaleMetadata.class, new N5SingleScaleMetadata());
+		impMetaWriterTypes.put(DefaultMetadata.class, new DefaultMetadata("", 1));
 	}
-	
-	public void setOptions( 
+
+	public void setOptions(
 			final ImagePlus image,
 			final String n5RootLocation,
 			final String n5Dataset,
 			final String blockSizeArg,
 			final String metadataStyle,
-			final String compression )
-	{
+			final String compression) {
+
 		this.image = image;
 		this.n5RootLocation = n5RootLocation;
 		this.n5Dataset = n5Dataset;
@@ -149,233 +178,186 @@ public class N5Exporter implements Command, WindowListener
 		this.compressionArg = compression;
 	}
 
-	public void setType( final String type )
-	{
-		try
-		{
-			dataType = DataAccessType.valueOf( type.toUpperCase() );
-		}
-		catch ( IllegalArgumentException e )
-		{
-			if( type.equals( "N5" ))
+	public void setType(final String type) {
+
+		try {
+			dataType = DataAccessType.valueOf(type.toUpperCase());
+		} catch (final IllegalArgumentException e) {
+			if (type.equals("N5"))
 				dataType = DataAccessType.FILESYSTEM;
 			else
 				dataType = null;
 		}
 	}
 
-	public DataAccessType detectType( final String rootPath )
-	{
+	public DataAccessType detectType(final String rootPath) {
+
 		URI uri = null;
-		try
-		{
-			uri = URI.create( rootPath );
-		}
-		catch ( final IllegalArgumentException e ) { }
+		try {
+			uri = URI.create(rootPath);
+		} catch (final IllegalArgumentException e) {}
 
 		// try parsing as S3 link
 		AmazonS3URI s3Uri;
-		try
-		{
-			s3Uri = new AmazonS3URI( uri );
-		}
-		catch ( final Exception e )
-		{
+		try {
+			s3Uri = new AmazonS3URI(uri);
+		} catch (final Exception e) {
 			s3Uri = null;
 		}
-		if ( s3Uri != null )
-		{
+		if (s3Uri != null) {
 			return DataAccessType.AMAZON_S3;
 		}
 
-
 		// try parsing as Google Cloud link
 		GoogleCloudStorageURI googleCloudUri;
-		try
-		{
-			googleCloudUri = new GoogleCloudStorageURI( uri );
-		}
-		catch ( final Exception e )
-		{
+		try {
+			googleCloudUri = new GoogleCloudStorageURI(uri);
+		} catch (final Exception e) {
 			googleCloudUri = null;
 		}
-		if ( googleCloudUri != null )
-		{
+		if (googleCloudUri != null) {
 			return DataAccessType.GOOGLE_CLOUD;
 		}
 
-
-		if( rootPath.endsWith( "n5" ) )
-		{
+		if (rootPath.endsWith("n5")) {
 			return DataAccessType.FILESYSTEM;
-		}
-		else if ( rootPath.endsWith( "zarr" ))
-		{
+		} else if (rootPath.endsWith("zarr")) {
 			return DataAccessType.ZARR;
-		}
-		else if ( rootPath.endsWith( "h5" ) || rootPath.endsWith( "hdf5" ) || rootPath.endsWith( "hdf" ))
-		{
+		} else if (rootPath.endsWith("h5") || rootPath.endsWith("hdf5") || rootPath.endsWith("hdf")) {
 			return DataAccessType.HDF5;
-		}
-		else
+		} else
 			return null;
 	}
 
 	/**
-	 * Set the custom metadata mapper to use programmically. 
-	 * 
+	 * Set the custom metadata mapper to use programmically.
+	 *
 	 * @param metadataMapper
 	 */
-	public void setMetadataMapper( final MetadataTemplateMapper metadataMapper )
-	{
-		styles.put( N5Importer.MetadataCustomKey, metadataMapper );
-		impMetaWriterTypes.put( MetadataTemplateMapper.class, new ImagePlusMetadataTemplate( "" ));
+	public void setMetadataMapper(final MetadataTemplateMapper metadataMapper) {
+
+		styles.put(N5Importer.MetadataCustomKey, metadataMapper);
+		impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate(""));
 	}
 
-	@SuppressWarnings( "unchecked" )
-	public < T extends RealType< T > & NativeType< T >, M extends N5Metadata > void process() throws IOException, DataAccessException, InterruptedException, ExecutionException
-	{
-		N5Writer n5 = getWriter();
-		Compression compression = getCompression();
-		blockSize = Arrays.stream( blockSizeArg.split( "," )).mapToInt( x -> Integer.parseInt( x ) ).toArray();
+	@SuppressWarnings("unchecked")
+	public <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void process() throws IOException, DataAccessException, InterruptedException, ExecutionException {
+
+		final N5Writer n5 = getWriter();
+		final Compression compression = getCompression();
+		blockSize = Arrays.stream(blockSizeArg.split(",")).mapToInt(x -> Integer.parseInt(x)).toArray();
 
 		N5MetadataWriter<M> writer = null;
-		if( !metadataStyle.equals( NONE ))
-		{
-			writer = ( N5MetadataWriter< M > ) styles.get( metadataStyle );
-			impMeta = impMetaWriterTypes.get( writer.getClass() );
+		if (!metadataStyle.equals(NONE)) {
+			writer = (N5MetadataWriter<M>)styles.get(metadataStyle);
+			impMeta = impMetaWriterTypes.get(writer.getClass());
 		}
 
-		if( metadataStyle.equals( NONE ) || 
-			metadataStyle.equals( N5Importer.MetadataImageJKey ) ||
-			metadataStyle.equals( N5Importer.MetadataCustomKey ))
-		{
-			write( n5, compression, writer );
-		}
-		else
-		{
-			writeSplitChannels( n5, compression, writer );
+		if (metadataStyle.equals(NONE) ||
+				metadataStyle.equals(N5Importer.MetadataImageJKey) ||
+				metadataStyle.equals(N5Importer.MetadataCustomKey)) {
+			write(n5, compression, writer);
+		} else {
+			writeSplitChannels(n5, compression, writer);
 		}
 	}
 
-	private < T extends RealType< T > & NativeType< T >,  M extends N5Metadata> void write( 
+	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void write(
 			final N5Writer n5,
 			final Compression compression,
-			final N5MetadataWriter<M> writer ) throws IOException, InterruptedException, ExecutionException
-	{
-		N5IJUtils.save( image, n5, n5Dataset, blockSize, compression );
-		writeMetadata( n5, n5Dataset, writer );
+			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException {
 
-		if( n5 instanceof N5HDF5Writer )
-		{
+		N5IJUtils.save(image, n5, n5Dataset, blockSize, compression);
+		writeMetadata(n5, n5Dataset, writer);
+
+		if (n5 instanceof N5HDF5Writer) {
 			((N5HDF5Writer)n5).close();
 		}
 	}
 
-	private < T extends RealType< T > & NativeType< T >, M extends N5Metadata> void writeSplitChannels( 
+	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void writeSplitChannels(
 			final N5Writer n5,
-			final Compression compression, 
-			final N5MetadataWriter<M> writer ) 
-					throws IOException, InterruptedException, ExecutionException
-	{
-		Img<T> img = ImageJFunctions.wrap( image );
+			final Compression compression,
+			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException {
+
+		final Img<T> img = ImageJFunctions.wrap(image);
 		String datasetString = "";
-		for( int c = 0; c < image.getNChannels(); c++ )
-		{
-			RandomAccessibleInterval< T > channelImg;
-			if( img.numDimensions() >= 4 )
-			{
-				channelImg = Views.hyperSlice( img, 2, c );
-			}
-			else
-			{
+		for (int c = 0; c < image.getNChannels(); c++) {
+			RandomAccessibleInterval<T> channelImg;
+			if (img.numDimensions() >= 4) {
+				channelImg = Views.hyperSlice(img, 2, c);
+			} else {
 				channelImg = img;
 			}
 
-			if( metadataStyle.equals( N5Importer.MetadataN5ViewerKey ))
-			{
-				datasetString = String.format( "%s/c%d/s0", n5Dataset, c );
-			}
-			else if( image.getNChannels() > 1 )
-			{
-				datasetString = String.format( "%s/c%d", n5Dataset, c );
-			}
-			else
-			{
+			if (metadataStyle.equals(N5Importer.MetadataN5ViewerKey)) {
+				datasetString = String.format("%s/c%d/s0", n5Dataset, c);
+			} else if (image.getNChannels() > 1) {
+				datasetString = String.format("%s/c%d", n5Dataset, c);
+			} else {
 				datasetString = n5Dataset;
 			}
 
-			if( nThreads > 1 )
-				N5Utils.save( channelImg , n5, datasetString, blockSize, compression, Executors.newFixedThreadPool( nThreads ));
-			else 
-				N5Utils.save( channelImg , n5, datasetString, blockSize, compression );
+			if (nThreads > 1)
+				N5Utils
+						.save(
+								channelImg,
+								n5,
+								datasetString,
+								blockSize,
+								compression,
+								Executors.newFixedThreadPool(nThreads));
+			else
+				N5Utils.save(channelImg, n5, datasetString, blockSize, compression);
 
-			writeMetadata( n5, datasetString, writer );
+			writeMetadata(n5, datasetString, writer);
 		}
-		if( n5 instanceof N5HDF5Writer )
-		{
+		if (n5 instanceof N5HDF5Writer) {
 			((N5HDF5Writer)n5).close();
 		}
 	}
 
-	private < M extends N5Metadata> void writeMetadata(
+	private <M extends N5Metadata> void writeMetadata(
 			final N5Writer n5,
 			final String datasetString,
-			final N5MetadataWriter<M> writer)
-	{
-		if ( writer != null )
-		{
-			try
-			{
-				@SuppressWarnings( "unchecked" )
-				M meta = ( M ) impMeta.readMetadata( image );
-				writer.writeMetadata( meta, n5, datasetString );
-			}
-			catch ( Exception e )
-			{
+			final N5MetadataWriter<M> writer) {
+
+		if (writer != null) {
+			try {
+				@SuppressWarnings("unchecked")
+				final M meta = (M)impMeta.readMetadata(image);
+				writer.writeMetadata(meta, n5, datasetString);
+			} catch (final Exception e) {
 				e.printStackTrace();
 			}
 		}
 	}
 
 	@Override
-	public void run()
-	{
+	public void run() {
+
 		// add more options
-		if( metadataStyle.equals(  N5Importer.MetadataCustomKey  ))
-		{
-			metaSpecDialog = new N5MetadataSpecDialog( this );
-			metaSpecDialog.show( MetadataTemplateMapper.RESOLUTION_ONLY_MAPPER );
-		}
-		else
-		{
-			try
-			{
+		if (metadataStyle.equals(N5Importer.MetadataCustomKey)) {
+			metaSpecDialog = new N5MetadataSpecDialog(this);
+			metaSpecDialog.show(MetadataTemplateMapper.RESOLUTION_ONLY_MAPPER);
+		} else {
+			try {
 				process();
-			}
-			catch ( IOException e )
-			{
+			} catch (final IOException e) {
 				e.printStackTrace();
-			}
-			catch ( DataAccessException e )
-			{
+			} catch (final DataAccessException e) {
 				e.printStackTrace();
-			}
-			catch ( InterruptedException e )
-			{
+			} catch (final InterruptedException e) {
 				e.printStackTrace();
-			}
-			catch ( ExecutionException e )
-			{
+			} catch (final ExecutionException e) {
 				e.printStackTrace();
 			}
 		}
 	}
 
-	private Compression getCompression()
-	{
-		switch( compressionArg )
-		{
+	private Compression getCompression() {
+
+		switch (compressionArg) {
 		case GZIP_COMPRESSION:
 			return new GzipCompression();
 		case LZ4_COMPRESSION:
@@ -390,63 +372,54 @@ public class N5Exporter implements Command, WindowListener
 			return new RawCompression();
 		}
 	}
-	
-	private N5Writer getWriter() throws IOException, DataAccessException
-	{
-		if( containerType.equals( "Auto"))
-			dataType = detectType( n5RootLocation );
+
+	private N5Writer getWriter() throws IOException, DataAccessException {
+
+		if (containerType.equals("Auto"))
+			dataType = detectType(n5RootLocation);
 		else
-			setType( containerType );
+			setType(containerType);
 
-		if( dataType == null )
-			status.warn( "Could not detect container type from location." );
+		if (dataType == null)
+			status.warn("Could not detect container type from location.");
 
-		return new DataAccessFactory( dataType, n5RootLocation ).createN5Writer( n5RootLocation );
+		return new DataAccessFactory(dataType, n5RootLocation).createN5Writer(n5RootLocation);
 	}
 
 	@Override
-	public void windowOpened(WindowEvent e) { }
+	public void windowOpened(final WindowEvent e) {}
 
 	@Override
-	public void windowIconified(WindowEvent e) { }
+	public void windowIconified(final WindowEvent e) {}
 
 	@Override
-	public void windowDeiconified(WindowEvent e) { }
+	public void windowDeiconified(final WindowEvent e) {}
 
 	@Override
-	public void windowDeactivated(WindowEvent e) { }
+	public void windowDeactivated(final WindowEvent e) {}
 
 	@Override
-	public void windowClosing(WindowEvent e)
-	{
-		styles.put( N5Importer.MetadataCustomKey, metaSpecDialog.getMapper() );
-		impMetaWriterTypes.put( MetadataTemplateMapper.class, new ImagePlusMetadataTemplate( "" ));
-		try
-		{
+	public void windowClosing(final WindowEvent e) {
+
+		styles.put(N5Importer.MetadataCustomKey, metaSpecDialog.getMapper());
+		impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate(""));
+		try {
 			process();
-		}
-		catch ( IOException e1 )
-		{
+		} catch (final IOException e1) {
 			e1.printStackTrace();
-		}
-		catch ( DataAccessException e1 )
-		{
+		} catch (final DataAccessException e1) {
 			e1.printStackTrace();
-		}
-		catch ( InterruptedException e1 )
-		{
+		} catch (final InterruptedException e1) {
 			e1.printStackTrace();
-		}
-		catch ( ExecutionException e1 )
-		{
+		} catch (final ExecutionException e1) {
 			e1.printStackTrace();
 		}
 	}
 
 	@Override
-	public void windowClosed(WindowEvent e) { }
+	public void windowClosed(final WindowEvent e) {}
 
 	@Override
-	public void windowActivated(WindowEvent e) { }
+	public void windowActivated(final WindowEvent e) {}
 
 }

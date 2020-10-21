@@ -1,3 +1,28 @@
+/**
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.util.HashMap;
@@ -8,7 +33,7 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
 import ij.ImagePlus;
 
-public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements 
+public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements
 	ImageplusMetadata< ImagePlusMetadataTemplate >
 {
 	public final String name;
@@ -66,7 +91,7 @@ public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements
 		axis2 = "c";
 		axis3 = "z";
 		axis4 = "t";
-	
+
 		otherMetadata = new HashMap<>();
 	}
 
@@ -84,7 +109,7 @@ public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements
 		yResolution = imp.getCalibration().pixelHeight;
 		zResolution = imp.getCalibration().pixelDepth;
 		tResolution = imp.getCalibration().frameInterval;
-		
+
 		xOrigin = imp.getCalibration().xOrigin;
 		yOrigin = imp.getCalibration().yOrigin;
 		zOrigin = imp.getCalibration().zOrigin;
@@ -104,15 +129,15 @@ public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements
 		axis4 = "t";
 
 		otherMetadata = new HashMap<>();
-		Properties props = imp.getProperties();
+		final Properties props = imp.getProperties();
 		if ( props != null )
-			for ( Object k : props.keySet() )
+			for ( final Object k : props.keySet() )
 				otherMetadata.put( k.toString(), props.get( k ).toString() );
 
 	}
 
 	@Override
-	public void writeMetadata( ImagePlusMetadataTemplate t, ImagePlus ip )
+	public void writeMetadata( final ImagePlusMetadataTemplate t, final ImagePlus ip )
 	{
 		ip.setTitle( t.name );
 		ip.getCalibration().pixelWidth = t.xResolution;
@@ -130,15 +155,15 @@ public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements
 
 		ip.getCalibration().setTimeUnit( t.tUnit );
 
-		Properties props = ip.getProperties();
+		final Properties props = ip.getProperties();
 		if( t.otherMetadata != null )
-			for( String k : t.otherMetadata.keySet() )
+			for( final String k : t.otherMetadata.keySet() )
 				props.put( k, t.otherMetadata.get( k ));
 
 	}
 
 	@Override
-	public ImagePlusMetadataTemplate readMetadata( ImagePlus ip )
+	public ImagePlusMetadataTemplate readMetadata( final ImagePlus ip )
 	{
 		return new ImagePlusMetadataTemplate( "", ip );
 	}

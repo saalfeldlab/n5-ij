@@ -1,3 +1,28 @@
+/**
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.janelia.saalfeldlab.n5.ui;
 
 import java.awt.BorderLayout;
@@ -28,11 +53,11 @@ public class N5DatasetSelectorDialog
 	public final String root;
 
 	public BiPredicate< N5Reader, String > isMultiscale;
-	
+
 	public List< String > selectedDatasets;
-	
+
 	public List<ActionListener> listenerList;
-	
+
 	public static final String sep = File.separator;
 
 	public N5DatasetSelectorDialog( final N5Reader n5, final String root )
@@ -55,31 +80,31 @@ public class N5DatasetSelectorDialog
 		{
 			root = datasetTree();
 		}
-		catch ( IOException e )
+		catch ( final IOException e )
 		{
 			e.printStackTrace();
 			return null;
 		}
 
-		JFrame frame = new JFrame( "Choose N5 datasets" );
-		JPanel panel = new JPanel( new BorderLayout() );
+		final JFrame frame = new JFrame( "Choose N5 datasets" );
+		final JPanel panel = new JPanel( new BorderLayout() );
 
-		JTree tree = new JTree( root );
-		JScrollPane treeView = new JScrollPane( tree );
+		final JTree tree = new JTree( root );
+		final JScrollPane treeView = new JScrollPane( tree );
 		panel.add( treeView, BorderLayout.CENTER );
-		
-		JButton okButton = new JButton("OK");
+
+		final JButton okButton = new JButton("OK");
 		okButton.addActionListener( new ActionListener()
 		{
 			@Override
-			public void actionPerformed( ActionEvent event )
+			public void actionPerformed( final ActionEvent event )
 			{
 				selectedDatasets = new ArrayList<>();
-				TreePath[] selectedPaths = tree.getSelectionPaths();	
-				for( TreePath path : selectedPaths )
+				final TreePath[] selectedPaths = tree.getSelectionPaths();
+				for( final TreePath path : selectedPaths )
 				{
-					StringBuffer pathString = new StringBuffer();
-					for( Object o : path.getPath())
+					final StringBuffer pathString = new StringBuffer();
+					for( final Object o : path.getPath())
 					{
 						pathString.append( "/");
 						pathString.append( o.toString() );
@@ -92,22 +117,22 @@ public class N5DatasetSelectorDialog
 			}
 		});
 
-		JButton cancelButton = new JButton("Cancel");
+		final JButton cancelButton = new JButton("Cancel");
 		cancelButton.addActionListener( new ActionListener()
 		{
 			@Override
-			public void actionPerformed( ActionEvent event )
+			public void actionPerformed( final ActionEvent event )
 			{
 				frame.setVisible( false );
 				frame.dispatchEvent( new WindowEvent( frame, WindowEvent.WINDOW_CLOSING ));
 			}
 		});
 
-		JPanel buttonPanel = new JPanel();
-		buttonPanel.add( okButton, BorderLayout.WEST ); 
+		final JPanel buttonPanel = new JPanel();
+		buttonPanel.add( okButton, BorderLayout.WEST );
 		buttonPanel.add( cancelButton , BorderLayout.EAST );
 		panel.add( buttonPanel, BorderLayout.SOUTH );
-		
+
         frame.add( panel );
         frame.pack();
         frame.setVisible( true );
@@ -121,7 +146,7 @@ public class N5DatasetSelectorDialog
 
 	public DefaultMutableTreeNode datasetTree() throws IOException
 	{
-		DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode( root );
+		final DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode( root );
 		datasetTreeRecursive( rootNode, root, n5.list( root ) );
 		return rootNode;
 	}
@@ -140,7 +165,7 @@ public class N5DatasetSelectorDialog
 			{
 				if( n5.datasetExists( fullPath ))
 				{
-					DefaultMutableTreeNode childNode = new DefaultMutableTreeNode( s );
+					final DefaultMutableTreeNode childNode = new DefaultMutableTreeNode( s );
 					baseNode.add( childNode );
 				}
 				else
@@ -150,10 +175,10 @@ public class N5DatasetSelectorDialog
 					{
 						suffix = " (multiscale)";
 					}
-					DefaultMutableTreeNode childNode = new DefaultMutableTreeNode( s + suffix );
+					final DefaultMutableTreeNode childNode = new DefaultMutableTreeNode( s + suffix );
 
 					baseNode.add( childNode );
-					String[] children = n5.list( fullPath );
+					final String[] children = n5.list( fullPath );
 					datasetTreeRecursive( childNode, fullPath, children );
 				}
 			}
@@ -168,39 +193,39 @@ public class N5DatasetSelectorDialog
 		{
 			list = datasetList();
 		}
-		catch ( IOException e )
+		catch ( final IOException e )
 		{
 			e.printStackTrace();
 			return null;
 		}
 
-		JFrame frame = new JFrame( "Choose N5 datasets" );
-		JPanel panel = new JPanel( new BorderLayout() );
-		
-		String[] columnNames = new String[]{ "datasets" };
-		String[][] data = new String[ list.size() ][];
+		final JFrame frame = new JFrame( "Choose N5 datasets" );
+		final JPanel panel = new JPanel( new BorderLayout() );
+
+		final String[] columnNames = new String[]{ "datasets" };
+		final String[][] data = new String[ list.size() ][];
 		for( int i = 0; i < list.size(); i++ )
 		{
 			data[ i ] = new String[]{ list.get( i ) };
 		}
 
-		JTable table = new JTable( data, columnNames );
-		JScrollPane treeView = new JScrollPane( table );
+		final JTable table = new JTable( data, columnNames );
+		final JScrollPane treeView = new JScrollPane( table );
 		panel.add( treeView, BorderLayout.CENTER );
-		
-		JButton okButton = new JButton("OK");
+
+		final JButton okButton = new JButton("OK");
 		okButton.addActionListener( new ActionListener()
 		{
 			@Override
-			public void actionPerformed( ActionEvent event )
+			public void actionPerformed( final ActionEvent event )
 			{
-				int[] selected = table.getSelectedRows();
+				final int[] selected = table.getSelectedRows();
 				if( selected.length < 1 )
 					return;
 				else
 				{
 					selectedDatasets = new ArrayList<>();
-					for( int i : selected )
+					for( final int i : selected )
 					{
 						selectedDatasets.add( data[ i ][ 0 ] );
 					}
@@ -211,22 +236,22 @@ public class N5DatasetSelectorDialog
 			}
 		});
 
-		JButton cancelButton = new JButton("Cancel");
+		final JButton cancelButton = new JButton("Cancel");
 		cancelButton.addActionListener( new ActionListener()
 		{
 			@Override
-			public void actionPerformed( ActionEvent event )
+			public void actionPerformed( final ActionEvent event )
 			{
 				frame.setVisible( false );
 				frame.dispatchEvent( new WindowEvent( frame, WindowEvent.WINDOW_CLOSING ));
 			}
 		});
 
-		JPanel buttonPanel = new JPanel();
-		buttonPanel.add( okButton, BorderLayout.WEST ); 
+		final JPanel buttonPanel = new JPanel();
+		buttonPanel.add( okButton, BorderLayout.WEST );
 		buttonPanel.add( cancelButton , BorderLayout.EAST );
 		panel.add( buttonPanel, BorderLayout.SOUTH );
-		
+
         frame.add( panel );
         frame.pack();
         frame.setVisible( true );
@@ -235,7 +260,7 @@ public class N5DatasetSelectorDialog
 
 	public List<String> datasetList() throws IOException
 	{
-		ArrayList<String> list = new ArrayList<>();
+		final ArrayList<String> list = new ArrayList<>();
 		datasetListRecursive( list, root, n5.list( root ) );
 		return list;
 	}
@@ -259,7 +284,7 @@ public class N5DatasetSelectorDialog
 					if( isMultiscale != null && isMultiscale.test( n5, fullPath ))
 						list.add( fullPath + " (multiscale)" );
 
-					String[] children = n5.list( fullPath );
+					final String[] children = n5.list( fullPath );
 					datasetListRecursive( list, fullPath, children );
 				}
 			}

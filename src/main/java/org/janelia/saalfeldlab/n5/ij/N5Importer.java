@@ -1,3 +1,28 @@
+/**
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.janelia.saalfeldlab.n5.ij;
 
 import java.io.File;
@@ -42,7 +67,6 @@ import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.NumericType;
-import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn
@@ -122,21 +146,21 @@ public class N5Importer implements PlugIn
 
 	public void setNumDimensionsForCropDialog( final int numDimensionsForCrop )
 	{
-		this.numDimensionsForCrop = numDimensionsForCrop; 
+		this.numDimensionsForCrop = numDimensionsForCrop;
 	}
 
 	@Override
-    public void run( String args )
+    public void run( final String args )
 	{
-		String options = Macro.getOptions();
-		boolean isMacro = ( options != null && !options.isEmpty() );
-		boolean isCrop = ( args != null && !args.isEmpty() );
+		final String options = Macro.getOptions();
+		final boolean isMacro = ( options != null && !options.isEmpty() );
+		final boolean isCrop = ( args != null && !args.isEmpty() );
 
 		if ( !isMacro && !isCrop )
 		{
 			// the fancy selector dialog
 			selectionDialog = new DatasetSelectorDialog(
-					new N5ViewerReaderFun(), 
+					new N5ViewerReaderFun(),
 					new N5BasePathFun(),
 					lastOpenedContainer,
 					null, // no group parsers
@@ -152,7 +176,7 @@ public class N5Importer implements PlugIn
 		else
 		{
 			String n5Path = Macro.getValue( args, n5PathKey, "" );
-			boolean dialogAsVirtual = args.contains( " virtual" );
+			final boolean dialogAsVirtual = args.contains( " virtual" );
 
 			final GenericDialog gd = new GenericDialog( "Import N5" );
 			gd.addStringField( "N5 path", n5Path );
@@ -179,24 +203,24 @@ public class N5Importer implements PlugIn
 				return;
 
 			n5Path = gd.getNextString();
-			boolean openAsVirtual = gd.getNextBoolean();
+			final boolean openAsVirtual = gd.getNextBoolean();
 
 			// we don't always know ahead of time the dimensionality
-			long[] cropMin = new long[ numDimensionsForCrop ];
-			long[] cropMax = new long[ numDimensionsForCrop ];
+			final long[] cropMin = new long[ numDimensionsForCrop ];
+			final long[] cropMax = new long[ numDimensionsForCrop ];
 
 			for( int i = 0; i < numDimensionsForCrop; i++ )
 				cropMin[ i ] = Math.max( 0, (long)Math.floor( gd.getNextNumber()));
 
 			for( int i = 0; i < numDimensionsForCrop; i++ )
 			{
-				double v = gd.getNextNumber();
+				final double v = gd.getNextNumber();
 				cropMax[ i ] = Double.isInfinite( v ) ? Long.MAX_VALUE : (long)Math.ceil( v );
 			}
 
-			Interval thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
+			final Interval thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
 
-			N5Reader n5ForThisDataset  = new N5ViewerReaderFun().apply( n5Path );
+			final N5Reader n5ForThisDataset  = new N5ViewerReaderFun().apply( n5Path );
 			N5Metadata meta;
 			try
 			{
@@ -205,16 +229,16 @@ public class N5Importer implements PlugIn
 				process( n5ForThisDataset, n5Path, Collections.singletonList( meta ), openAsVirtual, thisDatasetCropInterval,
 						impMetaWriterTypes );
 			}
-			catch ( IOException e )
+			catch ( final IOException e )
 			{
 				e.printStackTrace();
 			}
 		}
 	}
 
-	public static boolean isTypeOpenable( final N5Metadata meta, boolean showMessage )
+	public static boolean isTypeOpenable( final N5Metadata meta, final boolean showMessage )
 	{
-		DataType type = meta.getAttributes().getDataType();
+		final DataType type = meta.getAttributes().getDataType();
 		if(	type != DataType.FLOAT32 &&
 			type != DataType.UINT8 &&
 			type != DataType.UINT16 )
@@ -277,23 +301,23 @@ public class N5Importer implements PlugIn
 
 	/**
 	 * Read a single N5 dataset into a ImagePlus and show it
-	 * 
+	 *
 	 * @param n5 the n5Reader
 	 * @param datasetMeta datasetMetadata containing the path
-	 * @param cropInterval 
+	 * @param cropInterval
 	 * @param asVirtual
 	 * @param ipMeta
 	 * @return
 	 * @throws IOException
 	 */
 	@SuppressWarnings( "unchecked" )
-	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read( 
-			final N5Reader n5, 
+	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read(
+			final N5Reader n5,
 			final N5Metadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
 			final ImageplusMetadata<M> ipMeta ) throws IOException
 	{
-		String d = datasetMeta.getPath();
-		RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
+		final String d = datasetMeta.getPath();
+		final RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
 
 		RandomAccessibleInterval<T> img;
 		if( cropIntervalIn != null )
@@ -314,7 +338,7 @@ public class N5Importer implements PlugIn
 		}
 		else
 		{
-			ImagePlusImg<T,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( img ).firstElement()).create( img );
+			final ImagePlusImg<T,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( img ).firstElement()).create( img );
 			LoopBuilder.setImages( img, ipImg ).forEachPixel( (x,y) -> y.set( x ) );
 			imp = ipImg.getImagePlus();
 		}
@@ -325,7 +349,7 @@ public class N5Importer implements PlugIn
 			{
 				ipMeta.writeMetadata( ( M ) datasetMeta, imp );
 			}
-			catch( Exception e )
+			catch( final Exception e )
 			{
 				System.err.println("Failed to convert metadata to Imageplus for " + d );
 			}
@@ -337,9 +361,9 @@ public class N5Importer implements PlugIn
 	{
 		assert img.numDimensions() == cropInterval.numDimensions();
 
-		int nd = img.numDimensions();
-		long[] min = new long[ nd ];
-		long[] max = new long[ nd ];
+		final int nd = img.numDimensions();
+		final long[] min = new long[ nd ];
+		final long[] max = new long[ nd ];
 
 		for( int i = 0; i < nd; i++ )
 		{
@@ -358,7 +382,7 @@ public class N5Importer implements PlugIn
 	{
 		asVirtual = selectionDialog.isVirtual();
 		final String rootPath = selectionDialog.getN5RootPath();
-		for ( N5Metadata datasetMeta : selection.metadata )
+		for ( final N5Metadata datasetMeta : selection.metadata )
 		{
 			if( !isTypeOpenable( datasetMeta, true ))
 				continue;
@@ -370,7 +394,7 @@ public class N5Importer implements PlugIn
 			final String pathToN5Dataset = datasetPath.isEmpty() ? rootPath : rootPath + File.separator + datasetPath;
 
 			numDimensionsForCrop = datasetMeta.getAttributes().getNumDimensions();
-			initMaxValuesForCrop = 
+			initMaxValuesForCrop =
 					Arrays.stream( datasetMeta.getAttributes().getDimensions())
 						.map( x -> x - 1 )
 						.toArray();
@@ -382,25 +406,25 @@ public class N5Importer implements PlugIn
 
 	/**
 	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
-	 * Parameters are stored in this object. 
+	 * Parameters are stored in this object.
 	 */
-	public static List<ImagePlus> process( final N5Reader n5, 
+	public static List<ImagePlus> process( final N5Reader n5,
 			final String rootPath,
 			final List< N5Metadata> datasetMetadataList,
 			final boolean asVirtual,
 			final Interval cropInterval,
-			final Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes ) 
+			final Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes )
 	{
-		ArrayList<ImagePlus> imgList = new ArrayList<>();
-		for ( N5Metadata datasetMeta : datasetMetadataList )
+		final ArrayList<ImagePlus> imgList = new ArrayList<>();
+		for ( final N5Metadata datasetMeta : datasetMetadataList )
 		{
 			if( !isTypeOpenable( datasetMeta, true ))
 				continue;
 
-			String d = datasetMeta.getPath();
-			String pathToN5Dataset = d.isEmpty() ? rootPath : rootPath + File.separator + d;
+			final String d = datasetMeta.getPath();
+			final String pathToN5Dataset = d.isEmpty() ? rootPath : rootPath + File.separator + d;
 
-			ImageplusMetadata< ? > impMeta = impMetaWriterTypes.get( datasetMeta.getClass() );
+			final ImageplusMetadata< ? > impMeta = impMetaWriterTypes.get( datasetMeta.getClass() );
 			ImagePlus imp;
 			try
 			{
@@ -409,7 +433,7 @@ public class N5Importer implements PlugIn
 				imgList.add( imp );
 				imp.show();
 			}
-			catch ( IOException e )
+			catch ( final IOException e )
 			{
 				IJ.error( "failed to read n5" );
 			}
@@ -421,7 +445,7 @@ public class N5Importer implements PlugIn
 	 * Convenience method to process using the current state of this object.
 	 * Can not be used directly when this plugin shows the crop dialog.
 	 */
-	public void process() 
+	public void process()
 	{
 		process( n5, selectionDialog.getN5RootPath(), selection.metadata, asVirtual, cropInterval, impMetaWriterTypes );
 	}
@@ -434,13 +458,13 @@ public class N5Importer implements PlugIn
 	public List<ImagePlus> process( final String n5FullPath, final boolean asVirtual, final Interval cropInterval )
 	{
 		n5 = new N5ViewerReaderFun().apply( n5FullPath );
-		String dataset = new N5BasePathFun().apply( n5FullPath );
+		final String dataset = new N5BasePathFun().apply( n5FullPath );
 		N5Metadata metadata;
 		try
 		{
 			metadata = new N5DatasetDiscoverer( null, PARSERS ).parse( n5, dataset ).getMetadata();
 		}
-		catch ( IOException e )
+		catch ( final IOException e )
 		{
 			System.err.println( "Could not parse metadata.");
 			return null;
@@ -450,12 +474,13 @@ public class N5Importer implements PlugIn
 				asVirtual, cropInterval, getImagePlusMetadataWriterMap() );
 	}
 
-	public void processThread() 
+	public void processThread()
 	{
 //		String datasetPath = selection.metadata.get( 0 ).getPath();
 //		selectionDialog.setMessage( "Loading\n" + datasetPath );
 		loaderThread = new Thread()
 		{
+			@Override
 			public void run()
 			{
 				process();
@@ -465,8 +490,8 @@ public class N5Importer implements PlugIn
 	}
 
 //	public static Interval containingBlockAlignedInterval(
-//			final N5Reader n5, 
-//			final String dataset, 
+//			final N5Reader n5,
+//			final String dataset,
 //			final Interval interval ) throws IOException
 //	{
 //		return containingBlockAlignedInterval( n5, dataset, interval );
@@ -475,16 +500,16 @@ public class N5Importer implements PlugIn
 	/**
 	 * Returns the smallest {@link Interval} that contains the input interval
 	 * and contains complete blocks.
-	 * 
+	 *
 	 * @param n5 the n5 reader
 	 * @param dataset the dataset
 	 * @param interval the interval
 	 * @return the smallest containing interval
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 //	public static Interval containingBlockAlignedInterval(
-//			final N5Reader n5, 
-//			final String dataset, 
+//			final N5Reader n5,
+//			final String dataset,
 //			final Interval interval) throws IOException
 //	{
 //		// TODO move to N5Utils?
@@ -522,7 +547,7 @@ public class N5Importer implements PlugIn
 		public String message;
 
 		@Override
-		public N5Reader apply( String n5Path )
+		public N5Reader apply( final String n5Path )
 		{
 			N5Reader n5;
 			if ( n5Path == null || n5Path.isEmpty() )
@@ -544,7 +569,7 @@ public class N5Importer implements PlugIn
 			{
 				n5 = new DataAccessFactory( type, n5BasePath ).createN5Reader( n5BasePath );
 
-				/* 
+				/*
 				 * Do we need this check?
 				 */
 //				if ( !n5.exists( "/" ) || n5.getVersion().equals( new N5Reader.Version( null ) ) )
@@ -568,7 +593,7 @@ public class N5Importer implements PlugIn
 		public String message;
 
 		@Override
-		public String apply( String n5Path )
+		public String apply( final String n5Path )
 		{
 			final DataAccessType type = DataAccessType.detectType( n5Path );
 			if ( type == null )
@@ -592,7 +617,7 @@ public class N5Importer implements PlugIn
 		return h5DatasetPath( h5PathAndDataset, false );
 	}
 
-	public static String h5DatasetPath( final String h5PathAndDataset, boolean getFilePath )
+	public static String h5DatasetPath( final String h5PathAndDataset, final boolean getFilePath )
 	{
 		int len = 3;
 		int i = h5PathAndDataset.lastIndexOf( ".h5" );

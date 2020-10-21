@@ -1,25 +1,62 @@
 /**
- * License: GPL
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 package org.janelia.saalfeldlab.n5.ui;
 
-import ij.IJ;
-import ij.io.OpenDialog;
-import net.imglib2.FinalInterval;
-import net.imglib2.Interval;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import javax.swing.BoxLayout;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSpinner;
+import javax.swing.JTextField;
+import javax.swing.JTree;
+import javax.swing.SpinnerListModel;
+import javax.swing.SpinnerNumberModel;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeSelectionModel;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
@@ -30,20 +67,9 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5MultiScaleMetadata;
 
-import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreeSelectionModel;
-import java.awt.*;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import ij.IJ;
+import net.imglib2.FinalInterval;
+import net.imglib2.Interval;
 
 public class DatasetSelectorDialogV0
 {
@@ -97,9 +123,9 @@ public class DatasetSelectorDialogV0
 
 	private int nd;
 
-	public DatasetSelectorDialogV0( 
-			final Function< String, N5Reader > n5Fun, 
-			final Function< String, String > pathFun, 
+	public DatasetSelectorDialogV0(
+			final Function< String, N5Reader > n5Fun,
+			final Function< String, String > pathFun,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
@@ -108,16 +134,16 @@ public class DatasetSelectorDialogV0
 		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
 	}
 
-	public DatasetSelectorDialogV0( 
-			final Function< String, N5Reader > n5Fun, 
+	public DatasetSelectorDialogV0(
+			final Function< String, N5Reader > n5Fun,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
 		this( n5Fun, x -> "", groupParsers, parsers );
 	}
 
-	public DatasetSelectorDialogV0( 
-			final N5Reader n5, 
+	public DatasetSelectorDialogV0(
+			final N5Reader n5,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
@@ -125,12 +151,12 @@ public class DatasetSelectorDialogV0
 		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
 	}
 
-	public void setVirtualOption( boolean arg )
+	public void setVirtualOption( final boolean arg )
 	{
 		virtualOption = arg;
 	}
 
-	public void setMinMaxOption( boolean arg )
+	public void setMinMaxOption( final boolean arg )
 	{
 		minMaxOption = arg;
 	}
@@ -145,8 +171,8 @@ public class DatasetSelectorDialogV0
 		if( !minMaxOption || nd < 1 )
 			return null;
 
-		long[] min = new long[ nd ];
-		long[] max = new long[ nd ];
+		final long[] min = new long[ nd ];
+		final long[] max = new long[ nd ];
 		for ( int i = 0; i < nd; i++ )
 		{
 			if( i < 3 ) // limiting to 3d cropping for now
@@ -181,7 +207,7 @@ public class DatasetSelectorDialogV0
 			containerPanel.add(browseBtn);
 
 			final JButton detectBtn = new JButton("Detect datasets");
-			detectBtn.addActionListener( e -> openContainer( 
+			detectBtn.addActionListener( e -> openContainer(
 					n5Fun,
 					() -> containerPathTxt.getText(),
 					pathFun ));
@@ -309,7 +335,7 @@ public class DatasetSelectorDialogV0
         fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         if (lastBrowsePath != null && !lastBrowsePath.isEmpty())
             fileChooser.setCurrentDirectory(new File(lastBrowsePath));
-        int ret = fileChooser.showOpenDialog(dialog);
+        final int ret = fileChooser.showOpenDialog(dialog);
         if (ret != JFileChooser.APPROVE_OPTION)
             return null;
         return fileChooser.getSelectedFile().getAbsolutePath();
@@ -379,21 +405,21 @@ public class DatasetSelectorDialogV0
 
         // add min/max options
 		try
-		{ 
+		{
 			if ( !n5.datasetExists( node.path ) )
 			{
 				return;
 			}
-			DatasetAttributes attr = n5.getDatasetAttributes( node.path );
+			final DatasetAttributes attr = n5.getDatasetAttributes( node.path );
 			nd = attr.getNumDimensions();
 			for( int i = 0; i < nd; i++ )
 			{
-				int max = (int)attr.getDimensions()[ i ] - 1;
+				final int max = (int)attr.getDimensions()[ i ] - 1;
 				minSpinners.get( i ).setModel( new SpinnerNumberModel( 0, 0, max, 1 ));
 				maxSpinners.get( i ).setModel( new SpinnerNumberModel( max, 0, max, 1 ));
 			}
 		}
-		catch ( Exception e )
+		catch ( final Exception e )
 		{
 			return;
 		}
@@ -454,7 +480,7 @@ public class DatasetSelectorDialogV0
 				if ( node.isDataset() && node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}
-			catch ( Exception e ){}
+			catch ( final Exception e ){}
 
 			if ( node == null || !node.isDataset() || node.getMetadata() == null )
 			{

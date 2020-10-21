@@ -1,23 +1,29 @@
 /**
- * License: GPL
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 package org.janelia.saalfeldlab.n5.metadata;
-
-import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.realtransform.Scale3D;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -28,6 +34,8 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
+import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.realtransform.Scale3D;
 
 public class N5SingleScaleMetadata extends AbstractN5Metadata implements N5GsonMetadataParser< N5SingleScaleMetadata >,
 N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetadata >
@@ -95,8 +103,8 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 	@Override
 	public boolean check( final Map< String, Object > metaMap )
 	{
-		Map< String, Class< ? > > requiredKeys = AbstractN5Metadata.datasetAtttributeKeys();
-		for( String k : requiredKeys.keySet() )
+		final Map< String, Class< ? > > requiredKeys = AbstractN5Metadata.datasetAtttributeKeys();
+		for( final String k : requiredKeys.keySet() )
 		{
 			if ( !metaMap.containsKey( k ) )
 				return false;
@@ -116,14 +124,14 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 		if ( !check( metaMap ) )
 			return null;
 
-		String dataset = ( String ) metaMap.get( "dataset" );
+		final String dataset = ( String ) metaMap.get( "dataset" );
 
-		DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
+		final DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
 		if( attributes == null )
 			return null;
 
 		final long[] downsamplingFactors = ( long[] ) metaMap.get( DOWNSAMPLING_FACTORS_KEY );
-		FinalVoxelDimensions voxdim = ( FinalVoxelDimensions ) metaMap.get( PIXEL_RESOLUTION_KEY );
+		final FinalVoxelDimensions voxdim = ( FinalVoxelDimensions ) metaMap.get( PIXEL_RESOLUTION_KEY );
 
 		final double[] pixelResolution = new double[ voxdim.numDimensions() ];
 		voxdim.dimensions( pixelResolution );
@@ -134,19 +142,19 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 	}
 
 	@Override
-	public void writeMetadata( N5SingleScaleMetadata t, N5Writer n5, String dataset ) throws Exception
+	public void writeMetadata( final N5SingleScaleMetadata t, final N5Writer n5, final String dataset ) throws Exception
 	{
-		double[] pixelResolution = new double[]{
+		final double[] pixelResolution = new double[]{
 				t.transform.get( 0, 0 ),
 				t.transform.get( 1, 1 ),
 				t.transform.get( 2, 2 ) };
 
-		FinalVoxelDimensions voxdims = new FinalVoxelDimensions( t.unit, pixelResolution );
+		final FinalVoxelDimensions voxdims = new FinalVoxelDimensions( t.unit, pixelResolution );
 		n5.setAttribute( dataset, PIXEL_RESOLUTION_KEY, voxdims );
 	}
 
 	@Override
-	public void writeMetadata( N5SingleScaleMetadata t, ImagePlus ip ) throws IOException
+	public void writeMetadata( final N5SingleScaleMetadata t, final ImagePlus ip ) throws IOException
 	{
 		ip.getCalibration().pixelWidth = t.transform.get( 0, 0 );
 		ip.getCalibration().pixelHeight = t.transform.get( 1, 1 );
@@ -156,14 +164,14 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 	}
 
 	@Override
-	public N5SingleScaleMetadata readMetadata( ImagePlus ip ) throws IOException
+	public N5SingleScaleMetadata readMetadata( final ImagePlus ip ) throws IOException
 	{
-		double sx = ip.getCalibration().pixelWidth;
-		double sy = ip.getCalibration().pixelHeight;
-		double sz = ip.getCalibration().pixelDepth;
-		String unit = ip.getCalibration().getUnit();
+		final double sx = ip.getCalibration().pixelWidth;
+		final double sy = ip.getCalibration().pixelHeight;
+		final double sz = ip.getCalibration().pixelDepth;
+		final String unit = ip.getCalibration().getUnit();
 
-		AffineTransform3D xfm = new AffineTransform3D();
+		final AffineTransform3D xfm = new AffineTransform3D();
 		xfm.set( sx, 0.0, 0.0, 0.0, 0.0, sy, 0.0, 0.0, 0.0, 0.0, sz, 0.0 );
 
 		return new N5SingleScaleMetadata( "", xfm, unit );

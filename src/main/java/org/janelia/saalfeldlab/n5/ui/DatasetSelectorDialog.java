@@ -1,39 +1,37 @@
 /**
- * License: GPL
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 package org.janelia.saalfeldlab.n5.ui;
 
-import ij.IJ;
-import ij.Prefs;
-
-import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
-import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-
-import javax.swing.*;
-import javax.swing.event.TreeSelectionEvent;
-import javax.swing.event.TreeSelectionListener;
-import javax.swing.tree.DefaultTreeCellRenderer;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreePath;
-import javax.swing.tree.TreeSelectionModel;
-import java.awt.*;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,6 +43,34 @@ import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextField;
+import javax.swing.JTree;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
+
+import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
+import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+
+import ij.IJ;
+import ij.Prefs;
 
 public class DatasetSelectorDialog
 {
@@ -106,9 +132,9 @@ public class DatasetSelectorDialog
 
 	private Consumer< String > containerPathUpdateCallback;
 
-	public DatasetSelectorDialog( 
-			final Function< String, N5Reader > n5Fun, 
-			final Function< String, String > pathFun, 
+	public DatasetSelectorDialog(
+			final Function< String, N5Reader > n5Fun,
+			final Function< String, String > pathFun,
 			final String initialContainerPath,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
@@ -120,25 +146,25 @@ public class DatasetSelectorDialog
 		guiScale = Prefs.getGuiScale();
 	}
 
-	public DatasetSelectorDialog( 
-			final Function< String, N5Reader > n5Fun, 
-			final Function< String, String > pathFun, 
+	public DatasetSelectorDialog(
+			final Function< String, N5Reader > n5Fun,
+			final Function< String, String > pathFun,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
 		this( n5Fun, pathFun, "", groupParsers, parsers );
 	}
 
-	public DatasetSelectorDialog( 
-			final Function< String, N5Reader > n5Fun, 
+	public DatasetSelectorDialog(
+			final Function< String, N5Reader > n5Fun,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
 		this( n5Fun, x -> "", groupParsers, parsers );
 	}
 
-	public DatasetSelectorDialog( 
-			final N5Reader n5, 
+	public DatasetSelectorDialog(
+			final N5Reader n5,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
@@ -158,12 +184,12 @@ public class DatasetSelectorDialog
 		messageLabel.setText( message );
 	}
 
-	public void setVirtualOption( boolean arg )
+	public void setVirtualOption( final boolean arg )
 	{
 		virtualOption = arg;
 	}
 
-	public void setCropOption( boolean arg )
+	public void setCropOption( final boolean arg )
 	{
 		cropOption = arg;
 	}
@@ -211,18 +237,18 @@ public class DatasetSelectorDialog
 
     private JFrame buildDialog()
     {
-    	int OUTER_PAD = (int)( guiScale * DEFAULT_OUTER_PAD );
-    	int BUTTON_PAD = (int)( guiScale * DEFAULT_BUTTON_PAD );
-    	int MID_PAD = (int)( guiScale * DEFAULT_MID_PAD );
+    	final int OUTER_PAD = (int)( guiScale * DEFAULT_OUTER_PAD );
+    	final int BUTTON_PAD = (int)( guiScale * DEFAULT_BUTTON_PAD );
+    	final int MID_PAD = (int)( guiScale * DEFAULT_MID_PAD );
 
-		int frameSizeX = (int)( guiScale * 600 );
-		int frameSizeY = (int)( guiScale * 400 );
+		final int frameSizeX = (int)( guiScale * 600 );
+		final int frameSizeY = (int)( guiScale * 400 );
 
 		dialog = new JFrame( "Open N5" );
 		dialog.setPreferredSize( new Dimension( frameSizeX, frameSizeY ) );
 		dialog.setMinimumSize( dialog.getPreferredSize() );
 
-		Container pane = dialog.getContentPane();
+		final Container pane = dialog.getContentPane();
 		pane.setLayout( new GridBagLayout() );
 
 		containerPathText = new JTextField();
@@ -231,7 +257,7 @@ public class DatasetSelectorDialog
 		containerPathText.addActionListener( e -> openContainer( n5Fun, () -> getN5RootPath(), pathFun ));
 		scale( containerPathText );
 
-		GridBagConstraints ctxt = new GridBagConstraints();
+		final GridBagConstraints ctxt = new GridBagConstraints();
 		ctxt.gridx = 0;
 		ctxt.gridy = 0;
 		ctxt.gridwidth = 3;
@@ -240,10 +266,10 @@ public class DatasetSelectorDialog
 		ctxt.weighty = 0.0;
 		ctxt.fill = GridBagConstraints.HORIZONTAL;
 		ctxt.insets = new Insets( OUTER_PAD, OUTER_PAD, MID_PAD, BUTTON_PAD );
-		pane.add( containerPathText, ctxt ); 
+		pane.add( containerPathText, ctxt );
 
 		browseBtn = scaleFont( new JButton( "Browse" ));
-		GridBagConstraints cbrowse = new GridBagConstraints();
+		final GridBagConstraints cbrowse = new GridBagConstraints();
 		cbrowse.gridx = 3;
 		cbrowse.gridy = 0;
 		cbrowse.gridwidth = 1;
@@ -255,7 +281,7 @@ public class DatasetSelectorDialog
 		pane.add( browseBtn, cbrowse );
 
 		detectBtn = scaleFont( new JButton( "Detect datasets" ) );
-		GridBagConstraints cdetect = new GridBagConstraints();
+		final GridBagConstraints cdetect = new GridBagConstraints();
 		cdetect.gridx = 4;
 		cdetect.gridy = 0;
 		cdetect.gridwidth = 2;
@@ -266,7 +292,7 @@ public class DatasetSelectorDialog
 		cdetect.insets = new Insets( OUTER_PAD, BUTTON_PAD, MID_PAD, OUTER_PAD );
 		pane.add( detectBtn, cdetect );
 
-		GridBagConstraints ctree = new GridBagConstraints();
+		final GridBagConstraints ctree = new GridBagConstraints();
 		ctree.gridx = 0;
 		ctree.gridy = 1;
 		ctree.gridwidth = 6;
@@ -283,11 +309,11 @@ public class DatasetSelectorDialog
 		containerTree.setMinimumSize( new Dimension( 550, 230 ));
 		scaleFont( containerTree, (float)guiScale * 1.2f );
 
-		containerTree.getSelectionModel().setSelectionMode( 
+		containerTree.getSelectionModel().setSelectionMode(
 				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION );
 
         // disable selection of nodes that are not open-able
-		containerTree.addTreeSelectionListener( 
+		containerTree.addTreeSelectionListener(
 				new N5IjTreeSelectionListener( containerTree.getSelectionModel() ));
 
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
@@ -299,7 +325,7 @@ public class DatasetSelectorDialog
 		pane.add( treeScroller, ctree );
 
 		// bottom button
-		GridBagConstraints cbot = new GridBagConstraints();
+		final GridBagConstraints cbot = new GridBagConstraints();
 		cbot.gridx = 0;
 		cbot.gridy = 4;
 		cbot.gridwidth = 1;
@@ -311,9 +337,9 @@ public class DatasetSelectorDialog
 
 		if( virtualOption )
 		{
-			JPanel virtPanel = new JPanel();
+			final JPanel virtPanel = new JPanel();
 			virtualBox = new JCheckBox();
-			JLabel virtLabel = scaleFont(new JLabel( "Open as virtual" ));
+			final JLabel virtLabel = scaleFont(new JLabel( "Open as virtual" ));
 			virtPanel.add( virtualBox );
 			virtPanel.add( virtLabel );
 			pane.add( virtPanel, cbot );
@@ -321,9 +347,9 @@ public class DatasetSelectorDialog
 
 		if( cropOption )
 		{
-			JPanel cropPanel = new JPanel();
+			final JPanel cropPanel = new JPanel();
 			cropBox = new JCheckBox();
-			JLabel cropLabel = scaleFont( new JLabel( "Crop" ));
+			final JLabel cropLabel = scaleFont( new JLabel( "Crop" ));
 			cbot.gridx = 1;
 			cbot.anchor = GridBagConstraints.WEST;
 			cropPanel.add( cropBox );
@@ -368,7 +394,7 @@ public class DatasetSelectorDialog
 
         if (lastBrowsePath != null && !lastBrowsePath.isEmpty())
             fileChooser.setCurrentDirectory(new File(lastBrowsePath));
-        int ret = fileChooser.showOpenDialog(dialog);
+        final int ret = fileChooser.showOpenDialog(dialog);
         if (ret != JFileChooser.APPROVE_OPTION)
             return null;
 
@@ -413,10 +439,10 @@ public class DatasetSelectorDialog
 		messageLabel.setVisible( true );
 		dialog.repaint();
 
-		DiscoverRunner discoverRunner = new DiscoverRunner( datasetDiscoverer, n5, rootPath, treeModel, messageLabel );
+		final DiscoverRunner discoverRunner = new DiscoverRunner( datasetDiscoverer, n5, rootPath, treeModel, messageLabel );
 
-	    ExecutorService executor = Executors.newSingleThreadExecutor();
-		ExecutorCompletionService<N5TreeNode> ecs = new ExecutorCompletionService<>( executor );
+	    final ExecutorService executor = Executors.newSingleThreadExecutor();
+		final ExecutorCompletionService<N5TreeNode> ecs = new ExecutorCompletionService<>( executor );
 		ecs.submit( discoverRunner );
 
 		containerTree.setEnabled( true );
@@ -441,7 +467,7 @@ public class DatasetSelectorDialog
 				if ( node.isDataset() && node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}
-			catch ( Exception e ){}
+			catch ( final Exception e ){}
 
 			if ( node == null || !node.isDataset() || node.getMetadata() == null )
 			{
@@ -452,7 +478,7 @@ public class DatasetSelectorDialog
 		else
 		{
 			// datasets were selected by the user
-			for( TreePath path : containerTree.getSelectionPaths() )
+			for( final TreePath path : containerTree.getSelectionPaths() )
 				selectedMetadata.add( ((N5TreeNode)path.getLastPathComponent()).getMetadata() );
 		}
 		okCallback.accept( new DataSelection( n5, selectedMetadata ) );
@@ -467,7 +493,7 @@ public class DatasetSelectorDialog
 
         if( loaderThread != null )
 			loaderThread.interrupt();
- 
+
 		if ( parserFuture != null )
 		{
 			parserFuture.cancel( true );
@@ -476,7 +502,7 @@ public class DatasetSelectorDialog
 
 	private static final Font DEFAULT_FONT = new Font( Font.SANS_SERIF, Font.PLAIN, 12 );
 
-	private < T extends Component > T scaleFont( T c )
+	private < T extends Component > T scaleFont( final T c )
     {
 		Font font = c.getFont();
 		if (font == null)
@@ -486,27 +512,27 @@ public class DatasetSelectorDialog
 		return c;
     }
 
-	private static < T extends Component > T scaleFont( T c, float scale )
+	private static < T extends Component > T scaleFont( final T c, final float scale )
     {
 		Font font = c.getFont();
 		if (font == null)
 			font = DEFAULT_FONT;
-		font = font.deriveFont( (float)( scale * font.getSize()) );
+		font = font.deriveFont( scale * font.getSize() );
 		c.setFont(font);
 		return c;
     }
 
-	private < T extends Component > T scaleSize( T c )
+	private < T extends Component > T scaleSize( final T c )
 	{
-		Dimension prefSz = c.getPreferredSize();
+		final Dimension prefSz = c.getPreferredSize();
 		c.setPreferredSize(
-				new Dimension( 
+				new Dimension(
 						( int ) ( guiScale * prefSz.width ),
 						( int ) ( guiScale * prefSz.height )));
 		return c;
 	}
 
-	private < T extends Component > T scale( T c )
+	private < T extends Component > T scale( final T c )
 	{
 		return scaleSize( scaleFont( c ) );
 	}
@@ -541,8 +567,9 @@ public class DatasetSelectorDialog
 		{
 			try
 			{
-				N5TreeNode node = datasetDiscoverer.discoverRecursive( n5, rootPath );
+				final N5TreeNode node = datasetDiscoverer.discoverRecursive( n5, rootPath );
 				SwingUtilities.invokeLater( new Runnable() {
+					@Override
 					public void run()
 					{
 						treeModel.setRoot( node );
@@ -566,24 +593,24 @@ public class DatasetSelectorDialog
 	{
 		private TreeSelectionModel selectionModel;
 
-		public N5IjTreeSelectionListener( TreeSelectionModel selectionModel )
+		public N5IjTreeSelectionListener( final TreeSelectionModel selectionModel )
 		{
 			this.selectionModel = selectionModel;
 		}
 
 		@Override
-		public void valueChanged( TreeSelectionEvent sel )
+		public void valueChanged( final TreeSelectionEvent sel )
 		{
 			int i = 0;
-			for( TreePath path : sel.getPaths())
+			for( final TreePath path : sel.getPaths())
 			{
 				if( !sel.isAddedPath( i ))
 					continue;
 
-				Object last = path.getLastPathComponent();
+				final Object last = path.getLastPathComponent();
 				if( last instanceof N5TreeNode )
 				{
-					N5TreeNode node = (N5TreeNode)last;
+					final N5TreeNode node = (N5TreeNode)last;
 					if( node.getMetadata() == null )
 					{
 						selectionModel.removeSelectionPath( path );

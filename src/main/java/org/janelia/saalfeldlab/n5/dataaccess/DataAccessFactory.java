@@ -1,20 +1,52 @@
 /**
- * License: GPL
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
  */
 package org.janelia.saalfeldlab.n5.dataaccess;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Optional;
+
+import org.apache.commons.lang.NotImplementedException;
+import org.janelia.saalfeldlab.googlecloud.GoogleCloudResourceManagerClient;
+import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageClient;
+import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
+import org.janelia.saalfeldlab.n5.N5FSReader;
+import org.janelia.saalfeldlab.n5.N5FSWriter;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5Writer;
+import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageReader;
+import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageWriter;
+import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
+import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
+import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Reader;
+import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Writer;
+import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
+import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 
 import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
@@ -30,29 +62,6 @@ import com.google.cloud.storage.Storage;
 import com.google.gson.GsonBuilder;
 
 import ij.gui.GenericDialog;
-
-import org.apache.commons.lang.NotImplementedException;
-import org.janelia.saalfeldlab.googlecloud.GoogleCloudResourceManagerClient;
-import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageClient;
-import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
-import org.janelia.saalfeldlab.n5.N5FSReader;
-import org.janelia.saalfeldlab.n5.N5FSWriter;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageReader;
-import org.janelia.saalfeldlab.n5.googlecloud.N5GoogleCloudStorageWriter;
-import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
-import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
-import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Reader;
-import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Writer;
-import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
-import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Optional;
 
 public class DataAccessFactory
 {
@@ -89,12 +98,12 @@ public class DataAccessFactory
 			Optional<String> region = Optional.empty();
 			Optional< AWSCredentials > credentials = Optional.empty();
 
-			DefaultAWSCredentialsProviderChain credProverChain = new DefaultAWSCredentialsProviderChain();
+			final DefaultAWSCredentialsProviderChain credProverChain = new DefaultAWSCredentialsProviderChain();
 			try
-			{ 
+			{
 				credentials = Optional.of( credProverChain.getCredentials() );
 			}
-			catch( Exception e )
+			catch( final Exception e )
 			{
 				System.out.println( "Could not load AWS credentials, falling back to anonymous." );
 			}
@@ -122,16 +131,16 @@ public class DataAccessFactory
 			throw new NotImplementedException( "Factory for type " + type + " is not implemented" );
 		}
 	}
-	
+
 	public static String googleCloudProjectDialog()
 	{
 		final ResourceManager resourceManager = new GoogleCloudResourceManagerClient().create();
 		final Iterator< Project > projectsIterator = resourceManager.list().iterateAll().iterator();
 
-		ArrayList<String> stringList = new ArrayList<>();
+		final ArrayList<String> stringList = new ArrayList<>();
 		projectsIterator.forEachRemaining( x -> stringList.add( x.getName() ));
 
-		GenericDialog dialog = new GenericDialog( "Select google cloud project" );
+		final GenericDialog dialog = new GenericDialog( "Select google cloud project" );
 		dialog.addChoice( "Project", stringList.toArray( new String[0]), stringList.get( 0 ) );
 
 		dialog.showDialog();
@@ -140,7 +149,7 @@ public class DataAccessFactory
 
 		return dialog.getNextChoice();
 	}
-	
+
 	public N5Reader createN5Reader( final String basePath ) throws IOException
 	{
 		final GsonBuilder gsonBuilder = N5Metadata.getGsonBuilder();
@@ -160,8 +169,8 @@ public class DataAccessFactory
 			if( googleCloudUri == null )
 				googleCloudUri = new GoogleCloudStorageURI( basePath );
 
-			String bucket = googleCloudUri.getBucket();
-			String container = googleCloudUri.getKey();
+			final String bucket = googleCloudUri.getBucket();
+			final String container = googleCloudUri.getKey();
 
 			return new N5GoogleCloudStorageReader( googleCloudStorage, bucket, container, gsonBuilder );
 		default:
@@ -187,8 +196,8 @@ public class DataAccessFactory
 			if( googleCloudUri == null )
 				googleCloudUri = new GoogleCloudStorageURI( basePath );
 
-			String bucket = googleCloudUri.getBucket();
-			String key = googleCloudUri.getKey();
+			final String bucket = googleCloudUri.getBucket();
+			final String key = googleCloudUri.getKey();
 			return new N5GoogleCloudStorageWriter( googleCloudStorage, bucket, key, gsonBuilder );
 		default:
 			throw new NotImplementedException( "Factory for type " + type + " is not implemented" );

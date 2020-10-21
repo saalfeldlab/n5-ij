@@ -1,3 +1,28 @@
+/**
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.janelia.saalfeldlab.n5;
 
 import java.util.HashMap;
@@ -28,7 +53,7 @@ public class RunImportExportTest
 	private String compressionType;
 
 	private String blockSizeString;
-	
+
 	/*
 	 * "Outputs"
 	 */
@@ -39,7 +64,7 @@ public class RunImportExportTest
 	private boolean unitsEqual;
 
 	private boolean imagesEqual;
-	
+
 	public RunImportExportTest(
 			final ImagePlus imp,
 			final String outputPath,
@@ -56,65 +81,65 @@ public class RunImportExportTest
 		this.compressionType = compressionType;
 		this.blockSizeString = blockSizeString;
 	}
-	
+
 	public void run()
 	{
-		N5Exporter writer = new N5Exporter();
+		final N5Exporter writer = new N5Exporter();
 		writer.setOptions( imp, outputPath, dataset,
 				blockSizeString, metadataType, compressionType );
 		writer.run();
 
 		final String n5PathAndDataset = outputPath +  dataset;
-		N5Importer reader = new N5Importer();
-		List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
+		final N5Importer reader = new N5Importer();
+		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
 
 		singletonListOut = impList.size() == 1;
 
-		ImagePlus impRead = impList.get( 0 );
+		final ImagePlus impRead = impList.get( 0 );
 
 		resEqual = impRead.getCalibration().pixelWidth == imp.getCalibration().pixelWidth &&
 			impRead.getCalibration().pixelHeight == imp.getCalibration().pixelHeight &&
 			impRead.getCalibration().pixelDepth == imp.getCalibration().pixelDepth;
 
 		unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() );
-		
+
 		imagesEqual = equal( imp, impRead );
 
 		impRead.close();
 	}
 
-	public static void main( String[] args )
+	public static void main( final String[] args )
 	{
-		ImagePlus imp = IJ.openImage( "/home/john/tmp/blobs.tif" );
+		final ImagePlus imp = IJ.openImage( "/home/john/tmp/blobs.tif" );
 
-		String[] metadataTypes = new String[]{ 
+		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataImageJKey,
 				N5Importer.MetadataN5CosemKey,
 				N5Importer.MetadataN5ViewerKey
 		};
 
 		//String[] containerTypes = new String[] { "FILESYSTEM", "ZARR" };
-		String[] containerTypes = new String[] { "HDF5" };
+		final String[] containerTypes = new String[] { "HDF5" };
 
-		HashMap<String,String> typeToExtension = new HashMap<>();
+		final HashMap<String,String> typeToExtension = new HashMap<>();
 		typeToExtension.put( "FILESYSTEM", "n5" );
 		typeToExtension.put( "ZARR", "zarr" );
 		typeToExtension.put( "HDF5", "h5" );
 
-		for( String containerType : containerTypes )
+		for( final String containerType : containerTypes )
 		{
-			for( String metatype : metadataTypes )
+			for( final String metatype : metadataTypes )
 			{
-				String n5RootPath = "/home/john/tmp/test." + typeToExtension.get( containerType );
-				RunImportExportTest testRunner = new RunImportExportTest(
-						imp, n5RootPath, "/blobs", 
+				final String n5RootPath = "/home/john/tmp/test." + typeToExtension.get( containerType );
+				final RunImportExportTest testRunner = new RunImportExportTest(
+						imp, n5RootPath, "/blobs",
 						metatype, "gzip", "32,32" );
 
 				testRunner.run();
 				System.out.println( "metadata type: " + metatype );
-				boolean allPassed = testRunner.singletonListOut &&
-						testRunner.resEqual && 
-						testRunner.unitsEqual  && 
+				final boolean allPassed = testRunner.singletonListOut &&
+						testRunner.resEqual &&
+						testRunner.unitsEqual  &&
 						testRunner.imagesEqual ;
 				System.out.println( " " + allPassed );
 				if( ! allPassed )
@@ -129,15 +154,15 @@ public class RunImportExportTest
 			}
 		}
 	}
-	
+
 	public static < T extends RealType< T > & NativeType< T > > boolean equal( final ImagePlus a, final ImagePlus b )
 	{
 		try {
-			Img<T> imgA = ImageJFunctions.wrapRealNative( a );
-			Img<T> imgB = ImageJFunctions.wrapRealNative( a );
-			
-			Cursor< T > c = imgA.cursor();
-			RandomAccess< T > r = imgB.randomAccess();
+			final Img<T> imgA = ImageJFunctions.wrapRealNative( a );
+			final Img<T> imgB = ImageJFunctions.wrapRealNative( a );
+
+			final Cursor< T > c = imgA.cursor();
+			final RandomAccess< T > r = imgB.randomAccess();
 
 			while( c.hasNext() )
 			{
@@ -150,7 +175,7 @@ public class RunImportExportTest
 
 			return true;
 
-		}catch( Exception e )
+		}catch( final Exception e )
 		{
 			return false;
 		}

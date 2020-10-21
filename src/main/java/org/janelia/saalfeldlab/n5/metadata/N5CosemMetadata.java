@@ -1,3 +1,28 @@
+/**
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
@@ -37,7 +62,7 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		this( path, cosemTransformMeta, null );
 	}
 
-	public N5CosemMetadata( final String path, final CosemTransform cosemTransformMeta, 
+	public N5CosemMetadata( final String path, final CosemTransform cosemTransformMeta,
 			final DatasetAttributes attributes )
 	{
 		super( path, attributes );
@@ -57,17 +82,18 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 	{
 		this.separateChannels = separateChannels;
 	}
-	
+
 	@Override
 	public HashMap<String,Class<?>> keysToTypes()
 	{
 		return keysToTypes;
 	}
 
+	@Override
 	public boolean check( final Map< String, Object > metaMap )
 	{
-		Map< String, Class< ? > > requiredKeys = AbstractN5Metadata.datasetAtttributeKeys();
-		for( String k : requiredKeys.keySet() )
+		final Map< String, Class< ? > > requiredKeys = AbstractN5Metadata.datasetAtttributeKeys();
+		for( final String k : requiredKeys.keySet() )
 		{
 			if ( !metaMap.containsKey( k ) )
 				return false;
@@ -75,7 +101,7 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 				return false;
 		}
 
-		// needs to contain one of pixelResolution key 
+		// needs to contain one of pixelResolution key
 		if( !metaMap.containsKey( CosemTransform.KEY ))
 		{
 			return false;
@@ -90,12 +116,12 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		if ( !check( metaMap ) )
 			return null;
 
-		DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
+		final DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
 		if( attributes == null )
 			return null;
 
-		String dataset = ( String ) metaMap.get( "dataset" );
-		CosemTransform transform = ( CosemTransform ) metaMap.get( CosemTransform.KEY );
+		final String dataset = ( String ) metaMap.get( "dataset" );
+		final CosemTransform transform = ( CosemTransform ) metaMap.get( CosemTransform.KEY );
 
 		if( transform == null )
 			return null;
@@ -113,11 +139,11 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 	@Override
 	public void writeMetadata( final N5CosemMetadata t, final ImagePlus imp ) throws IOException
 	{
-		CosemTransform transform = t.cosemTransformMeta;
+		final CosemTransform transform = t.cosemTransformMeta;
 
 		if ( transform != null )
 		{
-			int nd = transform.scale.length;
+			final int nd = transform.scale.length;
 
 			if ( nd > 0 )
 			{
@@ -146,14 +172,14 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 	}
 
 	@Override
-	public N5CosemMetadata readMetadata( ImagePlus imp ) throws IOException
+	public N5CosemMetadata readMetadata( final ImagePlus imp ) throws IOException
 	{
 		int nd = 2;
 		if( !separateChannels && imp.getNChannels() > 1 ){ nd++; }
 		if( imp.getNSlices() > 1 ){ nd++; }
 		if( imp.getNFrames() > 1 ){ nd++; }
 
-		String[] axes = new String[ nd ];
+		final String[] axes = new String[ nd ];
 		axes[ 0 ] = "x";
 		axes[ 1 ] = "y";
 
@@ -163,11 +189,11 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		if ( imp.getNFrames() > 1 ){ axes[ c++ ] = "t"; }
 
 		// unit
-		String[] units = new String[ nd ];
+		final String[] units = new String[ nd ];
 		Arrays.fill( units, imp.getCalibration().getUnit());
 
-		double[] scale = new double[ nd ];
-		double[] translation = new double[ nd ];
+		final double[] scale = new double[ nd ];
+		final double[] translation = new double[ nd ];
 
 		scale[ 0 ] = imp.getCalibration().pixelWidth;
 		scale[ 1 ] = imp.getCalibration().pixelHeight;
@@ -195,14 +221,14 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 			this.translate = translate;
 			this.units = units;
 		}
-		
+
 		public AffineTransform3D toAffineTransform3d()
 		{
 			assert( scale.length == 3  && translate.length == 3 );
 
-			AffineTransform3D transform = new AffineTransform3D();
-			transform.set(	scale[0], 0, 0, translate[0], 
-							0, scale[1], 0, translate[1], 
+			final AffineTransform3D transform = new AffineTransform3D();
+			transform.set(	scale[0], 0, 0, translate[0],
+							0, scale[1], 0, translate[1],
 							0, 0, scale[2], translate[2] );
 			return transform;
 		}

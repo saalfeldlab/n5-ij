@@ -1,10 +1,34 @@
+/**
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.N5Writer;
 
@@ -16,7 +40,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
-import ij.ImagePlus;
 import net.thisptr.jackson.jq.BuiltinFunctionLoader;
 import net.thisptr.jackson.jq.Expression;
 import net.thisptr.jackson.jq.Function;
@@ -29,7 +52,7 @@ import net.thisptr.jackson.jq.exception.JsonQueryException;
 import net.thisptr.jackson.jq.internal.misc.Strings;
 import net.thisptr.jackson.jq.path.Path;
 
-public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetadataTemplate > 
+public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetadataTemplate >
 {
 	public ImagePlusMetadataTemplate template;
 
@@ -55,14 +78,14 @@ public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetada
 
 	public String map( final String input ) throws IOException
 	{
-		JsonQuery q = JsonQuery.compile( query, Versions.JQ_1_5 );
-		JsonNode in = MAPPER.readTree( input );
+		final JsonQuery q = JsonQuery.compile( query, Versions.JQ_1_5 );
+		final JsonNode in = MAPPER.readTree( input );
 
 		final List< JsonNode > out = new ArrayList<>();
 		q.apply( scope, in, out::add );
 
-		StringBuffer stringOutput = new StringBuffer();
-		for ( JsonNode node : out )
+		final StringBuffer stringOutput = new StringBuffer();
+		for ( final JsonNode node : out )
 		{
 			stringOutput.append( node.toString() + "\n" );
 		}
@@ -83,7 +106,7 @@ public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetada
 	public static Scope buildRootScope()
 	{
 		// First of all, you have to prepare a Scope which s a container of built-in/user-defined functions and variables.
-		Scope rootScope = Scope.newEmptyScope();
+		final Scope rootScope = Scope.newEmptyScope();
 
 		// Use BuiltinFunctionLoader to load built-in functions from the classpath.
 		BuiltinFunctionLoader.getInstance().loadFunctions(Versions.JQ_1_5, rootScope);
@@ -91,7 +114,7 @@ public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetada
 		// You can also define a custom function. E.g.
 		rootScope.addFunction("repeat", 1, new Function() {
 			@Override
-			public void apply(Scope scope, List<Expression> args, JsonNode in, Path path, PathOutput output, Version version) throws JsonQueryException {
+			public void apply(final Scope scope, final List<Expression> args, final JsonNode in, final Path path, final PathOutput output, final Version version) throws JsonQueryException {
 				args.get(0).apply(scope, in, (time) -> {
 					output.emit(new TextNode(Strings.repeat(in.asText(), time.asInt())), null);
 				});
@@ -100,7 +123,7 @@ public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetada
 		return rootScope;
 	}
 
-	public static final String RESOLUTION_ONLY_MAPPER = 
+	public static final String RESOLUTION_ONLY_MAPPER =
 			"{\n\"resolution\" : [.xResolution, .yResolution, .zResolution ]\n}";
 
 	public static final String COSEM_MAPPER = "{\n\t\"transform\":\n" +
@@ -113,13 +136,13 @@ public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetada
 			"}";
 
 	@Override
-	public void writeMetadata( ImagePlusMetadataTemplate t, N5Writer n5, String dataset ) throws Exception
+	public void writeMetadata( final ImagePlusMetadataTemplate t, final N5Writer n5, final String dataset ) throws Exception
 	{
-		Map< String, ? > map = ( Map< String, ? > ) computeToMap( gson.toJson( t ));
+		final Map< String, ? > map = ( Map< String, ? > ) computeToMap( gson.toJson( t ));
 		n5.setAttributes( dataset, map );
 	}
 
-	public String toJsonString( ImagePlusMetadataTemplate t ) throws Exception
+	public String toJsonString( final ImagePlusMetadataTemplate t ) throws Exception
 	{
 		return computeToJson( gson.toJson( t )).toString();
 	}

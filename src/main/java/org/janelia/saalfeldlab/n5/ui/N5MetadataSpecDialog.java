@@ -1,8 +1,32 @@
+/**
+ * Copyright (c) 2018--2020, Saalfeld lab
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice,
+ *    this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ *    this list of conditions and the following disclaimer in the documentation
+ *    and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ */
 package org.janelia.saalfeldlab.n5.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
@@ -22,19 +46,19 @@ import ij.Prefs;
 public class N5MetadataSpecDialog
 {
 	private String metadataSpecText;
-	
+
 	private String mapperString;
 
 	private MetadataTemplateMapper mapper;
 
 	private WindowListener listener;
 
-	public N5MetadataSpecDialog( ){ } 
+	public N5MetadataSpecDialog( ){ }
 
 	public N5MetadataSpecDialog( final WindowListener listener )
 	{
 		this.listener = listener;
-	} 
+	}
 
 	public String getMapperString()
 	{
@@ -48,32 +72,32 @@ public class N5MetadataSpecDialog
 
 	public JFrame show( final String init )
 	{
-		JFrame frame = new JFrame( "Metadata translation" );
+		final JFrame frame = new JFrame( "Metadata translation" );
 
-		double guiScale = Prefs.getGuiScale();
-		int frameSizeX = (int)(guiScale * 600);
-		int frameSizeY = (int)(guiScale * 400);
+		final double guiScale = Prefs.getGuiScale();
+		final int frameSizeX = (int)(guiScale * 600);
+		final int frameSizeY = (int)(guiScale * 400);
 
 		frame.setPreferredSize( new Dimension( frameSizeX, frameSizeY ) );
 		frame.setMinimumSize( frame.getPreferredSize() );
 
-		JPanel panel = new JPanel( new BorderLayout() );
+		final JPanel panel = new JPanel( new BorderLayout() );
 
 		if( listener != null )
 			frame.addWindowListener( listener );
 
-		JTextArea textArea = new JTextArea();
+		final JTextArea textArea = new JTextArea();
 		textArea.setText( init );
 		textArea.setFont( textArea.getFont().deriveFont( (float)guiScale * 18f) );
 
-		JScrollPane textView = new JScrollPane( textArea );
+		final JScrollPane textView = new JScrollPane( textArea );
 		panel.add( textView, BorderLayout.CENTER );
-		
-		JButton okButton = new JButton("OK");
+
+		final JButton okButton = new JButton("OK");
 		okButton.addActionListener( new ActionListener()
 		{
 			@Override
-			public void actionPerformed( ActionEvent event )
+			public void actionPerformed( final ActionEvent event )
 			{
 				metadataSpecText = textArea.getText();
 				mapper = new MetadataTemplateMapper( metadataSpecText );
@@ -83,29 +107,29 @@ public class N5MetadataSpecDialog
 			}
 		});
 
-		JButton cancelButton = new JButton("Cancel");
+		final JButton cancelButton = new JButton("Cancel");
 		cancelButton.addActionListener( new ActionListener()
 		{
 			@Override
-			public void actionPerformed( ActionEvent event )
+			public void actionPerformed( final ActionEvent event )
 			{
 				frame.setVisible( false );
 				frame.dispatchEvent( new WindowEvent( frame, WindowEvent.WINDOW_CLOSING ));
 			}
 		});
 
-		JPanel buttonPanel = new JPanel();
-		buttonPanel.add( okButton, BorderLayout.WEST ); 
+		final JPanel buttonPanel = new JPanel();
+		buttonPanel.add( okButton, BorderLayout.WEST );
 		buttonPanel.add( cancelButton , BorderLayout.EAST );
 		panel.add( buttonPanel, BorderLayout.SOUTH );
-		
+
         frame.add( panel );
         frame.pack();
         frame.setVisible( true );
         return frame;
 	}
-	
-	public static void main( String[] args ) throws IOException
+
+	public static void main( final String[] args ) throws IOException
 	{
 //		System.out.println( MetadataTemplateMapper.COSEM_MAPPER);
 //
