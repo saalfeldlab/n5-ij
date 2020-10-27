@@ -38,6 +38,7 @@ import java.util.function.Function;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
@@ -51,6 +52,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
+import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -61,12 +63,17 @@ import ij.plugin.frame.Recorder;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converters;
+import net.imglib2.converter.RealFloatConverter;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.NumericType;
+import net.imglib2.type.numeric.integer.UnsignedShortType;
+import net.imglib2.type.numeric.real.DoubleType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn
@@ -165,6 +172,8 @@ public class N5Importer implements PlugIn
 					lastOpenedContainer,
 					null, // no group parsers
 					PARSERS );
+
+			selectionDialog.setTreeRenderer( new N5DatasetTreeCellRenderer( true ) );
 
 			selectionDialog.setContainerPathUpdateCallback( x -> {
 				lastOpenedContainer = x;
@@ -310,11 +319,13 @@ public class N5Importer implements PlugIn
 	 * @return
 	 * @throws IOException
 	 */
-	@SuppressWarnings( "unchecked" )
-	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read(
-			final N5Reader n5,
-			final N5Metadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
-			final ImageplusMetadata<M> ipMeta ) throws IOException
+	@SuppressWarnings( { "unchecked", "rawtypes" } )
+	public static <T extends NumericType<T> & NativeType<T>, S extends NumericType<S> & NativeType<S>, 
+	M extends N5Metadata >
+			ImagePlus read( 
+				final N5Reader n5, 
+				final N5Metadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
+				final ImageplusMetadata<M> ipMeta ) throws IOException
 	{
 		final String d = datasetMeta.getPath();
 		final RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
@@ -331,15 +342,39 @@ public class N5Importer implements PlugIn
 		else
 			img = imgRaw;
 
-		ImagePlus imp;
-		if( asVirtual )
+		RandomAccessibleInterval<S> convImg;
+		DataType type = datasetMeta.getAttributes().getDataType();
+		// Compute LUT after crop
+		if(	type == DataType.FLOAT64 )
 		{
-			imp = ImageJFunctions.wrap( img, d );
+			convImg = ( RandomAccessibleInterval< S > ) Converters.convert( 
+					(RandomAccessibleInterval< DoubleType >) img, 
+					new RealFloatConverter< DoubleType >(),
+					new FloatType() );
+		}
+		else if( type == DataType.INT32 || type == DataType.UINT32 ||
+				 type == DataType.INT64 || type == DataType.UINT64 )
+		{
+			convImg = ( RandomAccessibleInterval< S > ) Converters.convert( 
+					img,
+					new UnsignedShortLUTConverter( Views.flatIterable( img ) ),
+					new UnsignedShortType() );
 		}
 		else
 		{
-			final ImagePlusImg<T,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( img ).firstElement()).create( img );
-			LoopBuilder.setImages( img, ipImg ).forEachPixel( (x,y) -> y.set( x ) );
+			// this covers int8 -> uint8 and int16 -> uint16
+			convImg = ( RandomAccessibleInterval< S > ) img;
+		}
+
+		ImagePlus imp;
+		if( asVirtual )
+		{
+			imp = ImageJFunctions.wrap( convImg, d );
+		}
+		else
+		{
+			ImagePlusImg<S,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( convImg ).firstElement()).create( img );
+			LoopBuilder.setImages( convImg, ipImg ).forEachPixel( (x,y) -> y.set( x ) );
 			imp = ipImg.getImagePlus();
 		}
 
@@ -384,9 +419,6 @@ public class N5Importer implements PlugIn
 		final String rootPath = selectionDialog.getN5RootPath();
 		for ( final N5Metadata datasetMeta : selection.metadata )
 		{
-			if( !isTypeOpenable( datasetMeta, true ))
-				continue;
-
 			// Macro.getOptions() does not return what I'd expect after this call.  why?
 			// Macro.setOptions( String.format( "n5=%s", datasetMeta.getPath() ));
 
@@ -418,9 +450,6 @@ public class N5Importer implements PlugIn
 		final ArrayList<ImagePlus> imgList = new ArrayList<>();
 		for ( final N5Metadata datasetMeta : datasetMetadataList )
 		{
-			if( !isTypeOpenable( datasetMeta, true ))
-				continue;
-
 			final String d = datasetMeta.getPath();
 			final String pathToN5Dataset = d.isEmpty() ? rootPath : rootPath + File.separator + d;
 

@@ -132,6 +132,8 @@ public class DatasetSelectorDialog
 
 	private Consumer< String > containerPathUpdateCallback;
 
+	private N5DatasetTreeCellRenderer treeRenderer;
+
 	public DatasetSelectorDialog(
 			final Function< String, N5Reader > n5Fun,
 			final Function< String, String > pathFun,
@@ -172,6 +174,16 @@ public class DatasetSelectorDialog
 		this.pathFun = x -> "";
 		this.initialContainerPath = "";
 		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+	}
+
+	public N5DatasetDiscoverer getDatasetDiscoverer()
+	{
+		return datasetDiscoverer;
+	}
+
+	public void setTreeRenderer( final N5DatasetTreeCellRenderer treeRenderer )
+	{
+		this.treeRenderer = treeRenderer;
 	}
 
 	public void setContainerPathUpdateCallback( final Consumer<String> containerPathUpdateCallback )
@@ -318,6 +330,8 @@ public class DatasetSelectorDialog
 
         // By default leaf nodes (datasets) are displayed as files. This changes the default behavior to display them as folders
 //        final DefaultTreeCellRenderer treeCellRenderer = (DefaultTreeCellRenderer) containerTree.getCellRenderer();
+		if( treeRenderer != null )
+			containerTree.setCellRenderer( treeRenderer );
 
 		final JScrollPane treeScroller = new JScrollPane( containerTree );
 		treeScroller.setViewportView( containerTree );

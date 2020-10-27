@@ -81,12 +81,13 @@ public class N5TreeNode extends DefaultMutableTreeNode
 		return metadata;
 	}
 
-    @Override
-    public String toString()
-    {
-        final String nodeName = getNodeName();
-        return !nodeName.isEmpty() ? nodeName : "/";
-    }
+
+	@Override
+	public String toString()
+	{
+		String nodeName = getNodeName();
+		return nodeName.isEmpty() ? "/" : nodeName;
+	}
 
     /**
      * Removes the leading slash from a given path and returns the corrected path.
