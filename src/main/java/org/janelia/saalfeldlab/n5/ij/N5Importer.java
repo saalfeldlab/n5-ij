@@ -74,6 +74,7 @@ import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn
@@ -319,18 +320,16 @@ public class N5Importer implements PlugIn
 	 * @return
 	 * @throws IOException
 	 */
-	@SuppressWarnings( { "unchecked", "rawtypes" } )
-	public static <T extends NumericType<T> & NativeType<T>, S extends NumericType<S> & NativeType<S>, 
-	M extends N5Metadata >
-			ImagePlus read( 
+	@SuppressWarnings( { "rawtypes", "unchecked" } )
+	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read( 
 				final N5Reader n5, 
 				final N5Metadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
 				final ImageplusMetadata<M> ipMeta ) throws IOException
 	{
 		final String d = datasetMeta.getPath();
-		final RandomAccessibleInterval<T> imgRaw = (RandomAccessibleInterval<T>) N5Utils.open( n5, d );
+		final RandomAccessibleInterval imgRaw = N5Utils.open( n5, d );
 
-		RandomAccessibleInterval<T> img;
+		RandomAccessibleInterval img;
 		if( cropIntervalIn != null )
 		{
 			img = Views.interval( imgRaw, processCropInterval( imgRaw, cropIntervalIn ));
@@ -342,29 +341,25 @@ public class N5Importer implements PlugIn
 		else
 			img = imgRaw;
 
-		RandomAccessibleInterval<S> convImg;
+		RandomAccessibleInterval< T > convImg;
 		DataType type = datasetMeta.getAttributes().getDataType();
+
 		// Compute LUT after crop
 		if(	type == DataType.FLOAT64 )
 		{
-			convImg = ( RandomAccessibleInterval< S > ) Converters.convert( 
-					(RandomAccessibleInterval< DoubleType >) img, 
-					new RealFloatConverter< DoubleType >(),
-					new FloatType() );
+			convImg = convertDouble( img );
 		}
 		else if( type == DataType.INT32 || type == DataType.UINT32 ||
 				 type == DataType.INT64 || type == DataType.UINT64 )
 		{
-			convImg = ( RandomAccessibleInterval< S > ) Converters.convert( 
-					img,
-					new UnsignedShortLUTConverter( Views.flatIterable( img ) ),
-					new UnsignedShortType() );
+			convImg = convertToUShortLUT( img );
 		}
 		else
 		{
 			// this covers int8 -> uint8 and int16 -> uint16
-			convImg = ( RandomAccessibleInterval< S > ) img;
+			convImg = img;
 		}
+		Util.getTypeFromInterval( convImg );
 
 		ImagePlus imp;
 		if( asVirtual )
@@ -373,7 +368,7 @@ public class N5Importer implements PlugIn
 		}
 		else
 		{
-			ImagePlusImg<S,?> ipImg = new ImagePlusImgFactory<>( Views.flatIterable( convImg ).firstElement()).create( img );
+			ImagePlusImg<T,?> ipImg = new ImagePlusImgFactory<>( Util.getTypeFromInterval( convImg ) ).create( img );
 			LoopBuilder.setImages( convImg, ipImg ).forEachPixel( (x,y) -> y.set( x ) );
 			imp = ipImg.getImagePlus();
 		}
@@ -390,6 +385,25 @@ public class N5Importer implements PlugIn
 			}
 		}
 		return imp;
+	}
+
+	public static RandomAccessibleInterval<FloatType> convertDouble(
+			final RandomAccessibleInterval< DoubleType > img)
+	{
+		return Converters.convert( 
+				img, 
+				new RealFloatConverter< DoubleType >(),
+				new FloatType() );
+	}
+
+	@SuppressWarnings( { "rawtypes", "unchecked" } )
+	public static < T extends NumericType< T > & NativeType< T > > RandomAccessibleInterval< UnsignedShortType >
+		convertToUShortLUT( final RandomAccessibleInterval< T > img )
+	{
+		return Converters.convert( 
+				img,
+				new UnsignedShortLUTConverter( Views.flatIterable( img ) ),
+				new UnsignedShortType() );
 	}
 
 	private static Interval processCropInterval( final RandomAccessibleInterval< ? > img, final Interval cropInterval )
