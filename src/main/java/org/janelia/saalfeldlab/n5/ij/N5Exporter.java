@@ -27,6 +27,7 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
@@ -98,8 +99,8 @@ public class N5Exporter implements Command, WindowListener {
 	@Parameter(label = "Image")
 	private ImagePlus image; // or use Dataset? - maybe later
 
-	@Parameter(label = "N5 root")
-	private String n5RootLocation;
+	@Parameter(label = "N5 root" )
+	private File n5RootLocation;
 
 	@Parameter(
 			label = "Dataset",
@@ -146,8 +147,8 @@ public class N5Exporter implements Command, WindowListener {
 
 	private HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes;
 
-	public N5Exporter() {
-
+	public N5Exporter()
+	{
 		styles = new HashMap<String, N5MetadataWriter<?>>();
 		styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadata());
 		styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadata("", null, null));
@@ -167,10 +168,10 @@ public class N5Exporter implements Command, WindowListener {
 			final String n5Dataset,
 			final String blockSizeArg,
 			final String metadataStyle,
-			final String compression) {
-
+			final String compression)
+	{
 		this.image = image;
-		this.n5RootLocation = n5RootLocation;
+		this.n5RootLocation = new File( n5RootLocation );
 		this.n5Dataset = n5Dataset;
 
 		this.blockSizeArg = blockSizeArg;
@@ -373,17 +374,33 @@ public class N5Exporter implements Command, WindowListener {
 		}
 	}
 
-	private N5Writer getWriter() throws IOException, DataAccessException {
+	public N5Writer getWriter() throws IOException, DataAccessException
+	{
+		// hack to fix paths to cloud store
+		// while parsing Files - the easiest way to enable browsing of filesystem
+		String n5RootStringRaw = n5RootLocation.toString();
+		String n5RootString;
+		if( n5RootStringRaw.startsWith( "s3:/" ) && !n5RootStringRaw.startsWith( "s3://" ))
+			n5RootString = "s3://" + n5RootStringRaw.substring( 4 );
+		else if( n5RootStringRaw.startsWith( "gs:/" ) && !n5RootStringRaw.startsWith( "gs://" ))
+			n5RootString = "gs://" + n5RootStringRaw.substring( 4 );
+		else if( n5RootStringRaw.startsWith( "https:/" ) && !n5RootStringRaw.startsWith( "https://" ))
+			n5RootString = "https://" + n5RootStringRaw.substring( 7 );
+		else if( n5RootStringRaw.startsWith( "http:/" ) && !n5RootStringRaw.startsWith( "http://" ))
+			n5RootString = "http://" + n5RootStringRaw.substring( 6 );
+		else
+			n5RootString = n5RootStringRaw;
+		// end hack
 
 		if (containerType.equals("Auto"))
-			dataType = detectType(n5RootLocation);
+			dataType = detectType(n5RootString);
 		else
 			setType(containerType);
 
 		if (dataType == null)
 			status.warn("Could not detect container type from location.");
 
-		return new DataAccessFactory(dataType, n5RootLocation).createN5Writer(n5RootLocation);
+		return new DataAccessFactory(dataType, n5RootString).createN5Writer(n5RootString);
 	}
 
 	@Override

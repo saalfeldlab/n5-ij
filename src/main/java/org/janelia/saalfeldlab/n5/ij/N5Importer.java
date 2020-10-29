@@ -359,7 +359,6 @@ public class N5Importer implements PlugIn
 			// this covers int8 -> uint8 and int16 -> uint16
 			convImg = img;
 		}
-		Util.getTypeFromInterval( convImg );
 
 		ImagePlus imp;
 		if( asVirtual )
