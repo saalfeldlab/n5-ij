@@ -99,7 +99,7 @@ public class N5Exporter implements Command, WindowListener {
 	@Parameter(label = "Image")
 	private ImagePlus image; // or use Dataset? - maybe later
 
-	@Parameter(label = "N5 root" )
+	@Parameter(label = "N5 root", style="directory" )
 	private File n5RootLocation;
 
 	@Parameter(
