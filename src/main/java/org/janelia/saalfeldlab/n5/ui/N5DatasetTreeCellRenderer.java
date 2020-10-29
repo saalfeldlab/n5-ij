@@ -17,7 +17,8 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 	private static final String thinSpace = "&#x2009;";
 
-	private static final String times = "&#x2715;";
+//	private static final String times = "&#x2715;";
+	private static final String times = "&#xd7;";
 
 	private static final String warningFormat = "<font color=\"rgb(179, 58, 58)\">%s</font>";
 
@@ -34,7 +35,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 	@Override
 	public Component getTreeCellRendererComponent( final JTree tree, final Object value,
-			boolean sel, boolean exp, boolean leaf, int row, boolean hasFocus )
+			final boolean sel, final boolean exp, final boolean leaf, final int row, final boolean hasFocus )
 	{
 
 		super.getTreeCellRendererComponent( tree, value, sel, exp, leaf, row, hasFocus );
@@ -46,13 +47,13 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 			if ( node.getMetadata() != null )
 			{
 				final String conversionString;
-				String convSuffix = conversionSuffix( node );
+				final String convSuffix = conversionSuffix( node );
 				if ( showConversionWarning && !convSuffix.isEmpty() )
 					conversionString = " " + String.format( warningFormat, conversionSuffix( node ) );
 				else
 					conversionString = "";
 
-				setText( String.join( "", new String[]{ 
+				setText( String.join( "", new String[]{
 						"<html>",
 						String.format( nameFormat, node.getNodeName() ),
 						" (",
@@ -95,8 +96,8 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		if( node.getMetadata() == null )
 			return "";
 
-		DatasetAttributes attributes = node.getMetadata().getAttributes();
-		String dimString = String.join( dimDelimeter, 
+		final DatasetAttributes attributes = node.getMetadata().getAttributes();
+		final String dimString = String.join( dimDelimeter,
 				Arrays.stream(attributes.getDimensions())
 					.mapToObj( d -> Long.toString( d ))
 					.collect( Collectors.toList() ) );

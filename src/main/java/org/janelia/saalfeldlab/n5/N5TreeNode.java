@@ -55,10 +55,15 @@ public class N5TreeNode extends DefaultMutableTreeNode
         return Paths.get(removeLeadingSlash(path)).getFileName().toString();
     }
 
-	@SuppressWarnings( "unchecked" )
+	@SuppressWarnings("unchecked")
 	public List< N5TreeNode > childrenList()
 	{
-		return Collections.list( children() );
+		/* TODO compiles with Eclipse compiler but not with javac because children
+		 * forwards to rawtype Enumeration DefaultMutableTreeNode#children()...
+		 */
+		@SuppressWarnings("rawtypes")
+		final List children = Collections.list( children() );
+		return children;
 	}
 
 	public void setIsDataset( final boolean isDataset )
@@ -85,7 +90,7 @@ public class N5TreeNode extends DefaultMutableTreeNode
 	@Override
 	public String toString()
 	{
-		String nodeName = getNodeName();
+		final String nodeName = getNodeName();
 		return nodeName.isEmpty() ? "/" : nodeName;
 	}
 
