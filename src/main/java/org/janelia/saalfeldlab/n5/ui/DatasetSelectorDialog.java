@@ -35,11 +35,11 @@ import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -69,7 +69,6 @@ import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 
-import ij.IJ;
 import ij.Prefs;
 
 public class DatasetSelectorDialog
@@ -82,7 +81,7 @@ public class DatasetSelectorDialog
      * To add more parsers, add a new class that implements {@link N5MetadataParser}
      * and pass an instance of it to the {@link N5DatasetDiscoverer} constructor here.
      */
-    private final N5DatasetDiscoverer datasetDiscoverer;
+    private N5DatasetDiscoverer datasetDiscoverer;
 
 	private Consumer< DataSelection > okCallback;
 
@@ -126,6 +125,8 @@ public class DatasetSelectorDialog
 
 	private Thread loaderThread;
 
+	private ExecutorService loaderExecutor;
+
 	private Future< N5TreeNode > parserFuture;
 
 	private final String initialContainerPath;
@@ -133,6 +134,14 @@ public class DatasetSelectorDialog
 	private Consumer< String > containerPathUpdateCallback;
 
 	private N5DatasetTreeCellRenderer treeRenderer;
+
+	private final N5GroupParser<?>[] groupParsers;
+
+	private final N5MetadataParser<?>[] parsers;
+
+	private LinkedBlockingQueue< Future< Void > > loaderFutures;
+
+	private N5TreeNode rootNode;
 
 	public DatasetSelectorDialog(
 			final Function< String, N5Reader > n5Fun,
@@ -144,7 +153,10 @@ public class DatasetSelectorDialog
 		this.n5Fun = n5Fun;
 		this.pathFun = pathFun;
 		this.initialContainerPath = initialContainerPath;
-		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+
+		this.parsers = parsers;
+		this.groupParsers = groupParsers;
+
 		guiScale = Prefs.getGuiScale();
 	}
 
@@ -173,7 +185,15 @@ public class DatasetSelectorDialog
 		this.n5 = n5;
 		this.pathFun = x -> "";
 		this.initialContainerPath = "";
-		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+
+		this.parsers = parsers;
+		this.groupParsers = groupParsers;
+
+	}
+
+	public void setLoaderExecutor( final ExecutorService loaderExecutor )
+	{
+		this.loaderExecutor = loaderExecutor;
 	}
 
 	public N5DatasetDiscoverer getDatasetDiscoverer()
@@ -425,6 +445,7 @@ public class DatasetSelectorDialog
 	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener,
 			final Function<String,String> pathToRoot )
     {
+
 		messageLabel.setText( "Building reader..." );
 		messageLabel.setVisible( true );
 		dialog.repaint();
@@ -453,11 +474,25 @@ public class DatasetSelectorDialog
 		messageLabel.setVisible( true );
 		dialog.repaint();
 
-		final DiscoverRunner discoverRunner = new DiscoverRunner( datasetDiscoverer, n5, rootPath, treeModel, messageLabel );
+		if( loaderExecutor == null )
+		{
+			loaderExecutor = Executors.newCachedThreadPool();
+		}
 
-	    final ExecutorService executor = Executors.newSingleThreadExecutor();
-		final ExecutorCompletionService<N5TreeNode> ecs = new ExecutorCompletionService<>( executor );
-		ecs.submit( discoverRunner );
+		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, groupParsers, parsers );
+		rootNode = new N5TreeNode( rootPath, false );
+		treeModel.setRoot( rootNode );
+		try
+		{
+			loaderFutures = datasetDiscoverer.discoverThreads( n5, rootNode );
+		}
+		catch ( IOException e )
+		{
+			e.printStackTrace();
+		}
+
+		// a thread that completes task after parsing is complete
+		new LoaderSorterAndCallback().start();
 
 		containerTree.setEnabled( true );
     }
@@ -521,7 +556,7 @@ public class DatasetSelectorDialog
 		Font font = c.getFont();
 		if (font == null)
 			font = DEFAULT_FONT;
-		font = font.deriveFont( (float) guiScale * font.getSize() );
+		font = font.deriveFont( (float) guiScale * 1.2f * font.getSize() );
 		c.setFont(font);
 		return c;
     }
@@ -531,7 +566,7 @@ public class DatasetSelectorDialog
 		Font font = c.getFont();
 		if (font == null)
 			font = DEFAULT_FONT;
-		font = font.deriveFont( scale * font.getSize() );
+		font = font.deriveFont( scale * 1.2f * font.getSize() );
 		c.setFont(font);
 		return c;
     }
@@ -551,52 +586,65 @@ public class DatasetSelectorDialog
 		return scaleSize( scaleFont( c ) );
 	}
 
-	private static class DiscoverRunner implements Callable< N5TreeNode >
+	private class LoaderSorterAndCallback extends Thread
 	{
-		private final N5Reader n5;
-
-		private final String rootPath;
-
-		private final N5DatasetDiscoverer datasetDiscoverer;
-
-		private final JLabel message;
-
-		private final DefaultTreeModel treeModel;
-
-		public DiscoverRunner(
-				final N5DatasetDiscoverer datasetDiscoverer,
-				final N5Reader n5, final String rootPath,
-				final DefaultTreeModel treeModel,
-				final JLabel message )
+		final long waitIntervalMs;
+		public LoaderSorterAndCallback( final long waitInterval )
 		{
-			this.n5 = n5;
-			this.rootPath = rootPath;
-			this.datasetDiscoverer = datasetDiscoverer;
-			this.message = message;
-			this.treeModel = treeModel;
+			this.waitIntervalMs = waitInterval;
+		}
+
+		public LoaderSorterAndCallback()
+		{
+			this( 500 );
 		}
 
 		@Override
-		public N5TreeNode call()
+		public void run()
 		{
 			try
 			{
-				final N5TreeNode node = datasetDiscoverer.discoverRecursive( n5, rootPath );
+				while( loaderFutures.size() > 0 )
+				{
+					try
+					{
+						loaderFutures.poll().get();
+					}
+					catch ( ExecutionException e )
+					{
+						e.printStackTrace();
+					}
+				}
+
 				SwingUtilities.invokeLater( new Runnable() {
 					@Override
 					public void run()
 					{
-						treeModel.setRoot( node );
-						message.setVisible( false );
+						messageLabel.setText( "Done" );
+						dialog.repaint();
 					}
 				});
-				return node;
+
+				datasetDiscoverer.sortAndTrimRecursive( rootNode );
+				datasetDiscoverer.parseGroupsRecursive( rootNode );
+
+				Thread.sleep( waitIntervalMs );
+
+				SwingUtilities.invokeLater( new Runnable() {
+					@Override
+					public void run()
+					{
+						messageLabel.setVisible( false );
+						dialog.repaint();
+					}
+				});
+
+				this.join();
 			}
-			catch ( final IOException e )
+			catch( InterruptedException e )
 			{
-				IJ.handleException( e );
+				e.printStackTrace();
 			}
-			return null;
 		}
 	}
 

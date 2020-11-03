@@ -94,6 +94,24 @@ public class N5TreeNode extends DefaultMutableTreeNode
 		return nodeName.isEmpty() ? "/" : nodeName;
 	}
 
+	public String printRecursive()
+	{
+		return printRecursiveHelper( this, "" );
+	}
+
+	private static String printRecursiveHelper( N5TreeNode node, String prefix )
+	{
+		StringBuffer out = new StringBuffer();
+		out.append( prefix + node.path + "\n" );
+		for ( N5TreeNode c : node.childrenList() )
+		{
+			System.out.println( c.path );
+			out.append( printRecursiveHelper( c, prefix + " " ) );
+		}
+
+		return out.toString();
+	}
+
     /**
      * Removes the leading slash from a given path and returns the corrected path.
      * It ensures correctness on both Unix and Windows, otherwise {@code pathName} is treated
