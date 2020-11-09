@@ -35,6 +35,7 @@ import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -139,7 +140,7 @@ public class DatasetSelectorDialog
 
 	private final N5MetadataParser<?>[] parsers;
 
-	private LinkedBlockingQueue< Future< Void > > loaderFutures;
+	private LinkedBlockingQueue< Future< N5TreeNode > > loaderFutures;
 
 	private N5TreeNode rootNode;
 
@@ -481,7 +482,7 @@ public class DatasetSelectorDialog
 
 		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, groupParsers, parsers );
 		rootNode = new N5TreeNode( rootPath, false );
-		treeModel.setRoot( rootNode );
+
 		try
 		{
 			loaderFutures = datasetDiscoverer.discoverThreads( n5, rootNode );
@@ -492,7 +493,7 @@ public class DatasetSelectorDialog
 		}
 
 		// a thread that completes task after parsing is complete
-		new LoaderSorterAndCallback().start();
+		new LoaderSorterAndCallback( rootNode, 500 ).start();
 
 		containerTree.setEnabled( true );
     }
@@ -589,14 +590,11 @@ public class DatasetSelectorDialog
 	private class LoaderSorterAndCallback extends Thread
 	{
 		final long waitIntervalMs;
-		public LoaderSorterAndCallback( final long waitInterval )
+		private N5TreeNode root;
+		public LoaderSorterAndCallback( final N5TreeNode root, final long waitInterval )
 		{
 			this.waitIntervalMs = waitInterval;
-		}
-
-		public LoaderSorterAndCallback()
-		{
-			this( 500 );
+			this.root = root;
 		}
 
 		@Override
@@ -616,21 +614,36 @@ public class DatasetSelectorDialog
 					}
 				}
 
-				SwingUtilities.invokeLater( new Runnable() {
+				datasetDiscoverer.sortAndTrimRecursive( rootNode );
+				datasetDiscoverer.parseGroupsRecursive( rootNode );
+
+				SwingUtilities.invokeLater( new Runnable()
+				{
 					@Override
 					public void run()
 					{
+						// expand first layer of the tree
+						// in the EDGT
+						@SuppressWarnings( "rawtypes" )
+						Enumeration e = rootNode.children(); 
+						while( e.hasMoreElements() )
+						{
+							N5TreeNode child = ( N5TreeNode ) e.nextElement();
+							containerTree.expandPath( new TreePath( 
+									new N5TreeNode[]{ rootNode, child }));
+						}
+
+						// set the root node for the JTree
+						treeModel.setRoot( rootNode );
 						messageLabel.setText( "Done" );
 						dialog.repaint();
 					}
 				});
 
-				datasetDiscoverer.sortAndTrimRecursive( rootNode );
-				datasetDiscoverer.parseGroupsRecursive( rootNode );
-
 				Thread.sleep( waitIntervalMs );
 
-				SwingUtilities.invokeLater( new Runnable() {
+				SwingUtilities.invokeLater( new Runnable()
+				{
 					@Override
 					public void run()
 					{

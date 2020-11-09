@@ -59,6 +59,8 @@ public class N5DatasetDiscoverer {
 
     private final ExecutorService executor;
 
+    private N5TreeNode root;
+
     /**
      * Creates an N5 discoverer with alphanumeric sorting order of groups/datasets (such as, s9 goes before s10).
      *
@@ -111,7 +113,7 @@ public class N5DatasetDiscoverer {
 
 	public N5TreeNode discoverRecursive( final N5Reader n5, final String base ) throws IOException
     {
-		final N5TreeNode root = new N5TreeNode( base, n5.datasetExists( base ));
+		root = new N5TreeNode( base, n5.datasetExists( base ));
 		discover( n5, root );
 		parseMetadataRecursive( n5, root, metadataParsers, groupParsers );
 		trim( root );
@@ -125,26 +127,26 @@ public class N5DatasetDiscoverer {
 		return node;
     }
 
-	private LinkedBlockingQueue< Future< Void > > parseJobFutures;
+	private LinkedBlockingQueue< Future< N5TreeNode > > parseJobFutures;
 
-	public LinkedBlockingQueue< Future< Void > > discoverThreads( final N5Reader n5, final N5TreeNode node ) throws IOException
+	public LinkedBlockingQueue< Future< N5TreeNode > > discoverThreads( final N5Reader n5, final N5TreeNode node ) throws IOException
 	{
 		parseJobFutures = new LinkedBlockingQueue<>();
 		discoverThreadsHelper( n5, node );
 		return parseJobFutures;
 	}
 
-	private Void discoverThreadsHelper( final N5Reader n5, final N5TreeNode node ) throws IOException
+	private N5TreeNode discoverThreadsHelper( final N5Reader n5, final N5TreeNode node ) throws IOException
 	{
-		parseJobFutures.add( executor.submit( new Callable< Void >()
+		parseJobFutures.add( executor.submit( new Callable< N5TreeNode >()
 		{
 			@Override
-			public Void call() throws Exception
+			public N5TreeNode call() throws Exception
 			{
 				parseMetadata( n5, node, metadataParsers, null );
 				if ( node.isDataset() )
 				{
-					return null;
+					return node;
 				}
 				else
 				{
@@ -157,21 +159,21 @@ public class N5DatasetDiscoverer {
 						node.add( childNode );
 
 						// parse recursively
-						parseJobFutures.add( executor.submit( new Callable< Void >()
+						parseJobFutures.add( executor.submit( new Callable< N5TreeNode >()
 						{
 							@Override
-							public Void call() throws Exception
+							public N5TreeNode call() throws Exception
 							{
 								return discoverThreadsHelper( n5, childNode );
 							}
 						}));
 
 					}
-					return null;
+					return node;
 				}
 			}
 		}));
-		return null;
+		return node;
 	}
 
 	public void sortAndTrimRecursive( final N5TreeNode node )
