@@ -129,6 +129,7 @@ public class DataAccessFactory
 			{
 				s3 = AmazonS3ClientBuilder.standard()
 					.withCredentials( new AWSStaticCredentialsProvider( credentials.orElse( new AnonymousAWSCredentials() )))
+					.withRegion( Regions.US_EAST_1 ) // the region will be immediately changed below, if the bucket is elsewhere
 					.build();
 
 				try
@@ -138,7 +139,11 @@ public class DataAccessFactory
 				catch( AmazonS3Exception e )
 				{
 					// change region to the one this bucket lives in
-					s3.setRegion( RegionUtils.getRegion( awsRegionFromError( e.getMessage()) ));
+					String regionName = awsRegionFromError( e );
+					if( regionName != null )
+						s3.setRegion( RegionUtils.getRegion( regionName ));
+					else
+						e.printStackTrace();
 				}
 			}
 
@@ -154,8 +159,9 @@ public class DataAccessFactory
 		}
 	}
 
-	public static String awsRegionFromError( String errorMessage )
+	public static String awsRegionFromError( AmazonS3Exception e )
 	{
+		String errorMessage = e.getMessage();
 		if( errorMessage.startsWith( "The bucket is in this region:" ))
 		{
 			String s = errorMessage.substring( 
