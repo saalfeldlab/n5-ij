@@ -52,10 +52,13 @@ import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.AnonymousAWSCredentials;
 import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.regions.RegionUtils;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.AmazonS3URI;
+import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.amazonaws.services.s3.model.GetBucketLocationRequest;
 import com.google.cloud.resourcemanager.Project;
 import com.google.cloud.resourcemanager.ResourceManager;
 import com.google.cloud.storage.Storage;
@@ -115,10 +118,29 @@ public class DataAccessFactory
 				region = Optional.ofNullable( uri.getRegion() );
 			}
 
-			s3 = AmazonS3ClientBuilder.standard()
-				.withCredentials( new AWSStaticCredentialsProvider( credentials.orElse( new AnonymousAWSCredentials() )))
-				.withRegion( region.map( Regions::fromName ).orElse( Regions.US_EAST_1 ))
-				.build();
+			if( region.isPresent() )
+			{
+				s3 = AmazonS3ClientBuilder.standard()
+					.withCredentials( new AWSStaticCredentialsProvider( credentials.orElse( new AnonymousAWSCredentials() )))
+					.withRegion( region.map( Regions::fromName ).orElse( Regions.US_EAST_1 ))
+					.build();
+			}
+			else
+			{
+				s3 = AmazonS3ClientBuilder.standard()
+					.withCredentials( new AWSStaticCredentialsProvider( credentials.orElse( new AnonymousAWSCredentials() )))
+					.build();
+
+				try
+				{
+					s3.doesObjectExist(  uri.getBucket(), "testObjectKey" );
+				}
+				catch( AmazonS3Exception e )
+				{
+					// change region to the one this bucket lives in
+					s3.setRegion( RegionUtils.getRegion( awsRegionFromError( e.getMessage()) ));
+				}
+			}
 
 			googleCloudStorage = null;
 			break;
@@ -130,6 +152,18 @@ public class DataAccessFactory
 		default:
 			throw new NotImplementedException( "Factory for type " + type + " is not implemented" );
 		}
+	}
+
+	public static String awsRegionFromError( String errorMessage )
+	{
+		if( errorMessage.startsWith( "The bucket is in this region:" ))
+		{
+			String s = errorMessage.substring( 
+					errorMessage.indexOf( ':' ) + 1,
+					errorMessage.indexOf( '.' )).trim();
+			return s;
+		}
+		return null;
 	}
 
 	public static String googleCloudProjectDialog()
