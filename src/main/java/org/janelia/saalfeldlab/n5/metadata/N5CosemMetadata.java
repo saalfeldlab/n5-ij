@@ -140,6 +140,7 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 	public void writeMetadata( final N5CosemMetadata t, final ImagePlus imp ) throws IOException
 	{
 		final CosemTransform transform = t.cosemTransformMeta;
+		imp.setTitle( t.getPath() );
 
 		if ( transform != null )
 		{
