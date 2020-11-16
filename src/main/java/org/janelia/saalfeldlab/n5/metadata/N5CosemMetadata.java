@@ -147,23 +147,23 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 
 			if ( nd > 0 )
 			{
-				imp.getCalibration().pixelWidth = transform.scale[ 0 ];
-				imp.getCalibration().setXUnit( transform.units[ 0 ] );
-				imp.getCalibration().xOrigin = transform.translate[ 0 ];
+				imp.getCalibration().pixelWidth = transform.scale[ nd - 1 ];
+				imp.getCalibration().setXUnit( transform.units[ nd - 1 ] );
+				imp.getCalibration().xOrigin = transform.translate[ nd - 1 ];
 			}
 
 			if ( nd > 1 )
 			{
-				imp.getCalibration().pixelHeight = transform.scale[ 1 ];
-				imp.getCalibration().setYUnit( transform.units[ 1 ] );
-				imp.getCalibration().yOrigin = transform.translate[ 1 ];
+				imp.getCalibration().pixelHeight = transform.scale[ nd - 2 ];
+				imp.getCalibration().setYUnit( transform.units[ nd - 2 ] );
+				imp.getCalibration().yOrigin = transform.translate[ nd - 2 ];
 			}
 
 			if ( nd > 2 )
 			{
-				imp.getCalibration().pixelDepth = transform.scale[ 2 ];
-				imp.getCalibration().setZUnit( transform.units[ 2 ] );
-				imp.getCalibration().zOrigin = transform.translate[ 2 ];
+				imp.getCalibration().pixelDepth = transform.scale[ nd - 3 ];
+				imp.getCalibration().setZUnit( transform.units[ nd - 3 ] );
+				imp.getCalibration().zOrigin = transform.translate[ nd - 3 ];
 				imp.setDimensions( 1, imp.getStackSize(), 1 );
 			}
 
@@ -180,8 +180,17 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		if( imp.getNFrames() > 1 ){ nd++; }
 
 		final String[] axes = new String[ nd ];
-		axes[ 0 ] = "x";
-		axes[ 1 ] = "y";
+		if( nd == 2 )
+		{
+			axes[ 0 ] = "y";
+			axes[ 1 ] = "x";
+		}
+		else if( nd == 3 )
+		{
+			axes[ 0 ] = "z";
+			axes[ 1 ] = "y";
+			axes[ 2 ] = "x";
+		}
 
 		int c = 2;
 		if ( !separateChannels && imp.getNChannels() > 1 ){ axes[ c++ ] = "c"; }
@@ -195,19 +204,31 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		final double[] scale = new double[ nd ];
 		final double[] translation = new double[ nd ];
 
-		scale[ 0 ] = imp.getCalibration().pixelWidth;
-		scale[ 1 ] = imp.getCalibration().pixelHeight;
-		if( nd > 2 ){ scale[ 2 ] = imp.getCalibration().pixelDepth; }
+		if( nd == 2 )
+		{
+			scale[ 0 ] = imp.getCalibration().pixelHeight;
+			scale[ 1 ] = imp.getCalibration().pixelWidth;
 
-		translation[ 0 ] = imp.getCalibration().xOrigin;
-		translation[ 1 ] = imp.getCalibration().yOrigin;
-		if( nd > 2 ){ translation[ 2 ] = imp.getCalibration().zOrigin; }
+			translation[ 0 ] = imp.getCalibration().yOrigin;
+			translation[ 1 ] = imp.getCalibration().xOrigin;
+		}
+		else if( nd == 3 )
+		{
+			scale[ 0 ] = imp.getCalibration().pixelDepth;
+			scale[ 1 ] = imp.getCalibration().pixelHeight;
+			scale[ 2 ] = imp.getCalibration().pixelWidth;
+
+			translation[ 2 ] = imp.getCalibration().zOrigin;
+			translation[ 1 ] = imp.getCalibration().yOrigin;
+			translation[ 0 ] = imp.getCalibration().xOrigin;
+		}
 
 		return new N5CosemMetadata( "", new CosemTransform( axes, scale, translation, units ) );
 	}
 
 	public static class CosemTransform
 	{
+		// COSEM scales and translations are in c-order
 		public transient static final String KEY = "transform";
 		public final String[] axes;
 		public final double[] scale;
@@ -226,10 +247,11 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 		{
 			assert( scale.length == 3  && translate.length == 3 );
 
+			// COSEM scales and translations are in c-order
 			final AffineTransform3D transform = new AffineTransform3D();
-			transform.set(	scale[0], 0, 0, translate[0],
+			transform.set(	scale[2], 0, 0, translate[2],
 							0, scale[1], 0, translate[1],
-							0, 0, scale[2], translate[2] );
+							0, 0, scale[0], translate[0] );
 			return transform;
 		}
 	}
