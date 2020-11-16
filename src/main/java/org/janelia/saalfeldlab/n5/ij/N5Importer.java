@@ -589,12 +589,13 @@ public class N5Importer implements PlugIn
 		public String message;
 
 		@Override
-		public N5Reader apply( final String n5Path )
+		public N5Reader apply( final String n5PathIn )
 		{
 			N5Reader n5;
-			if ( n5Path == null || n5Path.isEmpty() )
+			if ( n5PathIn == null || n5PathIn.isEmpty() )
 				return null;
 
+			final String n5Path = n5PathIn.trim();
 			final DataAccessType type = DataAccessType.detectType( n5Path );
 			if ( type == null )
 			{
@@ -637,7 +638,7 @@ public class N5Importer implements PlugIn
 		@Override
 		public String apply( final String n5Path )
 		{
-			final DataAccessType type = DataAccessType.detectType( n5Path );
+			final DataAccessType type = DataAccessType.detectType( n5Path.trim() );
 			if ( type == null )
 			{
 				message = "Not a valid path or link to an N5 container.";
