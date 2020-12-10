@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -42,7 +43,6 @@ import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5GsonMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import java.util.concurrent.Callable;
 
 import com.google.gson.JsonElement;
 
@@ -155,7 +155,7 @@ public class N5DatasetDiscoverer {
 				}
 				else
 				{
-					String[] children = n5.list( node.path );
+					final String[] children = n5.list( node.path );
 					for ( final String childGroup : children )
 					{
 						// add the node
@@ -187,7 +187,7 @@ public class N5DatasetDiscoverer {
 		if ( comparator != null )
 			sort( node, comparator );
 
-		for ( N5TreeNode c : node.childrenList() )
+		for ( final N5TreeNode c : node.childrenList() )
 			sortAndTrimRecursive( c );
 	}
 
@@ -208,7 +208,7 @@ public class N5DatasetDiscoverer {
 			}
 		}
 
-		for ( N5TreeNode c : node.childrenList() )
+		for ( final N5TreeNode c : node.childrenList() )
 			parseGroupsRecursive( c );
 	}
 
