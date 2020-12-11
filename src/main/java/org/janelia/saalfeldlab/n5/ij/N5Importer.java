@@ -147,6 +147,11 @@ public class N5Importer implements PlugIn
 		Arrays.fill( initMaxValuesForCrop, Long.MAX_VALUE );
 	}
 
+	public N5Reader getN5()
+	{
+		return n5;
+	}
+
 	public Map< Class< ? >, ImageplusMetadata< ? > > getImagePlusMetadataWriterMap()
 	{
 		return impMetaWriterTypes;
@@ -463,6 +468,10 @@ public class N5Importer implements PlugIn
 		final ArrayList<ImagePlus> imgList = new ArrayList<>();
 		for ( final N5Metadata datasetMeta : datasetMetadataList )
 		{
+			// is this check necessary?
+//			if( datasetMeta == null )
+//				continue;
+
 			final String d = datasetMeta.getPath();
 			final String pathToN5Dataset = d.isEmpty() ? rootPath : rootPath + File.separator + d;
 

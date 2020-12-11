@@ -69,6 +69,7 @@ import org.scijava.plugin.Plugin;
 import com.amazonaws.services.s3.AmazonS3URI;
 
 import ij.ImagePlus;
+import ncsa.hdf.hdf5lib.exceptions.HDF5FileNotFoundException;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
@@ -251,7 +252,8 @@ public class N5Exporter implements Command, WindowListener {
 		N5MetadataWriter<M> writer = null;
 		if (!metadataStyle.equals(NONE)) {
 			writer = (N5MetadataWriter<M>)styles.get(metadataStyle);
-			impMeta = impMetaWriterTypes.get(writer.getClass());
+			if( writer != null )
+				impMeta = impMetaWriterTypes.get(writer.getClass());
 		}
 
 		if (metadataStyle.equals(NONE) ||
@@ -268,8 +270,8 @@ public class N5Exporter implements Command, WindowListener {
 			final Compression compression,
 			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException {
 
-		N5IJUtils.save(image, n5, n5Dataset, blockSize, compression);
-		writeMetadata(n5, n5Dataset, writer);
+		N5IJUtils.save( image, n5, n5Dataset, blockSize, compression );
+		writeMetadata( n5, n5Dataset, writer );
 
 		if (n5 instanceof N5HDF5Writer) {
 			((N5HDF5Writer)n5).close();

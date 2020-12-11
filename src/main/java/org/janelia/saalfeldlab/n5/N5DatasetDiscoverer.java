@@ -231,12 +231,11 @@ public class N5DatasetDiscoverer {
 		if ( n5 instanceof AbstractGsonReader )
 		{
 			jsonMap = ( ( AbstractGsonReader ) n5 ).getAttributes( node.path );
-		}
-
-		if( jsonMap == null )
-		{
-			node.setIsDataset( false );
-			return;
+			if( jsonMap == null )
+			{
+				node.setIsDataset( false );
+				return;
+			}
 		}
 
         // Go through all parsers to populate metadata
