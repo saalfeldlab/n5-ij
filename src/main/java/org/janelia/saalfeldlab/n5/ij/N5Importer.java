@@ -521,14 +521,16 @@ public class N5Importer implements PlugIn
 			return null;
 		}
 
-		return process( n5, dataset, Collections.singletonList( metadata ),
+		List< ImagePlus > result = process( n5, dataset, Collections.singletonList( metadata ),
 				asVirtual, cropInterval, getImagePlusMetadataWriterMap() );
+
+		n5.close();
+
+		return result;
 	}
 
 	public void processThread()
 	{
-//		String datasetPath = selection.metadata.get( 0 ).getPath();
-//		selectionDialog.setMessage( "Loading\n" + datasetPath );
 		loaderThread = new Thread()
 		{
 			@Override

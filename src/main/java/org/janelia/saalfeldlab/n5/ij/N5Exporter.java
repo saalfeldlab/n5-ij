@@ -263,26 +263,23 @@ public class N5Exporter implements Command, WindowListener {
 		} else {
 			writeSplitChannels(n5, compression, writer);
 		}
+		n5.close();
 	}
 
 	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void write(
 			final N5Writer n5,
 			final Compression compression,
-			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException {
-
+			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException
+	{
 		N5IJUtils.save( image, n5, n5Dataset, blockSize, compression );
 		writeMetadata( n5, n5Dataset, writer );
-
-		if (n5 instanceof N5HDF5Writer) {
-			((N5HDF5Writer)n5).close();
-		}
 	}
 
 	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void writeSplitChannels(
 			final N5Writer n5,
 			final Compression compression,
-			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException {
-
+			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException
+	{
 		final Img<T> img = ImageJFunctions.wrap(image);
 		String datasetString = "";
 		for (int c = 0; c < image.getNChannels(); c++) {
@@ -302,21 +299,15 @@ public class N5Exporter implements Command, WindowListener {
 			}
 
 			if (nThreads > 1)
-				N5Utils
-						.save(
-								channelImg,
-								n5,
-								datasetString,
-								blockSize,
-								compression,
-								Executors.newFixedThreadPool(nThreads));
+			{
+				N5Utils.save( channelImg, n5, datasetString, blockSize, compression, Executors.newFixedThreadPool( nThreads ) );
+			}
 			else
+			{
 				N5Utils.save(channelImg, n5, datasetString, blockSize, compression);
+			}
 
 			writeMetadata(n5, datasetString, writer);
-		}
-		if (n5 instanceof N5HDF5Writer) {
-			((N5HDF5Writer)n5).close();
 		}
 	}
 
