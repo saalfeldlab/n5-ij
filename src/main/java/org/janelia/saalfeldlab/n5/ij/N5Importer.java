@@ -116,6 +116,8 @@ public class N5Importer implements PlugIn
 
 	private boolean asVirtual;
 
+	private boolean show = true;
+
 	private boolean cropOption;
 
 	private Thread loaderThread;
@@ -160,6 +162,15 @@ public class N5Importer implements PlugIn
 	public void setNumDimensionsForCropDialog( final int numDimensionsForCrop )
 	{
 		this.numDimensionsForCrop = numDimensionsForCrop;
+	}
+
+	/**
+	 * Set a flag determining whether the process method
+	 * calls show on the resulting ImagePlus.
+	 */
+	public void setShow( final boolean show )
+	{
+		this.show = show;
 	}
 
 	@Override
@@ -456,13 +467,26 @@ public class N5Importer implements PlugIn
 
 	/**
 	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
-	 * Parameters are stored in this object.
 	 */
 	public static List<ImagePlus> process( final N5Reader n5,
 			final String rootPath,
 			final List< N5Metadata> datasetMetadataList,
 			final boolean asVirtual,
 			final Interval cropInterval,
+			final Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes )
+	{
+		return process( n5, rootPath, datasetMetadataList, asVirtual, cropInterval, true, impMetaWriterTypes );
+	}
+
+	/**
+	 * Read one or more N5 dataset into ImagePlus object(s) and show them, if requested.
+	 */
+	public static List<ImagePlus> process( final N5Reader n5,
+			final String rootPath,
+			final List< N5Metadata> datasetMetadataList,
+			final boolean asVirtual,
+			final Interval cropInterval,
+			final boolean show,
 			final Map< Class< ? >, ImageplusMetadata< ? > > impMetaWriterTypes )
 	{
 		final ArrayList<ImagePlus> imgList = new ArrayList<>();
@@ -482,7 +506,8 @@ public class N5Importer implements PlugIn
 				imp = N5Importer.read( n5, datasetMeta, cropInterval, asVirtual, impMeta );
 				record( pathToN5Dataset, asVirtual, cropInterval );
 				imgList.add( imp );
-				imp.show();
+				if( show )
+					imp.show();
 			}
 			catch ( final IOException e )
 			{
@@ -522,7 +547,7 @@ public class N5Importer implements PlugIn
 		}
 
 		List< ImagePlus > result = process( n5, dataset, Collections.singletonList( metadata ),
-				asVirtual, cropInterval, getImagePlusMetadataWriterMap() );
+				asVirtual, cropInterval, show, getImagePlusMetadataWriterMap() );
 
 		n5.close();
 

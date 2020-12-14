@@ -8,8 +8,6 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 
-import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
-import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.ij.N5Exporter;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.junit.Before;
@@ -124,6 +122,7 @@ public class TestExportImports
 		final String readerDataset = metadataType.equals( N5Importer.MetadataN5ViewerKey ) ? dataset + "/c0/s0" : dataset;
 		final String n5PathAndDataset = outputPath + readerDataset;
 		final N5Importer reader = new N5Importer();
+		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
 
 		assertEquals( String.format( "%s one image opened ", dataset ), 1, impList.size() );
