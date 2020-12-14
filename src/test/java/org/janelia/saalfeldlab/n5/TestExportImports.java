@@ -66,7 +66,7 @@ public class TestExportImports
 				N5Importer.MetadataN5ViewerKey
 		};
 
-		for( int bitDepth : new int[]{ 8,16,32 })
+		for( int bitDepth : new int[]{ 8, 16, 32 })
 		{
 			final ImagePlus imp = NewImage.createImage("test", 32, 24, 16, bitDepth, NewImage.FILL_NOISE);
 			for( final String containerType : containerTypes )
@@ -125,12 +125,6 @@ public class TestExportImports
 		final String n5PathAndDataset = outputPath + readerDataset;
 		final N5Importer reader = new N5Importer();
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
-
-		N5Reader n5 = reader.getN5();
-		if ( n5 instanceof N5HDF5Reader )
-		{
-			( ( N5HDF5Reader ) n5 ).close();
-		}
 
 		assertEquals( String.format( "%s one image opened ", dataset ), 1, impList.size() );
 
