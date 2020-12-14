@@ -41,7 +41,7 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 	 * Returns a map of keys to class types needed for parsing.
 	 *
 	 * Optional in general, but used by default implementations.
-	 * @return
+	 * @return the map
 	 */
 	public HashMap<String,Class<?>> keysToTypes();
 
@@ -59,18 +59,19 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 
 	public T parseMetadata( final Map< String, Object > map ) throws Exception;
 
-    /**
+	/**
+	 * 
      * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
      * while discovering the N5 tree and filling the metadata for datasets or groups.
      *
      * The metadata parsing is done in the bottom-up fashion, so the children of the given {@code node}
      * have already been processed and should already contain valid metadata (if any).
-     *
-     * @param n5
-     * @param node
-     * @return
-     * @throws Exception
-     */
+     * 
+	 * @param n5 the reader
+	 * @param nodes list of tree nodes
+	 * @return the metadata
+	 * @throws Exception
+	 */
 	public default T parseMetadata( final N5Reader n5, final N5TreeNode... nodes ) throws Exception
 	{
 		return parseMetadata( n5, nodes[ 0 ].path );

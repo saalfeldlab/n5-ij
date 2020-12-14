@@ -42,8 +42,8 @@ import com.google.gson.JsonElement;
 
 public interface N5GsonMetadataParser < T extends N5Metadata > extends N5MetadataParser< T >
 {
-
 	/**
+	 * 
 	 * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
 	 * while discovering the N5 tree and filling the metadata for datasets or
 	 * groups.
@@ -51,9 +51,11 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 	 * The metadata parsing is done in the bottom-up fashion, so the children of
 	 * the given {@code node} are parsed before parents and should already
 	 * contain valid metadata (if any) when parents are parsed.
-	 *
-	 * @param map
-	 * @return
+	 * 
+	 * @param parser the parser 
+	 * @param dataset the dataset
+	 * @param map map of json elements
+	 * @return the metadata
 	 * @throws Exception
 	 */
 	public default < R extends AbstractGsonReader > T parseMetadataGson( final R parser, final String dataset, final HashMap< String, JsonElement > map ) throws Exception

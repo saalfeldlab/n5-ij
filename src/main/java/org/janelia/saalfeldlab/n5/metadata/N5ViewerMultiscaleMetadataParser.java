@@ -44,8 +44,8 @@ public class N5ViewerMultiscaleMetadataParser implements N5GroupParser< N5MultiS
      * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
      * while discovering the N5 tree and filling the metadata for datasets or groups.
      *
-     * @param node
-     * @return
+     * @param node the node
+     * @return the metadata
      */
 	@Override
 	public N5MultiScaleMetadata parseMetadataGroup( final N5TreeNode node )

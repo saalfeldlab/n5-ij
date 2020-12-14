@@ -86,8 +86,8 @@ public class N5CosemMultiScaleMetadata implements N5Metadata, N5GroupParser< N5C
     * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
     * while discovering the N5 tree and filling the metadata for datasets or groups.
     *
-    * @param node
-    * @return
+    * @param node the node
+    * @return the metadata
     */
 	@Override
 	public N5CosemMultiScaleMetadata parseMetadataGroup( final N5TreeNode node )

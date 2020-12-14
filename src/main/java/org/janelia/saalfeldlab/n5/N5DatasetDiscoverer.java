@@ -63,8 +63,10 @@ public class N5DatasetDiscoverer {
 
     /**
      * Creates an N5 discoverer with alphanumeric sorting order of groups/datasets (such as, s9 goes before s10).
-     *
-     * @param metadataParsers
+     * 
+     * @param executor the executor
+     * @param groupParsers group parsers
+     * @param metadataParsers metadata parsers
      */
 	@SuppressWarnings( "rawtypes" )
 	public N5DatasetDiscoverer( final ExecutorService executor, final N5GroupParser[] groupParsers, final N5MetadataParser... metadataParsers )
@@ -75,11 +77,12 @@ public class N5DatasetDiscoverer {
               metadataParsers);
     }
 
-    /**
+	/**
      * Creates an N5 discoverer with alphanumeric sorting order of groups/datasets (such as, s9 goes before s10).
-     *
-     * @param metadataParsers
-     */
+	 * 
+	 * @param groupParsers group parsers
+	 * @param metadataParsers metadata parsers
+	 */
 	@SuppressWarnings( "rawtypes" )
 	public N5DatasetDiscoverer( final N5GroupParser[] groupParsers, final N5MetadataParser... metadataParsers )
     {
@@ -89,15 +92,17 @@ public class N5DatasetDiscoverer {
               metadataParsers);
     }
 
-    /**
+	/**
      * Creates an N5 discoverer.
      *
      * If the optional parameter {@code comparator} is specified, the groups and datasets
      * will be listed in the order determined by this comparator.
-     *
-     * @param comparator
-     * @param metadataParsers
-     */
+	 * 
+	 * @param executor the executor
+	 * @param comparator optional string comparator 
+	 * @param groupParsers group parsers
+	 * @param metadataParsers metadata parsers
+	 */
     @SuppressWarnings( "rawtypes" )
 	public N5DatasetDiscoverer(
 			final ExecutorService executor,
@@ -289,7 +294,7 @@ public class N5DatasetDiscoverer {
      * Removes branches of the N5 container tree that do not contain any nodes that can be opened
      * (nodes with metadata).
      *
-     * @param node
+     * @param node the node
      * @return
      *      {@code true} if the branch contains a node that can be opened, {@code false} otherwise
      */

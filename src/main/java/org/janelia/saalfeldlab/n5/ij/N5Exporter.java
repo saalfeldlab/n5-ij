@@ -234,7 +234,7 @@ public class N5Exporter implements Command, WindowListener {
 	/**
 	 * Set the custom metadata mapper to use programmically.
 	 *
-	 * @param metadataMapper
+	 * @param metadataMapper the metadata template mapper
 	 */
 	public void setMetadataMapper(final MetadataTemplateMapper metadataMapper) {
 

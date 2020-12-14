@@ -48,7 +48,7 @@ public class UnsignedShortLUTConverter< T extends AbstractIntegerType< T > > imp
 	 * Returns the unique values in the {@link IterableInterval}, sorted as a {@link TreeSet}.
 	 * 
 	 * @param img the iterable
-	 * @return 
+	 * @return the unique values
 	 */
 	public static < T extends AbstractIntegerType< T > > TreeSet<T> uniqueValues( final IterableInterval<T> img )
 	{

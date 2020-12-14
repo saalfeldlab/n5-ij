@@ -167,6 +167,8 @@ public class N5Importer implements PlugIn
 	/**
 	 * Set a flag determining whether the process method
 	 * calls show on the resulting ImagePlus.
+	 * 
+	 * @param show the flag
 	 */
 	public void setShow( final boolean show )
 	{
@@ -330,11 +332,11 @@ public class N5Importer implements PlugIn
 	 *
 	 * @param n5 the n5Reader
 	 * @param datasetMeta datasetMetadata containing the path
-	 * @param cropInterval
-	 * @param asVirtual
-	 * @param ipMeta
-	 * @return
-	 * @throws IOException
+	 * @param cropInterval optional crop interval
+	 * @param asVirtual whether to open virtually 
+	 * @param ipMeta metadata
+	 * @return the ImagePlus
+	 * @throws IOException io
 	 */
 	@SuppressWarnings( { "rawtypes", "unchecked" } )
 	public static <T extends NumericType<T> & NativeType<T>, M extends N5Metadata > ImagePlus read( 
@@ -465,7 +467,7 @@ public class N5Importer implements PlugIn
 		}
 	}
 
-	/**
+	/*
 	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
 	 */
 	public static List<ImagePlus> process( final N5Reader n5,
@@ -478,7 +480,7 @@ public class N5Importer implements PlugIn
 		return process( n5, rootPath, datasetMetadataList, asVirtual, cropInterval, true, impMetaWriterTypes );
 	}
 
-	/**
+	/*
 	 * Read one or more N5 dataset into ImagePlus object(s) and show them, if requested.
 	 */
 	public static List<ImagePlus> process( final N5Reader n5,
@@ -575,7 +577,7 @@ public class N5Importer implements PlugIn
 //		return containingBlockAlignedInterval( n5, dataset, interval );
 //	}
 
-	/**
+	/*
 	 * Returns the smallest {@link Interval} that contains the input interval
 	 * and contains complete blocks.
 	 *

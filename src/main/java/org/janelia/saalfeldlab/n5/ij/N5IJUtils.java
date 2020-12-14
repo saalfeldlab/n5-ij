@@ -73,12 +73,12 @@ public class N5IJUtils {
 	 * {@link N5Utils#open(N5Reader, String)} which uses {@link LazyCellImg},
 	 * the data is actually loaded completely into memory.
 	 *
-	 * @param n5
-	 * @param dataset
-	 * @param metadata
-	 * @return
-	 * @throws IOException
-	 * @throws ImgLibException
+	 * @param n5 the reader
+	 * @param dataset the dataset
+	 * @param metaReader an optional metadata reader
+	 * @return the ImagePlus
+	 * @throws IOException io exception
+	 * @throws ImgLibException imglib2 exception
 	 */
 	@SuppressWarnings( { "unchecked", "rawtypes" } )
 	public static <T extends NativeType<T> & NumericType<T>, M extends N5Metadata, W extends N5MetadataParser< M > & ImageplusMetadata< M > > ImagePlus load(
@@ -137,12 +137,12 @@ public class N5IJUtils {
 	/**
 	 * Save an {@link ImagePlus} as an N5 dataset.
 	 *
-	 * @param imp
-	 * @param n5
-	 * @param datasetName
-	 * @param blockSize
+	 * @param imp the ImagePlus
+	 * @param n5 the writer 
+	 * @param datasetName the dataset name
+	 * @param blockSize the block size
 	 * @param compression
-	 * @throws IOException
+	 * @throws IOException io exception
 	 */
 	public static void save(
 			final ImagePlus imp,
@@ -159,13 +159,13 @@ public class N5IJUtils {
 	/**
 	 * Save an {@link ImagePlus} as an N5 dataset.
 	 *
-	 * @param imp
-	 * @param n5
-	 * @param datasetName
-	 * @param blockSize
-	 * @param compression
-	 * @param metadata
-	 * @throws IOException
+	 * @param imp the ImagePlus
+	 * @param n5 the writer
+	 * @param datasetName the dataset name
+	 * @param blockSize the block size
+	 * @param compression the compression type 
+	 * @param metaWriter (optional) metadata writer
+	 * @throws IOException io exception
 	 */
 	public static <T extends N5Metadata, W extends N5MetadataWriter< T > & ImageplusMetadata< T >> void save(
 			final ImagePlus imp,
@@ -199,15 +199,15 @@ public class N5IJUtils {
 	 * Save and {@link ImagePlus} as an N5 dataset.  Parallelizes export using
 	 * an {@link ExecutorService}.
 	 *
-	 * @param imp
-	 * @param n5
-	 * @param datasetName
-	 * @param blockSize
-	 * @param compression
-	 * @param exec
-	 * @throws IOException
-	 * @throws InterruptedException
-	 * @throws ExecutionException
+	 * @param imp the ImagePlus
+	 * @param n5 the writer
+	 * @param datasetName the dataset name
+	 * @param blockSize the block size
+	 * @param compression the compression type
+	 * @param exec executor
+	 * @throws IOException io exception
+	 * @throws InterruptedException interrupted
+	 * @throws ExecutionException execution
 	 */
 	public static void save(
 			final ImagePlus imp,
@@ -225,16 +225,16 @@ public class N5IJUtils {
 	 * Save and {@link ImagePlus} as an N5 dataset.  Parallelizes export using
 	 * an {@link ExecutorService}.
 	 *
-	 * @param imp
-	 * @param n5
-	 * @param datasetName
-	 * @param blockSize
-	 * @param compression
-	 * @param exec
-	 * @param metadata
-	 * @throws IOException
-	 * @throws InterruptedException
-	 * @throws ExecutionException
+	 * @param imp the ImagePlus
+	 * @param n5 the writer
+	 * @param datasetName the dataset name
+	 * @param blockSize the block size
+	 * @param compression the compression type
+	 * @param exec the executor
+	 * @param metaWriter (optional) metadata writer
+	 * @throws IOException io
+	 * @throws InterruptedException interrupted
+	 * @throws ExecutionException execution
 	 */
 	public static <T extends N5Metadata, W extends N5MetadataWriter< T > & ImageplusMetadata< T >> void save(
 			final ImagePlus imp,
@@ -274,11 +274,11 @@ public class N5IJUtils {
 	 * everywhere else.
 	 *
 	 * @param imp argb image
-	 * @param n5
-	 * @param groupName
-	 * @param blockSize
-	 * @param compression
-	 * @throws IOException
+	 * @param n5 the writer
+	 * @param groupName the base path of the datasets
+	 * @param blockSize the block size
+	 * @param compression the compression type
+	 * @throws IOException io
 	 */
 	public static void saveMaskedUnsignedByte(
 			final ImagePlus imp,
@@ -330,14 +330,14 @@ public class N5IJUtils {
 	 * everywhere else.  Parallelizes export using an {@link ExecutorService}.
 	 *
 	 * @param imp ARGB image
-	 * @param n5
-	 * @param groupName
-	 * @param blockSize
-	 * @param compression
-	 * @param exec
-	 * @throws IOException
-	 * @throws InterruptedException
-	 * @throws ExecutionException
+	 * @param n5 the writer
+	 * @param groupName the base path of the datasets
+	 * @param blockSize the block size
+	 * @param compression the compression type
+	 * @param exec the executor service
+	 * @throws IOException io
+	 * @throws InterruptedException interrupted
+	 * @throws ExecutionException execution
 	 */
 	public static void saveMaskedUnsignedByte(
 			final ImagePlus imp,

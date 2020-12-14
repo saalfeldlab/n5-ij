@@ -117,8 +117,8 @@ public class N5TreeNode extends DefaultMutableTreeNode
      * It ensures correctness on both Unix and Windows, otherwise {@code pathName} is treated
      * as UNC path on Windows, and {@code Paths.get(pathName, ...)} fails with {@code InvalidPathException}.
      *
-     * @param pathName
-     * @return
+     * @param pathName the path
+     * @return the corrected path
      */
     protected static String removeLeadingSlash(final String pathName) {
 
