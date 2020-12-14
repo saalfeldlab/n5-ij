@@ -70,7 +70,7 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 	 * @param n5 the reader
 	 * @param nodes list of tree nodes
 	 * @return the metadata
-	 * @throws Exception
+	 * @throws Exception parsing exception
 	 */
 	public default T parseMetadata( final N5Reader n5, final N5TreeNode... nodes ) throws Exception
 	{

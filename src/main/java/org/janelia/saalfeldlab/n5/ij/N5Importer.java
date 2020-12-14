@@ -330,9 +330,11 @@ public class N5Importer implements PlugIn
 	/**
 	 * Read a single N5 dataset into a ImagePlus and show it
 	 *
+	 * @param <T> the image data type
+	 * @param <M> the metadata type
 	 * @param n5 the n5Reader
 	 * @param datasetMeta datasetMetadata containing the path
-	 * @param cropInterval optional crop interval
+	 * @param cropIntervalIn optional crop interval
 	 * @param asVirtual whether to open virtually 
 	 * @param ipMeta metadata
 	 * @return the ImagePlus

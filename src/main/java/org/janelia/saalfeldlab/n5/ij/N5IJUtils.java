@@ -73,6 +73,9 @@ public class N5IJUtils {
 	 * {@link N5Utils#open(N5Reader, String)} which uses {@link LazyCellImg},
 	 * the data is actually loaded completely into memory.
 	 *
+	 * @param <T> the image data type.
+	 * @param <M> the metadata type
+	 * @param <W> the metadata parser type
 	 * @param n5 the reader
 	 * @param dataset the dataset
 	 * @param metaReader an optional metadata reader
@@ -141,7 +144,7 @@ public class N5IJUtils {
 	 * @param n5 the writer 
 	 * @param datasetName the dataset name
 	 * @param blockSize the block size
-	 * @param compression
+	 * @param compression the compression type
 	 * @throws IOException io exception
 	 */
 	public static void save(
@@ -159,6 +162,8 @@ public class N5IJUtils {
 	/**
 	 * Save an {@link ImagePlus} as an N5 dataset.
 	 *
+	 * @param <T> the image data type
+	 * @param <W> the metadata writer type
 	 * @param imp the ImagePlus
 	 * @param n5 the writer
 	 * @param datasetName the dataset name
@@ -225,6 +230,8 @@ public class N5IJUtils {
 	 * Save and {@link ImagePlus} as an N5 dataset.  Parallelizes export using
 	 * an {@link ExecutorService}.
 	 *
+	 * @param <T> the image data type.
+	 * @param <W> the metadata writer type.
 	 * @param imp the ImagePlus
 	 * @param n5 the writer
 	 * @param datasetName the dataset name

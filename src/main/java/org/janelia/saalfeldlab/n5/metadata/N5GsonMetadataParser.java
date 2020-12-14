@@ -52,11 +52,12 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 	 * the given {@code node} are parsed before parents and should already
 	 * contain valid metadata (if any) when parents are parsed.
 	 * 
+	 * @param <R> the type of parser
 	 * @param parser the parser 
 	 * @param dataset the dataset
 	 * @param map map of json elements
 	 * @return the metadata
-	 * @throws Exception
+	 * @throws Exception parsing exception
 	 */
 	public default < R extends AbstractGsonReader > T parseMetadataGson( final R parser, final String dataset, final HashMap< String, JsonElement > map ) throws Exception
 	{

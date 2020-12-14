@@ -52,6 +52,7 @@ public class UnsignedShortLinearConverter< T extends AbstractIntegerType< T > > 
 	/**
 	 * Returns the unique values in the {@link IterableInterval}, sorted as a {@link TreeSet}.
 	 * 
+	 * @param <T> the image data type
 	 * @param img the iterable
 	 * @return the unique values
 	 */
