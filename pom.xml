@@ -85,6 +85,13 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>deploy-to-scijava</releaseProfiles>
 
+		<!-- TODO remove when pom-scijava-base is updated -->
+		<scijava.jvm.version>8</scijava.jvm.version>
+		<scijava.jvm.build.version>[1.8.0-101,)</scijava.jvm.build.version>
+
+		<maven-enforcer-plugin.version>3.0.0-M3</maven-enforcer-plugin.version>
+		<jacoco-maven-plugin.version>0.8.6</jacoco-maven-plugin.version>
+
 		<n5.version>2.4.0</n5.version>
 		<n5-hdf5.version>1.2.0</n5-hdf5.version>
 		<n5-google-cloud.version>3.3.1</n5-google-cloud.version>
@@ -165,4 +172,16 @@
 			<url>https://maven.scijava.org/content/groups/public</url>
 		</repository>
 	</repositories>
+
+	<profiles>
+		<profile>
+			<id>java-9</id>
+			<activation>
+				<jdk>[9,)</jdk>
+			</activation>
+			<properties>
+				<maven.compiler.release>${scijava.jvm.version}</maven.compiler.release>
+			</properties>
+		</profile>
+	</profiles>
 </project>
