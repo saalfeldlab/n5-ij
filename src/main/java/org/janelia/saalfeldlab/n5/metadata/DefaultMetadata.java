@@ -129,6 +129,7 @@ public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadat
 		int nd = 2;
 		if( imp.getNSlices() > 1 ){ nd++; }
 		if( imp.getNFrames() > 1 ){ nd++; }
+		if( imp.getNChannels() > 1 ){ nd++; }
 
 		return new DefaultMetadata( "", nd );
 	}

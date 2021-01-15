@@ -43,6 +43,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import javax.swing.JButton;
@@ -134,6 +135,8 @@ public class DatasetSelectorDialog
 
 	private Consumer< String > containerPathUpdateCallback;
 
+	private Predicate< N5TreeNode > n5NodeFilter;
+
 	private N5DatasetTreeCellRenderer treeRenderer;
 
 	private final N5GroupParser<?>[] groupParsers;
@@ -207,7 +210,12 @@ public class DatasetSelectorDialog
 		this.treeRenderer = treeRenderer;
 	}
 
-	public void setContainerPathUpdateCallback( final Consumer<String> containerPathUpdateCallback )
+	public void setRecursiveFilterCallback( final Predicate< N5TreeNode > n5NodeFilter )
+	{
+		this.n5NodeFilter = n5NodeFilter;
+	}
+
+	public void setContainerPathUpdateCallback( final Consumer< String > containerPathUpdateCallback )
 	{
 		this.containerPathUpdateCallback = containerPathUpdateCallback;
 	}
@@ -480,7 +488,7 @@ public class DatasetSelectorDialog
 			loaderExecutor = Executors.newCachedThreadPool();
 		}
 
-		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, groupParsers, parsers );
+		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, n5NodeFilter, groupParsers, parsers );
 		rootNode = new N5TreeNode( rootPath, false );
 
 		try
@@ -616,6 +624,7 @@ public class DatasetSelectorDialog
 
 				datasetDiscoverer.sortAndTrimRecursive( rootNode );
 				datasetDiscoverer.parseGroupsRecursive( rootNode );
+				datasetDiscoverer.filterRecursive( rootNode );
 
 				SwingUtilities.invokeLater( new Runnable()
 				{

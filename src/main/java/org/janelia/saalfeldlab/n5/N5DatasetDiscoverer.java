@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Predicate;
 
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5GsonMetadataParser;
@@ -57,6 +58,8 @@ public class N5DatasetDiscoverer {
 
     private final Comparator<? super String> comparator;
 
+    private final Predicate< N5TreeNode > filter;
+
     private final ExecutorService executor;
 
     private N5TreeNode root;
@@ -73,6 +76,7 @@ public class N5DatasetDiscoverer {
     {
         this( executor,
               Optional.of( new AlphanumericComparator(Collator.getInstance())),
+              null,
               groupParsers,
               metadataParsers);
     }
@@ -88,9 +92,23 @@ public class N5DatasetDiscoverer {
     {
         this( Executors.newSingleThreadExecutor(),
               Optional.of( new AlphanumericComparator(Collator.getInstance())),
+              null,
               groupParsers,
               metadataParsers);
     }
+
+	public N5DatasetDiscoverer(
+			final ExecutorService executor,
+			final Predicate< N5TreeNode > filter,
+			final N5GroupParser[] groupParsers,
+			final N5MetadataParser... metadataParsers )
+	{
+		this( executor,
+			  Optional.of( new AlphanumericComparator(Collator.getInstance())),
+			  filter,
+			  groupParsers,
+			  metadataParsers );
+	}
 
 	/**
      * Creates an N5 discoverer.
@@ -107,11 +125,13 @@ public class N5DatasetDiscoverer {
 	public N5DatasetDiscoverer(
 			final ExecutorService executor,
             final Optional<Comparator<? super String>> comparator,
+            final Predicate< N5TreeNode > filter,
             final N5GroupParser[] groupParsers,
 			final N5MetadataParser... metadataParsers)
     {
 		this.executor = executor;
 		this.comparator = comparator.orElseGet( null );
+		this.filter = filter;
 		this.groupParsers = groupParsers;
 		this.metadataParsers = metadataParsers;
     }
@@ -212,6 +232,18 @@ public class N5DatasetDiscoverer {
 			parseGroupsRecursive( c );
 	}
 
+	public void filterRecursive( final N5TreeNode node )
+	{
+		if( filter == null )
+			return;
+
+		if( !filter.test( node ))
+			node.setMetadata( null );
+
+		for ( final N5TreeNode c : node.childrenList() )
+			filterRecursive( c );
+	}
+
     private void discover(final N5Reader n5, final N5TreeNode node) throws IOException
     {
         if( !node.isDataset() )
@@ -260,6 +292,7 @@ public class N5DatasetDiscoverer {
 				{
 					node.setMetadata( parsedMeta );
 					node.setIsDataset( true );
+
 					break;
 				}
 			}
@@ -302,7 +335,10 @@ public class N5DatasetDiscoverer {
     {
 		final List< N5TreeNode > children = node.childrenList();
 		if ( children.isEmpty() )
-			return node.getMetadata() != null;
+		{
+			//return node.getMetadata() != null;
+			return node.isDataset();
+		}
 
         boolean ret = false;
         for (final Iterator<N5TreeNode> it = children.iterator(); it.hasNext();)
