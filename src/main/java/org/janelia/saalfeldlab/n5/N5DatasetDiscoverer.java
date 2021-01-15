@@ -97,6 +97,7 @@ public class N5DatasetDiscoverer {
               metadataParsers);
     }
 
+	@SuppressWarnings("rawtypes")
 	public N5DatasetDiscoverer(
 			final ExecutorService executor,
 			final Predicate< N5TreeNode > filter,
@@ -110,6 +111,16 @@ public class N5DatasetDiscoverer {
 			  metadataParsers );
 	}
 
+	@SuppressWarnings("rawtypes")
+	public N5DatasetDiscoverer(
+			final ExecutorService executor,
+			final Optional<Comparator<? super String>> comparator,
+            final N5GroupParser[] groupParsers,
+			final N5MetadataParser... metadataParsers)
+    {
+		this( executor, comparator, null, groupParsers, metadataParsers);
+    }
+
 	/**
      * Creates an N5 discoverer.
      *
@@ -118,15 +129,16 @@ public class N5DatasetDiscoverer {
 	 * 
 	 * @param executor the executor
 	 * @param comparator optional string comparator 
+	 * @param filter the dataset filter
 	 * @param groupParsers group parsers
 	 * @param metadataParsers metadata parsers
 	 */
     @SuppressWarnings( "rawtypes" )
 	public N5DatasetDiscoverer(
 			final ExecutorService executor,
-            final Optional<Comparator<? super String>> comparator,
-            final Predicate< N5TreeNode > filter,
-            final N5GroupParser[] groupParsers,
+			final Optional<Comparator<? super String>> comparator,
+			final Predicate<N5TreeNode> filter,
+			final N5GroupParser[] groupParsers,
 			final N5MetadataParser... metadataParsers)
     {
 		this.executor = executor;
