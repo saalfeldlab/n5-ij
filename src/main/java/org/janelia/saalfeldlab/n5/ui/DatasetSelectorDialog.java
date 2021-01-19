@@ -25,7 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.ui;
 
-import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -58,6 +57,7 @@ import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeModel;
@@ -70,8 +70,6 @@ import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-
-import ij.Prefs;
 
 public class DatasetSelectorDialog
 {
@@ -123,8 +121,6 @@ public class DatasetSelectorDialog
 
 	private boolean cropOption = false;
 
-	private double guiScale;
-
 	private Thread loaderThread;
 
 	private ExecutorService loaderExecutor;
@@ -147,6 +143,8 @@ public class DatasetSelectorDialog
 
 	private N5TreeNode rootNode;
 
+	private final int defaultFontSize;
+
 	public DatasetSelectorDialog(
 			final Function< String, N5Reader > n5Fun,
 			final Function< String, String > pathFun,
@@ -161,7 +159,11 @@ public class DatasetSelectorDialog
 		this.parsers = parsers;
 		this.groupParsers = groupParsers;
 
-		guiScale = Prefs.getGuiScale();
+		final Font font = UIManager.getFont( "defaultFont" );
+		if ( font != null )
+			defaultFontSize = font.getSize();
+		else
+			defaultFontSize = 12;
 	}
 
 	public DatasetSelectorDialog(
@@ -193,6 +195,11 @@ public class DatasetSelectorDialog
 		this.parsers = parsers;
 		this.groupParsers = groupParsers;
 
+		final Font font = UIManager.getFont( "defaultFont" );
+		if ( font != null )
+			defaultFontSize = font.getSize();
+		else
+			defaultFontSize = 12;
 	}
 
 	public void setLoaderExecutor( final ExecutorService loaderExecutor )
@@ -272,18 +279,15 @@ public class DatasetSelectorDialog
 		dialog.setVisible( true );
     }
 
-    private static final int DEFAULT_OUTER_PAD = 8;
-    private static final int DEFAULT_BUTTON_PAD = 3;
-    private static final int DEFAULT_MID_PAD = 5;
-
     private JFrame buildDialog()
     {
-    	final int OUTER_PAD = (int)( guiScale * DEFAULT_OUTER_PAD );
-    	final int BUTTON_PAD = (int)( guiScale * DEFAULT_BUTTON_PAD );
-    	final int MID_PAD = (int)( guiScale * DEFAULT_MID_PAD );
+		final int OUTER_PAD = defaultFontSize * 2 / 3;
+		final int BUTTON_PAD = defaultFontSize / 4;
+		final int MID_PAD = defaultFontSize / 2;
+		final int BIG_PAD = defaultFontSize * 2;
 
-		final int frameSizeX = (int)( guiScale * 600 );
-		final int frameSizeY = (int)( guiScale * 400 );
+		final int frameSizeX = ( int ) ( 50 * defaultFontSize );
+		final int frameSizeY = ( int ) ( 34 * defaultFontSize );
 
 		dialog = new JFrame( "Open N5" );
 		dialog.setPreferredSize( new Dimension( frameSizeX, frameSizeY ) );
@@ -296,7 +300,6 @@ public class DatasetSelectorDialog
 		containerPathText.setText( initialContainerPath );
 		containerPathText.setPreferredSize( new Dimension( frameSizeX / 3, containerPathText.getPreferredSize().height ));
 		containerPathText.addActionListener( e -> openContainer( n5Fun, () -> getN5RootPath(), pathFun ));
-		scale( containerPathText );
 
 		final GridBagConstraints ctxt = new GridBagConstraints();
 		ctxt.gridx = 0;
@@ -309,7 +312,7 @@ public class DatasetSelectorDialog
 		ctxt.insets = new Insets( OUTER_PAD, OUTER_PAD, MID_PAD, BUTTON_PAD );
 		pane.add( containerPathText, ctxt );
 
-		browseBtn = scaleFont( new JButton( "Browse" ));
+		browseBtn = new JButton( "Browse" );
 		final GridBagConstraints cbrowse = new GridBagConstraints();
 		cbrowse.gridx = 3;
 		cbrowse.gridy = 0;
@@ -321,7 +324,7 @@ public class DatasetSelectorDialog
 		cbrowse.insets = new Insets( OUTER_PAD, BUTTON_PAD, MID_PAD, BUTTON_PAD );
 		pane.add( browseBtn, cbrowse );
 
-		detectBtn = scaleFont( new JButton( "Detect datasets" ) );
+		detectBtn = new JButton( "Detect datasets" );
 		final GridBagConstraints cdetect = new GridBagConstraints();
 		cdetect.gridx = 4;
 		cdetect.gridy = 0;
@@ -348,7 +351,6 @@ public class DatasetSelectorDialog
 		treeModel = new DefaultTreeModel( null );
 		containerTree = new JTree( treeModel );
 		containerTree.setMinimumSize( new Dimension( 550, 230 ));
-		scaleFont( containerTree, (float)guiScale * 1.2f );
 
 		containerTree.getSelectionModel().setSelectionMode(
 				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION );
@@ -382,7 +384,7 @@ public class DatasetSelectorDialog
 		{
 			final JPanel virtPanel = new JPanel();
 			virtualBox = new JCheckBox();
-			final JLabel virtLabel = scaleFont(new JLabel( "Open as virtual" ));
+			final JLabel virtLabel = new JLabel( "Open as virtual" );
 			virtPanel.add( virtualBox );
 			virtPanel.add( virtLabel );
 			pane.add( virtPanel, cbot );
@@ -392,7 +394,7 @@ public class DatasetSelectorDialog
 		{
 			final JPanel cropPanel = new JPanel();
 			cropBox = new JCheckBox();
-			final JLabel cropLabel = scaleFont( new JLabel( "Crop" ));
+			final JLabel cropLabel = new JLabel( "Crop" );
 			cbot.gridx = 1;
 			cbot.anchor = GridBagConstraints.WEST;
 			cropPanel.add( cropBox );
@@ -400,21 +402,21 @@ public class DatasetSelectorDialog
 			pane.add( cropPanel, cbot );
 		}
 
-		messageLabel = scaleFont( new JLabel(""));
+		messageLabel = new JLabel("");
 		messageLabel.setVisible( false );
 		cbot.gridx = 2;
 		cbot.anchor = GridBagConstraints.CENTER;
 		pane.add( messageLabel, cbot );
 
-		okBtn = scaleFont( new JButton( "OK" ));
+		okBtn = new JButton( "OK" );
 		cbot.gridx = 4;
-		cbot.ipadx = (int) ( 20 * guiScale );
+		cbot.ipadx = BIG_PAD;
 		cbot.anchor = GridBagConstraints.EAST;
 		cbot.fill = GridBagConstraints.HORIZONTAL;
 		cbot.insets = new Insets( MID_PAD, OUTER_PAD, OUTER_PAD, BUTTON_PAD );
 		pane.add( okBtn, cbot );
 
-		cancelBtn = scaleFont( new JButton( "Cancel" ));
+		cancelBtn = new JButton( "Cancel" );
 		cbot.gridx = 5;
 		cbot.ipadx = 0;
 		cbot.anchor = GridBagConstraints.EAST;
@@ -557,43 +559,6 @@ public class DatasetSelectorDialog
 			parserFuture.cancel( true );
 		}
     }
-
-	private static final Font DEFAULT_FONT = new Font( Font.SANS_SERIF, Font.PLAIN, 12 );
-
-	private < T extends Component > T scaleFont( final T c )
-    {
-		Font font = c.getFont();
-		if (font == null)
-			font = DEFAULT_FONT;
-		font = font.deriveFont( (float) guiScale * 1.2f * font.getSize() );
-		c.setFont(font);
-		return c;
-    }
-
-	private static < T extends Component > T scaleFont( final T c, final float scale )
-    {
-		Font font = c.getFont();
-		if (font == null)
-			font = DEFAULT_FONT;
-		font = font.deriveFont( scale * 1.2f * font.getSize() );
-		c.setFont(font);
-		return c;
-    }
-
-	private < T extends Component > T scaleSize( final T c )
-	{
-		final Dimension prefSz = c.getPreferredSize();
-		c.setPreferredSize(
-				new Dimension(
-						( int ) ( guiScale * prefSz.width ),
-						( int ) ( guiScale * prefSz.height )));
-		return c;
-	}
-
-	private < T extends Component > T scale( final T c )
-	{
-		return scaleSize( scaleFont( c ) );
-	}
 
 	private class LoaderSorterAndCallback extends Thread
 	{
