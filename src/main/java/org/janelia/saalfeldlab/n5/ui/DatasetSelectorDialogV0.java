@@ -350,7 +350,9 @@ public class DatasetSelectorDialogV0
 			final Function<String,String> pathToRoot )
     {
 		final String n5Path = opener.get();
+
 		n5 = n5Fun.apply( n5Path );
+
 		final String rootPath = pathToRoot.apply( n5Path );
 
 		if ( n5 == null )
@@ -363,7 +365,7 @@ public class DatasetSelectorDialogV0
 			if( n5RootNode.isDataset() )
 				okBtn.setEnabled( true );
         }
-		catch ( final IOException e )
+		catch ( final Exception e )
         {
             IJ.handleException(e);
             return;

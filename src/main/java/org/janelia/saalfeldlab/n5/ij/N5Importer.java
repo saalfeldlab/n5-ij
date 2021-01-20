@@ -37,6 +37,8 @@ import java.util.function.Function;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.N5Factory;
+import org.janelia.saalfeldlab.n5.N5Factory.N5Options;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
@@ -74,7 +76,9 @@ import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
+import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn
@@ -186,8 +190,8 @@ public class N5Importer implements PlugIn
 		{
 			// the fancy selector dialog
 			selectionDialog = new DatasetSelectorDialog(
-					new N5ViewerReaderFun(),
-					new N5BasePathFun(),
+//					new N5BasePathFun(),
+					new BasePathFromFullPathFun(),
 					lastOpenedContainer,
 					null, // no group parsers
 					PARSERS );
@@ -248,7 +252,19 @@ public class N5Importer implements PlugIn
 
 			final Interval thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
 
-			final N5Reader n5ForThisDataset  = new N5ViewerReaderFun().apply( n5Path );
+//			final N5Reader n5ForThisDataset = new N5ViewerReaderFun().apply( n5Path );
+			N5Reader n5ForThisDataset;
+			try
+			{
+				n5ForThisDataset = N5Factory.createN5Reader( 
+						new N5Options( n5Path, new int[] {32, 32, 32} ));
+			}
+			catch ( IOException e1 )
+			{
+				e1.printStackTrace();
+				return;
+			}
+
 			N5Metadata meta;
 			try
 			{
@@ -257,7 +273,7 @@ public class N5Importer implements PlugIn
 				process( n5ForThisDataset, n5Path, Collections.singletonList( meta ), openAsVirtual, thisDatasetCropInterval,
 						impMetaWriterTypes );
 			}
-			catch ( final IOException e )
+			catch ( final Exception e )
 			{
 				e.printStackTrace();
 			}
@@ -537,14 +553,25 @@ public class N5Importer implements PlugIn
 
 	public List<ImagePlus> process( final String n5FullPath, final boolean asVirtual, final Interval cropInterval )
 	{
-		n5 = new N5ViewerReaderFun().apply( n5FullPath );
+		try
+		{
+			n5 = N5Factory.createN5Reader( 
+					new N5Options( 
+							new BasePathFromFullPathFun().apply( n5FullPath ), 
+							new int[] {32, 32, 32 }	)); 					
+		}
+		catch ( IOException e1 )
+		{
+			e1.printStackTrace();
+		}
+
 		final String dataset = new N5BasePathFun().apply( n5FullPath );
 		N5Metadata metadata;
 		try
 		{
 			metadata = new N5DatasetDiscoverer( null, PARSERS ).parse( n5, dataset ).getMetadata();
 		}
-		catch ( final IOException e )
+		catch ( final Exception e )
 		{
 			System.err.println( "Could not parse metadata.");
 			return null;
@@ -624,51 +651,41 @@ public class N5Importer implements PlugIn
 //		return new FinalInterval( min, max );
 //	}
 
-	public static class N5ViewerReaderFun implements Function< String, N5Reader >
+	public static class BasePathFromFullPathFun implements Function< String, String >
 	{
-		public String message;
+		final String[] EXTENSIONS = new String[] { ".zarr", ".h5", ".hdf5", ".hdf", ".n5" };
 
 		@Override
-		public N5Reader apply( final String n5PathIn )
+		public String apply( final String n5Path )
 		{
-			N5Reader n5;
-			if ( n5PathIn == null || n5PathIn.isEmpty() )
-				return null;
-
-			final String n5Path = n5PathIn.trim();
-			final DataAccessType type = DataAccessType.detectType( n5Path );
-			if ( type == null )
+			for( String ext : EXTENSIONS )
 			{
-				message = "Not a valid path or link to an N5 container.";
-				return null;
+				final int idx = n5Path.indexOf( ext );
+				if( idx > 0 )
+					return n5Path.substring( 0, idx + ext.length() );
 			}
-
-			String n5BasePath = n5Path;
-			if( type.equals( DataAccessType.HDF5 ))
-				n5BasePath = N5Importer.h5DatasetPath( n5Path, true );
-
-			n5 = null;
-			try
-			{
-				n5 = new DataAccessFactory( type, n5BasePath ).createN5Reader( n5BasePath );
-
-				/*
-				 * Do we need this check?
-				 */
-//				if ( !n5.exists( "/" ) || n5.getVersion().equals( new N5Reader.Version( null ) ) )
-//				{
-////					JOptionPane.showMessageDialog( dialog, "Not a valid path or link to an N5 container.", "N5 Viewer", JOptionPane.ERROR_MESSAGE );
-//					return null;
-//				}
-
-			}
-			catch ( final DataAccessException | IOException e )
-			{
-				IJ.handleException( e );
-				return null;
-			}
-			return n5;
+			return n5Path;
 		}
+	}
+
+	private static final String[] EXTENSIONS = new String[] { ".zarr", ".h5", ".hdf5", ".hdf", ".n5" };
+
+	public static String n5RootFromFullPath( final String n5FullPath )
+	{
+		for ( String ext : EXTENSIONS )
+		{
+			final int idx = n5FullPath.indexOf( ext );
+			if ( idx > 0 )
+				return n5FullPath.substring( 0, idx + ext.length() );
+		}
+		return n5FullPath;
+	}
+
+	public static Pair< String, String > n5RootDataset( final String n5FullPath )
+	{
+		final String n5Root = n5RootFromFullPath( n5FullPath );
+		final String n5Dataset = n5FullPath.substring( n5Root.length() );
+		return new ValuePair< String, String >( n5Root, n5Dataset );
 	}
 
 	public static class N5BasePathFun implements Function< String, String >

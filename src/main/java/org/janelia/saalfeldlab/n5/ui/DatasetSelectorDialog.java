@@ -65,13 +65,17 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.N5Factory;
+import org.janelia.saalfeldlab.n5.N5Factory.N5Options;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 
 import ij.Prefs;
+import net.imglib2.util.Pair;
 
 public class DatasetSelectorDialog
 {
@@ -113,8 +117,6 @@ public class DatasetSelectorDialog
 
 	private String lastBrowsePath;
 
-	private Function< String, N5Reader > n5Fun;
-
 	private Function< String, String > pathFun;
 
 	private N5Reader n5;
@@ -148,13 +150,11 @@ public class DatasetSelectorDialog
 	private N5TreeNode rootNode;
 
 	public DatasetSelectorDialog(
-			final Function< String, N5Reader > n5Fun,
 			final Function< String, String > pathFun,
 			final String initialContainerPath,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
-		this.n5Fun = n5Fun;
 		this.pathFun = pathFun;
 		this.initialContainerPath = initialContainerPath;
 
@@ -165,20 +165,18 @@ public class DatasetSelectorDialog
 	}
 
 	public DatasetSelectorDialog(
-			final Function< String, N5Reader > n5Fun,
 			final Function< String, String > pathFun,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
-		this( n5Fun, pathFun, "", groupParsers, parsers );
+		this( pathFun, "", groupParsers, parsers );
 	}
 
 	public DatasetSelectorDialog(
-			final Function< String, N5Reader > n5Fun,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
-		this( n5Fun, x -> "", groupParsers, parsers );
+		this( x -> "", groupParsers, parsers );
 	}
 
 	public DatasetSelectorDialog(
@@ -262,8 +260,8 @@ public class DatasetSelectorDialog
 
         if( n5 == null )
         {
-			browseBtn.addActionListener( e -> openContainer( n5Fun, this::openBrowseDialog ));
-			detectBtn.addActionListener( e -> openContainer( n5Fun, () -> getN5RootPath(), pathFun ));
+			browseBtn.addActionListener( e -> openContainer( this::openBrowseDialog ));
+			detectBtn.addActionListener( e -> openContainer( () -> getN5RootPath() ));
         }
 
         // ok and cancel buttons
@@ -295,7 +293,10 @@ public class DatasetSelectorDialog
 		containerPathText = new JTextField();
 		containerPathText.setText( initialContainerPath );
 		containerPathText.setPreferredSize( new Dimension( frameSizeX / 3, containerPathText.getPreferredSize().height ));
-		containerPathText.addActionListener( e -> openContainer( n5Fun, () -> getN5RootPath(), pathFun ));
+
+//		containerPathText.addActionListener( e -> openContainer( () -> getN5RootPath(), pathFun ));
+		containerPathText.addActionListener( e -> openContainer( () -> getN5RootPath() ));
+
 		scale( containerPathText );
 
 		final GridBagConstraints ctxt = new GridBagConstraints();
@@ -446,13 +447,12 @@ public class DatasetSelectorDialog
         return path;
     }
 
-	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener )
+	private void openContainer( final Supplier< String > opener )
 	{
-		openContainer( n5Fun, opener, pathFun );
+		openContainer( opener.get() );
 	}
 
-	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener,
-			final Function<String,String> pathToRoot )
+	private void openContainer( final String n5TotalPath )
     {
 
 		messageLabel.setText( "Building reader..." );
@@ -460,17 +460,27 @@ public class DatasetSelectorDialog
 		dialog.repaint();
 		dialog.revalidate();
 
-		final String n5Path = opener.get();
-		containerPathUpdateCallback.accept( n5Path );
-		if( n5Path == null )
+		containerPathUpdateCallback.accept( n5TotalPath );
+		if( n5TotalPath == null )
 		{
 			messageLabel.setVisible( false );
 			dialog.repaint();
 			return;
 		}
 
-		n5 = n5Fun.apply( n5Path );
-		final String rootPath = pathToRoot.apply( n5Path );
+//		final String rootPath = pathToRoot.apply( n5Path );
+		final Pair<String,String> rootDataset = N5Importer.n5RootDataset( n5TotalPath );
+		final String rootPath = rootDataset.getA();
+		final String dataset = rootDataset.getB();
+
+		try
+		{
+			n5 = N5Factory.createN5Reader( new N5Options( rootPath, new int[] {32, 32, 32 } ));
+		}
+		catch ( IOException e1 )
+		{
+			e1.printStackTrace();
+		}
 
 		if ( n5 == null )
 		{
@@ -489,7 +499,7 @@ public class DatasetSelectorDialog
 		}
 
 		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, n5NodeFilter, groupParsers, parsers );
-		rootNode = new N5TreeNode( rootPath, false );
+		rootNode = new N5TreeNode( dataset, false );
 
 		try
 		{
@@ -516,7 +526,16 @@ public class DatasetSelectorDialog
 			final String n5Path = getN5RootPath();
 			containerPathUpdateCallback.accept( getN5RootPath() );
 
-			n5 = n5Fun.apply( n5Path );
+			try
+			{
+				n5 = N5Factory.createN5Reader( new N5Options( n5Path, new int[] {32, 32, 32} ));
+			}
+			catch ( IOException e1 )
+			{
+				e1.printStackTrace();
+				return;
+			}
+
 			final String dataset = pathFun.apply( n5Path );
 			N5TreeNode node = null;
 			try

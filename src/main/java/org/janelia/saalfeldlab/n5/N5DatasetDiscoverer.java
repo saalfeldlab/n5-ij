@@ -148,7 +148,7 @@ public class N5DatasetDiscoverer {
 		this.metadataParsers = metadataParsers;
     }
 
-	public N5TreeNode discoverRecursive( final N5Reader n5, final String base ) throws IOException
+	public N5TreeNode discoverRecursive( final N5Reader n5, final String base ) throws Exception
     {
 		root = new N5TreeNode( base, n5.datasetExists( base ));
 		discover( n5, root );
@@ -157,7 +157,7 @@ public class N5DatasetDiscoverer {
 		return root;
     }
 
-	public N5TreeNode parse( final N5Reader n5, final String dataset ) throws IOException
+	public N5TreeNode parse( final N5Reader n5, final String dataset ) throws Exception
     {
 		final N5TreeNode node = new N5TreeNode( dataset, n5.datasetExists( dataset ));
 		parseMetadata( n5, node, metadataParsers, null );
@@ -326,7 +326,7 @@ public class N5DatasetDiscoverer {
 
 	public static void parseMetadataRecursive(final N5Reader n5, final N5TreeNode node,
 			final N5MetadataParser<?>[] metadataParsers,
-			final N5GroupParser<?>[] groupParsers ) throws IOException
+			final N5GroupParser<?>[] groupParsers ) throws Exception
 	{
         // Recursively parse metadata for children nodes
 		for ( final N5TreeNode childNode : node.childrenList() )
