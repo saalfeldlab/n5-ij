@@ -159,11 +159,22 @@ public class DatasetSelectorDialog
 		this.parsers = parsers;
 		this.groupParsers = groupParsers;
 
-		final Font font = UIManager.getFont( "defaultFont" );
-		if ( font != null )
-			defaultFontSize = font.getSize();
+//		Label.font or Panel.font if defaultFont does not exist
+		Font defaultFont = UIManager.getFont( "defaultFont" );
+
+		// TODO are these correct?
+		Font labelFont = UIManager.getFont( "Label.font" );
+		Font panelFont = UIManager.getFont( "Panel.font" );
+
+		if ( defaultFont != null )
+			defaultFontSize = defaultFont.getSize();
+		else if ( labelFont != null )
+			defaultFontSize = labelFont.getSize();
+		else if ( panelFont != null )
+			defaultFontSize = panelFont.getSize();
 		else
 			defaultFontSize = 12;
+
 	}
 
 	public DatasetSelectorDialog(
