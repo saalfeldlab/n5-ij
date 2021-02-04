@@ -66,7 +66,6 @@ import javax.swing.tree.TreeSelectionModel;
 
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Factory;
-import org.janelia.saalfeldlab.n5.N5Factory.N5Options;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
@@ -475,7 +474,7 @@ public class DatasetSelectorDialog
 
 		try
 		{
-			n5 = N5Factory.createN5Reader( new N5Options( rootPath, new int[] {32, 32, 32 } ));
+			n5 = N5Factory.openReader( rootPath );
 		}
 		catch ( IOException e1 )
 		{
@@ -528,7 +527,7 @@ public class DatasetSelectorDialog
 
 			try
 			{
-				n5 = N5Factory.createN5Reader( new N5Options( n5Path, new int[] {32, 32, 32} ));
+				n5 = N5Factory.openReader( n5Path );
 			}
 			catch ( IOException e1 )
 			{

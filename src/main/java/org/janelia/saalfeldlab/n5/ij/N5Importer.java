@@ -38,7 +38,6 @@ import java.util.function.Function;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Factory;
-import org.janelia.saalfeldlab.n5.N5Factory.N5Options;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
@@ -190,8 +189,7 @@ public class N5Importer implements PlugIn
 		{
 			// the fancy selector dialog
 			selectionDialog = new DatasetSelectorDialog(
-//					new N5BasePathFun(),
-					new BasePathFromFullPathFun(),
+					N5Importer::n5RootFromFullPath,
 					lastOpenedContainer,
 					null, // no group parsers
 					PARSERS );
@@ -256,8 +254,7 @@ public class N5Importer implements PlugIn
 			N5Reader n5ForThisDataset;
 			try
 			{
-				n5ForThisDataset = N5Factory.createN5Reader( 
-						new N5Options( n5Path, new int[] {32, 32, 32} ));
+				n5ForThisDataset = N5Factory.openReader( n5Path );
 			}
 			catch ( IOException e1 )
 			{
@@ -553,19 +550,19 @@ public class N5Importer implements PlugIn
 
 	public List<ImagePlus> process( final String n5FullPath, final boolean asVirtual, final Interval cropInterval )
 	{
+		Pair< String, String > rootDataset = n5RootDataset( n5FullPath );
+		final String n5Root = rootDataset.getA();
+		final String dataset = rootDataset.getB();
+
 		try
 		{
-			n5 = N5Factory.createN5Reader( 
-					new N5Options( 
-							new BasePathFromFullPathFun().apply( n5FullPath ), 
-							new int[] {32, 32, 32 }	)); 					
+			n5 = N5Factory.openReader( n5Root );
 		}
 		catch ( IOException e1 )
 		{
 			e1.printStackTrace();
 		}
 
-		final String dataset = new N5BasePathFun().apply( n5FullPath );
 		N5Metadata metadata;
 		try
 		{
@@ -596,76 +593,6 @@ public class N5Importer implements PlugIn
 			}
 		};
 		loaderThread.run();
-	}
-
-//	public static Interval containingBlockAlignedInterval(
-//			final N5Reader n5,
-//			final String dataset,
-//			final Interval interval ) throws IOException
-//	{
-//		return containingBlockAlignedInterval( n5, dataset, interval );
-//	}
-
-	/*
-	 * Returns the smallest {@link Interval} that contains the input interval
-	 * and contains complete blocks.
-	 *
-	 * @param n5 the n5 reader
-	 * @param dataset the dataset
-	 * @param interval the interval
-	 * @return the smallest containing interval
-	 * @throws IOException
-	 */
-//	public static Interval containingBlockAlignedInterval(
-//			final N5Reader n5,
-//			final String dataset,
-//			final Interval interval) throws IOException
-//	{
-//		// TODO move to N5Utils?
-//		if ( !n5.datasetExists( dataset ) )
-//		{
-////			if( log != null )
-////				log.error( "no dataset" );
-//
-//			return null;
-//		}
-//
-//		DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
-//		int nd = attrs.getNumDimensions();
-//		int[] blockSize = attrs.getBlockSize();
-//		long[] dims = attrs.getDimensions();
-//
-//		long[] min = new long[ nd ];
-//		long[] max = new long[ nd ];
-//		for( int d = 0; d < nd; d++ )
-//		{
-//			// check that interval aligns with blocks
-//			min[ d ] = interval.min( d )- (interval.min( d ) % blockSize[ d ]);
-//			max[ d ] = interval.max( d )  + ((interval.max( d )  + blockSize[ d ] - 1 ) % blockSize[ d ]);
-//
-//			// check that interval is contained in the dataset dimensions
-//			min[ d ] = Math.max( 0, interval.min( d ) );
-//			max[ d ] = Math.min( dims[ d ] - 1, interval.max( d ) );
-//		}
-//
-//		return new FinalInterval( min, max );
-//	}
-
-	public static class BasePathFromFullPathFun implements Function< String, String >
-	{
-		final String[] EXTENSIONS = new String[] { ".zarr", ".h5", ".hdf5", ".hdf", ".n5" };
-
-		@Override
-		public String apply( final String n5Path )
-		{
-			for( String ext : EXTENSIONS )
-			{
-				final int idx = n5Path.indexOf( ext );
-				if( idx > 0 )
-					return n5Path.substring( 0, idx + ext.length() );
-			}
-			return n5Path;
-		}
 	}
 
 	private static final String[] EXTENSIONS = new String[] { ".zarr", ".h5", ".hdf5", ".hdf", ".n5" };

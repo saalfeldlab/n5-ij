@@ -38,7 +38,6 @@ import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
 import org.janelia.saalfeldlab.n5.N5Factory;
-import org.janelia.saalfeldlab.n5.N5Factory.N5Options;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
@@ -189,7 +188,7 @@ public class N5Exporter implements Command, WindowListener {
 		blockSize = Arrays.stream(blockSizeArg.split(",")).mapToInt(x -> Integer.parseInt(x)).toArray();
 
 //		final N5Writer n5 = getWriter();
-		N5Writer n5 = N5Factory.createN5Writer( new N5Options( n5RootLocation, blockSize ));
+		N5Writer n5 = N5Factory.openWriter( n5RootLocation );
 
 		N5MetadataWriter<M> writer = null;
 		if (!metadataStyle.equals(NONE)) {

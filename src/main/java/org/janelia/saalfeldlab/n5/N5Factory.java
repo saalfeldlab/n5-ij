@@ -27,14 +27,13 @@ package org.janelia.saalfeldlab.n5;
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.net.URISyntaxException;
 import java.util.Iterator;
+import java.util.Optional;
 
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudResourceManagerClient;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageClient;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
-import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -48,9 +47,10 @@ import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Writer;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 
-import com.amazonaws.SdkClientException;
-import com.amazonaws.auth.profile.ProfileCredentialsProvider;
-import com.amazonaws.regions.Region;
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.AnonymousAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
@@ -60,224 +60,283 @@ import com.google.cloud.resourcemanager.ResourceManager;
 import com.google.cloud.storage.Storage;
 
 import ch.systemsx.cisd.hdf5.HDF5Factory;
+import ch.systemsx.cisd.hdf5.IHDF5Reader;
+import ch.systemsx.cisd.hdf5.IHDF5Writer;
 
 /**
-*
-* @author Igor Pisarev &lt;pisarevi@janelia.hhmi.org&gt;
-* @author John Bogovic&lt;bogovicj@janelia.hhmi.org&gt;
-* @author Stephan Saalfeld &lt;saalfelds@janelia.hhmi.org&gt;
-*/
-public class N5Factory {
+ * Factory methods for various N5 readers and writers.  The factory methods
+ * do not expose all parameters of each reader or writer to keep things
+ * simple in this tutorial.  In particular, custom JSON adapters for not so
+ * simple types are not considered, albeit incredibly useful.  Please inspect
+ * the constructors of the readers and writers for further parameters.
+ *
+ * @author Stephan Saalfeld
+ */
+public interface N5Factory
+{
 
-	public static class N5Options {
-
-		public final String containerPath;
-		public final int[] blockSize;
-
-		public N5Options(final String containerPath, final int[] blockSize )
-		{
-			this.containerPath = containerPath;
-			this.blockSize = blockSize;
-		}
-	}
-
-	private static enum N5AccessType
-	{
-
-		Reader, Writer
-	}
-
-	public static N5Reader createN5Reader( final N5Options options ) throws IOException
-	{
-
-		return createN5( options, N5AccessType.Reader );
-	}
-
-	public static N5Writer createN5Writer( final N5Options options ) throws IOException
-	{
-
-		return createN5( options, N5AccessType.Writer );
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <N5 extends N5Reader> N5 createN5(final N5Options options, final N5AccessType accessType) throws IOException {
-
-		URI uri = null;
-		try {
-			uri = URI.create(options.containerPath);
-		} catch (final IllegalArgumentException e) {}
-		if (uri == null || uri.getScheme() == null) {
-			if (isHDF5(options.containerPath, accessType))
-				return (N5) createN5HDF5(options.containerPath, options.blockSize, accessType);
-			else if (isZarr(options.containerPath))
-				return (N5) createN5Zarr(options.containerPath, accessType);
-			else
-				return (N5) createN5FS(options.containerPath, accessType);
-		}
-
-		if (uri.getScheme().equalsIgnoreCase("http") || uri.getScheme().equalsIgnoreCase("https")) {
-			// s3 uri parser is capable of parsing http links, try to parse it first as an s3 uri
-			AmazonS3URI s3Uri;
-			try {
-				s3Uri = new AmazonS3URI(uri);
-			} catch (final Exception e) {
-				s3Uri = null;
-			}
-
-			if (s3Uri != null) {
-				return (N5) createN5S3(options.containerPath, accessType);
-			} else {
-				// might be a google cloud link
-				final GoogleCloudStorageURI googleCloudUri;
-				try {
-					googleCloudUri = new GoogleCloudStorageURI(uri);
-				} catch (final Exception e) {
-					throw new IllegalArgumentException("Expected either a local path or a link to AWS S3 bucket / Google Cloud Storage bucket.");
-				}
-
-				if (googleCloudUri.getBucket() == null || googleCloudUri.getBucket().isEmpty() || (googleCloudUri.getKey() != null && !googleCloudUri.getKey().isEmpty()))
-					throw new IllegalArgumentException("N5 datasets on Google Cloud are stored in buckets. Please provide a link to a bucket.");
-				return (N5) createN5GoogleCloud(options.containerPath, accessType);
-			}
-		} else {
-			switch (uri.getScheme().toLowerCase()) {
-			case "file":
-				final String parsedPath = Paths.get(uri).toString();
-				if (isHDF5(parsedPath, accessType))
-					return (N5) createN5HDF5(parsedPath, options.blockSize, accessType);
-				else if (isZarr(parsedPath))
-					return (N5) createN5Zarr(parsedPath, accessType);
-				else
-					return (N5) createN5FS(parsedPath, accessType);
-			case "s3":
-				return (N5) createN5S3(options.containerPath, accessType);
-			case "gs":
-				return (N5) createN5GoogleCloud(options.containerPath, accessType);
-			default:
-				throw new IllegalArgumentException("Unsupported protocol: " + uri.getScheme());
-			}
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <N5 extends N5FSReader> N5 createN5FS(final String containerPath, final N5AccessType accessType) throws IOException {
-
-		switch (accessType) {
-		case Reader:
-			return (N5) new N5FSReader(containerPath);
-		case Writer:
-			return (N5) new N5FSWriter(containerPath);
-		default:
-			return null;
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <N5 extends N5HDF5Reader> N5 createN5HDF5(final String containerPath, final int[] blockSize, final N5AccessType accessType) throws IOException {
-
-		switch (accessType) {
-		case Reader:
-			return (N5) new N5HDF5Reader(HDF5Factory.openForReading(containerPath), blockSize);
-		case Writer:
-			return (N5) new N5HDF5Writer(HDF5Factory.open(containerPath), blockSize);
-		default:
-			return null;
-		}
-	}
-
-	@SuppressWarnings( "unchecked" )
-	private static <N5 extends N5ZarrReader> N5 createN5Zarr(final String containerPath, final N5AccessType accessType) throws IOException {
-
-		switch (accessType) {
-		case Reader:
-			return (N5) new N5ZarrReader(containerPath, true);
-		case Writer:
-			return (N5) new N5ZarrWriter(containerPath, true);
-		default:
-			return null;
-		}
-	}
-
-	private static boolean isHDF5(final String containerPath, final N5AccessType accessType) {
-
-		switch (accessType) {
-		case Reader:
-			return Files.isRegularFile(Paths.get(containerPath));
-		case Writer:
-			return containerPath.toLowerCase().endsWith(".h5") || containerPath.toLowerCase().endsWith(".hdf5") || containerPath.toLowerCase().endsWith(".hdf");
-		default:
-			throw new RuntimeException();
-		}
-	}
-
-	private static boolean isZarr(final String containerPath)
-	{
-		return containerPath.toLowerCase().endsWith(".zarr") ||
-				(Files.isDirectory(Paths.get(containerPath)) &&
-						(Files.isRegularFile(Paths.get(containerPath, ".zarray")) ||
-								Files.isRegularFile(Paths.get(containerPath, ".zgroup"))));
-	}
-
-	@SuppressWarnings("unchecked")
-	private static <N5 extends N5AmazonS3Reader> N5 createN5S3(final String containerPath, final N5AccessType accessType) throws IOException {
+	/**
+	 * Helper method.
+	 *
+	 * @param url
+	 * @return
+	 */
+	public static AmazonS3 createS3(final String url) {
 
 		AmazonS3 s3;
+		AWSCredentials credentials = null;
 		try {
-			s3 = AmazonS3ClientBuilder.standard().
-					withCredentials(new ProfileCredentialsProvider()).build();
-		} catch (final SdkClientException e) {
-			try {
-				s3 = AmazonS3ClientBuilder.defaultClient();
-			} catch (final SdkClientException f) {
-				final Region region = Regions.getCurrentRegion();
-				s3 = AmazonS3ClientBuilder.standard().withRegion(region == null ? Regions.US_EAST_1.getName() : region.getName()).build();
-			}
+			credentials = new DefaultAWSCredentialsProviderChain().getCredentials();
+		} catch(final Exception e) {
+			System.out.println( "Could not load AWS credentials, falling back to anonymous." );
+		}
+		final AWSStaticCredentialsProvider credentialsProvider =
+				new AWSStaticCredentialsProvider(credentials == null ? new AnonymousAWSCredentials() : credentials);
+
+		final AmazonS3URI uri = new AmazonS3URI(url);
+		final Optional<String> region = Optional.ofNullable(uri.getRegion());
+
+		if(region.isPresent()) {
+			s3 = AmazonS3ClientBuilder.standard()
+					.withCredentials(credentialsProvider)
+					.withRegion(region.map(Regions::fromName).orElse(Regions.US_EAST_1))
+					.build();
+		} else {
+			s3 = AmazonS3ClientBuilder.standard()
+					.withCredentials(credentialsProvider)
+					.withRegion(Regions.US_EAST_1)
+					.build();
 		}
 
-		final AmazonS3URI s3Uri = new AmazonS3URI(containerPath);
-
-		switch (accessType) {
-		case Reader:
-			return (N5) new N5AmazonS3Reader(s3, s3Uri);
-		case Writer:
-			return (N5) new N5AmazonS3Writer(s3, s3Uri);
-		default:
-			return null;
-		}
+		return s3;
 	}
 
-	@SuppressWarnings("unchecked")
-	private static <N5 extends N5GoogleCloudStorageReader> N5 createN5GoogleCloud(final String containerPath, final N5AccessType accessType) throws IOException {
+	/**
+	 * Open an {@link N5Reader} for N5 filesystem.
+	 *
+	 * @param path
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5FSReader openFSReader(final String path) throws IOException {
 
-		final ResourceManager resourceManager = new GoogleCloudResourceManagerClient().create();
+		return new N5FSReader(path);
+	}
+
+	/**
+	 * Open an {@link N5Reader} for Zarr.
+	 *
+	 * For more options of the Zarr backend study the {@link N5ZarrReader}
+	 * constructors.
+	 *
+	 * @param path
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5ZarrReader openZarrReader(final String path) throws IOException {
+
+		return new N5ZarrReader(path);
+	}
+
+	/**
+	 * Open an {@link N5Reader} for HDF5. Close the reader when you do not need
+	 * it any more.
+	 *
+	 * For more options of the HDF5 backend study the {@link N5HDF5Reader}
+	 * constructors.
+	 *
+	 * @param path
+	 * @param defaultBlockSize
+	 * 		This block size will be used for reading non-chunked datasets.
+	 * 		It is also possible to override the block-size for reading chunked
+	 * 		datasets but we do not do that here as it's rarely useful.
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5HDF5Reader openHDF5Reader(final String path, final int... defaultBlockSize) throws IOException {
+
+		final IHDF5Reader hdf5Reader = HDF5Factory.openForReading(path);
+		return new N5HDF5Reader(hdf5Reader, defaultBlockSize);
+	}
+
+	/**
+	 * Open an {@link N5Reader} for Google Cloud.
+	 *
+	 * @param url
+	 * @param projectId
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5GoogleCloudStorageReader openGoogleCloudReader(final String url) throws IOException {
+
+		final GoogleCloudStorageClient storageClient = new GoogleCloudStorageClient();
+		final Storage storage = storageClient.create();
+		final GoogleCloudStorageURI googleCloudUri = new GoogleCloudStorageURI(url);
+		final String bucketName = googleCloudUri.getBucket();
+		return new N5GoogleCloudStorageReader(storage, bucketName);
+	}
+
+	/**
+	 * Open an {@link N5Reader} for AWS S3.
+	 *
+	 * @param url
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5AmazonS3Reader openAWSS3Reader(final String url) throws IOException {
+
+		return new N5AmazonS3Reader(createS3(url), new AmazonS3URI(url));
+	}
+
+	/**
+	 * Open an {@link N5Writer} for N5 filesystem.
+	 *
+	 * @param path
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5FSWriter openFSWriter(final String path) throws IOException {
+
+		return new N5FSWriter(path);
+	}
+
+	/**
+	 * Open an {@link N5Writer} for Zarr.
+	 *
+	 * For more options of the Zarr backend study the {@link N5ZarrWriter}
+	 * constructors.
+	 *
+	 * @param path
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5ZarrWriter openZarrWriter(final String path) throws IOException {
+
+		return new N5ZarrWriter(path);
+	}
+
+	/**
+	 * Open an {@link N5Writer} for HDF5.  Don't forget to close the writer
+	 * after writing to close the file and make it available to other
+	 * processes.
+	 *
+	 * For more options of the HDF5 backend study the {@link N5HDF5Writer}
+	 * constructors.
+	 *
+	 * @param path
+	 * @param defaultBlockSize
+	 * 		This block size will be used for reading non-chunked datasets.
+	 * 		It is also possible to override the block-size for reading non-
+	 * 		chunked datasets but we do not do that here as it's rarely
+	 * 		useful.
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5HDF5Writer openHDF5Writer(final String path, final int... defaultBlockSize) throws IOException {
+
+		final IHDF5Writer hdf5Writer = HDF5Factory.open(path);
+		return new N5HDF5Writer(hdf5Writer, defaultBlockSize);
+	}
+
+	/**
+	 * Open an {@link N5Writer} for Google Cloud.
+	 *
+	 * @param url
+	 * @param projectId
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5GoogleCloudStorageWriter openGoogleCloudWriter(final String url, final String projectId) throws IOException {
 
 		final GoogleCloudStorageClient storageClient;
-		switch (accessType) {
-		case Reader:
-			storageClient = new GoogleCloudStorageClient();
-			break;
-		case Writer:
+		if (projectId == null) {
+			final ResourceManager resourceManager = new GoogleCloudResourceManagerClient().create();
 			final Iterator<Project> projectsIterator = resourceManager.list().iterateAll().iterator();
 			if (!projectsIterator.hasNext())
 				return null;
-			final String projectId = projectsIterator.next().getProjectId();
-
+			storageClient = new GoogleCloudStorageClient(projectsIterator.next().getProjectId());
+		} else
 			storageClient = new GoogleCloudStorageClient(projectId);
-			break;
-		default:
-			storageClient = null;
-		}
-		final Storage storage = storageClient.create();
-		final GoogleCloudStorageURI googleCloudUri = new GoogleCloudStorageURI(containerPath);
-		final String bucketName = googleCloudUri.getBucket();
 
-		switch (accessType) {
-		case Reader:
-			return (N5) new N5GoogleCloudStorageReader(storage, bucketName);
-		case Writer:
-			return (N5) new N5GoogleCloudStorageWriter(storage, bucketName);
-		default:
-			return null;
-		}
+		final Storage storage = storageClient.create();
+		final GoogleCloudStorageURI googleCloudUri = new GoogleCloudStorageURI(url);
+		final String bucketName = googleCloudUri.getBucket();
+		return new N5GoogleCloudStorageWriter(storage, bucketName);
+	}
+
+	/**
+	 * Open an {@link N5Writer} for AWS S3.
+	 *
+	 * @param url
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5AmazonS3Writer openAWSS3Writer(final String url) throws IOException {
+
+		return new N5AmazonS3Writer(createS3(url), new AmazonS3URI(url));
+	}
+
+	/**
+	 * Open an {@link N5Reader} based on some educated guessing from the url.
+	 *
+	 * @param url
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5Reader openReader(final String url) throws IOException {
+
+		try {
+			final URI uri = new URI(url);
+			final String scheme = uri.getScheme();
+			if (scheme == null);
+			else if (scheme.equals("s3"))
+				return openAWSS3Reader(url);
+			else if (scheme.equals("gs"))
+				return openGoogleCloudReader(url);
+			else if (scheme.equals("https") || scheme.equals("http")) {
+				if (uri.getHost().matches(".*s3\\.amazonaws\\.com"))
+					return openAWSS3Reader(url);
+				else if (uri.getHost().matches(".*cloud\\.google\\.com"))
+					return openGoogleCloudReader(url);
+			}
+		} catch (final URISyntaxException e) {}
+		if (url.matches("(?i).*\\.(h5|hdf5|hdf)"))
+			return openHDF5Reader(url, 64);
+		else if (url.matches("(?i).*\\.zarr"))
+			return openZarrReader(url);
+		else
+			return openFSReader(url);
+	}
+
+	/**
+	 * Open an {@link N5Writer} based on some educated guessing from the url.
+	 *
+	 * @param url
+	 * @return
+	 * @throws IOException
+	 */
+	public static N5Writer openWriter(final String url) throws IOException {
+
+		try {
+			final URI uri = new URI(url);
+			final String scheme = uri.getScheme();
+			if (scheme == null);
+			else if (scheme.equals("s3"))
+				return openAWSS3Writer(url);
+			else if (scheme.equals("gs"))
+				return openGoogleCloudWriter(url, null);
+			else if (scheme.equals("https") || scheme.equals("http")) {
+				if (uri.getHost().matches(".*s3\\.amazonaws\\.com"))
+					return openAWSS3Writer(url);
+				else if (uri.getHost().matches(".*cloud\\.google\\.com"))
+					return openGoogleCloudWriter(url, null);
+			}
+		} catch (final URISyntaxException e) {}
+		if (url.matches("(?i).*\\.(h5|hdf5|hdf)"))
+			return openHDF5Writer(url, 64);
+		else if (url.matches("(?i).*\\.zarr"))
+			return openZarrWriter(url);
+		else
+			return openFSWriter(url);
 	}
 }
