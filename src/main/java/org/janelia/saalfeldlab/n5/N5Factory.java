@@ -71,6 +71,7 @@ import ch.systemsx.cisd.hdf5.IHDF5Writer;
  * the constructors of the readers and writers for further parameters.
  *
  * @author Stephan Saalfeld
+ * @author John Bogovic
  */
 public interface N5Factory
 {
@@ -78,8 +79,8 @@ public interface N5Factory
 	/**
 	 * Helper method.
 	 *
-	 * @param url
-	 * @return
+	 * @param url the amazon n5 object url
+	 * @return an AmazonS3 instance
 	 */
 	public static AmazonS3 createS3(final String url) {
 
@@ -114,8 +115,8 @@ public interface N5Factory
 	/**
 	 * Open an {@link N5Reader} for N5 filesystem.
 	 *
-	 * @param path
-	 * @return
+	 * @param path path to the root n5 directory
+	 * @return n5 reader
 	 * @throws IOException
 	 */
 	public static N5FSReader openFSReader(final String path) throws IOException {
@@ -129,8 +130,8 @@ public interface N5Factory
 	 * For more options of the Zarr backend study the {@link N5ZarrReader}
 	 * constructors.
 	 *
-	 * @param path
-	 * @return
+	 * @param path path to the root zarr directory
+	 * @return n5 reader
 	 * @throws IOException
 	 */
 	public static N5ZarrReader openZarrReader(final String path) throws IOException {
@@ -145,12 +146,12 @@ public interface N5Factory
 	 * For more options of the HDF5 backend study the {@link N5HDF5Reader}
 	 * constructors.
 	 *
-	 * @param path
+	 * @param path path to the hdf5 file
 	 * @param defaultBlockSize
 	 * 		This block size will be used for reading non-chunked datasets.
 	 * 		It is also possible to override the block-size for reading chunked
 	 * 		datasets but we do not do that here as it's rarely useful.
-	 * @return
+	 * @return n5 reader
 	 * @throws IOException
 	 */
 	public static N5HDF5Reader openHDF5Reader(final String path, final int... defaultBlockSize) throws IOException {
@@ -162,9 +163,8 @@ public interface N5Factory
 	/**
 	 * Open an {@link N5Reader} for Google Cloud.
 	 *
-	 * @param url
-	 * @param projectId
-	 * @return
+	 * @param url the google cloud n5 object url
+	 * @return n5 reader
 	 * @throws IOException
 	 */
 	public static N5GoogleCloudStorageReader openGoogleCloudReader(final String url) throws IOException {
@@ -179,8 +179,8 @@ public interface N5Factory
 	/**
 	 * Open an {@link N5Reader} for AWS S3.
 	 *
-	 * @param url
-	 * @return
+	 * @param url the amazon n5 object url
+	 * @return n5 reader
 	 * @throws IOException
 	 */
 	public static N5AmazonS3Reader openAWSS3Reader(final String url) throws IOException {
@@ -191,8 +191,8 @@ public interface N5Factory
 	/**
 	 * Open an {@link N5Writer} for N5 filesystem.
 	 *
-	 * @param path
-	 * @return
+	 * @param path path to the root n5 directory
+	 * @return n5 writer
 	 * @throws IOException
 	 */
 	public static N5FSWriter openFSWriter(final String path) throws IOException {
@@ -206,8 +206,8 @@ public interface N5Factory
 	 * For more options of the Zarr backend study the {@link N5ZarrWriter}
 	 * constructors.
 	 *
-	 * @param path
-	 * @return
+	 * @param path path to root zarr directory
+	 * @return n5 writer
 	 * @throws IOException
 	 */
 	public static N5ZarrWriter openZarrWriter(final String path) throws IOException {
@@ -223,13 +223,13 @@ public interface N5Factory
 	 * For more options of the HDF5 backend study the {@link N5HDF5Writer}
 	 * constructors.
 	 *
-	 * @param path
+	 * @param path path to hdf5 file
 	 * @param defaultBlockSize
 	 * 		This block size will be used for reading non-chunked datasets.
 	 * 		It is also possible to override the block-size for reading non-
 	 * 		chunked datasets but we do not do that here as it's rarely
 	 * 		useful.
-	 * @return
+	 * @return n5 writer
 	 * @throws IOException
 	 */
 	public static N5HDF5Writer openHDF5Writer(final String path, final int... defaultBlockSize) throws IOException {
@@ -241,9 +241,9 @@ public interface N5Factory
 	/**
 	 * Open an {@link N5Writer} for Google Cloud.
 	 *
-	 * @param url
+	 * @param url url to n5 root in google cloud 
 	 * @param projectId
-	 * @return
+	 * @return n5 writer
 	 * @throws IOException
 	 */
 	public static N5GoogleCloudStorageWriter openGoogleCloudWriter(final String url, final String projectId) throws IOException {
@@ -267,8 +267,8 @@ public interface N5Factory
 	/**
 	 * Open an {@link N5Writer} for AWS S3.
 	 *
-	 * @param url
-	 * @return
+	 * @param url url to n5 root in amazon s3
+	 * @return n5 writer
 	 * @throws IOException
 	 */
 	public static N5AmazonS3Writer openAWSS3Writer(final String url) throws IOException {
@@ -279,8 +279,8 @@ public interface N5Factory
 	/**
 	 * Open an {@link N5Reader} based on some educated guessing from the url.
 	 *
-	 * @param url
-	 * @return
+	 * @param url url or path to an n5 root of some type
+	 * @return n5 reader
 	 * @throws IOException
 	 */
 	public static N5Reader openReader(final String url) throws IOException {
@@ -311,8 +311,8 @@ public interface N5Factory
 	/**
 	 * Open an {@link N5Writer} based on some educated guessing from the url.
 	 *
-	 * @param url
-	 * @return
+	 * @param url url or path to an n5 root of some type
+	 * @return n5 writer
 	 * @throws IOException
 	 */
 	public static N5Writer openWriter(final String url) throws IOException {
