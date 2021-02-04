@@ -25,7 +25,7 @@ public class TestTryWith
 	 */
 	public static <T extends RealType<T> & NativeType<T>> void main( String[] args )
 	{
-		URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
+		URL configUrl = TestTryWith.class.getResource( "/plugins.config" );
 		File baseDir = new File( configUrl.getFile()).getParentFile();
 		String path = baseDir.getAbsolutePath() + File.separator + "breaking.h5";
 	

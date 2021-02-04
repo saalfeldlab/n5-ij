@@ -29,7 +29,7 @@ public class TestExportImports
 	@Before
 	public void before()
 	{
-		URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
+		URL configUrl = TestExportImports.class.getResource( "/plugins.config" );
 		baseDir = new File( configUrl.getFile()).getParentFile();
 	}
 
