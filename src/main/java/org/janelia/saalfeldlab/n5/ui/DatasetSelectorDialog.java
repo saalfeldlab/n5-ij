@@ -71,6 +71,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 
+import ij.IJ;
 import ij.Prefs;
 
 public class DatasetSelectorDialog
@@ -435,14 +436,24 @@ public class DatasetSelectorDialog
          */
         fileChooser.setFileSelectionMode( JFileChooser.FILES_AND_DIRECTORIES );
 
-        if (lastBrowsePath != null && !lastBrowsePath.isEmpty())
-            fileChooser.setCurrentDirectory(new File(lastBrowsePath));
+		if ( lastBrowsePath != null && !lastBrowsePath.isEmpty() )
+			fileChooser.setCurrentDirectory( new File( lastBrowsePath ) );
+		else if ( initialContainerPath != null && !initialContainerPath.isEmpty() )
+			fileChooser.setCurrentDirectory( new File( initialContainerPath ) );
+		else if ( IJ.getInstance() != null )
+			fileChooser.setCurrentDirectory( new File( IJ.getDirectory( "current" ) ) );
+
         final int ret = fileChooser.showOpenDialog(dialog);
         if (ret != JFileChooser.APPROVE_OPTION)
             return null;
 
         final String path = fileChooser.getSelectedFile().getAbsolutePath();
         containerPathText.setText( path );
+        lastBrowsePath = path;
+
+        // callback after browse as well
+        containerPathUpdateCallback.accept( path );
+
         return path;
     }
 

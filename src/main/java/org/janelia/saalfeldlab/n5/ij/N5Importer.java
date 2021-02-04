@@ -195,7 +195,8 @@ public class N5Importer implements PlugIn
 			selectionDialog.setTreeRenderer( new N5DatasetTreeCellRenderer( true ) );
 
 			selectionDialog.setContainerPathUpdateCallback( x -> {
-				lastOpenedContainer = x;
+				if( x != null )
+					lastOpenedContainer = x;
 			});
 			selectionDialog.setVirtualOption( true );
 			selectionDialog.setCropOption( true );
