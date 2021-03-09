@@ -37,7 +37,8 @@ import ij.ImagePlus;
 import net.imglib2.realtransform.AffineTransform3D;
 
 public class N5CosemMetadata extends AbstractN5Metadata implements
-	N5GsonMetadataParser< N5CosemMetadata >, N5MetadataWriter< N5CosemMetadata >, ImageplusMetadata< N5CosemMetadata >
+	N5GsonMetadataParser< N5CosemMetadata >, N5MetadataWriter< N5CosemMetadata >, ImageplusMetadata< N5CosemMetadata >,
+	PhysicalMetadata
 {
 	public static final String pixelResolutionKey = "pixelResolution";
 
@@ -255,6 +256,31 @@ public class N5CosemMetadata extends AbstractN5Metadata implements
 							0, 0, scale[0], translate[0] );
 			return transform;
 		}
+	}
+
+	@Override
+	public int numPhysicalDimensions()
+	{
+		return getTransform().translate.length;
+	}
+
+	@Override
+	public void spacing( double[] spacing )
+	{
+		final int n = numPhysicalDimensions();
+		System.arraycopy( getTransform().scale, 0, spacing, 0, n );
+	}
+
+	@Override
+	public void offset( double[] offset )
+	{
+		final int n = numPhysicalDimensions();
+		System.arraycopy( getTransform().translate, 0, offset, 0, n );
+	}
+
+	public String physicalUnit()
+	{
+		return getTransform().units[ 0 ];
 	}
 
 }

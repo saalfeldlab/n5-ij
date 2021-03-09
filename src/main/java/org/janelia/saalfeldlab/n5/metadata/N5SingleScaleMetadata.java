@@ -38,7 +38,7 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.Scale3D;
 
 public class N5SingleScaleMetadata extends AbstractN5Metadata implements N5GsonMetadataParser< N5SingleScaleMetadata >,
-N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetadata >
+N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetadata >, PhysicalMetadata
 {
     public static final String DOWNSAMPLING_FACTORS_KEY = "downsamplingFactors";
     public static final String PIXEL_RESOLUTION_KEY = "pixelResolution";
@@ -161,6 +161,7 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 		ip.getCalibration().pixelDepth = t.transform.get( 2, 2 );
 		ip.getCalibration().setUnit( t.unit );
 		ip.setDimensions( 1, ip.getStackSize(), 1 );
+		ip.setTitle( t.getPath() );
 	}
 
 	@Override
@@ -201,5 +202,33 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
             transform.preConcatenate(extraTransform);
         return transform;
     }
+
+	@Override
+	public int numPhysicalDimensions()
+	{
+		return 3;
+	}
+
+	@Override
+	public void spacing( double[] spacing )
+	{
+		spacing[ 0 ] = transform.get( 0, 0 );
+		spacing[ 1 ] = transform.get( 1, 1 );
+		spacing[ 2 ] = transform.get( 2, 2 );
+	}
+
+	@Override
+	public void offset( double[] offset )
+	{
+		offset[ 0 ] = transform.get( 0, 3 );
+		offset[ 1 ] = transform.get( 1, 3 );
+		offset[ 2 ] = transform.get( 2, 3 );
+	}
+
+	@Override
+	public String physicalUnit()
+	{
+		return unit;
+	}
 
 }

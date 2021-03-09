@@ -26,6 +26,7 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.DoubleStream;
@@ -36,7 +37,7 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import ij.ImagePlus;
 
 public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadataParser< DefaultMetadata >,
-	N5MetadataWriter< DefaultMetadata >, ImageplusMetadata< DefaultMetadata >
+	N5MetadataWriter< DefaultMetadata >, ImageplusMetadata< DefaultMetadata >, PhysicalMetadata
 {
 	private final FinalVoxelDimensions voxDims;
 
@@ -121,6 +122,7 @@ public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadat
 			imp.getCalibration().pixelDepth = voxdims.dimension( 2 );
 
 		imp.getCalibration().setUnit( voxdims.unit() );
+		imp.setTitle( t.getPath() );
 	}
 
 	@Override
@@ -132,6 +134,30 @@ public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadat
 		if( imp.getNChannels() > 1 ){ nd++; }
 
 		return new DefaultMetadata( "", nd );
+	}
+
+	@Override
+	public int numPhysicalDimensions()
+	{
+		return voxDims.numDimensions();
+	}
+
+	@Override
+	public void spacing( double[] spacing )
+	{
+		Arrays.fill( spacing, 1.0 );
+	}
+
+	@Override
+	public void offset( double[] offset )
+	{
+		Arrays.fill( offset, 0.0 );
+	}
+
+	@Override
+	public String physicalUnit()
+	{
+		return "pixel";
 	}
 
 }

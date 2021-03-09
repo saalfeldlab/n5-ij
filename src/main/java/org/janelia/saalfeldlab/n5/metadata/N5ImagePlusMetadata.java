@@ -40,7 +40,7 @@ import net.imglib2.Interval;
 import net.imglib2.realtransform.AffineTransform3D;
 
 public class N5ImagePlusMetadata extends AbstractN5Metadata implements ImageplusMetadata<N5ImagePlusMetadata>,
-	N5MetadataWriter< N5ImagePlusMetadata >, N5GsonMetadataParser< N5ImagePlusMetadata >
+	N5MetadataWriter< N5ImagePlusMetadata >, N5GsonMetadataParser< N5ImagePlusMetadata >, PhysicalMetadata
 {
 	public static final String titleKey = "title";
 	public static final String fpsKey = "fps";
@@ -313,6 +313,40 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 				{}
 			}
 		}
+	}
+
+	@Override
+	public int numPhysicalDimensions()
+	{
+		return numSlices > 1 ? 3 : 2;
+	}
+
+	@Override
+	public void spacing( double[] spacing )
+	{
+		spacing[ 0 ] = pixelWidth;
+		spacing[ 1 ] = pixelHeight;
+		if( numSlices > 1 )
+		{
+			spacing[ 2 ] = pixelDepth;
+		}
+	}
+
+	@Override
+	public void offset( double[] offset )
+	{
+		offset[ 0 ] = xOrigin;
+		offset[ 1 ] = yOrigin;
+		if( numSlices > 1 )
+		{
+			offset[ 2 ] = zOrigin;
+		}
+	}
+
+	@Override
+	public String physicalUnit()
+	{
+		return unit;
 	}
 
 }
