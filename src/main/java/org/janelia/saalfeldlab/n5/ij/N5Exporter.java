@@ -27,7 +27,6 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
@@ -38,6 +37,8 @@ import java.util.concurrent.Executors;
 
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.n5.Compression;
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
 import org.janelia.saalfeldlab.n5.N5Writer;
@@ -47,7 +48,6 @@ import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
-import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
 import org.janelia.saalfeldlab.n5.metadata.ImagePlusMetadataTemplate;
@@ -62,24 +62,28 @@ import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
 import org.scijava.app.StatusService;
 import org.scijava.command.Command;
+import org.scijava.command.ContextCommand;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import org.scijava.ui.UIService;
 
 import com.amazonaws.services.s3.AmazonS3URI;
 
 import ij.ImagePlus;
-import ncsa.hdf.hdf5lib.exceptions.HDF5FileNotFoundException;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.imageplus.ImagePlusImg;
+import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>Export N5")
-public class N5Exporter implements Command, WindowListener {
-
+public class N5Exporter extends ContextCommand implements WindowListener
+{
 	public static final String GZIP_COMPRESSION = "gzip";
 	public static final String RAW_COMPRESSION = "raw";
 	public static final String LZ4_COMPRESSION = "lz4";
@@ -87,6 +91,12 @@ public class N5Exporter implements Command, WindowListener {
 	public static final String BLOSC_COMPRESSION = "blosc";
 
 	public static final String NONE = "None";
+
+	public static final String NO_OVERWRITE = "No overwrite";
+	public static final String OVERWRITE = "Overwrite";
+	public static final String WRITE_SUBSET = "Overwrite subset";
+
+	public static enum OVERWRITE_OPTIONS { NO_OVERWRITE, OVERWRITE, WRITE_SUBSET };
 
 	@Parameter(visibility = ItemVisibility.MESSAGE, required = false)
 	private String message = "Export an ImagePlus to an N5 container.";
@@ -97,11 +107,14 @@ public class N5Exporter implements Command, WindowListener {
 	@Parameter
 	private StatusService status;
 
+	@Parameter
+	private UIService ui;
+
 	@Parameter(label = "Image")
 	private ImagePlus image; // or use Dataset? - maybe later
 
-	@Parameter(label = "N5 root", style="directory" )
-	private File n5RootLocation;
+	@Parameter(label = "N5 root url" )
+	private String n5RootLocation;
 
 	@Parameter(
 			label = "Dataset",
@@ -118,11 +131,6 @@ public class N5Exporter implements Command, WindowListener {
 			style = "listBox")
 	private String compressionArg = GZIP_COMPRESSION;
 
-//    @Parameter( label = "Type",
-//    			choices = { "Auto", "N5", "Zarr", "HDF5" },
-//    			style="listBox" )
-	private String containerType = "Auto";
-
 	@Parameter(
 			label = "metadata type",
 			description = "The style for metadata to be stored in the exported N5.",
@@ -133,8 +141,19 @@ public class N5Exporter implements Command, WindowListener {
 					NONE})
 	private String metadataStyle = N5Importer.MetadataN5ViewerKey;
 
-	@Parameter(label = "Thread count", required = false, min = "1", max = "64")
+	@Parameter(label = "Thread count", required = true, min = "1", max = "256")
 	private int nThreads = 1;
+
+	@Parameter(
+			label = "Overwrite options", required = true, 
+			choices = { NO_OVERWRITE, OVERWRITE, WRITE_SUBSET },
+			description="Determines whether overwriting datasets allows, and how overwriting occurs."
+					+ "If selected will overwrite values in an existing dataset if they exist.")
+	private String overwriteChoices = NO_OVERWRITE;
+
+	@Parameter( label = "Overwrite subset offset", required = false, 
+			description="The point in pixel units where the origin of this image will be written into the n5-dataset (comma-delimited)")
+	private String subsetOffset;
 
 	private int[] blockSize;
 
@@ -169,19 +188,33 @@ public class N5Exporter implements Command, WindowListener {
 			final String n5Dataset,
 			final String blockSizeArg,
 			final String metadataStyle,
-			final String compression)
+			final String compression,
+			final String overwriteOption,
+			final String subsetOffset )
 	{
 		this.image = image;
-		this.n5RootLocation = new File( n5RootLocation );
+		this.n5RootLocation = n5RootLocation;
+		dataType = detectType( n5RootLocation );
+
 		this.n5Dataset = n5Dataset;
 
 		this.blockSizeArg = blockSizeArg;
 		this.metadataStyle = metadataStyle;
 		this.compressionArg = compression;
+
+		this.overwriteChoices = overwriteOption;
+		this.subsetOffset = subsetOffset;
 	}
 
-	public void setType(final String type) {
+	@Deprecated
+	public void setType(final String type)
+	{
+		dataType = typeFromString( type );
+	}
 
+	public static DataAccessType typeFromString(final String type)
+	{
+		DataAccessType dataType;
 		try {
 			dataType = DataAccessType.valueOf(type.toUpperCase());
 		} catch (final IllegalArgumentException e) {
@@ -190,10 +223,12 @@ public class N5Exporter implements Command, WindowListener {
 			else
 				dataType = null;
 		}
+		return dataType;
 	}
 
-	public DataAccessType detectType(final String rootPath) {
-
+	@Deprecated
+	public static DataAccessType detectType(final String rootPath)
+	{
 		URI uri = null;
 		try {
 			uri = URI.create(rootPath);
@@ -242,12 +277,32 @@ public class N5Exporter implements Command, WindowListener {
 		impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate(""));
 	}
 
+	public void parseBlockSize()
+	{
+		final int nd = image.getNDimensions();
+		String[] blockArgList = blockSizeArg.split(",");
+		blockSize = new int[ nd ];
+		int i = 0;
+		while( i < blockArgList.length && i < nd )
+		{
+			blockSize[ i ] = Integer.parseInt( blockArgList[ i ] );
+			i++;
+		}
+		int N = blockArgList.length - 1;
+
+		while( i < nd )
+		{
+			blockSize[ i ] = blockSize[ N ];
+			i++;
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	public <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void process() throws IOException, DataAccessException, InterruptedException, ExecutionException {
 
-		final N5Writer n5 = getWriter();
+		final N5Writer n5 = new N5Factory().openWriter( n5RootLocation );
 		final Compression compression = getCompression();
-		blockSize = Arrays.stream(blockSizeArg.split(",")).mapToInt(x -> Integer.parseInt(x)).toArray();
+		parseBlockSize();
 
 		N5MetadataWriter<M> writer = null;
 		if (!metadataStyle.equals(NONE)) {
@@ -259,7 +314,7 @@ public class N5Exporter implements Command, WindowListener {
 		if (metadataStyle.equals(NONE) ||
 				metadataStyle.equals(N5Importer.MetadataImageJKey) ||
 				metadataStyle.equals(N5Importer.MetadataCustomKey)) {
-			write(n5, compression, writer);
+			write(n5, compression, writer );
 		} else {
 			writeSplitChannels(n5, compression, writer);
 		}
@@ -269,10 +324,91 @@ public class N5Exporter implements Command, WindowListener {
 	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void write(
 			final N5Writer n5,
 			final Compression compression,
-			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException
+			final N5MetadataWriter<M> writer ) throws IOException, InterruptedException, ExecutionException
 	{
-		N5IJUtils.save( image, n5, n5Dataset, blockSize, compression );
-		writeMetadata( n5, n5Dataset, writer );
+		if( overwriteChoices.equals( WRITE_SUBSET ))
+		{
+			final long[] offset = Arrays.stream( subsetOffset.split( "," ))
+					.mapToLong( Long::parseLong )
+					.toArray();
+
+			if( !n5.datasetExists( n5Dataset ))
+			{
+				// details don't matter, saveRegions changes this value
+				final long[] dimensions = new long[ image.getNDimensions() ];
+				Arrays.fill( dimensions, 1 );
+
+				// find data type
+				int type = image.getType();
+				DataType n5type;
+
+				switch ( type )
+				{
+				case ImagePlus.GRAY8:
+					n5type = DataType.UINT8;
+					break;
+				case ImagePlus.GRAY16:
+					n5type = DataType.UINT16;
+					break;
+				case ImagePlus.GRAY32:
+					n5type = DataType.FLOAT32;
+					break;
+//				case ImagePlus.COLOR_RGB: // TODO add color support
+//					break;
+				default:
+					n5type = null;
+				}
+
+				final DatasetAttributes attributes = new DatasetAttributes( dimensions, blockSize, n5type, compression);
+				n5.createDataset(n5Dataset, attributes);
+				writeMetadata( n5, n5Dataset, writer );
+			}
+
+			final ImagePlusImg<T, ?> ipImg = ImagePlusImgs.from( image );
+			final IntervalView< T > rai = Views.translate( ipImg, offset );
+			if (nThreads > 1)
+				N5Utils.saveRegion( rai, n5, n5Dataset );
+			else
+				N5Utils.saveRegion( rai, n5, n5Dataset,  Executors.newFixedThreadPool( nThreads ));
+		}
+		else
+		{
+			if( overwriteChoices.equals( NO_OVERWRITE ) && n5.datasetExists( n5Dataset ))
+			{
+				if( ui != null )
+					ui.showDialog( String.format("Dataset (%s) already exists, not writing.", n5Dataset ) );
+				else
+					System.out.println( String.format("Dataset (%s) already exists, not writing.", n5Dataset ) );
+
+				return;
+			}
+
+			// Here, either allowing overwrite, or not allowing, but the dataset does not exist
+			if (nThreads > 1)
+			{
+				N5IJUtils.save( image, n5, n5Dataset, blockSize, compression, Executors.newFixedThreadPool( nThreads ) );
+			}
+			else
+			{
+				N5IJUtils.save(image, n5, n5Dataset, blockSize, compression);
+			}
+			writeMetadata( n5, n5Dataset, writer );
+		}
+	}
+
+	private static long[] getOffsetForSaveSubset3d( final ImagePlus imp )
+	{
+		final int nd = imp.getNDimensions();
+		long[] offset = new long[ nd ];
+
+		offset[ 0 ] = (int)imp.getCalibration().xOrigin;
+		offset[ 1 ] = (int)imp.getCalibration().yOrigin;
+
+		int j = 2;
+		if( imp.getNSlices() > 1 )
+			offset[ j++ ] = (int)imp.getCalibration().zOrigin;
+
+		return offset;
 	}
 
 	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void writeSplitChannels(
@@ -367,33 +503,57 @@ public class N5Exporter implements Command, WindowListener {
 		}
 	}
 
+	@Deprecated
 	public N5Writer getWriter() throws IOException, DataAccessException
 	{
+		return getWriter( n5RootLocation, dataType );
+	}
+
+	/**
+	 * Return an appropriate N5Writer, detecting the type from the n5 path string.
+	 * returns null if detection fails.
+	 * 
+	 * @param n5RootLocation
+	 * @return
+	 * @throws IOException
+	 * @throws DataAccessException
+	 */
+	@Deprecated
+	public static N5Writer getWriter( 
+			final String n5PathString ) throws IOException, DataAccessException
+	{
+		return getWriter( n5PathString, detectType( n5PathString ));
+	}
+
+	@Deprecated
+	public static N5Writer getWriter( 
+			final String n5PathString,
+			final String dataType ) throws IOException, DataAccessException
+	{
+		return getWriter( n5PathString, typeFromString( dataType ));
+	}
+
+	@Deprecated
+	public static N5Writer getWriter( 
+			final String n5PathString,
+			final DataAccessType dataType ) throws IOException, DataAccessException
+	{
+		final String n5StringProc;
 		// hack to fix paths to cloud store
 		// while parsing Files - the easiest way to enable browsing of filesystem
-		String n5RootStringRaw = n5RootLocation.toString();
-		String n5RootString;
-		if( n5RootStringRaw.startsWith( "s3:/" ) && !n5RootStringRaw.startsWith( "s3://" ))
-			n5RootString = "s3://" + n5RootStringRaw.substring( 4 );
-		else if( n5RootStringRaw.startsWith( "gs:/" ) && !n5RootStringRaw.startsWith( "gs://" ))
-			n5RootString = "gs://" + n5RootStringRaw.substring( 4 );
-		else if( n5RootStringRaw.startsWith( "https:/" ) && !n5RootStringRaw.startsWith( "https://" ))
-			n5RootString = "https://" + n5RootStringRaw.substring( 7 );
-		else if( n5RootStringRaw.startsWith( "http:/" ) && !n5RootStringRaw.startsWith( "http://" ))
-			n5RootString = "http://" + n5RootStringRaw.substring( 6 );
+		if( n5PathString.startsWith( "s3:/" ) && !n5PathString.startsWith( "s3://" ))
+			n5StringProc = "s3://" + n5PathString.substring( 4 );
+		else if( n5PathString.startsWith( "gs:/" ) && !n5PathString.startsWith( "gs://" ))
+			n5StringProc = "gs://" + n5PathString.substring( 4 );
+		else if( n5PathString.startsWith( "https:/" ) && !n5PathString.startsWith( "https://" ))
+			n5StringProc = "https://" + n5PathString.substring( 7 );
+		else if( n5PathString.startsWith( "http:/" ) && !n5PathString.startsWith( "http://" ))
+			n5StringProc = "http://" + n5PathString.substring( 6 );
 		else
-			n5RootString = n5RootStringRaw;
+			n5StringProc = n5PathString;
 		// end hack
 
-		if (containerType.equals("Auto"))
-			dataType = detectType(n5RootString);
-		else
-			setType(containerType);
-
-		if (dataType == null)
-			status.warn("Could not detect container type from location.");
-
-		return new DataAccessFactory(dataType, n5RootString).createN5Writer(n5RootString);
+		return new DataAccessFactory( dataType, n5PathString).createN5Writer( n5PathString );
 	}
 
 	@Override
