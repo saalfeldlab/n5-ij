@@ -116,7 +116,8 @@ public class TestExportImports
 			boolean testMeta )
 	{
 		final N5Exporter writer = new N5Exporter();
-		writer.setOptions( imp, outputPath, dataset, blockSizeString, metadataType, compressionType );
+		writer.setOptions( imp, outputPath, dataset, blockSizeString, metadataType, compressionType,
+				N5Exporter.OVERWRITE, "");
 		writer.run();
 
 		final String readerDataset = metadataType.equals( N5Importer.MetadataN5ViewerKey ) ? dataset + "/c0/s0" : dataset;

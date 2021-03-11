@@ -366,7 +366,6 @@ public class N5Factory implements Serializable {
 
 		try {
 			final URI uri = new URI(url);
-			System.out.println( "uri host: " + uri.getHost());
 			final String scheme = uri.getScheme();
 			if (scheme == null);
 			else if (scheme.equals("s3"))
@@ -382,7 +381,8 @@ public class N5Factory implements Serializable {
 		} catch (final URISyntaxException e) {}
 		if (isHDF5(url))
 			return openHDF5Reader(url);
-		else if (url.matches("(?i).*\\.zarr"))
+//		else if (url.matches("(?i).*\\.zarr"))
+		else if (url.contains(".zarr"))
 			return openZarrReader(url);
 		else
 			return openFSReader(url);
