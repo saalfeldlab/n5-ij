@@ -572,60 +572,31 @@ public class N5Importer implements PlugIn
 		loaderThread.run();
 	}
 
-//	public static Interval containingBlockAlignedInterval(
-//			final N5Reader n5,
-//			final String dataset,
-//			final Interval interval ) throws IOException
-//	{
-//		return containingBlockAlignedInterval( n5, dataset, interval );
-//	}
-
-	/*
-	 * Returns the smallest {@link Interval} that contains the input interval
-	 * and contains complete blocks.
-	 *
-	 * @param n5 the n5 reader
-	 * @param dataset the dataset
-	 * @param interval the interval
-	 * @return the smallest containing interval
-	 * @throws IOException
-	 */
-//	public static Interval containingBlockAlignedInterval(
-//			final N5Reader n5,
-//			final String dataset,
-//			final Interval interval) throws IOException
-//	{
-//		// TODO move to N5Utils?
-//		if ( !n5.datasetExists( dataset ) )
-//		{
-////			if( log != null )
-////				log.error( "no dataset" );
-//
-//			return null;
-//		}
-//
-//		DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
-//		int nd = attrs.getNumDimensions();
-//		int[] blockSize = attrs.getBlockSize();
-//		long[] dims = attrs.getDimensions();
-//
-//		long[] min = new long[ nd ];
-//		long[] max = new long[ nd ];
-//		for( int d = 0; d < nd; d++ )
-//		{
-//			// check that interval aligns with blocks
-//			min[ d ] = interval.min( d )- (interval.min( d ) % blockSize[ d ]);
-//			max[ d ] = interval.max( d )  + ((interval.max( d )  + blockSize[ d ] - 1 ) % blockSize[ d ]);
-//
-//			// check that interval is contained in the dataset dimensions
-//			min[ d ] = Math.max( 0, interval.min( d ) );
-//			max[ d ] = Math.min( dims[ d ] - 1, interval.max( d ) );
-//		}
-//
-//		return new FinalInterval( min, max );
-//	}
-
 	public static class N5ViewerReaderFun implements Function< String, N5Reader >
+	{
+		public String message;
+
+		public N5Reader apply( final String n5PathIn )
+		{
+			N5Reader n5;
+			if ( n5PathIn == null || n5PathIn.isEmpty() )
+				return null;
+
+			N5Factory factory = new N5Factory();
+			try
+			{
+				n5 = factory.openReader( n5PathIn );
+			}
+			catch ( IOException e )
+			{
+				IJ.handleException( e );
+				return null;
+			}
+			return n5;
+		}
+	}
+
+	public static class N5ViewerReaderFunOld implements Function< String, N5Reader >
 	{
 		public String message;
 
@@ -652,7 +623,6 @@ public class N5Importer implements PlugIn
 			try
 			{
 				n5 = new DataAccessFactory( type, n5BasePath ).createN5Reader( n5BasePath );
-
 				/*
 				 * Do we need this check?
 				 */

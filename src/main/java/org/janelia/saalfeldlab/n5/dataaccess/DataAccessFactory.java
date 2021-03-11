@@ -65,6 +65,7 @@ import com.google.gson.GsonBuilder;
 
 import ij.gui.GenericDialog;
 
+@Deprecated
 public class DataAccessFactory
 {
 	private final DataAccessType type;
