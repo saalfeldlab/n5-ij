@@ -110,6 +110,7 @@ public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadat
 	@Override
 	public void writeMetadata( final DefaultMetadata t, final ImagePlus imp ) throws IOException
 	{
+		imp.setTitle( t.getPath() );
 		final FinalVoxelDimensions voxdims = t.voxDims;
 		if ( voxdims.numDimensions() > 0 )
 			imp.getCalibration().pixelWidth = voxdims.dimension( 0 );

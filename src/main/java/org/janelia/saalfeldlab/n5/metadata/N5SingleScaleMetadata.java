@@ -156,6 +156,7 @@ N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetad
 	@Override
 	public void writeMetadata( final N5SingleScaleMetadata t, final ImagePlus ip ) throws IOException
 	{
+		ip.setTitle( t.getPath() );
 		ip.getCalibration().pixelWidth = t.transform.get( 0, 0 );
 		ip.getCalibration().pixelHeight = t.transform.get( 1, 1 );
 		ip.getCalibration().pixelDepth = t.transform.get( 2, 2 );

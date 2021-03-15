@@ -164,10 +164,9 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 	@Override
 	public void writeMetadata( final N5ImagePlusMetadata t, final ImagePlus ip ) throws IOException
 	{
-		final Calibration cal = ip.getCalibration();
-
 		ip.setTitle( t.name );
 
+		final Calibration cal = ip.getCalibration();
 		cal.fps = t.fps;
 		cal.frameInterval = t.frameInterval ;
 		cal.pixelWidth = t.pixelWidth;
