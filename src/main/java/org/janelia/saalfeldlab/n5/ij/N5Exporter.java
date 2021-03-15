@@ -126,7 +126,7 @@ public class N5Exporter extends ContextCommand implements WindowListener
 	private String blockSizeArg;
 
 	@Parameter(
-			label = "Compresstion",
+			label = "Compression",
 			choices = {GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION},
 			style = "listBox")
 	private String compressionArg = GZIP_COMPRESSION;
