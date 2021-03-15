@@ -30,11 +30,12 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
 
-public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements
-	ImageplusMetadata< ImagePlusMetadataTemplate >
+public class ImagePlusMetadataTemplate extends AbstractN5Metadata<ImagePlusMetadataTemplate> 
+	implements ImageplusMetadata< ImagePlusMetadataTemplate >
 {
 	public final String name;
 
@@ -166,6 +167,26 @@ public class ImagePlusMetadataTemplate extends  AbstractN5Metadata implements
 	public ImagePlusMetadataTemplate readMetadata( final ImagePlus ip )
 	{
 		return new ImagePlusMetadataTemplate( "", ip );
+	}
+
+	@Override
+	public void writeMetadata( ImagePlusMetadataTemplate t, N5Writer n5, String dataset ) throws Exception
+	{
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public HashMap< String, Class< ? > > keysToTypes()
+	{
+		// TODO
+		return null;
+	}
+
+	@Override
+	public ImagePlusMetadataTemplate parseMetadata( Map< String, Object > map ) throws Exception
+	{
+		// TODO
+		return null;
 	}
 
 }

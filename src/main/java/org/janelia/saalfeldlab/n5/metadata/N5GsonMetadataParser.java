@@ -86,12 +86,6 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		final HashMap< String, Class< ? > > typeMap = keysToTypes();
 		objMap.put( "dataset", dataset );
 
-//		try
-//		{
-//			objMap.put( "attributes", parseDatasetAttributesJson( map ));
-//		}
-//		catch ( Exception e1 ) { }
-
 		for( final String k : typeMap.keySet() )
 		{
 			objMap.put( k , gson.fromJson( map.get( k ), typeMap.get( k )));

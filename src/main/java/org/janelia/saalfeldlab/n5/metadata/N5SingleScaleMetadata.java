@@ -37,8 +37,7 @@ import ij.ImagePlus;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.Scale3D;
 
-public class N5SingleScaleMetadata extends AbstractN5Metadata implements N5GsonMetadataParser< N5SingleScaleMetadata >,
-N5MetadataWriter< N5SingleScaleMetadata >, ImageplusMetadata< N5SingleScaleMetadata >
+public class N5SingleScaleMetadata extends AbstractN5Metadata<N5SingleScaleMetadata> implements ImageplusMetadata< N5SingleScaleMetadata >
 {
     public static final String DOWNSAMPLING_FACTORS_KEY = "downsamplingFactors";
     public static final String PIXEL_RESOLUTION_KEY = "pixelResolution";

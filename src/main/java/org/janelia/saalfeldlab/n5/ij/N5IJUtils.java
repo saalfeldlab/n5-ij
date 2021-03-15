@@ -92,6 +92,17 @@ public class N5IJUtils {
 		final RandomAccessibleInterval<T> rai = N5Utils.open(n5, dataset);
 		final DatasetAttributes attributes = n5.getDatasetAttributes(dataset);
 		final long[] dimensions = attributes.getDimensions();
+
+		M metadata = null;
+		if( metaReader != null && metaReader != null )
+		{
+			try
+			{
+				metadata = metaReader.parseMetadata( n5, dataset );
+			}
+			catch ( final Exception e ) { System.err.println( "Warning: could not read metadata." );}
+		}
+
 		final ImagePlusImg<T, ?> impImg;
 		switch (attributes.getDataType()) {
 		case UINT8:
@@ -124,15 +135,8 @@ public class N5IJUtils {
 			pair.getB().set(pair.getA());
 
 		final ImagePlus imp = impImg.getImagePlus();
-		if( metaReader != null && metaReader != null )
-		{
-			try
-			{
-				final M metadata = metaReader.parseMetadata( n5, dataset );
-				metaReader.writeMetadata( metadata, imp );
-			}
-			catch ( final Exception e ) { System.err.println( "Warning: could not read metadata." );}
-		}
+		if( metadata != null )
+			metaReader.writeMetadata( metadata, imp );
 
 		return imp;
 	}

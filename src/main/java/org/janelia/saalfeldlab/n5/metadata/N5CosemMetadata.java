@@ -36,8 +36,7 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import ij.ImagePlus;
 import net.imglib2.realtransform.AffineTransform3D;
 
-public class N5CosemMetadata extends AbstractN5Metadata implements
-	N5GsonMetadataParser< N5CosemMetadata >, N5MetadataWriter< N5CosemMetadata >, ImageplusMetadata< N5CosemMetadata >
+public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata> implements ImageplusMetadata< N5CosemMetadata >
 {
 	public static final String pixelResolutionKey = "pixelResolution";
 

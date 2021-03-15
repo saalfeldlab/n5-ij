@@ -39,8 +39,7 @@ import ij.measure.Calibration;
 import net.imglib2.Interval;
 import net.imglib2.realtransform.AffineTransform3D;
 
-public class N5ImagePlusMetadata extends AbstractN5Metadata implements ImageplusMetadata<N5ImagePlusMetadata>,
-	N5MetadataWriter< N5ImagePlusMetadata >, N5GsonMetadataParser< N5ImagePlusMetadata >
+public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata> implements ImageplusMetadata<N5ImagePlusMetadata>
 {
 	public static final String titleKey = "title";
 	public static final String fpsKey = "fps";
@@ -56,6 +55,8 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 	public static final String numChannelsKey = "numChannels";
 	public static final String numSlicesKey = "numSlices";
 	public static final String numFramesKey = "numFrames";
+
+	public static final String typeKey = "type";
 
 	public static final String imagePropertiesKey = "imageProperties";
 
@@ -77,6 +78,7 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 	private int numSlices;
 	private int numFrames;
 
+	private int type;
 	private String unit;
 
 	private Map< String, Object > properties;
@@ -130,6 +132,8 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 		keysToTypes.put( numChannelsKey, Integer.class );
 		keysToTypes.put( numSlicesKey, Integer.class );
 		keysToTypes.put( numFramesKey, Integer.class );
+
+		keysToTypes.put( typeKey, Integer.class );
 
 		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
@@ -217,6 +221,8 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 		t.numChannels = ip.getNChannels();
 		t.numSlices = ip.getNSlices();
 		t.numFrames = ip.getNFrames();
+
+		t.type = ip.getType();
 
 		xfm.set( t.pixelWidth, 0, 0 );
 		xfm.set( t.pixelHeight, 1, 1 );
@@ -313,5 +319,5 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 			}
 		}
 	}
-
+	
 }

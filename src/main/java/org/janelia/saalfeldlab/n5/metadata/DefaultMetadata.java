@@ -35,8 +35,7 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
 
-public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadataParser< DefaultMetadata >,
-	N5MetadataWriter< DefaultMetadata >, ImageplusMetadata< DefaultMetadata >
+public class DefaultMetadata extends AbstractN5Metadata<DefaultMetadata> implements ImageplusMetadata< DefaultMetadata >
 {
 	private final FinalVoxelDimensions voxDims;
 
