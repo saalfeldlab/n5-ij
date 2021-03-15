@@ -513,8 +513,8 @@ public class N5Exporter extends ContextCommand implements WindowListener
 	 * Return an appropriate N5Writer, detecting the type from the n5 path string.
 	 * returns null if detection fails.
 	 * 
-	 * @param n5RootLocation
-	 * @return
+	 * @param n5PathString the root location
+	 * @return the n5 writer
 	 * @throws IOException
 	 * @throws DataAccessException
 	 */
