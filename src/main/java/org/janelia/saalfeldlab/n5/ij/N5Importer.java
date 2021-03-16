@@ -63,6 +63,7 @@ import ij.plugin.frame.Recorder;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converter;
 import net.imglib2.converter.Converters;
 import net.imglib2.converter.RealFloatConverter;
 import net.imglib2.img.display.imagej.ImageJFunctions;
@@ -70,7 +71,9 @@ import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
+import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
@@ -270,12 +273,13 @@ public class N5Importer implements PlugIn
 		final DataType type = meta.getAttributes().getDataType();
 		if(	type != DataType.FLOAT32 &&
 			type != DataType.UINT8 &&
-			type != DataType.UINT16 )
+			type != DataType.UINT16 &&
+			type != DataType.UINT32 )
 		{
 			if( showMessage )
 			{
 				IJ.error( "Cannot open datasets of type (" + type + ").\n"
-						+ "ImageJ supports uint8, uint16, or float32.");
+						+ "ImageJ supports uint8, uint16, uint32(rgb), or float32.");
 			}
 			return false;
 		}
@@ -365,10 +369,17 @@ public class N5Importer implements PlugIn
 		RandomAccessibleInterval< T > convImg;
 		DataType type = datasetMeta.getAttributes().getDataType();
 
+		final boolean isRGB = (datasetMeta instanceof N5ImagePlusMetadata) &&
+				((N5ImagePlusMetadata)datasetMeta).getType() == ImagePlus.COLOR_RGB;
+
 		// Compute LUT after crop
 		if(	type == DataType.FLOAT64 )
 		{
 			convImg = convertDouble( img );
+		}
+		else if( isRGB && type == DataType.UINT32)
+		{
+			convImg = convertToRGB( img );
 		}
 		else if( type == DataType.INT32 || type == DataType.UINT32 ||
 				 type == DataType.INT64 || type == DataType.UINT64 )
@@ -414,6 +425,15 @@ public class N5Importer implements PlugIn
 				img, 
 				new RealFloatConverter< DoubleType >(),
 				new FloatType() );
+	}
+
+	public static RandomAccessibleInterval< ARGBType >
+		convertToRGB( final RandomAccessibleInterval< UnsignedIntType > img )
+	{
+		return Converters.convert( 
+				img,
+				new IntegerToaRGBConverter(),
+				new ARGBType() );
 	}
 
 	@SuppressWarnings( { "rawtypes", "unchecked" } )
@@ -694,6 +714,15 @@ public class N5Importer implements PlugIn
 			return h5PathAndDataset.substring( 0, i + len );
 		else
 			return h5PathAndDataset.substring( i + len );
+	}
+
+	public static class IntegerToaRGBConverter implements Converter< UnsignedIntType, ARGBType >
+	{
+		@Override
+		public void convert( UnsignedIntType input, ARGBType output )
+		{
+			output.set( input.getInt() );
+		}
 	}
 
 }

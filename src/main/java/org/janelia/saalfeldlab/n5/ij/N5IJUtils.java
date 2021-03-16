@@ -44,13 +44,18 @@ import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.exception.ImgLibException;
+import net.imglib2.img.Img;
 import net.imglib2.img.cell.LazyCellImg;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgs;
+import net.imglib2.img.imageplus.IntImagePlus;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
+import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.util.Pair;
 import net.imglib2.view.Views;
 
@@ -167,6 +172,7 @@ public class N5IJUtils {
 	 * Save an {@link ImagePlus} as an N5 dataset.
 	 *
 	 * @param <T> the image data type
+	 * @param <M> the image data type
 	 * @param <W> the metadata writer type
 	 * @param imp the ImagePlus
 	 * @param n5 the writer
@@ -176,7 +182,9 @@ public class N5IJUtils {
 	 * @param metaWriter (optional) metadata writer
 	 * @throws IOException io exception
 	 */
-	public static <T extends N5Metadata, W extends N5MetadataWriter< T > & ImageplusMetadata< T >> void save(
+	@SuppressWarnings( "unchecked" )
+	public static <T extends RealType<T> & NativeType<T>, M extends N5Metadata, W extends N5MetadataWriter< M > & ImageplusMetadata< M >>
+		void save(
 			final ImagePlus imp,
 			final N5Writer n5,
 			final String datasetName,
@@ -184,7 +192,11 @@ public class N5IJUtils {
 			final Compression compression,
 			final W metaWriter ) throws IOException
 	{
-		final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
+		final Img<T> rai;
+		if( imp.getType() == ImagePlus.COLOR_RGB )
+			rai = ( Img< T > ) wrapRgbAsInt( imp );
+		else
+			rai = ImageJFunctions.wrap(imp);
 
 		N5Utils.save(
 				rai,
@@ -197,7 +209,7 @@ public class N5IJUtils {
 		{
 			try
 			{
-				final T metadata = metaWriter.readMetadata( imp );
+				final M metadata = metaWriter.readMetadata( imp );
 				metaWriter.writeMetadata( metadata, n5, datasetName );
 			}
 			catch ( final Exception e ) { e.printStackTrace(); }
@@ -235,6 +247,7 @@ public class N5IJUtils {
 	 * an {@link ExecutorService}.
 	 *
 	 * @param <T> the image data type.
+	 * @param <M> the metadata type.
 	 * @param <W> the metadata writer type.
 	 * @param imp the ImagePlus
 	 * @param n5 the writer
@@ -247,7 +260,9 @@ public class N5IJUtils {
 	 * @throws InterruptedException interrupted
 	 * @throws ExecutionException execution
 	 */
-	public static <T extends N5Metadata, W extends N5MetadataWriter< T > & ImageplusMetadata< T >> void save(
+	@SuppressWarnings( "unchecked" )
+	public static <T extends RealType<T> & NativeType<T>, M extends N5Metadata, W extends N5MetadataWriter< M > & ImageplusMetadata< M >> 
+		void save(
 			final ImagePlus imp,
 			final N5Writer n5,
 			final String datasetName,
@@ -257,7 +272,11 @@ public class N5IJUtils {
 			final W metaWriter )
 					throws IOException, InterruptedException, ExecutionException
 	{
-		final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
+		final Img<T> rai;
+		if( imp.getType() == ImagePlus.COLOR_RGB )
+			rai = ( Img< T > ) wrapRgbAsInt( imp );
+		else
+			rai = ImageJFunctions.wrap(imp);
 
 		N5Utils.save(
 				rai,
@@ -271,7 +290,7 @@ public class N5IJUtils {
 		{
 			try
 			{
-				final T metadata = metaWriter.readMetadata( imp );
+				final M metadata = metaWriter.readMetadata( imp );
 				metaWriter.writeMetadata( metadata, n5, datasetName );
 			}
 			catch ( final Exception e ) { e.printStackTrace(); }
@@ -394,5 +413,21 @@ public class N5IJUtils {
 				blockSize,
 				compression,
 				exec);
+	}
+
+	public static Img< UnsignedIntType > wrapRgbAsInt( final ImagePlus imp )
+	{
+		if ( imp.getType() != ImagePlus.COLOR_RGB )
+			return null;
+
+		final IntImagePlus< UnsignedIntType > container = new IntImagePlus<>( imp );
+
+		// create a Type that is linked to the container
+		final UnsignedIntType linkedType = new UnsignedIntType( container );
+
+		// pass it to the DirectAccessContainer
+		container.setLinkedType( linkedType );
+
+		return container;
 	}
 }
