@@ -29,14 +29,21 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.DoubleStream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
+import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.realtransform.Scale;
+import net.imglib2.realtransform.Scale2D;
+import net.imglib2.realtransform.Scale3D;
+import net.imglib2.realtransform.ScaleAndTranslation;
 
-public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata> implements ImageplusMetadata< N5CosemMetadata >
+public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata> 
+	implements ImageplusMetadata< N5CosemMetadata >, PhysicalMetadata
 {
 	public static final String pixelResolutionKey = "pixelResolution";
 
@@ -243,6 +250,25 @@ public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata> impleme
 			this.units = units;
 		}
 
+		public AffineGet getAffine()
+		{
+			assert( scale.length == 3  && translate.length == 3 );
+
+			// COSEM scales and translations are in c-order
+			double[] scaleRev = new double[ scale.length ];
+			double[] translateRev = new double[ translate.length ];
+
+			int j = scale.length - 1;
+			for( int i = 0; i < scale.length; i++ )
+			{
+				scaleRev[ i ] = scale[ j ];
+				translateRev[ i ] = translate[ j ];
+				j--;
+			}
+
+			return new ScaleAndTranslation( scaleRev, translateRev );
+		}
+
 		public AffineTransform3D toAffineTransform3d()
 		{
 			assert( scale.length == 3  && translate.length == 3 );
@@ -254,6 +280,32 @@ public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata> impleme
 							0, 0, scale[0], translate[0] );
 			return transform;
 		}
+	}
+	
+	@Override
+	public AffineGet physicalTransform()
+	{
+		return getTransform().getAffine();
+	}
+	
+	@Override
+	public String[] units()
+	{
+		String[] rawUnits = getTransform().units;
+		String[] out = new String[ rawUnits.length ];
+		int j = rawUnits.length - 1;
+		for( int i = 0; i < rawUnits.length; i++ )
+		{
+			out[ i ] = rawUnits[ j ];
+			j--;
+		}
+		return out;
+	}
+
+	@Override
+	public AffineTransform3D physicalTransform3d()
+	{
+		return getTransform().toAffineTransform3d();
 	}
 
 }

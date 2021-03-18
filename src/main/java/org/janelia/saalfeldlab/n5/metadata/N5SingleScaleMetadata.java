@@ -29,15 +29,18 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
+import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.Scale3D;
 
-public class N5SingleScaleMetadata extends AbstractN5Metadata<N5SingleScaleMetadata> implements ImageplusMetadata< N5SingleScaleMetadata >
+public class N5SingleScaleMetadata extends AbstractN5Metadata<N5SingleScaleMetadata> 
+	implements ImageplusMetadata< N5SingleScaleMetadata >, PhysicalMetadata
 {
     public static final String DOWNSAMPLING_FACTORS_KEY = "downsamplingFactors";
     public static final String PIXEL_RESOLUTION_KEY = "pixelResolution";
@@ -201,5 +204,17 @@ public class N5SingleScaleMetadata extends AbstractN5Metadata<N5SingleScaleMetad
             transform.preConcatenate(extraTransform);
         return transform;
     }
+   
+   @Override
+	public AffineGet physicalTransform()
+	{
+		return transform;
+	}
+	
+	@Override
+	public String[] units()
+	{
+		return Stream.generate( () -> unit ).limit( 3 ).toArray( String[]::new );
+	}
 
 }

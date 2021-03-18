@@ -29,44 +29,39 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
+import java.util.stream.DoubleStream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 
+import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.realtransform.Scale;
+import net.imglib2.realtransform.Scale2D;
+import net.imglib2.realtransform.Scale3D;
 
-public class N5CosemMultiScaleMetadata implements N5Metadata, N5GroupParser< N5CosemMultiScaleMetadata >{
+public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadata> implements N5Metadata, N5GroupParser< N5CosemMultiScaleMetadata >,
+	PhysicalMetadata
+{
 
     public final String basePath;
-
-    public final String[] paths;
-
-    public final AffineTransform3D[] transforms;
 
     private static final Predicate<String> scaleLevelPredicate = Pattern.compile("^s\\d+$").asPredicate();
 
     public N5CosemMultiScaleMetadata( )
     {
+    	super();
         this.basePath = null;
-        this.paths = null;
-        this.transforms = null;
     }
 
-    public N5CosemMultiScaleMetadata( final String basePath, final String[] paths, final AffineTransform3D[] transforms)
+    public N5CosemMultiScaleMetadata( final String basePath, final String[] paths,
+    		final AffineTransform3D[] transforms,
+    		final String[] units )
     {
-        Objects.requireNonNull(paths);
-        Objects.requireNonNull(transforms);
-        for (final String path : paths)
-            Objects.requireNonNull(path);
-        for (final AffineTransform3D transform : transforms)
-            Objects.requireNonNull(transform);
-
+    	super( paths, transforms, units);
         this.basePath = basePath;
-        this.paths = paths;
-        this.transforms = transforms;
     }
 
 	@Override
@@ -93,6 +88,7 @@ public class N5CosemMultiScaleMetadata implements N5Metadata, N5GroupParser< N5C
 	public N5CosemMultiScaleMetadata parseMetadataGroup( final N5TreeNode node )
 	{
 		final Map< String, N5TreeNode > scaleLevelNodes = new HashMap<>();
+		String[] units = null;
 		for ( final N5TreeNode childNode : node.childrenList() )
 		{
 			if ( scaleLevelPredicate.test( childNode.getNodeName() ) &&
@@ -100,6 +96,8 @@ public class N5CosemMultiScaleMetadata implements N5Metadata, N5GroupParser< N5C
 				 childNode.getMetadata() instanceof N5CosemMetadata )
 			{
 				scaleLevelNodes.put( childNode.getNodeName(), childNode );
+				if( units == null)
+					units = ((N5CosemMetadata)childNode.getMetadata()).units();
 			}
 		}
 
@@ -116,7 +114,15 @@ public class N5CosemMultiScaleMetadata implements N5Metadata, N5GroupParser< N5C
 		return new N5CosemMultiScaleMetadata(
 				node.path,
 				paths.toArray( new String[ 0 ] ),
-				transforms.toArray( new AffineTransform3D[ 0 ] ) );
+				transforms.toArray( new AffineTransform3D[ 0 ] ),
+				units);
+	}
+	
+	@Override
+	public AffineGet physicalTransform()
+	{
+		// spatial transforms are specified by the individual scales 
+		return null;
 	}
 
 }

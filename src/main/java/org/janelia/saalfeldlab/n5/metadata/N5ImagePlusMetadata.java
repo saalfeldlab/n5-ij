@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -37,9 +38,12 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import ij.ImagePlus;
 import ij.measure.Calibration;
 import net.imglib2.Interval;
+import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.realtransform.ScaleAndTranslation;
 
-public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata> implements ImageplusMetadata<N5ImagePlusMetadata>
+public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
+	implements ImageplusMetadata<N5ImagePlusMetadata>, PhysicalMetadata
 {
 	public static final String titleKey = "title";
 	public static final String fpsKey = "fps";
@@ -331,6 +335,31 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
 		}
 
 		n5.setAttributes( dataset, attrs );
+	}
+	
+	public AffineGet physicalTransform()
+	{
+		final int nd = numSlices > 1 ? 3 : 2;
+		final double[] spacing = new double[ nd ];
+		final double[] offset = new double[ nd ];
+
+		spacing[ 0 ] = pixelWidth;
+		spacing[ 1 ] = pixelHeight;
+		if( numSlices > 1 )
+			spacing[ 2 ] = pixelDepth;
+
+		offset[ 0 ] = xOrigin;
+		offset[ 1 ] = yOrigin;
+		if( numSlices > 1 )
+			offset[ 2 ] = zOrigin;
+
+		return new ScaleAndTranslation( spacing, offset );
+	}
+	
+	public String[] units()
+	{
+		final int nd = numSlices > 1 ? 3 : 2;
+		return ( String[] ) Stream.generate( () -> unit ).limit( nd ).toArray();
 	}
 	
 }
