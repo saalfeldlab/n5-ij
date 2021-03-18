@@ -20,16 +20,29 @@ public interface PhysicalMetadata
 			return ( AffineTransform3D ) transform;
 		else
 		{
-			final int N = transform.numSourceDimensions() < 3 ? transform.numSourceDimensions() : 3;
-			final double[] params = new double[ 12 ];
-			int k = 0;
-			for( int i = 0; i < N; i++ )
-				for( int j = 0; j < N+1; j++ )
-					params[ k++ ] = transform.get( i, j );
+			final int N = transform.numSourceDimensions();
 
+			int k = 0;
 			final AffineTransform3D transform3d = new AffineTransform3D();
+			final double[] params = transform3d.getRowPackedCopy();
+			for( int i = 0; i < 3; i++ )
+			{
+				for( int j = 0; j < 3; j++ )
+				{
+					if( i < N && j < N )
+						params[ k ] = transform.get( i, j );
+
+					k++;
+				}
+
+				// j == 4
+				if( i < N )
+					params[ k ] = transform.get( i, N );
+
+				k++;
+			}
+
 			transform3d.set( params );
-			
 			return transform3d;
 		}
 	}

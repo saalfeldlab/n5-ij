@@ -150,9 +150,9 @@ public class DefaultMetadata extends AbstractN5Metadata<DefaultMetadata> impleme
 		if( nd == 0 )
 			return null;
 		else if( nd == 2 )
-			return new Scale2D();
+			return new Scale2D( 1, 1 );
 		else if( nd == 3 )
-			return new Scale3D();
+			return new Scale3D( 1, 1, 1 );
 		else
 			return new Scale( DoubleStream.generate( () -> 1.0 ).limit( nd ).toArray());
 	}
