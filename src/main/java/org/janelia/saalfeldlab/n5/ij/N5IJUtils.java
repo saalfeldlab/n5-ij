@@ -182,8 +182,8 @@ public class N5IJUtils {
 	 * @param metaWriter (optional) metadata writer
 	 * @throws IOException io exception
 	 */
-	@SuppressWarnings( "unchecked" )
-	public static <T extends RealType<T> & NativeType<T>, M extends N5Metadata, W extends N5MetadataWriter< M > & ImageplusMetadata< M >>
+	@SuppressWarnings( { "unchecked", "rawtypes" } )
+	public static <T extends RealType & NativeType, M extends N5Metadata, W extends N5MetadataWriter< M > & ImageplusMetadata< M >>
 		void save(
 			final ImagePlus imp,
 			final N5Writer n5,
@@ -260,8 +260,8 @@ public class N5IJUtils {
 	 * @throws InterruptedException interrupted
 	 * @throws ExecutionException execution
 	 */
-	@SuppressWarnings( "unchecked" )
-	public static <T extends RealType<T> & NativeType<T>, M extends N5Metadata, W extends N5MetadataWriter< M > & ImageplusMetadata< M >> 
+	@SuppressWarnings( { "unchecked", "rawtypes" } )
+	public static <T extends RealType & NativeType, M extends N5Metadata, W extends N5MetadataWriter< M > & ImageplusMetadata< M >> 
 		void save(
 			final ImagePlus imp,
 			final N5Writer n5,
@@ -415,6 +415,12 @@ public class N5IJUtils {
 				exec);
 	}
 
+	/**
+	 * Wraps an RGB image as a {@link Img} of type {@link UnsignedIntType}.
+	 * 
+	 * @param imp the ImagePlus
+	 * @return the wrapped image
+	 */
 	public static Img< UnsignedIntType > wrapRgbAsInt( final ImagePlus imp )
 	{
 		if ( imp.getType() != ImagePlus.COLOR_RGB )

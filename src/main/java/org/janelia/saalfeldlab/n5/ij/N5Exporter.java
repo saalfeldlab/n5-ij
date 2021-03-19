@@ -329,8 +329,8 @@ public class N5Exporter extends ContextCommand implements WindowListener
 		n5.close();
 	}
 
-	@SuppressWarnings( "unchecked" )
-	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void write(
+	@SuppressWarnings( { "unchecked", "rawtypes" } )
+	private <T extends RealType & NativeType, M extends N5Metadata> void write(
 			final N5Writer n5,
 			final Compression compression,
 			final N5MetadataWriter<M> writer ) throws IOException, InterruptedException, ExecutionException
@@ -426,7 +426,7 @@ public class N5Exporter extends ContextCommand implements WindowListener
 		return offset;
 	}
 
-	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void writeSplitChannels(
+	private <T extends RealType & NativeType, M extends N5Metadata> void writeSplitChannels(
 			final N5Writer n5,
 			final Compression compression,
 			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException
