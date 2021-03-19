@@ -198,6 +198,12 @@ public class N5Importer implements PlugIn
 				if( x != null )
 					lastOpenedContainer = x;
 			});
+
+			selectionDialog.setCancelCallback( x -> {
+				// set back recorder state if canceled
+				Recorder.record = record;
+			});
+
 			selectionDialog.setVirtualOption( true );
 			selectionDialog.setCropOption( true );
 			selectionDialog.run( this::datasetSelectorCallBack );
@@ -229,7 +235,11 @@ public class N5Importer implements PlugIn
 
 			gd.showDialog();
 			if ( gd.wasCanceled() )
+			{
+				// set back recorder state if canceled
+				Recorder.record = record;
 				return;
+			}
 
 			n5Path = gd.getNextString();
 			final boolean openAsVirtual = gd.getNextBoolean();

@@ -41,6 +41,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -136,6 +137,8 @@ public class DatasetSelectorDialog
 
 	private Consumer< String > containerPathUpdateCallback;
 
+	private Consumer< Void > cancelCallback;
+
 	private Predicate< N5TreeNode > n5NodeFilter;
 
 	private N5DatasetTreeCellRenderer treeRenderer;
@@ -214,6 +217,11 @@ public class DatasetSelectorDialog
 	public void setRecursiveFilterCallback( final Predicate< N5TreeNode > n5NodeFilter )
 	{
 		this.n5NodeFilter = n5NodeFilter;
+	}
+
+	public void setCancelCallback( final Consumer< Void > cancelCallback )
+	{
+		this.cancelCallback = cancelCallback;
 	}
 
 	public void setContainerPathUpdateCallback( final Consumer< String > containerPathUpdateCallback )
@@ -567,6 +575,9 @@ public class DatasetSelectorDialog
 		{
 			parserFuture.cancel( true );
 		}
+
+		if( cancelCallback != null )
+			cancelCallback.accept( null );
     }
 
 	private static final Font DEFAULT_FONT = new Font( Font.SANS_SERIF, Font.PLAIN, 12 );
