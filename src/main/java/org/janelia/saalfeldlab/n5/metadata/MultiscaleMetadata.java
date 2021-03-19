@@ -5,7 +5,7 @@ import java.util.Objects;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 
-public abstract class MultiscaleMetadata<T extends PhysicalMetadata & N5Metadata> implements PhysicalMetadata
+public abstract class MultiscaleMetadata<T extends PhysicalMetadata> implements PhysicalMetadata
 {
 	final private String[] paths;
 

@@ -3,7 +3,7 @@ package org.janelia.saalfeldlab.n5.metadata;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 
-public interface PhysicalMetadata
+public interface PhysicalMetadata extends N5Metadata
 {
 	public AffineGet physicalTransform();
 	
