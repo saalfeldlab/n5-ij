@@ -210,6 +210,10 @@ public class N5Importer implements PlugIn
 		}
 		else
 		{
+			// disable recorder
+			record = Recorder.record;
+			Recorder.record = false;
+
 			String n5Path = Macro.getValue( args, n5PathKey, "" );
 			final boolean dialogAsVirtual = args.contains( " virtual" );
 
@@ -258,6 +262,9 @@ public class N5Importer implements PlugIn
 			}
 
 			final Interval thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
+
+			// set recorder back
+			Recorder.record = record;
 
 			final N5Reader n5ForThisDataset  = new N5ViewerReaderFun().apply( n5Path );
 			N5Metadata meta;
