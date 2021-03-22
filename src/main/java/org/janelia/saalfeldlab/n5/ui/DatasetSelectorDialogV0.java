@@ -373,7 +373,7 @@ public class DatasetSelectorDialogV0
 			containerPathTxt.setText(n5Path);
 
 //        treeModel.setRoot(N5DatasetDiscoverer.toJTreeNode(n5RootNode));
-		treeModel.setRoot( n5RootNode );
+		treeModel.setRoot( n5RootNode.asJTree() );
         listModel.clear();
 
         containerTree.setEnabled(true);

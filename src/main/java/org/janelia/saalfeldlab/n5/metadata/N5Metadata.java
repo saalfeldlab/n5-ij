@@ -57,4 +57,14 @@ public interface N5Metadata {
      * @return the attributes
      */
     public DatasetAttributes getAttributes();
+    
+    /**
+     * Returns true if this path corresponds to a dataset.
+     * 
+     * @return is this a dataset
+     */
+    public default boolean isDataset()
+    {
+    	return getAttributes() != null;
+    }
 }

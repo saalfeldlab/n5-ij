@@ -644,17 +644,17 @@ public class DatasetSelectorDialog
 					{
 						// expand first layer of the tree
 						// in the EDGT
-						@SuppressWarnings( "rawtypes" )
-						Enumeration e = rootNode.children(); 
-						while( e.hasMoreElements() )
-						{
-							N5TreeNode child = ( N5TreeNode ) e.nextElement();
-							containerTree.expandPath( new TreePath( 
-									new N5TreeNode[]{ rootNode, child }));
-						}
+//						@SuppressWarnings( "rawtypes" )
+//						Enumeration e = rootNode.children(); 
+//						while( e.hasMoreElements() )
+//						{
+//							N5TreeNode child = ( N5TreeNode ) e.nextElement();
+//							containerTree.expandPath( new TreePath( 
+//									new N5TreeNode[]{ rootNode, child }));
+//						}
 
 						// set the root node for the JTree
-						treeModel.setRoot( rootNode );
+						treeModel.setRoot( rootNode.asJTree() );
 						messageLabel.setText( "Done" );
 						dialog.repaint();
 					}

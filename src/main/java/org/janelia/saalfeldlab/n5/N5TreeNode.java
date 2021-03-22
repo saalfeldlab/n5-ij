@@ -26,44 +26,77 @@
 package org.janelia.saalfeldlab.n5;
 
 import java.nio.file.Paths;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.scijava.util.DefaultTreeNode;
+import org.scijava.util.TreeNode;
 
-public class N5TreeNode extends DefaultMutableTreeNode
+public class N5TreeNode extends DefaultTreeNode< N5TreeNode.MetadataWrapper >
 {
-	private static final long serialVersionUID = -6433341489220400345L;
+//	private static final long serialVersionUID = -6433341489220400345L;
 
 	public final String path;
 
 	private boolean isDataset;
 
-	private N5Metadata metadata;
+//	private N5Metadata metadata;
+
+	public N5TreeNode( final N5Metadata metadata )
+	{
+		super( new MetadataWrapper( metadata ), null );
+		this.path = metadata.getPath();
+		this.isDataset = metadata.isDataset();
+	}
 
 	public N5TreeNode( final String path, final boolean isDataset )
 	{
-		super();
+		super( new MetadataWrapper(), null );
 		this.path = path;
 		this.isDataset = isDataset;
 	}
 
-    public String getNodeName()
-    {
-        return Paths.get(removeLeadingSlash(path)).getFileName().toString();
-    }
+	public String getNodeName()
+	{
+		return Paths.get( removeLeadingSlash( path ) ).getFileName().toString();
+	}
 
-	@SuppressWarnings("unchecked")
+	public void add( final N5TreeNode child )
+	{
+		this.children().add( child );
+	}
+
+	public void remove( final N5TreeNode child )
+	{
+		this.children().remove( child );
+	}
+
+	public void removeAllChildren()
+	{
+		this.children().clear();
+	}
+
 	public List< N5TreeNode > childrenList()
 	{
-		/* TODO compiles with Eclipse compiler but not with javac because children
-		 * forwards to rawtype Enumeration DefaultMutableTreeNode#children()...
-		 */
-		@SuppressWarnings("rawtypes")
-		final List children = Collections.list( children() );
-		return children;
+		List< N5TreeNode > childrenCopy = new ArrayList< N5TreeNode >();
+		for( TreeNode< ? > c : children() )
+		{
+			childrenCopy.add( (N5TreeNode)c );
+		}
+		return childrenCopy;
+	}
+
+	public DefaultMutableTreeNode asJTree()
+	{
+		DefaultMutableTreeNode node = new DefaultMutableTreeNode( this.toString() );
+		for( TreeNode< ? > c : children() )
+		{
+			node.add( ((N5TreeNode)c).asJTree() );
+		}
+		return node;
 	}
 
 	public void setIsDataset( final boolean isDataset )
@@ -78,14 +111,13 @@ public class N5TreeNode extends DefaultMutableTreeNode
 
 	public void setMetadata( final N5Metadata metadata )
 	{
-		this.metadata = metadata;
+		data().set( metadata );
 	}
 
 	public N5Metadata getMetadata()
 	{
-		return metadata;
+		return data().get();
 	}
-
 
 	@Override
 	public String toString()
@@ -124,4 +156,41 @@ public class N5TreeNode extends DefaultMutableTreeNode
 
         return pathName.startsWith("/") || pathName.startsWith("\\") ? pathName.substring(1) : pathName;
     }
+
+    // get around the fact that data for DefaultTreeNode is immutable 
+	public static class MetadataWrapper implements N5Metadata
+	{
+		private N5Metadata meta;
+
+		public MetadataWrapper()
+		{}
+
+		public MetadataWrapper( final N5Metadata meta )
+		{
+			set( meta );
+		}
+
+		public N5Metadata get()
+		{
+			return meta;
+		}
+
+		public void set( final N5Metadata meta )
+		{
+			this.meta = meta;
+		}
+
+		@Override
+		public String getPath()
+		{
+			return null;
+		}
+
+		@Override
+		public DatasetAttributes getAttributes()
+		{
+			return null;
+		}
+
+	}
 }
