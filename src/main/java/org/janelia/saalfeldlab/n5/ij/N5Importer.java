@@ -542,10 +542,10 @@ public class N5Importer implements PlugIn
 		for ( final N5Metadata datasetMeta : datasetMetadataList )
 		{
 			// is this check necessary?
-//			if( datasetMeta == null )
-//				continue;
+			if( datasetMeta == null )
+				continue;
 
-			final String d = datasetMeta.getPath();
+			final String d = normalPathName(datasetMeta.getPath(), n5.getGroupSeparator() );
 			final String pathToN5Dataset = d.isEmpty() ? rootPath : rootPath + File.separator + d;
 
 			final ImageplusMetadata< ? > impMeta = impMetaWriterTypes.get( datasetMeta.getClass() );
@@ -701,6 +701,11 @@ public class N5Importer implements PlugIn
 		{
 			output.set( input.getInt() );
 		}
+	}
+
+	private static String normalPathName( final String fullPath, final String groupSeparator )
+	{
+		return fullPath.replaceAll( "(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "" );
 	}
 
 }
