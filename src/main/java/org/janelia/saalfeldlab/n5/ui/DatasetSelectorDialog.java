@@ -65,6 +65,7 @@ import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.N5DatasetDiscovererDeepList;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
@@ -85,6 +86,8 @@ public class DatasetSelectorDialog
      * and pass an instance of it to the {@link N5DatasetDiscoverer} constructor here.
      */
     private N5DatasetDiscoverer datasetDiscoverer;
+
+    private N5DatasetDiscovererDeepList datasetDiscovererDl;
 
 	private Consumer< DataSelection > okCallback;
 
@@ -500,19 +503,22 @@ public class DatasetSelectorDialog
 		}
 
 		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, n5NodeFilter, groupParsers, parsers );
-		rootNode = new N5TreeNode( rootPath, false );
-
 		try
 		{
-			loaderFutures = datasetDiscoverer.discoverThreads( n5, rootNode );
+			rootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
 		}
 		catch ( IOException e )
 		{
 			e.printStackTrace();
 		}
 
-		// a thread that completes task after parsing is complete
-		new LoaderSorterAndCallback( rootNode, 500 ).start();
+		// set the root node for the JTree
+		treeModel.setRoot( rootNode );
+		messageLabel.setText( "Done" );
+		dialog.repaint();
+
+		messageLabel.setVisible( false );
+		dialog.repaint();
 
 		containerTree.setEnabled( true );
     }

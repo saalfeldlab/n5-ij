@@ -44,6 +44,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5GsonMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 
 import com.google.gson.JsonElement;
 
@@ -63,6 +64,12 @@ public class N5DatasetDiscoverer {
     private final ExecutorService executor;
 
     private N5TreeNode root;
+
+	private HashMap< String, N5Metadata > metadataMap;
+
+	private String groupSeparator;
+
+	private N5Reader n5;
 
     /**
      * Creates an N5 discoverer with alphanumeric sorting order of groups/datasets (such as, s9 goes before s10).
@@ -146,16 +153,121 @@ public class N5DatasetDiscoverer {
 		this.filter = filter;
 		this.groupParsers = groupParsers;
 		this.metadataParsers = metadataParsers;
+
+		metadataMap = new HashMap<>();
     }
 
+    /**
+     * A method usable as a {@link Predicate} to a {@link N5Reader#deepList} call,
+     * that returns only datasets with metadata parsable with one of this object's
+     * metadata parsers.
+     * <p>
+     * Adds the parsed metadata to this object's metadataMap to avoid parsing wtice
+     * 
+     * @param path the dataset path
+     * @return true if metadata were succesfullty parsed
+     */
+	public boolean metadataParseTest( final String path )
+	{
+		N5TreeNode node = new N5TreeNode( path, false );
+		try
+		{
+			N5DatasetDiscoverer.parseMetadata( n5, node, metadataParsers, null );
+		}
+		catch ( IOException e ) {}
+
+		N5Metadata metadata = node.getMetadata();
+		metadataMap.put( path, metadata );
+
+		return metadata != null;
+	}
+
+    /**
+     * Recursively discovers and parses metadata for datasets that are children 
+     * of the given base path using {@link N5Reader#deepList}. Returns an {@link N5TreeNode}
+     * that can be displayed as a {@link JTree}.
+     * 
+     * @see {@link DatasetSelectorDialog}
+     * 
+     * @param n5 the n5 reader
+     * @param base the base path
+     * @return
+     * @throws IOException
+     */
 	public N5TreeNode discoverRecursive( final N5Reader n5, final String base ) throws IOException
     {
+		metadataMap.clear();
+		this.n5 = n5;
+		groupSeparator = n5.getGroupSeparator();
+
 		root = new N5TreeNode( base, n5.datasetExists( base ));
-		discover( n5, root );
-		parseMetadataRecursive( n5, root, metadataParsers, groupParsers );
-		trim( root );
+		String[] datasetPaths = n5.deepListDatasets( base, this::metadataParseTest );
+
+		buildNodes( root, datasetPaths );
+		sortAndTrimRecursive( root );
 		return root;
     }
+
+	/**
+	 * Generates a tree based on {@link N5Reader#deepList}, modifying the passed {@link N5TreeNode}.
+	 * 
+	 * @param rootNode root node
+	 * @param parsedPaths the result of deepList
+	 */
+	private void buildNodes( final N5TreeNode rootNode, final String[] parsedPaths )
+	{
+		final HashMap< String, N5TreeNode > pathToNode = new HashMap<>();
+
+		pathToNode.put( normalPathName( rootNode.path ), rootNode );
+		final String normalBase = normalPathName( rootNode.path );
+		for ( final String datasetPath : parsedPaths )
+		{
+			final String fullPath = normalBase + groupSeparator + datasetPath;
+			final N5TreeNode node = new N5TreeNode( fullPath, true );
+			node.setMetadata( metadataMap.get( fullPath ) );
+
+			add( normalBase, node, pathToNode, groupSeparator );
+		}
+	}
+
+	/**
+	 * Add the node to its parent, creating parents recursively if needed.
+	 * 
+	 * @param pathToNode
+	 * @param node
+	 * @param groupSeparator
+	 */
+	private static void add( final String base, 
+			final N5TreeNode node,  
+			final HashMap< String, N5TreeNode > pathToNode,
+			final String groupSeparator )
+	{
+		final String fullPath = node.path;
+		if( fullPath.equals( base ) )
+			return;
+
+		final String parentPath = fullPath.substring( 0, fullPath.lastIndexOf( groupSeparator ) );
+		if( !pathToNode.containsKey( parentPath ))
+		{
+			final N5TreeNode parent = new N5TreeNode( parentPath, false );
+			pathToNode.put( parentPath, parent );
+
+			// add the node as a child
+			parent.add( node );
+
+			// add parents recursively if needed
+			add( base, parent, pathToNode, groupSeparator );
+		}
+		else
+		{
+			pathToNode.get( parentPath ).add( node );
+		}
+	}
+
+	private String normalPathName( final String fullPath )
+	{
+		return fullPath.replaceAll( "(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "" );
+	}
 
 	public N5TreeNode parse( final N5Reader n5, final String dataset ) throws IOException
     {
@@ -166,6 +278,14 @@ public class N5DatasetDiscoverer {
 
 	private LinkedBlockingQueue< Future< N5TreeNode > > parseJobFutures;
 
+	/**
+	 * 
+	 * @param n5
+	 * @param node
+	 * @return
+	 * @throws IOException
+	 */
+	@Deprecated
 	public LinkedBlockingQueue< Future< N5TreeNode > > discoverThreads( final N5Reader n5, final N5TreeNode node ) throws IOException
 	{
 		parseJobFutures = new LinkedBlockingQueue<>();
@@ -173,6 +293,7 @@ public class N5DatasetDiscoverer {
 		return parseJobFutures;
 	}
 
+	@Deprecated
 	private N5TreeNode discoverThreadsHelper( final N5Reader n5, final N5TreeNode node ) throws IOException
 	{
 		parseJobFutures.add( executor.submit( new Callable< N5TreeNode >()
@@ -256,6 +377,7 @@ public class N5DatasetDiscoverer {
 			filterRecursive( c );
 	}
 
+	@Deprecated
     private void discover(final N5Reader n5, final N5TreeNode node) throws IOException
     {
         if( !node.isDataset() )
