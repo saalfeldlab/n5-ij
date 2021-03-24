@@ -185,14 +185,12 @@ public class N5DatasetDiscoverer {
     /**
      * Recursively discovers and parses metadata for datasets that are children 
      * of the given base path using {@link N5Reader#deepList}. Returns an {@link N5TreeNode}
-     * that can be displayed as a {@link JTree}.
-     * 
-     * @see {@link DatasetSelectorDialog}
+     * that can be displayed as a JTree.
      * 
      * @param n5 the n5 reader
      * @param base the base path
-     * @return
-     * @throws IOException
+     * @return the n5 tree node
+     * @throws IOException the io exception
      */
 	public N5TreeNode discoverRecursive( final N5Reader n5, final String base ) throws IOException
     {
@@ -234,9 +232,10 @@ public class N5DatasetDiscoverer {
 	/**
 	 * Add the node to its parent, creating parents recursively if needed.
 	 * 
-	 * @param pathToNode
-	 * @param node
-	 * @param groupSeparator
+	 * @param pathToNode the path
+	 * @param node the n5 node
+	 * @param a map from paths to nodes 
+	 * @param groupSeparator the separator character
 	 */
 	private static void add( final String base, 
 			final N5TreeNode node,  
@@ -280,64 +279,6 @@ public class N5DatasetDiscoverer {
 	public void parseGroupsRecursive( final N5TreeNode node )
 	{
 		parseGroupsRecursive( node, groupParsers );
-	}
-
-	private LinkedBlockingQueue< Future< N5TreeNode > > parseJobFutures;
-
-	/**
-	 * 
-	 * @param n5
-	 * @param node
-	 * @return
-	 * @throws IOException
-	 */
-	@Deprecated
-	public LinkedBlockingQueue< Future< N5TreeNode > > discoverThreads( final N5Reader n5, final N5TreeNode node ) throws IOException
-	{
-		parseJobFutures = new LinkedBlockingQueue<>();
-		discoverThreadsHelper( n5, node );
-		return parseJobFutures;
-	}
-
-	@Deprecated
-	private N5TreeNode discoverThreadsHelper( final N5Reader n5, final N5TreeNode node ) throws IOException
-	{
-		parseJobFutures.add( executor.submit( new Callable< N5TreeNode >()
-		{
-			@Override
-			public N5TreeNode call() throws Exception
-			{
-				parseMetadata( n5, node, metadataParsers, null );
-				if ( node.isDataset() )
-				{
-					return node;
-				}
-				else
-				{
-					final String[] children = n5.list( node.getPath() );
-					for ( final String childGroup : children )
-					{
-						// add the node
-						final String childPath = Paths.get( node.getPath(), childGroup ).toString();
-						final N5TreeNode childNode = new N5TreeNode( childPath, false );
-						node.add( childNode );
-
-						// parse recursively
-						parseJobFutures.add( executor.submit( new Callable< N5TreeNode >()
-						{
-							@Override
-							public N5TreeNode call() throws Exception
-							{
-								return discoverThreadsHelper( n5, childNode );
-							}
-						}));
-
-					}
-					return node;
-				}
-			}
-		}));
-		return node;
 	}
 
 	public void sortAndTrimRecursive( final N5TreeNode node )

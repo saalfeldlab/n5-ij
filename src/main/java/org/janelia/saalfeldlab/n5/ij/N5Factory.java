@@ -184,7 +184,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param path path to the n5 root folder
 	 * @return the N5FsReader
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5FSReader openFSReader(final String path) throws IOException {
 
@@ -199,7 +199,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param path path to the zarr directory
 	 * @return the N5ZarrReader
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5ZarrReader openZarrReader(final String path) throws IOException {
 
@@ -215,7 +215,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param path path to the hdf5 file
 	 * @return the N5HDF5Reader
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5HDF5Reader openHDF5Reader(final String path) throws IOException {
 
@@ -227,7 +227,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param url url to the google cloud object
 	 * @return the N5GoogleCloudStorageReader
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5GoogleCloudStorageReader openGoogleCloudReader(final String url) throws IOException {
 
@@ -247,7 +247,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param url url to the amazon s3 object 
 	 * @return the N5AmazonS3Reader
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5AmazonS3Reader openAWSS3Reader(final String url) throws IOException {
 
@@ -262,7 +262,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param path path to the n5 directory
 	 * @return the N5FSWriter
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5FSWriter openFSWriter(final String path) throws IOException {
 
@@ -277,7 +277,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param path path to the zarr directory
 	 * @return the N5ZarrWriter
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5ZarrWriter openZarrWriter(final String path) throws IOException {
 
@@ -294,7 +294,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param path path to the hdf5 file
 	 * @return the N5HDF5Writer
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5HDF5Writer openHDF5Writer(final String path) throws IOException {
 
@@ -306,7 +306,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param url url to the google cloud object 
 	 * @return the N5GoogleCloudStorageWriter
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5GoogleCloudStorageWriter openGoogleCloudWriter(final String url) throws IOException {
 
@@ -334,7 +334,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param url url to the s3 object 
 	 * @return the N5AmazonS3Writer
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5AmazonS3Writer openAWSS3Writer(final String url) throws IOException {
 
@@ -349,7 +349,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param url the location of the root location of the store
 	 * @return the N5Reader
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5Reader openReader(final String url) throws IOException {
 
@@ -382,7 +382,7 @@ public class N5Factory implements Serializable {
 	 *
 	 * @param url the location of the root location of the store
 	 * @return the N5Writer
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public N5Writer openWriter(final String url) throws IOException {
 

@@ -524,59 +524,6 @@ public class N5Exporter extends ContextCommand implements WindowListener
 		}
 	}
 
-	@Deprecated
-	public N5Writer getWriter() throws IOException, DataAccessException
-	{
-		return getWriter( n5RootLocation, dataType );
-	}
-
-	/**
-	 * Return an appropriate N5Writer, detecting the type from the n5 path string.
-	 * returns null if detection fails.
-	 * 
-	 * @param n5PathString the root location
-	 * @return the n5 writer
-	 * @throws IOException
-	 * @throws DataAccessException
-	 */
-	@Deprecated
-	public static N5Writer getWriter( 
-			final String n5PathString ) throws IOException, DataAccessException
-	{
-		return getWriter( n5PathString, detectType( n5PathString ));
-	}
-
-	@Deprecated
-	public static N5Writer getWriter( 
-			final String n5PathString,
-			final String dataType ) throws IOException, DataAccessException
-	{
-		return getWriter( n5PathString, typeFromString( dataType ));
-	}
-
-	@Deprecated
-	public static N5Writer getWriter( 
-			final String n5PathString,
-			final DataAccessType dataType ) throws IOException, DataAccessException
-	{
-		final String n5StringProc;
-		// hack to fix paths to cloud store
-		// while parsing Files - the easiest way to enable browsing of filesystem
-		if( n5PathString.startsWith( "s3:/" ) && !n5PathString.startsWith( "s3://" ))
-			n5StringProc = "s3://" + n5PathString.substring( 4 );
-		else if( n5PathString.startsWith( "gs:/" ) && !n5PathString.startsWith( "gs://" ))
-			n5StringProc = "gs://" + n5PathString.substring( 4 );
-		else if( n5PathString.startsWith( "https:/" ) && !n5PathString.startsWith( "https://" ))
-			n5StringProc = "https://" + n5PathString.substring( 7 );
-		else if( n5PathString.startsWith( "http:/" ) && !n5PathString.startsWith( "http://" ))
-			n5StringProc = "http://" + n5PathString.substring( 6 );
-		else
-			n5StringProc = n5PathString;
-		// end hack
-
-		return new DataAccessFactory( dataType, n5PathString).createN5Writer( n5PathString );
-	}
-
 	@Override
 	public void windowOpened(final WindowEvent e) {}
 

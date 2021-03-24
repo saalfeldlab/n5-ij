@@ -34,7 +34,7 @@ import ij.ImagePlus;
  * 
  * @author John Bogovic
  *
- * @param <T>
+ * @param <T> the metadata type
  */
 public interface ImageplusMetadata< T extends N5Metadata >
 {
@@ -43,7 +43,7 @@ public interface ImageplusMetadata< T extends N5Metadata >
 	 * 
 	 * @param t metadata
 	 * @param ip ImagePlus
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public void writeMetadata( T t, ImagePlus ip ) throws IOException;
 
@@ -52,7 +52,7 @@ public interface ImageplusMetadata< T extends N5Metadata >
 	 * 
 	 * @param ip the ImagePlus
 	 * @return
-	 * @throws IOException
+	 * @throws IOException the io exception
 	 */
 	public T readMetadata( ImagePlus ip ) throws IOException;
 }
