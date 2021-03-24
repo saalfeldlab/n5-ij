@@ -27,7 +27,6 @@ package org.janelia.saalfeldlab.n5;
 
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import javax.swing.tree.DefaultMutableTreeNode;

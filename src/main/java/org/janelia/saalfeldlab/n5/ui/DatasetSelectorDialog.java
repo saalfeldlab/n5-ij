@@ -35,13 +35,9 @@ import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadFactory;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -58,7 +54,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.SwingUtilities;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -148,8 +143,6 @@ public class DatasetSelectorDialog
 	private final N5GroupParser<?>[] groupParsers;
 
 	private final N5MetadataParser<?>[] parsers;
-
-	private LinkedBlockingQueue< Future< N5TreeNode > > loaderFutures;
 
 	private N5TreeNode rootNode;
 
@@ -625,81 +618,6 @@ public class DatasetSelectorDialog
 		return scaleSize( scaleFont( c ) );
 	}
 
-	private class LoaderSorterAndCallback extends Thread
-	{
-		final long waitIntervalMs;
-		private N5TreeNode root;
-		public LoaderSorterAndCallback( final N5TreeNode root, final long waitInterval )
-		{
-			this.waitIntervalMs = waitInterval;
-			this.root = root;
-		}
-
-		@Override
-		public void run()
-		{
-			try
-			{
-				while( loaderFutures.size() > 0 )
-				{
-					try
-					{
-						loaderFutures.poll().get();
-					}
-					catch ( ExecutionException e )
-					{
-						e.printStackTrace();
-					}
-				}
-
-				datasetDiscoverer.sortAndTrimRecursive( rootNode );
-				datasetDiscoverer.parseGroupsRecursive( rootNode );
-				datasetDiscoverer.filterRecursive( rootNode );
-
-				SwingUtilities.invokeLater( new Runnable()
-				{
-					@Override
-					public void run()
-					{
-						// expand first layer of the tree
-						// in the EDGT
-						@SuppressWarnings( "rawtypes" )
-						Enumeration e = rootJTreeNode.children(); 
-						while( e.hasMoreElements() )
-						{
-							N5TreeNode child = ( N5TreeNode ) e.nextElement();
-							containerTree.expandPath( new TreePath( 
-									new N5TreeNode[]{ rootNode, child }));
-						}
-
-						// set the root node for the JTree
-						treeModel.setRoot( rootJTreeNode );
-						messageLabel.setText( "Done" );
-						dialog.repaint();
-					}
-				});
-
-				Thread.sleep( waitIntervalMs );
-
-				SwingUtilities.invokeLater( new Runnable()
-				{
-					@Override
-					public void run()
-					{
-						messageLabel.setVisible( false );
-						dialog.repaint();
-					}
-				});
-
-				this.join();
-			}
-			catch( InterruptedException e )
-			{
-				e.printStackTrace();
-			}
-		}
-	}
-
 	/**
 	 * Removes selected nodes that do not have metadata, and are therefore not openable.
 	 */
@@ -722,9 +640,9 @@ public class DatasetSelectorDialog
 					continue;
 
 				final Object last = path.getLastPathComponent();
-				if( last instanceof N5TreeNode )
+				if( last instanceof JTreeNodeWrapper )
 				{
-					final N5TreeNode node = (N5TreeNode)last;
+					final N5TreeNode node = ((JTreeNodeWrapper)last).getNode();
 					if( node.getMetadata() == null )
 					{
 						selectionModel.removeSelectionPath( path );

@@ -66,6 +66,10 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 						")</html>"
 				}));
 			}
+			else
+			{
+				setText( node.getNodeName() );
+			}
 		}
 		return this;
     }
