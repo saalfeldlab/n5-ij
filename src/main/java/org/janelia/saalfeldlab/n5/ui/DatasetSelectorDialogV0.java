@@ -373,7 +373,7 @@ public class DatasetSelectorDialogV0
 			containerPathTxt.setText(n5Path);
 
 //        treeModel.setRoot(N5DatasetDiscoverer.toJTreeNode(n5RootNode));
-		treeModel.setRoot( n5RootNode );
+		treeModel.setRoot( n5RootNode.asTreeNode() );
         listModel.clear();
 
         containerTree.setEnabled(true);
@@ -406,11 +406,11 @@ public class DatasetSelectorDialogV0
         // add min/max options
 		try
 		{
-			if ( !n5.datasetExists( node.path ) )
+			if ( !n5.datasetExists( node.getPath() ) )
 			{
 				return;
 			}
-			final DatasetAttributes attr = n5.getDatasetAttributes( node.path );
+			final DatasetAttributes attr = n5.getDatasetAttributes( node.getPath() );
 			nd = attr.getNumDimensions();
 			for( int i = 0; i < nd; i++ )
 			{
@@ -444,7 +444,7 @@ public class DatasetSelectorDialogV0
     {
 		if ( node.getMetadata() != null )
 		{
-			listModel.addElement( new SelectedListElement( node.path, node.getMetadata() ) );
+			listModel.addElement( new SelectedListElement( node.getPath(), node.getMetadata() ) );
 		}
 		else
 		{

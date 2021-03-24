@@ -70,12 +70,12 @@ public class N5ViewerMultiscaleMetadataParser implements N5GroupParser< N5MultiS
 		final List<AffineTransform3D> transforms = new ArrayList<>();
 		final List<String> paths = new ArrayList<>();
 		scaleLevelNodes.forEach( (k,v) -> {
-			paths.add( v.path );
+			paths.add( v.getPath() );
 			transforms.add( ((N5SingleScaleMetadata)v.getMetadata()).transform );
 		});
 
 		return new N5MultiScaleMetadata(
-				node.path,
+				node.getPath(),
 				paths.toArray( new String[ 0 ] ),
 				transforms.toArray( new AffineTransform3D[ 0 ] ),
 				units );

@@ -203,11 +203,11 @@ public interface N5GsonMetadataParser < T extends N5Metadata > extends N5Metadat
 		if( n5 instanceof AbstractGsonReader )
 		{
 
-			return parseMetadataGson( (AbstractGsonReader) n5, nodes[0].path );
+			return parseMetadataGson( (AbstractGsonReader) n5, nodes[0].getPath() );
 		}
 		else
 		{
-			final Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, nodes[0].path, keysToTypes() );
+			final Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, nodes[0].getPath(), keysToTypes() );
 			return parseMetadata( keys );
 		}
 	}

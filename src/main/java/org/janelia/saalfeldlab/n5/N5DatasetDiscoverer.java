@@ -218,8 +218,9 @@ public class N5DatasetDiscoverer {
 	{
 		final HashMap< String, N5TreeNode > pathToNode = new HashMap<>();
 
-		pathToNode.put( normalPathName( rootNode.path ), rootNode );
-		final String normalBase = normalPathName( rootNode.path );
+		pathToNode.put( normalPathName( rootNode.getPath() ), rootNode );
+		final String normalBase = normalPathName( rootNode.getPath() );
+
 		for ( final String datasetPath : parsedPaths )
 		{
 			final String fullPath = normalBase + groupSeparator + datasetPath;
@@ -242,7 +243,7 @@ public class N5DatasetDiscoverer {
 			final HashMap< String, N5TreeNode > pathToNode,
 			final String groupSeparator )
 	{
-		final String fullPath = node.path;
+		final String fullPath = node.getPath();
 		if( fullPath.equals( base ) )
 			return;
 
@@ -276,6 +277,11 @@ public class N5DatasetDiscoverer {
 		return node;
     }
 
+	public void parseGroupsRecursive( final N5TreeNode node )
+	{
+		parseGroupsRecursive( node, groupParsers );
+	}
+
 	private LinkedBlockingQueue< Future< N5TreeNode > > parseJobFutures;
 
 	/**
@@ -308,11 +314,11 @@ public class N5DatasetDiscoverer {
 				}
 				else
 				{
-					final String[] children = n5.list( node.path );
+					final String[] children = n5.list( node.getPath() );
 					for ( final String childGroup : children )
 					{
 						// add the node
-						final String childPath = Paths.get( node.path, childGroup ).toString();
+						final String childPath = Paths.get( node.getPath(), childGroup ).toString();
 						final N5TreeNode childNode = new N5TreeNode( childPath, false );
 						node.add( childNode );
 
@@ -344,27 +350,6 @@ public class N5DatasetDiscoverer {
 			sortAndTrimRecursive( c );
 	}
 
-	public void parseGroupsRecursive( final N5TreeNode node )
-	{
-		if ( groupParsers == null )
-			return;
-
-		if ( node.getMetadata() == null )
-		{
-			// this is not a dataset but may be a group (e.g. multiscale pyramid)
-			// try to parse groups
-			for ( final N5GroupParser< ? > gp : groupParsers )
-			{
-				final N5Metadata groupMeta = gp.parseMetadataGroup( node );
-				if ( groupMeta != null )
-					node.setMetadata( groupMeta );
-			}
-		}
-
-		for ( final N5TreeNode c : node.childrenList() )
-			parseGroupsRecursive( c );
-	}
-
 	public void filterRecursive( final N5TreeNode node )
 	{
 		if( filter == null )
@@ -382,9 +367,9 @@ public class N5DatasetDiscoverer {
     {
         if( !node.isDataset() )
         {
-			for ( final String childGroup : n5.list( node.path ) )
+			for ( final String childGroup : n5.list( node.getPath() ) )
 			{
-				final String childPath = Paths.get( node.path, childGroup ).toString();
+				final String childPath = Paths.get( node.getPath(), childGroup ).toString();
 				final N5TreeNode childNode = new N5TreeNode( childPath, n5.datasetExists( childPath ) );
 				node.add( childNode );
 				discover( n5, childNode );
@@ -401,7 +386,7 @@ public class N5DatasetDiscoverer {
 		HashMap< String, JsonElement > jsonMap = null;
 		if ( n5 instanceof AbstractGsonReader )
 		{
-			jsonMap = ( ( AbstractGsonReader ) n5 ).getAttributes( node.path );
+			jsonMap = ( ( AbstractGsonReader ) n5 ).getAttributes( node.getPath() );
 			if( jsonMap == null )
 			{
 				node.setIsDataset( false );
@@ -417,7 +402,7 @@ public class N5DatasetDiscoverer {
 				N5Metadata parsedMeta;
 				if ( jsonMap != null && parser instanceof N5GsonMetadataParser )
 				{
-					parsedMeta = ( ( N5GsonMetadataParser< ? > ) parser ).parseMetadataGson( node.path, jsonMap );
+					parsedMeta = ( ( N5GsonMetadataParser< ? > ) parser ).parseMetadataGson( node.getPath(), jsonMap );
 				}
 				else
 					parsedMeta = parser.parseMetadata( n5, node );
@@ -441,7 +426,10 @@ public class N5DatasetDiscoverer {
 			{
 				final N5Metadata groupMeta = gp.parseMetadataGroup( node );
 				if ( groupMeta != null )
+				{
 					node.setMetadata( groupMeta );
+					break;
+				}
 			}
 		}
 	}
@@ -454,8 +442,32 @@ public class N5DatasetDiscoverer {
 		for ( final N5TreeNode childNode : node.childrenList() )
 			parseMetadataRecursive( n5, childNode, metadataParsers, groupParsers );
 
+		// this parses groups as well
         parseMetadata( n5, node, metadataParsers, groupParsers );
     }
+
+	public static void parseGroupsRecursive(
+			final N5TreeNode node,
+			final N5GroupParser<?>[] groupParsers )
+	{
+		if ( groupParsers == null )
+			return;
+
+		if ( node.getMetadata() == null )
+		{
+			// this is not a dataset but may be a group (e.g. multiscale pyramid)
+			// try to parse groups
+			for ( final N5GroupParser< ? > gp : groupParsers )
+			{
+				final N5Metadata groupMeta = gp.parseMetadataGroup( node );
+				if ( groupMeta != null )
+					node.setMetadata( groupMeta );
+			}
+		}
+
+		for ( final N5TreeNode c : node.childrenList() )
+			parseGroupsRecursive( c, groupParsers );
+	}
 
     /**
      * Removes branches of the N5 container tree that do not contain any nodes that can be opened
@@ -492,11 +504,6 @@ public class N5DatasetDiscoverer {
     {
 		final List< N5TreeNode > children = node.childrenList();
 		children.sort( Comparator.comparing( N5TreeNode::toString, comparator ) );
-
-		// add back the children in order
-		// necessary because the collection of children can't be sorted in place
-		node.removeAllChildren();
-		children.stream().forEach( x -> node.add( x ) );
 
 		for ( final N5TreeNode childNode : children )
 			sort( childNode, comparator );

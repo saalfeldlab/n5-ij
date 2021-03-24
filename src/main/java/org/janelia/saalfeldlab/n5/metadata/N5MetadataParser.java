@@ -74,7 +74,7 @@ public interface N5MetadataParser < T extends N5Metadata > //R extends AbstractG
 	 */
 	public default T parseMetadata( final N5Reader n5, final N5TreeNode... nodes ) throws Exception
 	{
-		return parseMetadata( n5, nodes[ 0 ].path );
+		return parseMetadata( n5, nodes[ 0 ].getPath() );
 	}
 
 	public default T parseMetadata( final N5Reader n5, final String dataset ) throws Exception

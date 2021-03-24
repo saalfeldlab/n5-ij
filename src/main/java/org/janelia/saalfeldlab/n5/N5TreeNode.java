@@ -26,6 +26,7 @@
 package org.janelia.saalfeldlab.n5;
 
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -33,21 +34,21 @@ import javax.swing.tree.DefaultMutableTreeNode;
 
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
-public class N5TreeNode extends DefaultMutableTreeNode
+public class N5TreeNode // extends DefaultMutableTreeNode
 {
-	private static final long serialVersionUID = -6433341489220400345L;
-
-	public final String path;
+	private final String path;
 
 	private boolean isDataset;
 
 	private N5Metadata metadata;
 
+	private ArrayList<N5TreeNode> children;
+
 	public N5TreeNode( final String path, final boolean isDataset )
 	{
-		super();
 		this.path = path;
 		this.isDataset = isDataset;
+		children = new ArrayList<>();
 	}
 
     public String getNodeName()
@@ -55,15 +56,34 @@ public class N5TreeNode extends DefaultMutableTreeNode
         return Paths.get(removeLeadingSlash(path)).getFileName().toString();
     }
 
-	@SuppressWarnings("unchecked")
+	public void add( final N5TreeNode child )
+	{
+		children.add( child );
+	}
+
+	public void remove( final N5TreeNode child )
+	{
+		children.remove( child );
+	}
+
+	public void removeAllChildren()
+	{
+		children.clear();
+	}
+
 	public List< N5TreeNode > childrenList()
 	{
-		/* TODO compiles with Eclipse compiler but not with javac because children
-		 * forwards to rawtype Enumeration DefaultMutableTreeNode#children()...
-		 */
-		@SuppressWarnings("rawtypes")
-		final List children = Collections.list( children() );
 		return children;
+	}
+
+	public JTreeNodeWrapper asTreeNode()
+	{
+		JTreeNodeWrapper node = new JTreeNodeWrapper( this );
+		for( N5TreeNode c : childrenList() )
+		{
+			node.add( c.asTreeNode() );
+		}
+		return node;
 	}
 
 	public void setIsDataset( final boolean isDataset )
@@ -86,6 +106,10 @@ public class N5TreeNode extends DefaultMutableTreeNode
 		return metadata;
 	}
 
+	public String getPath()
+	{
+		return path;
+	}
 
 	@Override
 	public String toString()
@@ -124,4 +148,22 @@ public class N5TreeNode extends DefaultMutableTreeNode
 
         return pathName.startsWith("/") || pathName.startsWith("\\") ? pathName.substring(1) : pathName;
     }
+
+	public class JTreeNodeWrapper extends DefaultMutableTreeNode
+	{
+		private static final long serialVersionUID = 2650578684960249546L;
+
+		private final N5TreeNode node;
+
+		public JTreeNodeWrapper( N5TreeNode node )
+		{
+			super( node.getPath() );
+			this.node = node;
+		}
+
+		public N5TreeNode getNode()
+		{
+			return node;
+		}
+	}
 }

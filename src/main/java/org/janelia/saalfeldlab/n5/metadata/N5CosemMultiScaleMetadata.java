@@ -107,12 +107,12 @@ public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadat
 		final List<AffineTransform3D> transforms = new ArrayList<>();
 		final List<String> paths = new ArrayList<>();
 		scaleLevelNodes.forEach( (k,v) -> {
-			paths.add( v.path );
+			paths.add( v.getPath() );
 			transforms.add( ((N5CosemMetadata)v.getMetadata() ).getTransform().toAffineTransform3d() );
 		});
 
 		return new N5CosemMultiScaleMetadata(
-				node.path,
+				node.getPath(),
 				paths.toArray( new String[ 0 ] ),
 				transforms.toArray( new AffineTransform3D[ 0 ] ),
 				units);

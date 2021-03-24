@@ -39,7 +39,6 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
-import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
@@ -616,52 +615,6 @@ public class N5Importer implements PlugIn
 				n5 = factory.openReader( n5PathIn );
 			}
 			catch ( IOException e )
-			{
-				IJ.handleException( e );
-				return null;
-			}
-			return n5;
-		}
-	}
-
-	public static class N5ViewerReaderFunOld implements Function< String, N5Reader >
-	{
-		public String message;
-
-		@Override
-		public N5Reader apply( final String n5PathIn )
-		{
-			N5Reader n5;
-			if ( n5PathIn == null || n5PathIn.isEmpty() )
-				return null;
-
-			final String n5Path = n5PathIn.trim();
-			final DataAccessType type = DataAccessType.detectType( n5Path );
-			if ( type == null )
-			{
-				message = "Not a valid path or link to an N5 container.";
-				return null;
-			}
-
-			String n5BasePath = n5Path;
-			if( type.equals( DataAccessType.HDF5 ))
-				n5BasePath = N5Importer.h5DatasetPath( n5Path, true );
-
-			n5 = null;
-			try
-			{
-				n5 = new DataAccessFactory( type, n5BasePath ).createN5Reader( n5BasePath );
-				/*
-				 * Do we need this check?
-				 */
-//				if ( !n5.exists( "/" ) || n5.getVersion().equals( new N5Reader.Version( null ) ) )
-//				{
-////					JOptionPane.showMessageDialog( dialog, "Not a valid path or link to an N5 container.", "N5 Viewer", JOptionPane.ERROR_MESSAGE );
-//					return null;
-//				}
-
-			}
-			catch ( final DataAccessException | IOException e )
 			{
 				IJ.handleException( e );
 				return null;
