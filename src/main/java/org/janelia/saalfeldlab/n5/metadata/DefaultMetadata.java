@@ -29,14 +29,22 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
+import net.imglib2.realtransform.AffineGet;
+import net.imglib2.realtransform.AffineTransform;
+import net.imglib2.realtransform.AffineTransform2D;
+import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.realtransform.Scale;
+import net.imglib2.realtransform.Scale2D;
+import net.imglib2.realtransform.Scale3D;
 
-public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadataParser< DefaultMetadata >,
-	N5MetadataWriter< DefaultMetadata >, ImageplusMetadata< DefaultMetadata >
+public class DefaultMetadata extends AbstractN5Metadata<DefaultMetadata> implements ImageplusMetadata< DefaultMetadata >,
+	PhysicalMetadata
 {
 	private final FinalVoxelDimensions voxDims;
 
@@ -135,4 +143,23 @@ public class DefaultMetadata extends AbstractN5Metadata implements N5GsonMetadat
 		return new DefaultMetadata( "", nd );
 	}
 
+	@Override
+	public AffineGet physicalTransform()
+	{
+		final int nd = voxDims != null ? voxDims.numDimensions() : 0;
+		if( nd == 0 )
+			return null;
+		else if( nd == 2 )
+			return new Scale2D( 1, 1 );
+		else if( nd == 3 )
+			return new Scale3D( 1, 1, 1 );
+		else
+			return new Scale( DoubleStream.generate( () -> 1.0 ).limit( nd ).toArray());
+	}
+
+	public String[] units()
+	{
+		final int nd = voxDims != null ? voxDims.numDimensions() : 0;	
+		return Stream.generate( () -> "pixel" ).limit( nd ).toArray( String[]::new );
+	}
 }

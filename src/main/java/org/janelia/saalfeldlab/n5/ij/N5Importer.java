@@ -39,17 +39,19 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
-import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
 import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerMultiscaleMetadataParser;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
@@ -63,6 +65,7 @@ import ij.plugin.frame.Recorder;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converter;
 import net.imglib2.converter.Converters;
 import net.imglib2.converter.RealFloatConverter;
 import net.imglib2.img.display.imagej.ImageJFunctions;
@@ -70,7 +73,9 @@ import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
+import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
@@ -101,6 +106,11 @@ public class N5Importer implements PlugIn
 					new N5SingleScaleMetadata(),
 					new DefaultMetadata( "", -1 )
 				};
+	
+	public static final N5GroupParser<?>[] GROUP_PARSERS = new N5GroupParser[]{
+			new N5CosemMultiScaleMetadata(),
+			new N5ViewerMultiscaleMetadataParser()
+	};
 
     private N5Reader n5;
 
@@ -287,12 +297,13 @@ public class N5Importer implements PlugIn
 		final DataType type = meta.getAttributes().getDataType();
 		if(	type != DataType.FLOAT32 &&
 			type != DataType.UINT8 &&
-			type != DataType.UINT16 )
+			type != DataType.UINT16 &&
+			type != DataType.UINT32 )
 		{
 			if( showMessage )
 			{
 				IJ.error( "Cannot open datasets of type (" + type + ").\n"
-						+ "ImageJ supports uint8, uint16, or float32.");
+						+ "ImageJ supports uint8, uint16, uint32(rgb), or float32.");
 			}
 			return false;
 		}
@@ -382,10 +393,17 @@ public class N5Importer implements PlugIn
 		RandomAccessibleInterval< T > convImg;
 		DataType type = datasetMeta.getAttributes().getDataType();
 
+		final boolean isRGB = (datasetMeta instanceof N5ImagePlusMetadata) &&
+				((N5ImagePlusMetadata)datasetMeta).getType() == ImagePlus.COLOR_RGB;
+
 		// Compute LUT after crop
 		if(	type == DataType.FLOAT64 )
 		{
 			convImg = convertDouble( img );
+		}
+		else if( isRGB && type == DataType.UINT32)
+		{
+			convImg = convertToRGB( img );
 		}
 		else if( type == DataType.INT32 || type == DataType.UINT32 ||
 				 type == DataType.INT64 || type == DataType.UINT64 )
@@ -431,6 +449,15 @@ public class N5Importer implements PlugIn
 				img, 
 				new RealFloatConverter< DoubleType >(),
 				new FloatType() );
+	}
+
+	public static RandomAccessibleInterval< ARGBType >
+		convertToRGB( final RandomAccessibleInterval< UnsignedIntType > img )
+	{
+		return Converters.convert( 
+				img,
+				new IntegerToaRGBConverter(),
+				new ARGBType() );
 	}
 
 	@SuppressWarnings( { "rawtypes", "unchecked" } )
@@ -613,52 +640,6 @@ public class N5Importer implements PlugIn
 		}
 	}
 
-	public static class N5ViewerReaderFunOld implements Function< String, N5Reader >
-	{
-		public String message;
-
-		@Override
-		public N5Reader apply( final String n5PathIn )
-		{
-			N5Reader n5;
-			if ( n5PathIn == null || n5PathIn.isEmpty() )
-				return null;
-
-			final String n5Path = n5PathIn.trim();
-			final DataAccessType type = DataAccessType.detectType( n5Path );
-			if ( type == null )
-			{
-				message = "Not a valid path or link to an N5 container.";
-				return null;
-			}
-
-			String n5BasePath = n5Path;
-			if( type.equals( DataAccessType.HDF5 ))
-				n5BasePath = N5Importer.h5DatasetPath( n5Path, true );
-
-			n5 = null;
-			try
-			{
-				n5 = new DataAccessFactory( type, n5BasePath ).createN5Reader( n5BasePath );
-				/*
-				 * Do we need this check?
-				 */
-//				if ( !n5.exists( "/" ) || n5.getVersion().equals( new N5Reader.Version( null ) ) )
-//				{
-////					JOptionPane.showMessageDialog( dialog, "Not a valid path or link to an N5 container.", "N5 Viewer", JOptionPane.ERROR_MESSAGE );
-//					return null;
-//				}
-
-			}
-			catch ( final DataAccessException | IOException e )
-			{
-				IJ.handleException( e );
-				return null;
-			}
-			return n5;
-		}
-	}
-
 	public static class N5BasePathFun implements Function< String, String >
 	{
 		public String message;
@@ -711,6 +692,15 @@ public class N5Importer implements PlugIn
 			return h5PathAndDataset.substring( 0, i + len );
 		else
 			return h5PathAndDataset.substring( i + len );
+	}
+
+	public static class IntegerToaRGBConverter implements Converter< UnsignedIntType, ARGBType >
+	{
+		@Override
+		public void convert( UnsignedIntType input, ARGBType output )
+		{
+			output.set( input.getInt() );
+		}
 	}
 
 }

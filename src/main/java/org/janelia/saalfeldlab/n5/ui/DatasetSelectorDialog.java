@@ -61,6 +61,7 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
@@ -68,6 +69,7 @@ import javax.swing.tree.TreeSelectionModel;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
@@ -150,6 +152,8 @@ public class DatasetSelectorDialog
 	private LinkedBlockingQueue< Future< N5TreeNode > > loaderFutures;
 
 	private N5TreeNode rootNode;
+
+	private DefaultMutableTreeNode rootJTreeNode;
 
 	public DatasetSelectorDialog(
 			final Function< String, N5Reader > n5Fun,
@@ -508,19 +512,23 @@ public class DatasetSelectorDialog
 		}
 
 		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, n5NodeFilter, groupParsers, parsers );
-		rootNode = new N5TreeNode( rootPath, false );
-
 		try
 		{
-			loaderFutures = datasetDiscoverer.discoverThreads( n5, rootNode );
+			rootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
 		}
 		catch ( IOException e )
 		{
 			e.printStackTrace();
 		}
 
-		// a thread that completes task after parsing is complete
-		new LoaderSorterAndCallback( rootNode, 500 ).start();
+		// set the root node for the JTree
+		rootJTreeNode = rootNode.asTreeNode();
+		treeModel.setRoot( rootJTreeNode );
+		messageLabel.setText( "Done" );
+		dialog.repaint();
+
+		messageLabel.setVisible( false );
+		dialog.repaint();
 
 		containerTree.setEnabled( true );
     }
@@ -556,7 +564,7 @@ public class DatasetSelectorDialog
 		{
 			// datasets were selected by the user
 			for( final TreePath path : containerTree.getSelectionPaths() )
-				selectedMetadata.add( ((N5TreeNode)path.getLastPathComponent()).getMetadata() );
+				selectedMetadata.add( ((JTreeNodeWrapper)path.getLastPathComponent()).getNode().getMetadata() );
 		}
 		okCallback.accept( new DataSelection( n5, selectedMetadata ) );
         dialog.setVisible(false);
@@ -656,7 +664,7 @@ public class DatasetSelectorDialog
 						// expand first layer of the tree
 						// in the EDGT
 						@SuppressWarnings( "rawtypes" )
-						Enumeration e = rootNode.children(); 
+						Enumeration e = rootJTreeNode.children(); 
 						while( e.hasMoreElements() )
 						{
 							N5TreeNode child = ( N5TreeNode ) e.nextElement();
@@ -665,7 +673,7 @@ public class DatasetSelectorDialog
 						}
 
 						// set the root node for the JTree
-						treeModel.setRoot( rootNode );
+						treeModel.setRoot( rootJTreeNode );
 						messageLabel.setText( "Done" );
 						dialog.repaint();
 					}

@@ -76,8 +76,11 @@ import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgs;
+import net.imglib2.img.imageplus.IntImagePlus;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
@@ -311,6 +314,11 @@ public class N5Exporter extends ContextCommand implements WindowListener
 				impMeta = impMetaWriterTypes.get(writer.getClass());
 		}
 
+		// check and warn re: RGB image if relevant
+		if( image.getType() == ImagePlus.COLOR_RGB && !(writer instanceof N5ImagePlusMetadata) )
+			log.warn( "RGB images are best saved using ImageJ metatadata. Other choices "
+					+ "may lead to unexpected behavior." );
+
 		if (metadataStyle.equals(NONE) ||
 				metadataStyle.equals(N5Importer.MetadataImageJKey) ||
 				metadataStyle.equals(N5Importer.MetadataCustomKey)) {
@@ -321,7 +329,8 @@ public class N5Exporter extends ContextCommand implements WindowListener
 		n5.close();
 	}
 
-	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void write(
+	@SuppressWarnings( { "unchecked", "rawtypes" } )
+	private <T extends RealType & NativeType, M extends N5Metadata> void write(
 			final N5Writer n5,
 			final Compression compression,
 			final N5MetadataWriter<M> writer ) throws IOException, InterruptedException, ExecutionException
@@ -353,8 +362,9 @@ public class N5Exporter extends ContextCommand implements WindowListener
 				case ImagePlus.GRAY32:
 					n5type = DataType.FLOAT32;
 					break;
-//				case ImagePlus.COLOR_RGB: // TODO add color support
-//					break;
+				case ImagePlus.COLOR_RGB:
+					n5type = DataType.UINT32;
+					break;
 				default:
 					n5type = null;
 				}
@@ -364,7 +374,12 @@ public class N5Exporter extends ContextCommand implements WindowListener
 				writeMetadata( n5, n5Dataset, writer );
 			}
 
-			final ImagePlusImg<T, ?> ipImg = ImagePlusImgs.from( image );
+			final Img< T > ipImg;
+			if( image.getType() == ImagePlus.COLOR_RGB )
+				ipImg = ( Img< T > ) N5IJUtils.wrapRgbAsInt( image );
+			else
+				ipImg = ImageJFunctions.wrap( image );
+
 			final IntervalView< T > rai = Views.translate( ipImg, offset );
 			if (nThreads > 1)
 				N5Utils.saveRegion( rai, n5, n5Dataset );
@@ -411,12 +426,18 @@ public class N5Exporter extends ContextCommand implements WindowListener
 		return offset;
 	}
 
-	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> void writeSplitChannels(
+	private <T extends RealType & NativeType, M extends N5Metadata> void writeSplitChannels(
 			final N5Writer n5,
 			final Compression compression,
 			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException
 	{
-		final Img<T> img = ImageJFunctions.wrap(image);
+//		final ImagePlusImg<T,?> img;
+		final Img<T> img;
+		if( image.getType() == ImagePlus.COLOR_RGB )
+			img = ( Img< T > ) N5IJUtils.wrapRgbAsInt( image );
+		else
+			img = ImageJFunctions.wrap(image);
+
 		String datasetString = "";
 		for (int c = 0; c < image.getNChannels(); c++) {
 			RandomAccessibleInterval<T> channelImg;
@@ -591,5 +612,7 @@ public class N5Exporter extends ContextCommand implements WindowListener
 
 	@Override
 	public void windowActivated(final WindowEvent e) {}
+
+
 
 }

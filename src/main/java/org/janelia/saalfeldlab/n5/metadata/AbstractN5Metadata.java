@@ -33,7 +33,8 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 /**
  * Abstract class for single-scale or multi-scale N5 metadata.
  */
-public abstract class AbstractN5Metadata implements N5Metadata
+public abstract class AbstractN5Metadata<T extends N5Metadata> implements N5Metadata, 
+	N5MetadataWriter< T >, N5GsonMetadataParser< T >	
 {
 	private DatasetAttributes attributes;
 

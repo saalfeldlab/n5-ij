@@ -51,6 +51,7 @@ import org.junit.Test;
 import ij.ImagePlus;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 public class MetadataIoTests
@@ -178,9 +179,10 @@ public class MetadataIoTests
 
 		final N5ViewerMultiscaleMetadataParser n5vMultiIo = new N5ViewerMultiscaleMetadataParser();
 		final N5MultiScaleMetadata grp = n5vMultiIo.parseMetadataGroup( root );
-		Assert.assertEquals( "n5v multiscale count", 2, grp.transforms.length );
-		Assert.assertEquals( "n5v s0 transform x", 1.5, grp.transforms[0].get( 0, 0 ), 1e-6 );
-		Assert.assertEquals( "n5v s1 transform x", 3.0, grp.transforms[1].get( 0, 0 ), 1e-6 );
+		final AffineTransform3D[] transforms = grp.getTransforms();
+		Assert.assertEquals( "n5v multiscale count", 2, transforms.length );
+		Assert.assertEquals( "n5v s0 transform x", 1.5, transforms[0].get( 0, 0 ), 1e-6 );
+		Assert.assertEquals( "n5v s1 transform x", 3.0, transforms[1].get( 0, 0 ), 1e-6 );
 	}
 
 	@Test

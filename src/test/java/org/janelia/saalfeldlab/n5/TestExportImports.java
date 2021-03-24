@@ -20,6 +20,7 @@ import net.imglib2.RandomAccess;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
 
 public class TestExportImports
@@ -36,7 +37,7 @@ public class TestExportImports
 	@Test
 	public void testEmptyMeta()
 	{
-		final ImagePlus imp = NewImage.createImage("test", 32, 24, 1, 16, NewImage.FILL_NOISE);
+		final ImagePlus imp = NewImage.createImage("test", 8, 6, 1, 16, NewImage.FILL_NOISE);
 		String metaType = N5Importer.MetadataDefaultKey;
 
 		final String n5RootPath = baseDir + "/test_none.n5";
@@ -66,7 +67,7 @@ public class TestExportImports
 
 		for( int bitDepth : new int[]{ 8, 16, 32 })
 		{
-			final ImagePlus imp = NewImage.createImage("test", 32, 24, 16, bitDepth, NewImage.FILL_NOISE);
+			final ImagePlus imp = NewImage.createImage("test", 8, 6, 4, bitDepth, NewImage.FILL_NOISE);
 			for( final String containerType : containerTypes )
 			{
 				for( final String metatype : metadataTypes )
@@ -80,11 +81,11 @@ public class TestExportImports
 		}
 	}
 
-	public static < T extends RealType< T > & NativeType< T > > boolean equal( final ImagePlus a, final ImagePlus b )
+	private static < T extends RealType< T > & NativeType< T > > boolean equal( final ImagePlus a, final ImagePlus b )
 	{
 		try {
 			final Img<T> imgA = ImageJFunctions.wrapRealNative( a );
-			final Img<T> imgB = ImageJFunctions.wrapRealNative( a );
+			final Img<T> imgB = ImageJFunctions.wrapRealNative( b );
 
 			final Cursor< T > c = imgA.cursor();
 			final RandomAccess< T > r = imgB.randomAccess();
@@ -96,6 +97,31 @@ public class TestExportImports
 				if( c.get().getRealDouble() != r.get().getRealDouble() )
 					return false;
 
+			}
+
+			return true;
+
+		}catch( final Exception e )
+		{
+			return false;
+		}
+	}
+
+	private static boolean equalRGB( final ImagePlus a, final ImagePlus b )
+	{
+		try {
+			final Img<ARGBType> imgA = ImageJFunctions.wrapRGBA( a );
+			final Img<ARGBType> imgB = ImageJFunctions.wrapRGBA( b );
+
+			final Cursor< ARGBType > c = imgA.cursor();
+			final RandomAccess< ARGBType > r = imgB.randomAccess();
+
+			while( c.hasNext() )
+			{
+				c.fwd();
+				r.setPosition( c );
+				if( c.get().get() != r.get().get() )
+					return false;
 			}
 
 			return true;
@@ -142,10 +168,32 @@ public class TestExportImports
 			assertTrue( String.format( "%s units ", dataset ), unitsEqual );
 		}
 
-		boolean imagesEqual = equal( imp, impRead );
+		boolean imagesEqual;
+		if( imp.getType() == ImagePlus.COLOR_RGB )
+		{
+			imagesEqual = equalRGB( imp, impRead );
+			assertEquals( String.format( "%s as rgb ", dataset ), ImagePlus.COLOR_RGB, impRead.getType() );
+		}
+		else
+			imagesEqual = equal( imp, impRead );
+
 		assertTrue( String.format( "%s data ", dataset ), imagesEqual );
 
 		impRead.close();
 
+	}
+
+	@Test
+	public void testRgb()
+	{
+		final ImagePlus imp = NewImage.createRGBImage("test", 8, 6, 4, NewImage.FILL_NOISE);
+		String metaType = N5Importer.MetadataImageJKey;
+
+		final String n5RootPath = baseDir + "/test_rgb.n5";
+		final String dataset = "/ij";
+		final String blockSizeString = "16,16,16";
+		final String compressionString = "raw";
+
+		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metaType, compressionString, false );
 	}
 }

@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Stream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -37,10 +38,12 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import ij.ImagePlus;
 import ij.measure.Calibration;
 import net.imglib2.Interval;
+import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.realtransform.ScaleAndTranslation;
 
-public class N5ImagePlusMetadata extends AbstractN5Metadata implements ImageplusMetadata<N5ImagePlusMetadata>,
-	N5MetadataWriter< N5ImagePlusMetadata >, N5GsonMetadataParser< N5ImagePlusMetadata >
+public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
+	implements ImageplusMetadata<N5ImagePlusMetadata>, PhysicalMetadata
 {
 	public static final String titleKey = "title";
 	public static final String fpsKey = "fps";
@@ -56,6 +59,8 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 	public static final String numChannelsKey = "numChannels";
 	public static final String numSlicesKey = "numSlices";
 	public static final String numFramesKey = "numFrames";
+
+	public static final String typeKey = "ImagePlusType";
 
 	public static final String imagePropertiesKey = "imageProperties";
 
@@ -77,6 +82,7 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 	private int numSlices;
 	private int numFrames;
 
+	private int type;
 	private String unit;
 
 	private Map< String, Object > properties;
@@ -131,6 +137,8 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 		keysToTypes.put( numSlicesKey, Integer.class );
 		keysToTypes.put( numFramesKey, Integer.class );
 
+		keysToTypes.put( typeKey, Integer.class );
+
 		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
 
@@ -159,6 +167,11 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 		final double ry = n5.getAttribute( dataset, pixelHeightKey, double.class );
 		final double rz = n5.getAttribute( dataset, pixelDepthKey, double.class );
 		return new double[] { rx, ry, rz };
+	}
+
+	public int getType()
+	{
+		return type;
 	}
 
 	@Override
@@ -218,6 +231,8 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 		t.numSlices = ip.getNSlices();
 		t.numFrames = ip.getNFrames();
 
+		t.type = ip.getType();
+
 		xfm.set( t.pixelWidth, 0, 0 );
 		xfm.set( t.pixelHeight, 1, 1 );
 		xfm.set( t.pixelDepth, 2, 2 );
@@ -274,6 +289,9 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 		meta.fps = ( Double ) metaMap.get( fpsKey );
 		meta.frameInterval = ( Double ) metaMap.get( fpsKey );
 
+		if( metaMap.containsKey( typeKey ))
+			meta.type = ( Integer ) metaMap.get( typeKey );
+
 		return meta;
 	}
 
@@ -282,23 +300,26 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 	{
 		if( !n5.datasetExists( dataset ))
 			throw new Exception( "Can't write into " + dataset + ".  Must be a dataset." );
+		
+		HashMap<String, Object> attrs = new HashMap<>();
+		attrs.put( titleKey, t.name );
 
-		n5.setAttribute( dataset, titleKey, t.name );
+		attrs.put( fpsKey, t.fps );
+		attrs.put( frameIntervalKey, t.frameInterval );
+		attrs.put( pixelWidthKey, t.pixelWidth );
+		attrs.put( pixelHeightKey, t.pixelHeight );
+		attrs.put( pixelDepthKey, t.pixelDepth );
+		attrs.put( pixelUnitKey, t.unit );
 
-		n5.setAttribute( dataset, fpsKey, t.fps );
-		n5.setAttribute( dataset, frameIntervalKey, t.frameInterval );
-		n5.setAttribute( dataset, pixelWidthKey, t.pixelWidth );
-		n5.setAttribute( dataset, pixelHeightKey, t.pixelHeight );
-		n5.setAttribute( dataset, pixelDepthKey, t.pixelDepth );
-		n5.setAttribute( dataset, pixelUnitKey, t.unit );
+		attrs.put( xOriginKey, t.xOrigin );
+		attrs.put( yOriginKey, t.yOrigin );
+		attrs.put( zOriginKey, t.zOrigin );
 
-		n5.setAttribute( dataset, xOriginKey, t.xOrigin );
-		n5.setAttribute( dataset, yOriginKey, t.yOrigin );
-		n5.setAttribute( dataset, zOriginKey, t.zOrigin );
+		attrs.put( numChannelsKey, t.numChannels );
+		attrs.put( numSlicesKey, t.numSlices );
+		attrs.put( numFramesKey, t.numFrames );
 
-		n5.setAttribute( dataset, numChannelsKey, t.numChannels );
-		n5.setAttribute( dataset, numSlicesKey, t.numSlices );
-		n5.setAttribute( dataset, numFramesKey, t.numFrames );
+		attrs.put( typeKey, t.type );
 
 		if ( t.properties != null )
 		{
@@ -306,12 +327,39 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata implements Imageplus
 			{
 				try
 				{
-					n5.setAttribute( dataset, k.toString(), t.properties.get( k ).toString() );
+					attrs.put( k.toString(), t.properties.get( k ).toString() );
 				}
 				catch ( final Exception e )
 				{}
 			}
 		}
-	}
 
+		n5.setAttributes( dataset, attrs );
+	}
+	
+	public AffineGet physicalTransform()
+	{
+		final int nd = numSlices > 1 ? 3 : 2;
+		final double[] spacing = new double[ nd ];
+		final double[] offset = new double[ nd ];
+
+		spacing[ 0 ] = pixelWidth;
+		spacing[ 1 ] = pixelHeight;
+		if( numSlices > 1 )
+			spacing[ 2 ] = pixelDepth;
+
+		offset[ 0 ] = xOrigin;
+		offset[ 1 ] = yOrigin;
+		if( numSlices > 1 )
+			offset[ 2 ] = zOrigin;
+
+		return new ScaleAndTranslation( spacing, offset );
+	}
+	
+	public String[] units()
+	{
+		final int nd = numSlices > 1 ? 3 : 2;
+		return ( String[] ) Stream.generate( () -> unit ).limit( nd ).toArray();
+	}
+	
 }

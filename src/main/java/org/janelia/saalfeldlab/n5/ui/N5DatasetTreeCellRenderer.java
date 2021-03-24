@@ -10,6 +10,10 @@ import javax.swing.tree.DefaultTreeCellRenderer;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
+import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
+
+import ij.ImagePlus;
 
 public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 {
@@ -41,9 +45,9 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		super.getTreeCellRendererComponent( tree, value, sel, exp, leaf, row, hasFocus );
 
 		N5TreeNode node;
-		if ( value instanceof N5TreeNode )
+		if ( value instanceof JTreeNodeWrapper )
 		{
-			node = ( ( N5TreeNode ) value );
+			node = ( ( JTreeNodeWrapper ) value ).getNode();
 			if ( node.getMetadata() != null )
 			{
 				final String conversionString;
@@ -74,19 +78,26 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		else
 			return "";
 
+		if ( node.getMetadata() instanceof N5ImagePlusMetadata )
+		{
+			N5ImagePlusMetadata ijMeta = (N5ImagePlusMetadata)node.getMetadata();
+			if( ijMeta.getType() == ImagePlus.COLOR_RGB && type == DataType.UINT32 )
+				return "(RGB)";
+		}
+
 		if ( type == DataType.FLOAT64 )
 		{
 			return "&#x2192; 32-bit";
+		}
+		else if( type == DataType.INT8 )
+		{
+			return "&#x2192; 8-bit";
 		}
 		else if ( type == DataType.INT32 || type == DataType.INT64 ||
 				type == DataType.UINT32 || type == DataType.UINT64 ||
 				type == DataType.INT16 )
 		{
 			return "&#x2192; 16-bit";
-		}
-		else if( type == DataType.INT8 )
-		{
-			return "&#x2192; 8-bit";
 		}
 		return "";
 	}

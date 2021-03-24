@@ -25,32 +25,20 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import java.util.Objects;
-
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
 import net.imglib2.realtransform.AffineTransform3D;
 
-public class N5MultiScaleMetadata implements N5Metadata {
-
+public class N5MultiScaleMetadata extends MultiscaleMetadata<N5SingleScaleMetadata> implements N5Metadata 
+{
     public final String basePath;
 
-    public final String[] paths;
-
-    public final AffineTransform3D[] transforms;
-
-    public N5MultiScaleMetadata( final String basePath, final String[] paths, final AffineTransform3D[] transforms)
+    public N5MultiScaleMetadata( final String basePath, final String[] paths,
+    		final AffineTransform3D[] transforms,
+    		final String[] units )
     {
-        Objects.requireNonNull(paths);
-        Objects.requireNonNull(transforms);
-        for (final String path : paths)
-            Objects.requireNonNull(path);
-        for (final AffineTransform3D transform : transforms)
-            Objects.requireNonNull(transform);
-
+    	super( paths, transforms, units );
         this.basePath = basePath;
-        this.paths = paths;
-        this.transforms = transforms;
     }
 
 	@Override
@@ -64,5 +52,6 @@ public class N5MultiScaleMetadata implements N5Metadata {
 	{
 		return null;
 	}
+
 
 }
