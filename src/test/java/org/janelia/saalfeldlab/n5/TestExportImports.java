@@ -37,7 +37,7 @@ public class TestExportImports
 	@Test
 	public void testEmptyMeta()
 	{
-		final ImagePlus imp = NewImage.createImage("test", 32, 24, 1, 16, NewImage.FILL_NOISE);
+		final ImagePlus imp = NewImage.createImage("test", 8, 6, 1, 16, NewImage.FILL_NOISE);
 		String metaType = N5Importer.MetadataDefaultKey;
 
 		final String n5RootPath = baseDir + "/test_none.n5";
@@ -67,7 +67,7 @@ public class TestExportImports
 
 		for( int bitDepth : new int[]{ 8, 16, 32 })
 		{
-			final ImagePlus imp = NewImage.createImage("test", 32, 24, 16, bitDepth, NewImage.FILL_NOISE);
+			final ImagePlus imp = NewImage.createImage("test", 8, 6, 4, bitDepth, NewImage.FILL_NOISE);
 			for( final String containerType : containerTypes )
 			{
 				for( final String metatype : metadataTypes )
@@ -186,7 +186,7 @@ public class TestExportImports
 	@Test
 	public void testRgb()
 	{
-		final ImagePlus imp = NewImage.createRGBImage("test", 32, 24, 16, NewImage.FILL_NOISE);
+		final ImagePlus imp = NewImage.createRGBImage("test", 8, 6, 4, NewImage.FILL_NOISE);
 		String metaType = N5Importer.MetadataImageJKey;
 
 		final String n5RootPath = baseDir + "/test_rgb.n5";
