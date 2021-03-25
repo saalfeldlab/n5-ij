@@ -58,6 +58,7 @@ import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
@@ -138,7 +139,7 @@ public class DatasetSelectorDialog
 
 	private Predicate< N5TreeNode > n5NodeFilter;
 
-	private N5DatasetTreeCellRenderer treeRenderer;
+	private TreeCellRenderer treeRenderer;
 
 	private final N5GroupParser<?>[] groupParsers;
 
@@ -206,7 +207,7 @@ public class DatasetSelectorDialog
 		return datasetDiscoverer;
 	}
 
-	public void setTreeRenderer( final N5DatasetTreeCellRenderer treeRenderer )
+	public void setTreeRenderer( final TreeCellRenderer treeRenderer )
 	{
 		this.treeRenderer = treeRenderer;
 	}
