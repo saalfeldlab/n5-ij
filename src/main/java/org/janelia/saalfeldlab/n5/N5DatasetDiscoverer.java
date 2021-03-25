@@ -34,6 +34,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -172,7 +173,7 @@ public class N5DatasetDiscoverer {
 		N5TreeNode node = new N5TreeNode( path, false );
 		try
 		{
-			N5DatasetDiscoverer.parseMetadata( n5, node, metadataParsers, null );
+			N5DatasetDiscoverer.parseMetadata( n5, node, metadataParsers, groupParsers );
 		}
 		catch ( IOException e ) {}
 
@@ -199,10 +200,17 @@ public class N5DatasetDiscoverer {
 		groupSeparator = n5.getGroupSeparator();
 
 		root = new N5TreeNode( base, n5.datasetExists( base ));
-		String[] datasetPaths = n5.deepListDatasets( base, this::metadataParseTest );
+		String[] datasetPaths;
+		try
+		{
+			datasetPaths = n5.deepListDatasets( base, this::metadataParseTest, executor );
+			buildNodes( root, datasetPaths );
+			sortAndTrimRecursive( root );
+		}
+		catch ( Exception e ) { }
 
-		buildNodes( root, datasetPaths );
-		sortAndTrimRecursive( root );
+		parseGroupsRecursive( root, groupParsers );
+
 		return root;
     }
 
