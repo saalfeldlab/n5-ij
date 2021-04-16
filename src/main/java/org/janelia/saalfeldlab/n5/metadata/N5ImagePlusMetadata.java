@@ -359,7 +359,7 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
 	public String[] units()
 	{
 		final int nd = numSlices > 1 ? 3 : 2;
-		return ( String[] ) Stream.generate( () -> unit ).limit( nd ).toArray();
+		return Stream.generate( () -> unit ).limit( nd ).toArray( String[]::new );
 	}
 	
 }
