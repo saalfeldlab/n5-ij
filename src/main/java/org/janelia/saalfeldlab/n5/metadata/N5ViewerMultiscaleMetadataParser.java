@@ -56,11 +56,12 @@ public class N5ViewerMultiscaleMetadataParser implements N5GroupParser< N5MultiS
 		{
 			if ( scaleLevelPredicate.test( childNode.getNodeName() ) &&
 				 childNode.isDataset() &&
-				 childNode.getMetadata() instanceof N5SingleScaleMetadata )
+				 ( childNode.getMetadata() instanceof N5SingleScaleMetadata ||
+				   childNode.getMetadata() instanceof N5SingleScaleLegacyMetadata ))
 			{
 				scaleLevelNodes.put( childNode.getNodeName(), childNode );
 				if( units == null )
-					units = ((N5SingleScaleMetadata)childNode.getMetadata()).units();
+					units = ((PhysicalMetadata)childNode.getMetadata()).units();
 			}
 		}
 
@@ -71,7 +72,7 @@ public class N5ViewerMultiscaleMetadataParser implements N5GroupParser< N5MultiS
 		final List<String> paths = new ArrayList<>();
 		scaleLevelNodes.forEach( (k,v) -> {
 			paths.add( v.getPath() );
-			transforms.add( ((N5SingleScaleMetadata)v.getMetadata()).transform );
+			transforms.add( ((PhysicalMetadata)v.getMetadata()).physicalTransform3d() );
 		});
 
 		return new N5MultiScaleMetadata(

@@ -50,6 +50,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleLegacyMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMultiscaleMetadataParser;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
@@ -104,6 +105,7 @@ public class N5Importer implements PlugIn
 					new N5ImagePlusMetadata( "" ),
 					new N5CosemMetadata( "", null, null ),
 					new N5SingleScaleMetadata(),
+					new N5SingleScaleLegacyMetadata(),
 					new DefaultMetadata( "", -1 )
 				};
 	
@@ -152,6 +154,7 @@ public class N5Importer implements PlugIn
 		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
 		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
 		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5SingleScaleMetadata());
+		impMetaWriterTypes.put( N5SingleScaleLegacyMetadata.class, new N5SingleScaleLegacyMetadata());
 		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
 
 		numDimensionsForCrop = 5;
