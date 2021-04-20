@@ -26,19 +26,15 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
 import net.imglib2.realtransform.AffineGet;
-import net.imglib2.realtransform.AffineTransform;
-import net.imglib2.realtransform.AffineTransform2D;
-import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.Scale;
 import net.imglib2.realtransform.Scale2D;
 import net.imglib2.realtransform.Scale3D;
@@ -47,15 +43,6 @@ public class DefaultMetadata extends AbstractN5Metadata<DefaultMetadata> impleme
 	PhysicalMetadata
 {
 	private final FinalVoxelDimensions voxDims;
-
-	private HashMap<String,Class<?>> keysToTypes;
-
-	public static final String dimensionsKey = "dimensions";
-
-	public DefaultMetadata( final int nd )
-	{
-		this( "", nd );
-	}
 
 	public DefaultMetadata( final String path, final DatasetAttributes attributes )
 	{
@@ -68,9 +55,6 @@ public class DefaultMetadata extends AbstractN5Metadata<DefaultMetadata> impleme
 		}
 		else
 			voxDims = null;
-
-		keysToTypes = new HashMap<>();
-		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
 
 	public DefaultMetadata( final String path, final int nd )
@@ -83,30 +67,18 @@ public class DefaultMetadata extends AbstractN5Metadata<DefaultMetadata> impleme
 		}
 		else
 			voxDims = null;
+	}
 
-		keysToTypes = new HashMap<>();
-		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
+	public DefaultMetadata( )
+	{
+		this( "", -1 );
 	}
 
 	@Override
-	public HashMap<String,Class<?>> keysToTypes()
+	public DefaultMetadata parseMetadata( N5Reader n5, String dataset ) throws IOException
 	{
-		return keysToTypes;
-	}
-
-	@Override
-	public DefaultMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
-	{
-		if ( !check( metaMap ) )
-			return null;
-
-		final String dataset = ( String ) metaMap.get( "dataset" );
-
-		final DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
-		if( attributes == null )
-			return null;
-
-		return new DefaultMetadata( dataset, attributes );
+		DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
+		return new DefaultMetadata( dataset, attrs );
 	}
 
 	@Override

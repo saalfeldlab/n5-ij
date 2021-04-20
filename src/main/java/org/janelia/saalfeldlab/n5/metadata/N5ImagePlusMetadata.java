@@ -28,6 +28,7 @@ package org.janelia.saalfeldlab.n5.metadata;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Stream;
 
@@ -87,8 +88,6 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
 
 	private Map< String, Object > properties;
 
-	private HashMap< String, Class< ? > > keysToTypes;
-
 	public N5ImagePlusMetadata( final String path )
 	{
 		this( path, "pixel" );
@@ -121,31 +120,37 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
 
 		if( resolution.length > 2 )
 			pixelDepth = resolution[ 2 ];
-
-		keysToTypes = new HashMap<>();
-		keysToTypes.put( titleKey, String.class );
-		keysToTypes.put( pixelWidthKey, Double.class );
-		keysToTypes.put( pixelHeightKey, Double.class );
-		keysToTypes.put( pixelDepthKey, Double.class );
-		keysToTypes.put( pixelUnitKey, String.class );
-		keysToTypes.put( xOriginKey, Double.class );
-		keysToTypes.put( yOriginKey, Double.class );
-		keysToTypes.put( zOriginKey, Double.class );
-		keysToTypes.put( fpsKey, Double.class );
-
-		keysToTypes.put( numChannelsKey, Integer.class );
-		keysToTypes.put( numSlicesKey, Integer.class );
-		keysToTypes.put( numFramesKey, Integer.class );
-
-		keysToTypes.put( typeKey, Integer.class );
-
-		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
+	
 
-	@Override
-	public HashMap<String,Class<?>> keysToTypes()
+	public N5ImagePlusMetadata( final String path, final DatasetAttributes attributes,
+			final String name, final double fps, final double frameInterval,
+			final String unit,
+			final Double pixelWidth, final Double pixelHeight, final Double pixelDepth,
+			final Double xOrigin, final Double yOrigin, final Double zOrigin, 
+			final Integer numChannels, final Integer numSlices, final Integer numFrames,
+			final Integer type)
 	{
-		return keysToTypes;
+		super( path, attributes );
+
+		this.fps = Objects.requireNonNull( fps, "fps must be non null");
+		this.frameInterval = Objects.requireNonNull(frameInterval, "frameInterval must be non null");
+
+		this.unit = Objects.requireNonNull(unit, "unit must be non null");
+		this.pixelWidth = Objects.requireNonNull(pixelWidth, "pixelWidth must be non null");
+		this.pixelHeight = Objects.requireNonNull(pixelHeight, "pixelHeight must be non null");
+		this.pixelDepth = Objects.requireNonNull(pixelDepth, "pixelDepth must be non null");
+
+		this.xOrigin = Objects.requireNonNull(xOrigin, "xOrigin must be non null");
+		this.yOrigin = Objects.requireNonNull(yOrigin, "yOrigin must be non null");
+		this.zOrigin = Objects.requireNonNull(zOrigin, "zOrigin must be non null");
+
+		this.numChannels = Objects.requireNonNull(numChannels, "numChannels must be non null");
+		this.numSlices = Objects.requireNonNull(numSlices, "numSlices must be non null");
+		this.numFrames = Objects.requireNonNull(numFrames, "numFrames must be non null");
+
+		// type is not required and so may be null
+		this.type = type;
 	}
 
 	public void crop( final Interval cropInterval )
@@ -258,39 +263,43 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
 		return t;
 	}
 
+
 	@Override
-	public N5ImagePlusMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
+	public N5ImagePlusMetadata parseMetadata( N5Reader n5, String dataset ) throws IOException
 	{
-		if ( !check( metaMap ) )
-			return null;
 
-		final String dataset = ( String ) metaMap.get( "dataset" );
-
-		final DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
+		final DatasetAttributes attributes = n5.getDatasetAttributes( dataset );
 		if( attributes == null )
 			return null;
+		
 
-		final N5ImagePlusMetadata meta = new N5ImagePlusMetadata( dataset, attributes );
-		meta.name = ( String ) metaMap.get( titleKey );
+		String name = n5.getAttribute( dataset, titleKey, String.class );
 
-		meta.pixelWidth = ( Double ) metaMap.get( pixelWidthKey );
-		meta.pixelHeight = ( Double ) metaMap.get( pixelHeightKey );
-		meta.pixelDepth = ( Double ) metaMap.get( pixelDepthKey );
-		meta.unit = ( String ) metaMap.get( pixelUnitKey );
+		Double pixelWidth = n5.getAttribute( dataset, pixelWidthKey, Double.class);
+		Double pixelHeight = n5.getAttribute( dataset, pixelHeightKey, Double.class);
+		Double pixelDepth = n5.getAttribute( dataset, pixelDepthKey, Double.class );
+		String unit = n5.getAttribute( dataset, pixelUnitKey, String.class );
 
-		meta.xOrigin = ( Double ) metaMap.get( xOriginKey );
-		meta.yOrigin = ( Double ) metaMap.get( yOriginKey );
-		meta.zOrigin = ( Double ) metaMap.get( zOriginKey );
+		Double xOrigin = n5.getAttribute( dataset, xOriginKey, Double.class );
+		Double yOrigin = n5.getAttribute( dataset, yOriginKey, Double.class );
+		Double zOrigin = n5.getAttribute( dataset, zOriginKey, Double.class );
 
-		meta.numChannels = ( Integer ) metaMap.get( numChannelsKey );
-		meta.numSlices = ( Integer ) metaMap.get( numSlicesKey );
-		meta.numFrames = ( Integer ) metaMap.get( numFramesKey );
+		Integer numChannels = n5.getAttribute( dataset, numChannelsKey, Integer.class );
+		Integer numSlices = n5.getAttribute( dataset, numSlicesKey, Integer.class );
+		Integer numFrames = n5.getAttribute( dataset, numFramesKey, Integer.class );
 
-		meta.fps = ( Double ) metaMap.get( fpsKey );
-		meta.frameInterval = ( Double ) metaMap.get( fpsKey );
+		Double fps = n5.getAttribute( dataset, fpsKey, Double.class );
+		Double frameInterval = n5.getAttribute( dataset, fpsKey, Double.class);
 
-		if( metaMap.containsKey( typeKey ))
-			meta.type = ( Integer ) metaMap.get( typeKey );
+		Integer type = n5.getAttribute( dataset, typeKey, Integer.class );
+		
+		final N5ImagePlusMetadata meta = new N5ImagePlusMetadata( dataset, attributes,
+				name, fps, frameInterval,
+				unit,
+				pixelWidth, pixelHeight, pixelDepth,
+				xOrigin, yOrigin, zOrigin, 
+				numChannels, numSlices, numFrames,
+				type);
 
 		return meta;
 	}

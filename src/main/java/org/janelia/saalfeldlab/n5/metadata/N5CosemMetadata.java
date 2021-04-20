@@ -27,19 +27,14 @@ package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.stream.DoubleStream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.realtransform.Scale;
-import net.imglib2.realtransform.Scale2D;
-import net.imglib2.realtransform.Scale3D;
 import net.imglib2.realtransform.ScaleAndTranslation;
 
 public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata> 
@@ -47,11 +42,9 @@ public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata>
 {
 	public static final String pixelResolutionKey = "pixelResolution";
 
-	private boolean separateChannels = true;
-
 	private final CosemTransform cosemTransformMeta;
-
-	private final HashMap< String, Class<?>> keysToTypes;
+	
+	private final boolean separateChannels = true;
 
 	public N5CosemMetadata()
 	{
@@ -73,10 +66,6 @@ public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata>
 	{
 		super( path, attributes );
 		this.cosemTransformMeta = cosemTransformMeta;
-
-		keysToTypes = new HashMap<>();
-		keysToTypes.put( CosemTransform.KEY, CosemTransform.class );
-		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
 	}
 
 	public CosemTransform getTransform()
@@ -84,55 +73,18 @@ public class N5CosemMetadata extends AbstractN5Metadata<N5CosemMetadata>
 		return cosemTransformMeta;
 	}
 
-	public void setSeparateChannels( final boolean separateChannels )
-	{
-		this.separateChannels = separateChannels;
-	}
-
 	@Override
-	public HashMap<String,Class<?>> keysToTypes()
+	public N5CosemMetadata parseMetadata( final N5Reader n5, final String dataset ) throws IOException
 	{
-		return keysToTypes;
-	}
-
-	@Override
-	public boolean check( final Map< String, Object > metaMap )
-	{
-		final Map< String, Class< ? > > requiredKeys = AbstractN5Metadata.datasetAtttributeKeys();
-		for( final String k : requiredKeys.keySet() )
-		{
-			if ( !metaMap.containsKey( k ) )
-				return false;
-			else if( metaMap.get( k ) == null )
-				return false;
-		}
-
-		// needs to contain one of pixelResolution key
-		if( !metaMap.containsKey( CosemTransform.KEY ))
-		{
-			return false;
-		}
-
-		return true;
-	}
-
-	@Override
-	public N5CosemMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
-	{
-		if ( !check( metaMap ) )
+		final DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
+		if( attrs == null )
 			return null;
 
-		final DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
-		if( attributes == null )
-			return null;
-
-		final String dataset = ( String ) metaMap.get( "dataset" );
-		final CosemTransform transform = ( CosemTransform ) metaMap.get( CosemTransform.KEY );
-
+		final CosemTransform transform = n5.getAttribute( dataset, CosemTransform.KEY, CosemTransform.class );
 		if( transform == null )
 			return null;
 
-		return new N5CosemMetadata( dataset, transform, attributes );
+		return new N5CosemMetadata( dataset, transform, attrs );
 	}
 
 	@Override

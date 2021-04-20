@@ -25,16 +25,16 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Reader;
 
 /**
  * Abstract class for single-scale or multi-scale N5 metadata.
  */
 public abstract class AbstractN5Metadata<T extends N5Metadata> implements N5Metadata, 
-	N5MetadataWriter< T >, N5GsonMetadataParser< T >	
+	N5MetadataWriter< T >, N5MetadataParser< T >
 {
 	private DatasetAttributes attributes;
 
@@ -67,19 +67,7 @@ public abstract class AbstractN5Metadata<T extends N5Metadata> implements N5Meta
 	{
 		return attributes;
 	}
-
-	public static Map< String, Class<?> > datasetAtttributeKeys()
-	{
-		final Map< String, Class<?>> defaultMap =  new HashMap< String, Class<?>>();
-		addDatasetAttributeKeys( defaultMap );
-		return defaultMap;
-	}
-
-	public static void addDatasetAttributeKeys( final Map< String, Class<?>> keysToTypes )
-	{
-		keysToTypes.put( "dimensions", long[].class );
-		keysToTypes.put( "blockSize", int[].class );
-		keysToTypes.put( "dataType", String.class );
-	}
+	
+	public abstract T parseMetadata( final N5Reader n5, final String dataset ) throws IOException;
 
 }

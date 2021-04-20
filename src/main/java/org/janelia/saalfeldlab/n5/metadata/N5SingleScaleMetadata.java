@@ -26,13 +26,17 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5Writer;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata.CosemTransform;
 
 import ij.ImagePlus;
 import net.imglib2.realtransform.AffineGet;
@@ -47,9 +51,11 @@ public class N5SingleScaleMetadata extends AbstractN5Metadata<N5SingleScaleMetad
     public static final String SCALES_KEY = "scales";
     public static final String AFFINE_TRANSFORM_KEY = "affineTransform";
 
-	private final HashMap< String, Class< ? > > keysToTypes;
-
     public final AffineTransform3D transform;
+    
+    public final double[] pixelResolution;
+
+    public final long[] downsamplingFactors;
 
     public final String unit;
 
@@ -63,17 +69,45 @@ public class N5SingleScaleMetadata extends AbstractN5Metadata<N5SingleScaleMetad
 		Objects.requireNonNull( transform );
         this.transform = transform;
 
+        this.pixelResolution = null;
+        this.downsamplingFactors = null;
+
         if( unit == null )
         	this.unit = "pixel";
         else
 			this.unit = unit;
+    }
+    
+    public N5SingleScaleMetadata( final String path, final double[] pixelResolution,
+    		final long[] downsamplingFactors,
+    		final String unit,
+    		final DatasetAttributes attributes )
+    {
+		super( path, attributes );
+		Objects.requireNonNull( path );
+		
+		if( pixelResolution != null )
+			this.pixelResolution = pixelResolution;
+		else
+		{
+			this.pixelResolution = new double[ 3 ];
+			Arrays.fill( this.pixelResolution, 1 );
+		}
 
-    	keysToTypes = new HashMap<>();
-		keysToTypes.put( DOWNSAMPLING_FACTORS_KEY, long[].class );
-		keysToTypes.put( PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class );
-		keysToTypes.put( AFFINE_TRANSFORM_KEY, AffineTransform3D.class );
+		if( downsamplingFactors != null )
+			this.downsamplingFactors = downsamplingFactors;
+		else
+		{
+			this.downsamplingFactors = new long[ 3 ];
+			Arrays.fill( this.downsamplingFactors, 1 );
+		}
 
-		AbstractN5Metadata.addDatasetAttributeKeys( keysToTypes );
+		this.transform = buildTransform( downsamplingFactors, pixelResolution, null );
+
+        if( unit == null )
+        	this.unit = "um";
+        else
+			this.unit = unit;
     }
 
     public N5SingleScaleMetadata(final String path, final AffineTransform3D transform, final String unit )
@@ -95,54 +129,41 @@ public class N5SingleScaleMetadata extends AbstractN5Metadata<N5SingleScaleMetad
     {
     	this( "", new AffineTransform3D(), null );
     }
-
+	
 	@Override
-	public HashMap<String,Class<?>> keysToTypes()
+	public N5SingleScaleMetadata parseMetadata( final N5Reader n5, final String dataset ) throws IOException
 	{
-		return keysToTypes;
-	}
+		final DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
+		if( attrs == null )
+			return null;
 
-	@Override
-	public boolean check( final Map< String, Object > metaMap )
-	{
-		final Map< String, Class< ? > > requiredKeys = AbstractN5Metadata.datasetAtttributeKeys();
-		for( final String k : requiredKeys.keySet() )
+		FinalVoxelDimensions voxdims = null;
+
+		try {
+			voxdims = n5.getAttribute( dataset, PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class );
+		} catch( Exception e ) {}
+
+		double[] pixRes = null;
+		String unit = "um";
+		if( voxdims == null )
+			pixRes = n5.getAttribute( dataset, PIXEL_RESOLUTION_KEY, double[].class );
+		else
 		{
-			if ( !metaMap.containsKey( k ) )
-				return false;
-			else if( metaMap.get( k ) == null )
-				return false;
+			pixRes = new double[ 3 ];
+			voxdims.dimensions( pixRes );
+			unit = voxdims.unit();
 		}
 
-		// needs to contain either pixelResolution or downsampling factors
-		if ( !metaMap.containsKey( PIXEL_RESOLUTION_KEY ) || metaMap.get( PIXEL_RESOLUTION_KEY ) == null && 
-			(!metaMap.containsKey( DOWNSAMPLING_FACTORS_KEY ) || metaMap.get( DOWNSAMPLING_FACTORS_KEY ) == null )) 
-			return false;
-
-		return true;
-	}
-
-    @Override
-	public N5SingleScaleMetadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
-	{
-		if ( !check( metaMap ) )
+		long[] downsamplingFactors = null;
+		try {
+			downsamplingFactors = n5.getAttribute( dataset, DOWNSAMPLING_FACTORS_KEY, long[].class );
+		} catch( Exception e ) {}
+		
+		if( downsamplingFactors == null && pixRes == null )
 			return null;
 
-		final String dataset = ( String ) metaMap.get( "dataset" );
 
-		final DatasetAttributes attributes = N5MetadataParser.parseAttributes( metaMap );
-		if( attributes == null )
-			return null;
-
-		final long[] downsamplingFactors = ( long[] ) metaMap.get( DOWNSAMPLING_FACTORS_KEY );
-		final FinalVoxelDimensions voxdim = ( FinalVoxelDimensions ) metaMap.get( PIXEL_RESOLUTION_KEY );
-
-		final double[] pixelResolution = new double[ voxdim.numDimensions() ];
-		voxdim.dimensions( pixelResolution );
-
-		final AffineTransform3D extraTransform = ( AffineTransform3D ) metaMap.get( AFFINE_TRANSFORM_KEY );
-		final AffineTransform3D transform = buildTransform( downsamplingFactors, pixelResolution, extraTransform );
-		return new N5SingleScaleMetadata( dataset, transform, voxdim.unit(), attributes );
+		return new N5SingleScaleMetadata( dataset, pixRes, downsamplingFactors, unit, attrs );
 	}
 
 	@Override

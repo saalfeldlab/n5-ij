@@ -29,15 +29,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public class AutoDetectMetadata implements N5GsonMetadataParser< N5Metadata >
+public class AutoDetectMetadata
 {
 	private N5MetadataParser<?>[] parsers;
-	private HashMap<String,Class<?>> keysToTypes;
 
 	public AutoDetectMetadata( final N5MetadataParser<?>[] parsers )
 	{
 		this.parsers = parsers;
-		keysToTypes = new HashMap<>();
 	}
 
 	public AutoDetectMetadata()
@@ -49,37 +47,6 @@ public class AutoDetectMetadata implements N5GsonMetadataParser< N5Metadata >
 			new N5SingleScaleMetadata( ),
 			new DefaultMetadata( "", -1 )
 		});
-	}
-
-	@Override
-	public HashMap<String,Class<?>> keysToTypes()
-	{
-		return keysToTypes;
-	}
-
-	@Override
-	public N5Metadata parseMetadata( final Map< String, Object > metaMap ) throws Exception
-	{
-		final ArrayList<Exception> elist = new ArrayList<>();
-		for( final N5MetadataParser< ? > p : parsers )
-		{
-			try
-			{
-				final N5Metadata meta = p.parseMetadata( metaMap );
-				if( meta != null )
-					return meta;
-			}
-			catch( final Exception e )
-			{
-				elist.add( e );
-			}
-		}
-
-		for( final Exception e : elist )
-		{
-			e.printStackTrace();
-		}
-		return null;
 	}
 
 }

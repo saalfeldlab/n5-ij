@@ -42,7 +42,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Predicate;
 
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
-import org.janelia.saalfeldlab.n5.metadata.N5GsonMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
@@ -88,6 +87,19 @@ public class N5DatasetDiscoverer {
               groupParsers,
               metadataParsers);
     }
+	
+	@SuppressWarnings( "rawtypes" )
+	public N5DatasetDiscoverer( 
+			final N5Reader n5,
+			final ExecutorService executor, final N5GroupParser[] groupParsers, final N5MetadataParser... metadataParsers )
+    {
+        this( n5,
+        	  executor,
+              Optional.of( new AlphanumericComparator(Collator.getInstance())),
+              null,
+              groupParsers,
+              metadataParsers);
+    }
 
 	/**
      * Creates an N5 discoverer with alphanumeric sorting order of groups/datasets (such as, s9 goes before s10).
@@ -99,6 +111,19 @@ public class N5DatasetDiscoverer {
 	public N5DatasetDiscoverer( final N5GroupParser[] groupParsers, final N5MetadataParser... metadataParsers )
     {
         this( Executors.newSingleThreadExecutor(),
+              Optional.of( new AlphanumericComparator(Collator.getInstance())),
+              null,
+              groupParsers,
+              metadataParsers);
+    }
+	
+	@SuppressWarnings( "rawtypes" )
+	public N5DatasetDiscoverer( final N5Reader n5,
+			final N5GroupParser[] groupParsers,
+			final N5MetadataParser... metadataParsers )
+    {
+        this( n5,
+        	  Executors.newSingleThreadExecutor(),
               Optional.of( new AlphanumericComparator(Collator.getInstance())),
               null,
               groupParsers,
@@ -118,6 +143,22 @@ public class N5DatasetDiscoverer {
 			  groupParsers,
 			  metadataParsers );
 	}
+	
+	@SuppressWarnings("rawtypes")
+	public N5DatasetDiscoverer(
+			final N5Reader n5,
+			final ExecutorService executor,
+			final Predicate< N5TreeNode > filter,
+			final N5GroupParser[] groupParsers,
+			final N5MetadataParser... metadataParsers )
+	{
+		this( n5,
+				executor,
+			  Optional.of( new AlphanumericComparator(Collator.getInstance())),
+			  filter,
+			  groupParsers,
+			  metadataParsers );
+	}
 
 	@SuppressWarnings("rawtypes")
 	public N5DatasetDiscoverer(
@@ -128,7 +169,18 @@ public class N5DatasetDiscoverer {
     {
 		this( executor, comparator, null, groupParsers, metadataParsers);
     }
-
+	
+	@SuppressWarnings("rawtypes")
+	public N5DatasetDiscoverer(
+			final N5Reader n5,
+			final ExecutorService executor,
+			final Optional<Comparator<? super String>> comparator,
+            final N5GroupParser[] groupParsers,
+			final N5MetadataParser... metadataParsers)
+    {
+		this( n5, executor, comparator, null, groupParsers, metadataParsers);
+    }
+	
 	/**
      * Creates an N5 discoverer.
      *
@@ -158,6 +210,37 @@ public class N5DatasetDiscoverer {
 		metadataMap = new HashMap<>();
     }
 
+	/**
+     * Creates an N5 discoverer.
+     *
+     * If the optional parameter {@code comparator} is specified, the groups and datasets
+     * will be listed in the order determined by this comparator.
+	 * 
+	 * @param executor the executor
+	 * @param comparator optional string comparator 
+	 * @param filter the dataset filter
+	 * @param groupParsers group parsers
+	 * @param metadataParsers metadata parsers
+	 */
+    @SuppressWarnings( "rawtypes" )
+	public N5DatasetDiscoverer(
+			final N5Reader n5,
+			final ExecutorService executor,
+			final Optional<Comparator<? super String>> comparator,
+			final Predicate<N5TreeNode> filter,
+			final N5GroupParser[] groupParsers,
+			final N5MetadataParser... metadataParsers)
+    {
+    	this.n5 = n5;
+		this.executor = executor;
+		this.comparator = comparator.orElseGet( null );
+		this.filter = filter;
+		this.groupParsers = groupParsers;
+		this.metadataParsers = metadataParsers;
+
+		metadataMap = new HashMap<>();
+    }
+
     /**
      * A method usable as a {@link Predicate} to a {@link N5Reader#deepList} call,
      * that returns only datasets with metadata parsable with one of this object's
@@ -178,6 +261,7 @@ public class N5DatasetDiscoverer {
 		catch ( IOException e ) {}
 
 		N5Metadata metadata = node.getMetadata();
+		System.out.println( metadata );
 		metadataMap.put( path, metadata );
 
 		return metadata != null;
@@ -188,15 +272,13 @@ public class N5DatasetDiscoverer {
      * of the given base path using {@link N5Reader#deepList}. Returns an {@link N5TreeNode}
      * that can be displayed as a JTree.
      * 
-     * @param n5 the n5 reader
      * @param base the base path
      * @return the n5 tree node
      * @throws IOException the io exception
      */
-	public N5TreeNode discoverRecursive( final N5Reader n5, final String base ) throws IOException
+	public N5TreeNode discoverRecursive( final String base ) throws IOException
     {
 		metadataMap.clear();
-		this.n5 = n5;
 		groupSeparator = n5.getGroupSeparator();
 
 		root = new N5TreeNode( base, n5.datasetExists( base ));
@@ -277,16 +359,54 @@ public class N5DatasetDiscoverer {
 		return fullPath.replaceAll( "(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "" );
 	}
 
-	public N5TreeNode parse( final N5Reader n5, final String dataset ) throws IOException
+	public N5TreeNode parse( final String dataset ) throws IOException
     {
 		final N5TreeNode node = new N5TreeNode( dataset, n5.datasetExists( dataset ));
-		parseMetadata( n5, node, metadataParsers, null );
+
+		 // Go through all parsers to populate metadata
+		for ( final N5MetadataParser< ? > parser : metadataParsers )
+        {
+			N5Metadata parsedMeta = null;
+			try
+			{
+				parsedMeta = parser.parseMetadata( n5, dataset );
+			}
+			catch ( Exception e )
+			{
+				e.printStackTrace();
+			}
+
+			if ( parsedMeta != null )
+			{
+				node.setMetadata( parsedMeta );
+				break;
+			}
+        }
 		return node;
     }
 
 	public void parseGroupsRecursive( final N5TreeNode node )
 	{
-		parseGroupsRecursive( node, groupParsers );
+		if ( groupParsers == null )
+			return;
+
+		// the group parser is responsible for
+		// checking whether the node's metadata exist or not, 
+		// and may more may not  run
+
+		// this is not a dataset but may be a group (e.g. multiscale pyramid)
+		// try to parse groups
+		for ( final N5GroupParser< ? > gp : groupParsers )
+		{
+			executor.submit( () -> {
+				final N5Metadata groupMeta = gp.parseMetadataGroup( node );
+				if ( groupMeta != null )
+					node.setMetadata( groupMeta );
+			});
+		}
+
+		for ( final N5TreeNode c : node.childrenList() )
+			parseGroupsRecursive( c );
 	}
 
 	public void sortAndTrimRecursive( final N5TreeNode node )
@@ -332,39 +452,22 @@ public class N5DatasetDiscoverer {
 			final N5MetadataParser< ? >[] metadataParsers,
 			final N5GroupParser< ? >[] groupParsers ) throws IOException
 	{
-		HashMap< String, JsonElement > jsonMap = null;
-		if ( n5 instanceof AbstractGsonReader )
-		{
-			jsonMap = ( ( AbstractGsonReader ) n5 ).getAttributes( node.getPath() );
-			if( jsonMap == null )
-			{
-				node.setIsDataset( false );
-				return;
-			}
-		}
-
         // Go through all parsers to populate metadata
 		for ( final N5MetadataParser< ? > parser : metadataParsers )
         {
         	try
         	{
-				N5Metadata parsedMeta;
-				if ( jsonMap != null && parser instanceof N5GsonMetadataParser )
-				{
-					parsedMeta = ( ( N5GsonMetadataParser< ? > ) parser ).parseMetadataGson( node.getPath(), jsonMap );
-				}
-				else
-					parsedMeta = parser.parseMetadata( n5, node );
+				final N5Metadata parsedMeta = parser.parseMetadata( n5, node.getPath() );
 
 				if ( parsedMeta != null )
 				{
 					node.setMetadata( parsedMeta );
-					node.setIsDataset( true );
-
 					break;
 				}
 			}
-			catch ( final Exception e ) {}
+			catch ( final Exception e ) {
+				e.printStackTrace();
+			}
         }
 
         if( node.getMetadata() == null && groupParsers != null )
@@ -399,6 +502,8 @@ public class N5DatasetDiscoverer {
 			final N5TreeNode node,
 			final N5GroupParser<?>[] groupParsers )
 	{
+		// TODO make parallel
+
 		if ( groupParsers == null )
 			return;
 

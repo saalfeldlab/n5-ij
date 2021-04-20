@@ -25,11 +25,13 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
 import ij.ImagePlus;
@@ -176,16 +178,9 @@ public class ImagePlusMetadataTemplate extends AbstractN5Metadata<ImagePlusMetad
 	}
 
 	@Override
-	public HashMap< String, Class< ? > > keysToTypes()
+	public ImagePlusMetadataTemplate parseMetadata( N5Reader n5, String dataset ) throws IOException
 	{
-		// TODO
-		return null;
-	}
-
-	@Override
-	public ImagePlusMetadataTemplate parseMetadata( Map< String, Object > map ) throws Exception
-	{
-		// TODO
+		// TODO Auto-generated method stub
 		return null;
 	}
 

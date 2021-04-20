@@ -505,10 +505,10 @@ public class DatasetSelectorDialog
 			loaderExecutor = Executors.newCachedThreadPool();
 		}
 
-		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, n5NodeFilter, groupParsers, parsers );
+		datasetDiscoverer = new N5DatasetDiscoverer( n5, loaderExecutor, n5NodeFilter, groupParsers, parsers );
 		try
 		{
-			rootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
+			rootNode = datasetDiscoverer.discoverRecursive( rootPath );
 		}
 		catch ( IOException e )
 		{
@@ -542,7 +542,7 @@ public class DatasetSelectorDialog
 			N5TreeNode node = null;
 			try
 			{
-				node = datasetDiscoverer.parse( n5, dataset );
+				node = datasetDiscoverer.parse( dataset );
 				if ( node.isDataset() && node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}

@@ -39,7 +39,6 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
-import org.janelia.saalfeldlab.n5.dataaccess.DataAccessFactory;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.DefaultMetadata;
@@ -105,7 +104,7 @@ public class N5Importer implements PlugIn
 					new N5ImagePlusMetadata( "" ),
 					new N5CosemMetadata( "", null, null ),
 					new N5SingleScaleMetadata(),
-					new N5SingleScaleLegacyMetadata(),
+//					new N5SingleScaleLegacyMetadata(),
 					new DefaultMetadata( "", -1 )
 				};
 	
@@ -154,7 +153,7 @@ public class N5Importer implements PlugIn
 		impMetaWriterTypes.put( N5ImagePlusMetadata.class, new N5ImagePlusMetadata( "" ) );
 		impMetaWriterTypes.put( N5CosemMetadata.class, new N5CosemMetadata( "", null, null ) );
 		impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5SingleScaleMetadata());
-		impMetaWriterTypes.put( N5SingleScaleLegacyMetadata.class, new N5SingleScaleLegacyMetadata());
+//		impMetaWriterTypes.put( N5SingleScaleLegacyMetadata.class, new N5SingleScaleLegacyMetadata());
 		impMetaWriterTypes.put( DefaultMetadata.class, new DefaultMetadata( "", 1 ) );
 
 		numDimensionsForCrop = 5;
@@ -283,7 +282,7 @@ public class N5Importer implements PlugIn
 			N5Metadata meta;
 			try
 			{
-				meta = new N5DatasetDiscoverer( null, PARSERS ).parse( n5ForThisDataset, "" ).getMetadata();
+				meta = new N5DatasetDiscoverer( n5ForThisDataset, null, PARSERS ).parse( "" ).getMetadata();
 
 				process( n5ForThisDataset, n5Path, Collections.singletonList( meta ), openAsVirtual, thisDatasetCropInterval,
 						impMetaWriterTypes );
@@ -590,7 +589,7 @@ public class N5Importer implements PlugIn
 		N5Metadata metadata;
 		try
 		{
-			metadata = new N5DatasetDiscoverer( null, PARSERS ).parse( n5, dataset ).getMetadata();
+			metadata = new N5DatasetDiscoverer( n5, null, PARSERS ).parse( dataset ).getMetadata();
 		}
 		catch ( final IOException e )
 		{

@@ -35,22 +35,21 @@ public class MetadataTests
 		final double eps = 1e-6;
 
 		final N5MetadataParser<?>[] parsers = new N5MetadataParser[] {
-				new N5SingleScaleLegacyMetadata(),
+//				new N5SingleScaleLegacyMetadata(),
 				new N5SingleScaleMetadata() };
 		
 		String[] datasetList = new String[] {
 				"n5v_ds", "n5v_pr", "n5v_pra",  "n5v_pra-ds",  "n5v_pr-ds" };
 
-		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( null, parsers );
+		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( n5, null, parsers );
 		N5TreeNode n5root = null;
 		try
 		{
-			n5root = discoverer.discoverRecursive( n5, "/" );
+			n5root = discoverer.discoverRecursive( "/" );
 			N5DatasetDiscoverer.parseMetadata( n5, n5root, parsers, null );
 
 			List< N5TreeNode > children = n5root.childrenList();
 			Assert.assertEquals("discovery node count", 6, children.size());
-
 
 			for( String dname : datasetList)
 			{
@@ -63,8 +62,6 @@ public class MetadataTests
 				AffineTransform3D xfm = m.physicalTransform3d();
 				double s = xfm.get( 0, 0 ); // scale 
 				double t = xfm.get( 0, 3 ); // translation / offset
-//				System.out.println( m.physicalTransform3d());
-//				System.out.println( " " );
 				
 				if( dname.contains("ds"))
 				{

@@ -40,176 +40,177 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 
+@Deprecated
 public interface N5GsonMetadataParser < T extends N5Metadata > extends N5MetadataParser< T >
 {
-	/**
-	 * 
-	 * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
-	 * while discovering the N5 tree and filling the metadata for datasets or
-	 * groups.
-	 *
-	 * The metadata parsing is done in the bottom-up fashion, so the children of
-	 * the given {@code node} are parsed before parents and should already
-	 * contain valid metadata (if any) when parents are parsed.
-	 * 
-	 * @param <R> the type of parser
-	 * @param parser the parser 
-	 * @param dataset the dataset
-	 * @param map map of json elements
-	 * @return the metadata
-	 * @throws Exception parsing exception
-	 */
-	public default < R extends AbstractGsonReader > T parseMetadataGson( final R parser, final String dataset, final HashMap< String, JsonElement > map ) throws Exception
-	{
-		final HashMap< String, Object > objMap = new HashMap< String, Object >();
-		final HashMap< String, Class< ? > > typeMap = keysToTypes();
-		objMap.put( "dataset", dataset );
-
-		try
-		{
-			objMap.put( "attributes", parseDatasetAttributesJson( map ));
-		}
-		catch ( final Exception e1 ) { }
-
-
-		for( final String k : typeMap.keySet() )
-		{
-			objMap.put( k , parser.getGson().fromJson( map.get( k ), typeMap.get( k )));
-		}
-		return parseMetadata( objMap );
-	}
-
-	public default T parseMetadataGson( final String dataset, final HashMap< String, JsonElement > map ) throws Exception
-	{
-		final Gson gson = new GsonBuilder().create();
-		final HashMap< String, Object > objMap = new HashMap< String, Object >();
-		final HashMap< String, Class< ? > > typeMap = keysToTypes();
-		objMap.put( "dataset", dataset );
-
-		for( final String k : typeMap.keySet() )
-		{
-			objMap.put( k , gson.fromJson( map.get( k ), typeMap.get( k )));
-		}
-		return parseMetadata( objMap );
-	}
-
-	public static DatasetAttributes parseDatasetAttributes( final HashMap< String, Object > map )
-	{
-		try
-		{
-			final int[] blockSize = ( int[] ) map.get( "blockSize" );
-			final long[] dimensions = ( long[] ) map.get( "dimensions" );
-			final DataType dataType = ( DataType ) map.get( "dataType" );
-
-			// fix compression eventually
-			// final Compression compression = ( Compression ) map.get( "compression" );
-			return new DatasetAttributes( dimensions, blockSize, dataType, null );
-		}
-		catch ( final Exception e ) { }
-		return null;
-	}
-
-	public static DatasetAttributes parseDatasetAttributesJson(
-			final HashMap< String, JsonElement > map )
-	{
-		final Gson gson = new GsonBuilder().create();
-		try
-		{
-			final int[] blockSize = GsonAttributesParser.parseAttribute( map, "blockSize", int[].class, gson);
-			final long[] dimensions = GsonAttributesParser.parseAttribute( map, "dimensions", long[].class, gson);
-			final DataType dataType = DataType.fromString( GsonAttributesParser.parseAttribute( map, "dataType", String.class, gson));
-
-			// fix compression eventually...
-			// final Compression compression = GsonAttributesParser.parseAttribute( map, "compression", Compression.class, gson);
-
-			if( dimensions != null && dataType != null && dataType != null )
-				return new DatasetAttributes( dimensions, blockSize, dataType, null );
-		}
-		catch ( final IOException e ) { }
-		return null;
-	}
-
-	public default < R extends AbstractGsonReader > T parseMetadataGson( final R parser, final String dataset ) throws Exception
-	{
-		return parseMetadataGson( parser, dataset, parser.getAttributes( dataset ));
-	}
-
-	public default < R extends AbstractGsonReader > Map< String, Object > parseMetadataGson(
-			final R n5, final String dataset, final Map< String, Class<?> > keys )
-	{
-		HashMap< String, JsonElement > map;
-		try
-		{
-			map = n5.getAttributes( dataset );
-		}
-		catch ( final IOException e1 )
-		{
-			// empty map, or could be null?
-			return new HashMap<>();
-		}
-
-		final Gson gson = new GsonBuilder().create();
-		final HashMap< String, Object > objMap = new HashMap< String, Object >();
-		final HashMap< String, Class< ? > > typeMap = keysToTypes();
-		objMap.put( "dataset", dataset );
-
-		for( final String k : typeMap.keySet() )
-		{
-			objMap.put( k , gson.fromJson( map.get( k ), typeMap.get( k )));
-		}
-
-		return objMap;
-	}
-
-	public default Map< String, Object > parseMetadata(
-			final N5Reader n5, final String dataset, final Map< String, Class<?> > keys )
-	{
-		final HashMap< String, Object > map = new HashMap<>();
-		for( final String k : keys.keySet() )
-		{
-			if( !map.containsKey( k ))
-				return null;
-
-			try
-			{
-				map.put( k, n5.getAttribute( dataset, k, keys.get( k ) ) );
-			}
-			catch ( final IOException e )
-			{
-				return null;
-			}
-		}
-
-		return map;
-	}
-
-	@Override
-	public default T parseMetadata( final N5Reader n5, final String dataset ) throws Exception
-	{
-		if( n5 instanceof AbstractGsonReader )
-		{
-			return parseMetadataGson( (AbstractGsonReader) n5, dataset );
-		}
-		else
-		{
-			final Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, dataset, keysToTypes() );
-			return parseMetadata( keys );
-		}
-	}
-
-	@Override
-	public default T parseMetadata( final N5Reader n5, final N5TreeNode... nodes ) throws Exception
-	{
-		if( n5 instanceof AbstractGsonReader )
-		{
-
-			return parseMetadataGson( (AbstractGsonReader) n5, nodes[0].getPath() );
-		}
-		else
-		{
-			final Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, nodes[0].getPath(), keysToTypes() );
-			return parseMetadata( keys );
-		}
-	}
+//	/**
+//	 * 
+//	 * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
+//	 * while discovering the N5 tree and filling the metadata for datasets or
+//	 * groups.
+//	 *
+//	 * The metadata parsing is done in the bottom-up fashion, so the children of
+//	 * the given {@code node} are parsed before parents and should already
+//	 * contain valid metadata (if any) when parents are parsed.
+//	 * 
+//	 * @param <R> the type of parser
+//	 * @param parser the parser 
+//	 * @param dataset the dataset
+//	 * @param map map of json elements
+//	 * @return the metadata
+//	 * @throws Exception parsing exception
+//	 */
+//	public default < R extends AbstractGsonReader > T parseMetadataGson( final R parser, final String dataset, final HashMap< String, JsonElement > map ) throws Exception
+//	{
+//		final HashMap< String, Object > objMap = new HashMap< String, Object >();
+//		final HashMap< String, Class< ? > > typeMap = keysToTypes();
+//		objMap.put( "dataset", dataset );
+//
+//		try
+//		{
+//			objMap.put( "attributes", parseDatasetAttributesJson( map ));
+//		}
+//		catch ( final Exception e1 ) { }
+//
+//
+//		for( final String k : typeMap.keySet() )
+//		{
+//			objMap.put( k , parser.getGson().fromJson( map.get( k ), typeMap.get( k )));
+//		}
+//		return parseMetadata( objMap );
+//	}
+//
+//	public default T parseMetadataGson( final String dataset, final HashMap< String, JsonElement > map ) throws Exception
+//	{
+//		final Gson gson = new GsonBuilder().create();
+//		final HashMap< String, Object > objMap = new HashMap< String, Object >();
+//		final HashMap< String, Class< ? > > typeMap = keysToTypes();
+//		objMap.put( "dataset", dataset );
+//
+//		for( final String k : typeMap.keySet() )
+//		{
+//			objMap.put( k , gson.fromJson( map.get( k ), typeMap.get( k )));
+//		}
+//		return parseMetadata( objMap );
+//	}
+//
+//	public static DatasetAttributes parseDatasetAttributes( final HashMap< String, Object > map )
+//	{
+//		try
+//		{
+//			final int[] blockSize = ( int[] ) map.get( "blockSize" );
+//			final long[] dimensions = ( long[] ) map.get( "dimensions" );
+//			final DataType dataType = ( DataType ) map.get( "dataType" );
+//
+//			// fix compression eventually
+//			// final Compression compression = ( Compression ) map.get( "compression" );
+//			return new DatasetAttributes( dimensions, blockSize, dataType, null );
+//		}
+//		catch ( final Exception e ) { }
+//		return null;
+//	}
+//
+//	public static DatasetAttributes parseDatasetAttributesJson(
+//			final HashMap< String, JsonElement > map )
+//	{
+//		final Gson gson = new GsonBuilder().create();
+//		try
+//		{
+//			final int[] blockSize = GsonAttributesParser.parseAttribute( map, "blockSize", int[].class, gson);
+//			final long[] dimensions = GsonAttributesParser.parseAttribute( map, "dimensions", long[].class, gson);
+//			final DataType dataType = DataType.fromString( GsonAttributesParser.parseAttribute( map, "dataType", String.class, gson));
+//
+//			// fix compression eventually...
+//			// final Compression compression = GsonAttributesParser.parseAttribute( map, "compression", Compression.class, gson);
+//
+//			if( dimensions != null && dataType != null && dataType != null )
+//				return new DatasetAttributes( dimensions, blockSize, dataType, null );
+//		}
+//		catch ( final IOException e ) { }
+//		return null;
+//	}
+//
+//	public default < R extends AbstractGsonReader > T parseMetadataGson( final R parser, final String dataset ) throws Exception
+//	{
+//		return parseMetadataGson( parser, dataset, parser.getAttributes( dataset ));
+//	}
+//
+//	public default < R extends AbstractGsonReader > Map< String, Object > parseMetadataGson(
+//			final R n5, final String dataset, final Map< String, Class<?> > keys )
+//	{
+//		HashMap< String, JsonElement > map;
+//		try
+//		{
+//			map = n5.getAttributes( dataset );
+//		}
+//		catch ( final IOException e1 )
+//		{
+//			// empty map, or could be null?
+//			return new HashMap<>();
+//		}
+//
+//		final Gson gson = new GsonBuilder().create();
+//		final HashMap< String, Object > objMap = new HashMap< String, Object >();
+//		final HashMap< String, Class< ? > > typeMap = keysToTypes();
+//		objMap.put( "dataset", dataset );
+//
+//		for( final String k : typeMap.keySet() )
+//		{
+//			objMap.put( k , gson.fromJson( map.get( k ), typeMap.get( k )));
+//		}
+//
+//		return objMap;
+//	}
+//
+//	public default Map< String, Object > parseMetadata(
+//			final N5Reader n5, final String dataset, final Map< String, Class<?> > keys )
+//	{
+//		final HashMap< String, Object > map = new HashMap<>();
+//		for( final String k : keys.keySet() )
+//		{
+//			if( !map.containsKey( k ))
+//				return null;
+//
+//			try
+//			{
+//				map.put( k, n5.getAttribute( dataset, k, keys.get( k ) ) );
+//			}
+//			catch ( final IOException e )
+//			{
+//				return null;
+//			}
+//		}
+//
+//		return map;
+//	}
+//
+//	@Override
+//	public default T parseMetadata( final N5Reader n5, final String dataset ) throws Exception
+//	{
+//		if( n5 instanceof AbstractGsonReader )
+//		{
+//			return parseMetadataGson( (AbstractGsonReader) n5, dataset );
+//		}
+//		else
+//		{
+//			final Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, dataset, keysToTypes() );
+//			return parseMetadata( keys );
+//		}
+//	}
+//
+//	@Override
+//	public default T parseMetadata( final N5Reader n5, final N5TreeNode node ) throws Exception
+//	{
+//		if( n5 instanceof AbstractGsonReader )
+//		{
+//
+//			return parseMetadataGson( (AbstractGsonReader) n5, node.getPath() );
+//		}
+//		else
+//		{
+//			final Map< String, Object > keys = N5MetadataParser.parseMetadataStatic( n5, node.getPath(), keysToTypes() );
+//			return parseMetadata( keys );
+//		}
+//	}
 
 }

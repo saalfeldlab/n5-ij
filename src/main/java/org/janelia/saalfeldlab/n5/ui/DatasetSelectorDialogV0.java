@@ -81,7 +81,10 @@ public class DatasetSelectorDialogV0
      * To add more parsers, add a new class that implements {@link N5MetadataParser}
      * and pass an instance of it to the {@link N5DatasetDiscoverer} constructor here.
      */
-    private final N5DatasetDiscoverer datasetDiscoverer;
+    
+	private final N5GroupParser<?>[] groupParsers;
+
+	private final N5MetadataParser< ? >[] parsers;
 
 	private Consumer< DataSelection > okCallback;
 
@@ -131,7 +134,8 @@ public class DatasetSelectorDialogV0
 	{
 		this.n5Fun = n5Fun;
 		this.pathFun = pathFun;
-		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+		this.groupParsers = groupParsers;
+		this.parsers = parsers;
 	}
 
 	public DatasetSelectorDialogV0(
@@ -148,7 +152,8 @@ public class DatasetSelectorDialogV0
 			final N5MetadataParser< ? >... parsers )
 	{
 		this.n5 = n5;
-		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+		this.groupParsers = groupParsers;
+		this.parsers = parsers;
 	}
 
 	public void setVirtualOption( final boolean arg )
@@ -359,7 +364,8 @@ public class DatasetSelectorDialogV0
         final N5TreeNode n5RootNode;
         try
         {
-			n5RootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
+        	final N5DatasetDiscoverer datasetDiscoverer = new N5DatasetDiscoverer( n5, groupParsers, parsers );
+			n5RootNode = datasetDiscoverer.discoverRecursive( rootPath );
 			if( n5RootNode.isDataset() )
 				okBtn.setEnabled( true );
         }
@@ -476,7 +482,8 @@ public class DatasetSelectorDialogV0
 			N5TreeNode node = null;
 			try
 			{
-				node = datasetDiscoverer.parse( n5, dataset );
+	        	final N5DatasetDiscoverer datasetDiscoverer = new N5DatasetDiscoverer( n5, groupParsers, parsers );
+				node = datasetDiscoverer.parse( dataset );
 				if ( node.isDataset() && node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}
