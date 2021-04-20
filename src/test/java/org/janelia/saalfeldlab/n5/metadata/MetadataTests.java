@@ -29,9 +29,99 @@ public class MetadataTests
 	}
 	
 	@Test
-	public void testDiscoveryAndMetadata()
+	public void testCosemMetadataMultiscale()
 	{
-		
+		final double eps = 1e-6;
+		final N5MetadataParser<?>[] parsers = new N5MetadataParser[] { new N5CosemMetadata() };
+
+		final N5GroupParser<?>[] groupParsers = new N5GroupParser[]{
+				new N5CosemMultiScaleMetadata(),
+		};
+
+		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+
+		try
+		{
+			N5TreeNode n5root = discoverer.discoverRecursive( n5, "/cosem_ms" );
+			N5DatasetDiscoverer.parseMetadataRecursive( n5, n5root, parsers, groupParsers );
+
+			Assert.assertNotNull( n5root.getPath(), n5root.getMetadata() );
+			Assert.assertTrue( "is multiscale cosem", n5root.getMetadata() instanceof N5CosemMultiScaleMetadata );
+
+			N5CosemMultiScaleMetadata grpMeta = (N5CosemMultiScaleMetadata)n5root.getMetadata() ;
+			// check ordering of paths
+			Assert.assertEquals( "cosem s0", "cosem_ms/s0", grpMeta.getPaths()[0] );
+			Assert.assertEquals( "cosem s1", "cosem_ms/s1", grpMeta.getPaths()[1] );
+			Assert.assertEquals( "cosem s2", "cosem_ms/s2", grpMeta.getPaths()[2] );
+
+			List< N5TreeNode > children = n5root.childrenList();
+			Assert.assertEquals("discovery node count", 3, children.size());
+
+			children.stream().forEach( n -> {
+				final String dname = n.getPath();
+				System.out.println( dname );
+
+				Assert.assertNotNull( dname, n.getMetadata() );
+				Assert.assertTrue( "is cosem", n.getMetadata() instanceof N5CosemMetadata );
+			});
+		}
+		catch ( IOException e )
+		{
+			fail("Discovery failed");
+			e.printStackTrace();
+		}
+	}
+
+	@Test
+	public void testCosemMetadata()
+	{
+		final double eps = 1e-6;
+		final N5MetadataParser<?>[] parsers = new N5MetadataParser[] { new N5CosemMetadata() };
+
+		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( null, parsers );
+		try
+		{
+			N5TreeNode n5root = discoverer.discoverRecursive( n5, "/" );
+			N5DatasetDiscoverer.parseMetadata( n5, n5root, parsers, null );
+
+			List< N5TreeNode > children = n5root.childrenList();
+			Assert.assertEquals("discovery node count", 3, children.size());
+
+			children.stream().filter( x -> x.getPath().equals("/cosem" )).forEach( n -> {
+				String dname = n.getPath();
+				try
+				{
+					N5DatasetDiscoverer.parseMetadata( n5, n, parsers, null );
+				}
+				catch ( IOException e )
+				{
+					fail("cosem parse failed");
+				}
+
+				Assert.assertNotNull( dname, n.getMetadata() );
+
+				Assert.assertTrue( "is cosem", n.getMetadata() instanceof N5CosemMetadata );
+
+				N5CosemMetadata m = ( N5CosemMetadata ) n.getMetadata();
+				AffineTransform3D xfm = m.physicalTransform3d();
+				final double s = xfm.get( 0, 0 ); // scale 
+				final double t = xfm.get( 0, 3 ); // translation / offset
+
+				Assert.assertEquals( "cosem scale", 64, s, eps );
+				Assert.assertEquals( "cosem offset", 28, t, eps );
+			});
+		}
+		catch ( IOException e )
+		{
+			fail("Discovery failed");
+			e.printStackTrace();
+		}
+
+	}
+
+	@Test
+	public void testN5ViewerMetadata()
+	{
 		final double eps = 1e-6;
 
 		final N5MetadataParser<?>[] parsers = new N5MetadataParser[] {
@@ -57,7 +147,6 @@ public class MetadataTests
 				N5DatasetDiscoverer.parseMetadata( n5, n, parsers, null );
 				Assert.assertNotNull( dname, n.getMetadata() );
 
-				System.out.println( dname );
 				PhysicalMetadata m = ( PhysicalMetadata ) n.getMetadata();
 				AffineTransform3D xfm = m.physicalTransform3d();
 				double s = xfm.get( 0, 0 ); // scale 
