@@ -1,0 +1,39 @@
+{
+  "compression": {
+    "type": "gzip",
+    "level": -1
+  },
+  "blockSize": [
+    32,
+    32,
+    32
+  ],
+  "dataType": "uint16",
+  "dimensions": [
+    128,
+    128,
+    65
+  ],
+  "transform": {
+    "axes": [
+      "z",
+      "y",
+      "x"
+    ],
+    "scale": [
+      128,
+      128,
+      128
+    ],
+    "translate": [
+      35,
+      35,
+      35
+    ],
+    "units": [
+      "nm",
+      "nm",
+      "nm"
+    ]
+  }
+}
