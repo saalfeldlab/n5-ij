@@ -92,7 +92,6 @@ public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadat
 		for ( final N5TreeNode childNode : node.childrenList() )
 		{
 			if ( scaleLevelPredicate.test( childNode.getNodeName() ) &&
-				 childNode.isDataset() &&
 				 childNode.getMetadata() instanceof N5CosemMetadata )
 			{
 				scaleLevelNodes.put( childNode.getNodeName(), childNode );

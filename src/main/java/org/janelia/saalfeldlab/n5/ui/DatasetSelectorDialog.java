@@ -508,7 +508,7 @@ public class DatasetSelectorDialog
 		datasetDiscoverer = new N5DatasetDiscoverer( n5, loaderExecutor, n5NodeFilter, groupParsers, parsers );
 		try
 		{
-			rootNode = datasetDiscoverer.discoverRecursive( rootPath );
+			rootNode = datasetDiscoverer.discoverAndParseRecursive( rootPath );
 		}
 		catch ( IOException e )
 		{
@@ -543,12 +543,14 @@ public class DatasetSelectorDialog
 			try
 			{
 				node = datasetDiscoverer.parse( dataset );
-				if ( node.isDataset() && node.getMetadata() != null )
+//				if ( node.isDataset() && node.getMetadata() != null )
+				if ( node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}
 			catch ( final Exception e ){}
 
-			if ( node == null || !node.isDataset() || node.getMetadata() == null )
+//			if ( node == null || !node.isDataset() || node.getMetadata() == null )
+			if ( node == null || node.getMetadata() == null )
 			{
 				JOptionPane.showMessageDialog( null, "Could not find a dataset / metadata at the provided path." );
 				return;

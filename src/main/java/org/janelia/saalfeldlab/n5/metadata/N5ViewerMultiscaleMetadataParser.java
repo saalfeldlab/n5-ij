@@ -55,7 +55,6 @@ public class N5ViewerMultiscaleMetadataParser implements N5GroupParser< N5MultiS
 		for ( final N5TreeNode childNode : node.childrenList() )
 		{
 			if ( scaleLevelPredicate.test( childNode.getNodeName() ) &&
-				 childNode.isDataset() &&
 				 ( childNode.getMetadata() instanceof N5SingleScaleMetadata ||
 				   childNode.getMetadata() instanceof N5SingleScaleLegacyMetadata ))
 			{

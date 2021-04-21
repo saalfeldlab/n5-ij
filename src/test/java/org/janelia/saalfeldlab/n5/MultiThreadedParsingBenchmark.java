@@ -28,7 +28,7 @@ public class MultiThreadedParsingBenchmark
 
 		long start = System.currentTimeMillis();
 		System.out.println( "discover" );
-		final N5TreeNode root = discoverer.discoverRecursive( n5Dataset );
+		final N5TreeNode root = discoverer.discoverAndParseRecursive( n5Dataset );
 		
 		long end = System.currentTimeMillis();
 

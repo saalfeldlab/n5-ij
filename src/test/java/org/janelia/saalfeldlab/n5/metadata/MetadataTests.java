@@ -38,13 +38,13 @@ public class MetadataTests
 				new N5CosemMultiScaleMetadata(),
 		};
 
-		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( n5, groupParsers, parsers );
 
 		try
 		{
-			N5TreeNode n5root = discoverer.discoverRecursive( n5, "/cosem_ms" );
-			N5DatasetDiscoverer.parseMetadataRecursive( n5, n5root, parsers, groupParsers );
+			N5TreeNode n5root = discoverer.discoverAndParseRecursive( "/cosem_ms" );
 
+			Assert.assertNotNull( n5root );
 			Assert.assertNotNull( n5root.getPath(), n5root.getMetadata() );
 			Assert.assertTrue( "is multiscale cosem", n5root.getMetadata() instanceof N5CosemMultiScaleMetadata );
 
@@ -78,25 +78,24 @@ public class MetadataTests
 		final double eps = 1e-6;
 		final N5MetadataParser<?>[] parsers = new N5MetadataParser[] { new N5CosemMetadata() };
 
-		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( null, parsers );
+		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( n5, null, parsers );
 		try
 		{
-			N5TreeNode n5root = discoverer.discoverRecursive( n5, "/" );
-			N5DatasetDiscoverer.parseMetadata( n5, n5root, parsers, null );
+			N5TreeNode n5root = discoverer.discoverAndParseRecursive( "" );
 
 			List< N5TreeNode > children = n5root.childrenList();
 			Assert.assertEquals("discovery node count", 3, children.size());
 
 			children.stream().filter( x -> x.getPath().equals("/cosem" )).forEach( n -> {
 				String dname = n.getPath();
-				try
-				{
-					N5DatasetDiscoverer.parseMetadata( n5, n, parsers, null );
-				}
-				catch ( IOException e )
-				{
-					fail("cosem parse failed");
-				}
+//				try
+//				{
+//					N5DatasetDiscoverer.parseMetadata( n5, n, parsers, null );
+//				}
+//				catch ( IOException e )
+//				{
+//					fail("cosem parse failed");
+//				}
 
 				Assert.assertNotNull( dname, n.getMetadata() );
 
@@ -135,15 +134,14 @@ public class MetadataTests
 		N5TreeNode n5root = null;
 		try
 		{
-			n5root = discoverer.discoverRecursive( "/" );
-			N5DatasetDiscoverer.parseMetadata( n5, n5root, parsers, null );
+			n5root = discoverer.discoverAndParseRecursive( "/" );
 
 			List< N5TreeNode > children = n5root.childrenList();
-			Assert.assertEquals("discovery node count", 6, children.size());
+//			Assert.assertEquals("discovery node count", 6, children.size());
 
 			for( String dname : datasetList)
 			{
-				N5TreeNode n = new N5TreeNode( dname, false );
+				N5TreeNode n = new N5TreeNode( dname );
 				N5DatasetDiscoverer.parseMetadata( n5, n, parsers, null );
 				Assert.assertNotNull( dname, n.getMetadata() );
 

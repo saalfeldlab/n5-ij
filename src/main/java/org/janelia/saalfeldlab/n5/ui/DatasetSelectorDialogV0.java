@@ -365,8 +365,8 @@ public class DatasetSelectorDialogV0
         try
         {
         	final N5DatasetDiscoverer datasetDiscoverer = new N5DatasetDiscoverer( n5, groupParsers, parsers );
-			n5RootNode = datasetDiscoverer.discoverRecursive( rootPath );
-			if( n5RootNode.isDataset() )
+			n5RootNode = datasetDiscoverer.discoverAndParseRecursive( rootPath );
+			if( n5RootNode.getMetadata() != null )
 				okBtn.setEnabled( true );
         }
 		catch ( final IOException e )
@@ -386,7 +386,8 @@ public class DatasetSelectorDialogV0
         selectedList.setEnabled(true);
         removeSourceBtn.setEnabled(false);
 
-		if ( n5RootNode.isDataset() )
+//		if ( n5RootNode.isDataset() )
+		if( n5RootNode.getMetadata() != null )
 			okBtn.setEnabled( true );
 		else
 			okBtn.setEnabled( false );
@@ -484,12 +485,13 @@ public class DatasetSelectorDialogV0
 			{
 	        	final N5DatasetDiscoverer datasetDiscoverer = new N5DatasetDiscoverer( n5, groupParsers, parsers );
 				node = datasetDiscoverer.parse( dataset );
-				if ( node.isDataset() && node.getMetadata() != null )
+//				if ( node.isDataset() && node.getMetadata() != null )
+				if ( node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}
 			catch ( final Exception e ){}
 
-			if ( node == null || !node.isDataset() || node.getMetadata() == null )
+			if ( node == null || node.getMetadata() == null )
 			{
 				JOptionPane.showMessageDialog( null, "Could not find a dataset / metadata at the provided path." );
 				return;

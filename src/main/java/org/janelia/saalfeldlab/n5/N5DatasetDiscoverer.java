@@ -29,24 +29,16 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.text.Collator;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Predicate;
 
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
-
-import com.google.gson.JsonElement;
 
 import se.sawano.java.text.AlphanumericComparator;
 
@@ -64,8 +56,6 @@ public class N5DatasetDiscoverer {
     private final ExecutorService executor;
 
     private N5TreeNode root;
-
-	private HashMap< String, N5Metadata > metadataMap;
 
 	private String groupSeparator;
 
@@ -206,8 +196,6 @@ public class N5DatasetDiscoverer {
 		this.filter = filter;
 		this.groupParsers = groupParsers;
 		this.metadataParsers = metadataParsers;
-
-		metadataMap = new HashMap<>();
     }
 
 	/**
@@ -237,35 +225,7 @@ public class N5DatasetDiscoverer {
 		this.filter = filter;
 		this.groupParsers = groupParsers;
 		this.metadataParsers = metadataParsers;
-
-		metadataMap = new HashMap<>();
     }
-
-    /**
-     * A method usable as a {@link Predicate} to a {@link N5Reader#deepList} call,
-     * that returns only datasets with metadata parsable with one of this object's
-     * metadata parsers.
-     * <p>
-     * Adds the parsed metadata to this object's metadataMap to avoid parsing wtice
-     * 
-     * @param path the dataset path
-     * @return true if metadata were succesfullty parsed
-     */
-	public boolean metadataParseTest( final String path )
-	{
-		N5TreeNode node = new N5TreeNode( path, false );
-		try
-		{
-			N5DatasetDiscoverer.parseMetadata( n5, node, metadataParsers, groupParsers );
-		}
-		catch ( IOException e ) {}
-
-		N5Metadata metadata = node.getMetadata();
-		System.out.println( metadata );
-		metadataMap.put( path, metadata );
-
-		return metadata != null;
-	}
 
     /**
      * Recursively discovers and parses metadata for datasets that are children 
@@ -276,100 +236,56 @@ public class N5DatasetDiscoverer {
      * @return the n5 tree node
      * @throws IOException the io exception
      */
-	public N5TreeNode discoverRecursive( final String base ) throws IOException
+	public N5TreeNode discoverAndParseRecursive( final String base ) throws IOException
     {
-		metadataMap.clear();
 		groupSeparator = n5.getGroupSeparator();
 
-		root = new N5TreeNode( base, n5.datasetExists( base ));
 		String[] datasetPaths;
+		N5TreeNode root = null ;
 		try
 		{
-			datasetPaths = n5.deepListDatasets( base, this::metadataParseTest, executor );
-			buildNodes( root, datasetPaths );
-			sortAndTrimRecursive( root );
+			datasetPaths = n5.deepList( base, executor );
+			root = N5TreeNode.fromFlatList( base, datasetPaths, groupSeparator );
 		}
-		catch ( Exception e ) { }
+		catch ( Exception e ) {
+			e.printStackTrace();
+			return null;
+		}
 
-		parseGroupsRecursive( root, groupParsers );
+		parseMetadataRecursive( root );
+		parseGroupsRecursive( root );
+		sortAndTrimRecursive( root );
 
 		return root;
     }
 
 	/**
-	 * Generates a tree based on {@link N5Reader#deepList}, modifying the passed {@link N5TreeNode}.
+	 * Returns the name of the dataset, removing the full path
+	 * and leading groupSeparator.
 	 * 
-	 * @param rootNode root node
-	 * @param parsedPaths the result of deepList
+	 * @param fullPath
+	 * @return dataset name
 	 */
-	private void buildNodes( final N5TreeNode rootNode, final String[] parsedPaths )
-	{
-		final HashMap< String, N5TreeNode > pathToNode = new HashMap<>();
-
-		pathToNode.put( normalPathName( rootNode.getPath() ), rootNode );
-		final String normalBase = normalPathName( rootNode.getPath() );
-
-		for ( final String datasetPath : parsedPaths )
-		{
-			final String fullPath = normalBase + groupSeparator + datasetPath;
-			final N5TreeNode node = new N5TreeNode( fullPath, true );
-			node.setMetadata( metadataMap.get( fullPath ) );
-
-			add( normalBase, node, pathToNode, groupSeparator );
-		}
-	}
-
-	/**
-	 * Add the node to its parent, creating parents recursively if needed.
-	 * 
-	 * @param pathToNode the path
-	 * @param node the n5 node
-	 * @param a map from paths to nodes 
-	 * @param groupSeparator the separator character
-	 */
-	private static void add( final String base, 
-			final N5TreeNode node,  
-			final HashMap< String, N5TreeNode > pathToNode,
-			final String groupSeparator )
-	{
-		final String fullPath = node.getPath();
-		if( fullPath.equals( base ) )
-			return;
-
-		final String parentPath = fullPath.substring( 0, fullPath.lastIndexOf( groupSeparator ) );
-		if( !pathToNode.containsKey( parentPath ))
-		{
-			final N5TreeNode parent = new N5TreeNode( parentPath, false );
-			pathToNode.put( parentPath, parent );
-
-			// add the node as a child
-			parent.add( node );
-
-			// add parents recursively if needed
-			add( base, parent, pathToNode, groupSeparator );
-		}
-		else
-		{
-			pathToNode.get( parentPath ).add( node );
-		}
-	}
-
-	private String normalPathName( final String fullPath )
+	private String normalDatasetName( final String fullPath )
 	{
 		return fullPath.replaceAll( "(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "" );
 	}
 
 	public N5TreeNode parse( final String dataset ) throws IOException
     {
-		final N5TreeNode node = new N5TreeNode( dataset, n5.datasetExists( dataset ));
+		final N5TreeNode node = new N5TreeNode( dataset );
+		return parse( node );
+    }
 
+	public N5TreeNode parse( final N5TreeNode node ) throws IOException
+	{
 		 // Go through all parsers to populate metadata
 		for ( final N5MetadataParser< ? > parser : metadataParsers )
         {
 			N5Metadata parsedMeta = null;
 			try
 			{
-				parsedMeta = parser.parseMetadata( n5, dataset );
+				parsedMeta = parser.parseMetadata( n5, node.getPath() );
 			}
 			catch ( Exception e )
 			{
@@ -383,7 +299,7 @@ public class N5DatasetDiscoverer {
 			}
         }
 		return node;
-    }
+	}
 
 	public void parseGroupsRecursive( final N5TreeNode node )
 	{
@@ -398,11 +314,9 @@ public class N5DatasetDiscoverer {
 		// try to parse groups
 		for ( final N5GroupParser< ? > gp : groupParsers )
 		{
-			executor.submit( () -> {
-				final N5Metadata groupMeta = gp.parseMetadataGroup( node );
-				if ( groupMeta != null )
-					node.setMetadata( groupMeta );
-			});
+			final N5Metadata groupMeta = gp.parseMetadataGroup( node );
+			if ( groupMeta != null )
+				node.setMetadata( groupMeta );
 		}
 
 		for ( final N5TreeNode c : node.childrenList() )
@@ -431,26 +345,22 @@ public class N5DatasetDiscoverer {
 			filterRecursive( c );
 	}
 
-	@Deprecated
-    private void discover(final N5Reader n5, final N5TreeNode node) throws IOException
-    {
-        if( !node.isDataset() )
-        {
-			for ( final String childGroup : n5.list( node.getPath() ) )
-			{
-				final String childPath = Paths.get( node.getPath(), childGroup ).toString();
-				final N5TreeNode childNode = new N5TreeNode( childPath, n5.datasetExists( childPath ) );
-				node.add( childNode );
-				discover( n5, childNode );
-            }
-			if ( comparator != null )
-				sort( node, comparator );
-        }
-    }
+	public static void parseMetadata(final N5Reader n5, final N5TreeNode node,
+			final N5MetadataParser< ? >[] metadataParsers )
+	{
+		parseMetadata( n5, node, metadataParsers, null );
+	}
+
+	// TODO needs testing
+//	public static void parseMetadataRecursiveNew(final N5Reader n5, final N5TreeNode node,
+//			final N5MetadataParser< ? >[] metadataParsers )
+//	{
+//		node.flatStream().forEach( n -> parseMetadata( n5, n, metadataParsers ));
+//	}
 
 	public static void parseMetadata(final N5Reader n5, final N5TreeNode node,
 			final N5MetadataParser< ? >[] metadataParsers,
-			final N5GroupParser< ? >[] groupParsers ) throws IOException
+			final N5GroupParser< ? >[] groupParsers )
 	{
         // Go through all parsers to populate metadata
 		for ( final N5MetadataParser< ? > parser : metadataParsers )
@@ -486,16 +396,19 @@ public class N5DatasetDiscoverer {
 		}
 	}
 
-	public static void parseMetadataRecursive(final N5Reader n5, final N5TreeNode node,
-			final N5MetadataParser<?>[] metadataParsers,
-			final N5GroupParser<?>[] groupParsers ) throws IOException
+	public void parseMetadataRecursive( final N5TreeNode node ) throws IOException
 	{
+		parseMetadataRecursive( n5, node, metadataParsers );
+	}
+
+	public static void parseMetadataRecursive(final N5Reader n5, final N5TreeNode node,
+			final N5MetadataParser<?>[] metadataParsers ) throws IOException
+	{
+		parseMetadata( n5, node, metadataParsers, null );
+
         // Recursively parse metadata for children nodes
 		for ( final N5TreeNode childNode : node.childrenList() )
-			parseMetadataRecursive( n5, childNode, metadataParsers, groupParsers );
-
-		// this parses groups as well
-        parseMetadata( n5, node, metadataParsers, groupParsers );
+			parseMetadataRecursive( n5, childNode, metadataParsers );
     }
 
 	public static void parseGroupsRecursive(
@@ -536,21 +449,22 @@ public class N5DatasetDiscoverer {
 		final List< N5TreeNode > children = node.childrenList();
 		if ( children.isEmpty() )
 		{
-			//return node.getMetadata() != null;
-			return node.isDataset();
+			return node.getMetadata() != null;
+//			return node.isDataset();
 		}
 
         boolean ret = false;
-        for (final Iterator<N5TreeNode> it = children.iterator(); it.hasNext();)
-        {
-            final N5TreeNode childNode = it.next();
+		for (final Iterator<N5TreeNode> it = children.iterator(); it.hasNext();)
+		{
+			final N5TreeNode childNode = it.next();
 			if ( !trim( childNode ))
 			{
-				node.remove( childNode );
+				it.remove();
 			}
-            else
-                ret = true;
-        }
+			else
+				ret = true;
+		}
+
         return ret || node.getMetadata() != null;
     }
 

@@ -167,13 +167,13 @@ public class MetadataIoTests
 		}
 
 		// multiscale
-		final N5TreeNode s0node = new N5TreeNode( "/c0/s0", true );
+		final N5TreeNode s0node = new N5TreeNode( "/c0/s0" );
 		s0node.setMetadata( metaS0 );
 
-		final N5TreeNode s1node = new N5TreeNode( "/c0/s1", true );
+		final N5TreeNode s1node = new N5TreeNode( "/c0/s1" );
 		s1node.setMetadata( metaS1 );
 
-		final N5TreeNode root = new N5TreeNode( "/c0", false );
+		final N5TreeNode root = new N5TreeNode( "/c0" );
 		root.add( s0node );
 		root.add( s1node );
 

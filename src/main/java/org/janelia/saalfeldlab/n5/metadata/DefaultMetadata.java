@@ -78,7 +78,10 @@ public class DefaultMetadata extends AbstractN5Metadata<DefaultMetadata> impleme
 	public DefaultMetadata parseMetadata( N5Reader n5, String dataset ) throws IOException
 	{
 		DatasetAttributes attrs = n5.getDatasetAttributes( dataset );
-		return new DefaultMetadata( dataset, attrs );
+		if( attrs == null )
+			return null;
+		else
+			return new DefaultMetadata( dataset, attrs );
 	}
 
 	@Override

@@ -293,6 +293,7 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
 
 		Integer type = n5.getAttribute( dataset, typeKey, Integer.class );
 		
+		try {
 		final N5ImagePlusMetadata meta = new N5ImagePlusMetadata( dataset, attributes,
 				name, fps, frameInterval,
 				unit,
@@ -300,8 +301,13 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
 				xOrigin, yOrigin, zOrigin, 
 				numChannels, numSlices, numFrames,
 				type);
+			return meta;
+		}
+		catch( Exception e )
+		{
+			return null;
+		}
 
-		return meta;
 	}
 
 	@Override
