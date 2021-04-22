@@ -80,13 +80,13 @@ public class N5TreeNode // extends DefaultMutableTreeNode
 	 * 
 	 * @return the node stream
 	 */
-	public Stream< N5TreeNode > flatStream()
+	public Stream< N5TreeNode > flat()
 	{
 		if( children.size() == 0 )
 			return Stream.of( this );
 		else
 			return children.stream()
-					.map( c -> c.flatStream() )
+					.map( c -> c.flat() )
 					.reduce( Stream.of( this ), (s,t) -> Stream.concat( s, t ));
 	}
 

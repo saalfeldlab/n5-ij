@@ -1,0 +1,18 @@
+{
+  "compression": {
+    "type": "gzip",
+    "useZlib": false,
+    "level": -1
+  },
+  "blockSize": [
+    32,
+    32,
+    32
+  ],
+  "dataType": "int64",
+  "dimensions": [
+    32,
+    32,
+    32
+  ]
+}

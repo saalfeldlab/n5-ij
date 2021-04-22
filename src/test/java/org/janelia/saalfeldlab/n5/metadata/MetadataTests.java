@@ -1,10 +1,12 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5FSReader;
@@ -174,6 +176,34 @@ public class MetadataTests
 		{
 			fail("Discovery failed");
 			e.printStackTrace();
+		}
+
+	}
+
+	@Test
+	public void testPainteraMetadata()
+	{
+		final N5MetadataParser<?>[] parsers = new N5MetadataParser[] { new PainteraLabelsMetadata() };
+		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( n5, null, parsers );
+		N5TreeNode n5root = null;
+		try
+		{
+			n5root = discoverer.discoverAndParseRecursive( "" );
+			Optional< N5TreeNode > labelsNodeOpt = n5root.flat().filter( c -> c.getPath().endsWith( "paintera/labels" )).findFirst();
+			Assert.assertTrue( "paintera labels node exists", labelsNodeOpt.isPresent());
+
+			N5Metadata meta = labelsNodeOpt.get().getMetadata();
+			Assert.assertNotNull( "metadata exist", meta );
+			Assert.assertTrue( "metadata is paintera", meta instanceof PainteraLabelsMetadata );
+
+			PainteraLabelsMetadata pmeta = ((PainteraLabelsMetadata)meta);
+			Assert.assertEquals( "maxId", 67, pmeta.getMaxId() );
+			Assert.assertEquals( "type", "label", pmeta.getType() );
+		}
+		catch( Exception e )
+		{
+			fail("paintera discovery failed");
+			e.printStackTrace();	
 		}
 
 	}
