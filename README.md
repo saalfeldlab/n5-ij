@@ -126,6 +126,17 @@ N5IJUtils.save(
 );
 ```
 
+Save an image stored locally to cloud storage (using four threads):
+```java
+final ImagePlus imp = IJ.openImage( "/path/to/some.tif" );
+N5IJUtils.save( imp, 
+    new N5Factory().openWriter( "s3://myBucket/myContainer.n5" ), 
+    "/myDataset", 
+	new int[]{64, 64, 64},
+	new GzipCompression(), 
+	Executors.newFixedThreadPool( 4 ));
+```
+
 ## Details
 
 * This plugin supports images of up to 5 dimensions, and the datatypes supported by Imagej (`uint8`, `uint16`, `float32`) For higher dimensions and other datatypes, we recommend [n5-imglib2](https://github.com/saalfeldlab/n5-imglib2).
