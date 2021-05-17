@@ -1,16 +1,16 @@
 /**
  * Copyright (c) 2018--2020, Saalfeld lab
  * All rights reserved.
- *
+ * <p>
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *
+ * <p>
  * 1. Redistributions of source code must retain the above copyright notice,
- *    this list of conditions and the following disclaimer.
+ * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * <p>
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -25,61 +25,26 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
-
 /**
  * Abstract class for single-scale or multi-scale N5 metadata.
  */
-public abstract class AbstractN5Metadata<T extends N5Metadata> implements N5Metadata, 
-	N5MetadataWriter< T >, N5GsonMetadataParser< T >	
-{
-	private DatasetAttributes attributes;
+public abstract class AbstractN5Metadata implements N5DatasetMetadata {
 
-	private String path;
+  private String path;
 
-	public AbstractN5Metadata( final String path, final DatasetAttributes attributes )
-	{
-		this.path = path;
-		this.attributes = attributes;
-	}
+  public AbstractN5Metadata(final String path) {
 
-	public AbstractN5Metadata( final String path )
-	{
-		this( path, null );
-	}
+	this.path = path;
+  }
 
-	public AbstractN5Metadata( final DatasetAttributes attributes )
-	{
-		this( "", attributes );
-	}
+  @Override
+  public String getPath() {
 
-	@Override
-    public String getPath()
-    {
-    	return path;
-    }
+	return path;
+  }
 
-	@Override
-	public DatasetAttributes getAttributes()
-	{
-		return attributes;
-	}
+  public static abstract class AbstractN5MetadataParser<T extends N5Metadata> implements N5GsonMetadataParser<T> {
 
-	public static Map< String, Class<?> > datasetAtttributeKeys()
-	{
-		final Map< String, Class<?>> defaultMap =  new HashMap< String, Class<?>>();
-		addDatasetAttributeKeys( defaultMap );
-		return defaultMap;
-	}
-
-	public static void addDatasetAttributeKeys( final Map< String, Class<?>> keysToTypes )
-	{
-		keysToTypes.put( "dimensions", long[].class );
-		keysToTypes.put( "blockSize", int[].class );
-		keysToTypes.put( "dataType", String.class );
-	}
+  }
 
 }

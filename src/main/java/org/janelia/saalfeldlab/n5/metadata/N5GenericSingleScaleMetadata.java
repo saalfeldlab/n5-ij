@@ -25,9 +25,71 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Writer;
 
-public interface N5MetadataWriter<T extends N5Metadata> {
+public class N5GenericSingleScaleMetadata extends AbstractN5DatasetMetadata implements PainteraSourceMetadata, N5MetadataWriter<N5GenericSingleScaleMetadata> {
 
-  void writeMetadata(T t, N5Writer n5, String group) throws Exception;
+  final public double[] resolution;
+  final public double[] offset;
+  final protected double min;
+  final protected double max;
+  final protected boolean isLabelMultiset;
+  final double[] downsamplingFactors;
+
+  public N5GenericSingleScaleMetadata(
+		  String path,
+		  DatasetAttributes attributes,
+		  Double min,
+		  Double max,
+		  double[] resolution,
+		  double[] offset,
+		  double[] downsamplingFactors,
+		  Boolean isLabelMultiset
+  ) {
+
+	super(path, attributes);
+	this.resolution = resolution;
+	this.min = min;
+	this.max = max;
+	this.offset = offset;
+	this.isLabelMultiset = isLabelMultiset;
+	this.downsamplingFactors = downsamplingFactors;
+  }
+
+  @Override
+  public void writeMetadata(final N5GenericSingleScaleMetadata t, final N5Writer n5, final String group) throws Exception {
+	//TODO actually do something here
+	return;
+  }
+
+  @Override public double min() {
+
+	return min;
+  }
+
+  @Override public double max() {
+
+	return max;
+  }
+
+  @Override public double[] getDownsamplingFactors() {
+
+	return downsamplingFactors;
+  }
+
+  @Override public double[] getResolution() {
+
+	return resolution;
+  }
+
+  @Override public double[] getOffset() {
+
+	return offset;
+  }
+
+  @Override public boolean isLabelMultiset() {
+
+	return isLabelMultiset;
+  }
 }

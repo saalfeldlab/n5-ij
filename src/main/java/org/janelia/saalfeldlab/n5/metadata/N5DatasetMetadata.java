@@ -25,10 +25,18 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
-public interface N5GroupParser<T extends N5Metadata> {
+/**
+ * Marker interface for single-scale or multi-scale N5 metadata (and possibly more).
+ */
+public interface N5DatasetMetadata extends N5Metadata {
 
-  T parseMetadataGroup(N5TreeNode node);
-
+  /**
+   * Return the dataset attributes if this metadata object represents a single dataset.
+   * Can return null if this metadata object represents multiscale set of datasets, for example.
+   *
+   * @return the attributes
+   */
+  DatasetAttributes getAttributes();
 }

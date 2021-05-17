@@ -25,11 +25,21 @@
  */
 package org.janelia.saalfeldlab.n5.dataaccess;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.Optional;
-
+import com.amazonaws.auth.AWSCredentials;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.AnonymousAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
+import com.amazonaws.regions.RegionUtils;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.AmazonS3URI;
+import com.amazonaws.services.s3.model.AmazonS3Exception;
+import com.google.cloud.resourcemanager.Project;
+import com.google.cloud.resourcemanager.ResourceManager;
+import com.google.cloud.storage.Storage;
+import com.google.gson.GsonBuilder;
+import ij.gui.GenericDialog;
 import org.apache.commons.lang.NotImplementedException;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudResourceManagerClient;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageClient;
@@ -48,22 +58,10 @@ import org.janelia.saalfeldlab.n5.s3.N5AmazonS3Writer;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 
-import com.amazonaws.auth.AWSCredentials;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.AnonymousAWSCredentials;
-import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
-import com.amazonaws.regions.RegionUtils;
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3ClientBuilder;
-import com.amazonaws.services.s3.AmazonS3URI;
-import com.amazonaws.services.s3.model.AmazonS3Exception;
-import com.google.cloud.resourcemanager.Project;
-import com.google.cloud.resourcemanager.ResourceManager;
-import com.google.cloud.storage.Storage;
-import com.google.gson.GsonBuilder;
-
-import ij.gui.GenericDialog;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Optional;
 
 @Deprecated
 public class DataAccessFactory
@@ -180,39 +178,38 @@ public class DataAccessFactory
 		final ArrayList<String> stringList = new ArrayList<>();
 		projectsIterator.forEachRemaining( x -> stringList.add( x.getName() ));
 
-		final GenericDialog dialog = new GenericDialog( "Select google cloud project" );
-		dialog.addChoice( "Project", stringList.toArray( new String[0]), stringList.get( 0 ) );
+	  final GenericDialog dialog = new GenericDialog("Select google cloud project");
+	  dialog.addChoice("Project", stringList.toArray(new String[0]), stringList.get(0));
 
-		dialog.showDialog();
-		if ( dialog.wasCanceled() )
-			return null;
+	  dialog.showDialog();
+	  if (dialog.wasCanceled())
+		return null;
 
-		return dialog.getNextChoice();
+	  return dialog.getNextChoice();
 	}
 
-	public N5Reader createN5Reader( final String basePath ) throws IOException
-	{
-		final GsonBuilder gsonBuilder = N5Metadata.getGsonBuilder();
-		switch ( type )
-		{
-		case FILESYSTEM:
-			return new N5FSReader( basePath, gsonBuilder );
-		case ZARR:
-			return new N5ZarrReader( basePath, gsonBuilder );
-		case HDF5:
-			return new N5HDF5Reader( basePath, 64, 64, 64 );
-		case AMAZON_S3:
-			final AmazonS3URI s3Uri = new AmazonS3URI( basePath );
-			return new N5AmazonS3Reader( s3, s3Uri.getBucket(), s3Uri.getKey(), gsonBuilder );
-		case GOOGLE_CLOUD:
+  public N5Reader createN5Reader(final String basePath) throws IOException {
 
-			if( googleCloudUri == null )
-				googleCloudUri = new GoogleCloudStorageURI( basePath );
+	final GsonBuilder gsonBuilder = N5Metadata.getGsonBuilder();
+	switch (type) {
+	case FILESYSTEM:
+	  return new N5FSReader(basePath, gsonBuilder);
+	case ZARR:
+	  return new N5ZarrReader(basePath, gsonBuilder);
+	case HDF5:
+	  return new N5HDF5Reader(basePath, 64, 64, 64);
+	case AMAZON_S3:
+	  final AmazonS3URI s3Uri = new AmazonS3URI(basePath);
+	  return new N5AmazonS3Reader(s3, s3Uri.getBucket(), s3Uri.getKey(), gsonBuilder);
+	case GOOGLE_CLOUD:
 
-			final String bucket = googleCloudUri.getBucket();
-			final String container = googleCloudUri.getKey();
+	  if (googleCloudUri == null)
+		googleCloudUri = new GoogleCloudStorageURI(basePath);
 
-			return new N5GoogleCloudStorageReader( googleCloudStorage, bucket, container, gsonBuilder );
+	  final String bucket = googleCloudUri.getBucket();
+	  final String container = googleCloudUri.getKey();
+
+	  return new N5GoogleCloudStorageReader(googleCloudStorage, bucket, container, gsonBuilder);
 		default:
 			throw new NotImplementedException( "Factory for type " + type + " is not implemented" );
 		}

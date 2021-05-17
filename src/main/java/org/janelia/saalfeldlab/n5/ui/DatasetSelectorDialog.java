@@ -25,23 +25,15 @@
  */
 package org.janelia.saalfeldlab.n5.ui;
 
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+import ij.IJ;
+import ij.Prefs;
+import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
+import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
+import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -61,17 +53,22 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
-
-import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
-import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
-import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-
-import ij.IJ;
-import ij.Prefs;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public class DatasetSelectorDialog
 {
@@ -496,35 +493,34 @@ public class DatasetSelectorDialog
 			return;
 		}
 
-		messageLabel.setText( "Discovering datasets..." );
-		messageLabel.setVisible( true );
-		dialog.repaint();
+	  messageLabel.setText("Discovering datasets...");
+	  messageLabel.setVisible(true);
+	  dialog.repaint();
 
-		if( loaderExecutor == null )
-		{
-			loaderExecutor = Executors.newCachedThreadPool();
-		}
+	  if (loaderExecutor == null) {
+		loaderExecutor = Executors.newCachedThreadPool();
+	  }
 
-		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, n5NodeFilter, groupParsers, parsers );
-		try
-		{
-			rootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
-		}
-		catch ( IOException e )
-		{
-			e.printStackTrace();
-		}
+	  //		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, n5NodeFilter, groupParsers, parsers );
+	  //		try
+	  //		{
+	  //			rootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
+	  //		}
+	  //		catch ( IOException e )
+	  //		{
+	  //			e.printStackTrace();
+	  //		}
 
-		// set the root node for the JTree
-		rootJTreeNode = rootNode.asTreeNode();
-		treeModel.setRoot( rootJTreeNode );
-		messageLabel.setText( "Done" );
-		dialog.repaint();
+	  // set the root node for the JTree
+	  rootJTreeNode = rootNode.asTreeNode();
+	  treeModel.setRoot(rootJTreeNode);
+	  messageLabel.setText("Done");
+	  dialog.repaint();
 
-		messageLabel.setVisible( false );
-		dialog.repaint();
+	  messageLabel.setVisible(false);
+	  dialog.repaint();
 
-		containerTree.setEnabled( true );
+	  containerTree.setEnabled( true );
     }
 
     private void ok()

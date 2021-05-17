@@ -25,13 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
-import org.janelia.saalfeldlab.n5.N5Writer;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
@@ -39,7 +32,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-
 import net.thisptr.jackson.jq.BuiltinFunctionLoader;
 import net.thisptr.jackson.jq.Expression;
 import net.thisptr.jackson.jq.Function;
@@ -52,24 +44,28 @@ import net.thisptr.jackson.jq.exception.JsonQueryException;
 import net.thisptr.jackson.jq.internal.misc.Strings;
 import net.thisptr.jackson.jq.path.Path;
 
-public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetadataTemplate >
-{
-	public ImagePlusMetadataTemplate template;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-	private final Scope scope;
+public class MetadataTemplateMapper { //implements N5MetadataWriter<ImagePlusMetadataTemplate> {
 
-	private final String query;
+  //  public ImagePlusMetadataTemplate template;
 
-	private Gson gson;
+  private final Scope scope;
 
-	private static final ObjectMapper MAPPER = new ObjectMapper();
+  private final String query;
 
-	public MetadataTemplateMapper( final Scope scope, final String query )
-	{
-		this.scope = scope;
-		this.query = query;
-		gson = new GsonBuilder().create();
-	}
+  private Gson gson;
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
+
+  public MetadataTemplateMapper(final Scope scope, final String query) {
+
+	this.scope = scope;
+	this.query = query;
+	gson = new GsonBuilder().create();
+  }
 
 	public MetadataTemplateMapper( final String query )
 	{
@@ -126,25 +122,25 @@ public class MetadataTemplateMapper implements N5MetadataWriter< ImagePlusMetada
 	public static final String RESOLUTION_ONLY_MAPPER =
 			"{\n\"resolution\" : [.xResolution, .yResolution, .zResolution ]\n}";
 
-	public static final String COSEM_MAPPER = "{\n\t\"transform\":\n" +
-			"\t{\n" +
-			"\t\"scale\": [.xResolution, .yResolution, .zResolution],\n" +
-			"\t\"translate\": [.xOrigin, .yOrigin, .zOrigin],\n" +
-			"\t\"axes\": [.axis0, .axis1, .axis2, .axis3, .axis4],\n" +
-			"\t\"units\": [.xUnit, .yUnit, .zUnit]\n" +
-			"\t}\n" +
-			"}";
+  public static final String COSEM_MAPPER = "{\n\t\"transform\":\n" +
+		  "\t{\n" +
+		  "\t\"scale\": [.xResolution, .yResolution, .zResolution],\n" +
+		  "\t\"translate\": [.xOrigin, .yOrigin, .zOrigin],\n" +
+		  "\t\"axes\": [.axis0, .axis1, .axis2, .axis3, .axis4],\n" +
+		  "\t\"units\": [.xUnit, .yUnit, .zUnit]\n" +
+		  "\t}\n" +
+		  "}";
 
-	@Override
-	public void writeMetadata( final ImagePlusMetadataTemplate t, final N5Writer n5, final String dataset ) throws Exception
-	{
-		final Map< String, ? > map = ( Map< String, ? > ) computeToMap( gson.toJson( t ));
-		n5.setAttributes( dataset, map );
-	}
-
-	public String toJsonString( final ImagePlusMetadataTemplate t ) throws Exception
-	{
-		return computeToJson( gson.toJson( t )).toString();
-	}
+  //	@Override
+  //	public void writeMetadata( final ImagePlusMetadataTemplate t, final N5Writer n5, final String dataset ) throws Exception
+  //	{
+  //		final Map< String, ? > map = ( Map< String, ? > ) computeToMap( gson.toJson( t ));
+  //		n5.setAttributes( dataset, map );
+  //	}
+  //
+  //	public String toJsonString( final ImagePlusMetadataTemplate t ) throws Exception
+  //	{
+  //		return computeToJson( gson.toJson( t )).toString();
+  //	}
 
 }

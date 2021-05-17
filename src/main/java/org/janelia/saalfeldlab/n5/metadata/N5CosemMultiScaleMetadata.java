@@ -1,16 +1,16 @@
 /**
  * Copyright (c) 2018--2020, Saalfeld lab
  * All rights reserved.
- *
+ * <p>
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
- *
+ * <p>
  * 1. Redistributions of source code must retain the above copyright notice,
- *    this list of conditions and the following disclaimer.
+ * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * <p>
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
@@ -25,104 +25,118 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Predicate;
-import java.util.regex.Pattern;
-import java.util.stream.DoubleStream;
-
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import net.imglib2.realtransform.AffineGet;
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 
-import net.imglib2.realtransform.AffineGet;
-import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.realtransform.Scale;
-import net.imglib2.realtransform.Scale2D;
-import net.imglib2.realtransform.Scale3D;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
-public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadata> implements N5Metadata, N5GroupParser< N5CosemMultiScaleMetadata >,
-	PhysicalMetadata
-{
+public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadata> implements N5Metadata, PhysicalMetadata, PainteraMultiscaleGroup<N5CosemMetadata> {
 
-    public final String basePath;
+  public final String basePath;
 
-    private static final Predicate<String> scaleLevelPredicate = Pattern.compile("^s\\d+$").asPredicate();
+  public N5CosemMultiScaleMetadata(N5CosemMetadata[] childrenMetadata, String basePath) {
 
-    public N5CosemMultiScaleMetadata( )
-    {
-    	super();
-        this.basePath = null;
-    }
+	super(childrenMetadata);
+	this.basePath = basePath;
+  }
 
-    public N5CosemMultiScaleMetadata( final String basePath, final String[] paths,
-    		final AffineTransform3D[] transforms,
-    		final String[] units )
-    {
-    	super( paths, transforms, units);
-        this.basePath = basePath;
-    }
+  protected N5CosemMultiScaleMetadata() {
 
-	@Override
-	public String getPath()
-	{
-		return basePath;
+	super();
+	basePath = null;
+  }
+
+  @Override
+  public String getPath() {
+
+	return basePath;
+  }
+
+  /**
+   * Called by the {@link N5DatasetDiscoverer}
+   * while discovering the N5 tree and filling the metadata for datasets or groups.
+   *
+   * @param node the node
+   * @return the metadata
+   */
+  public static Optional<N5CosemMultiScaleMetadata> parseMetadataGroup(final N5Reader reader, final N5TreeNode node) {
+
+	final Map<String, N5TreeNode> scaleLevelNodes = new HashMap<>();
+	String[] units = null;
+	/* get s0 so we can calculate downsamplingFactors for Paintera */
+	final Optional<N5TreeNode> s0NodeOpt = node.childrenList().stream()
+			.filter(x -> x.getMetadata() instanceof N5CosemMetadata)
+			.filter(x -> x.getNodeName().equals("s0"))
+			.findFirst();
+	if (!s0NodeOpt.isPresent()) {
+	  return Optional.empty();
 	}
+	final N5CosemMetadata s0Metadata = (N5CosemMetadata)s0NodeOpt.get().getMetadata();
+	final double[] zeroScale = s0Metadata.getCosemTransform().scale;
 
-	@Override
-	public DatasetAttributes getAttributes()
-	{
-		return null;
-	}
-
-	/**
-	*
-    * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
-    * while discovering the N5 tree and filling the metadata for datasets or groups.
-    *
-    * @param node the node
-    * @return the metadata
-    */
-	@Override
-	public N5CosemMultiScaleMetadata parseMetadataGroup( final N5TreeNode node )
-	{
-		final Map< String, N5TreeNode > scaleLevelNodes = new HashMap<>();
-		String[] units = null;
-		for ( final N5TreeNode childNode : node.childrenList() )
-		{
-			if ( scaleLevelPredicate.test( childNode.getNodeName() ) &&
-				 childNode.isDataset() &&
-				 childNode.getMetadata() instanceof N5CosemMetadata )
-			{
-				scaleLevelNodes.put( childNode.getNodeName(), childNode );
-				if( units == null)
-					units = ((N5CosemMetadata)childNode.getMetadata()).units();
-			}
+	for (final N5TreeNode childNode : node.childrenList()) {
+	  if (scaleLevelPredicate.test(childNode.getNodeName()) && childNode.isDataset() && childNode.getMetadata() instanceof N5CosemMetadata) {
+		scaleLevelNodes.put(childNode.getNodeName(), childNode);
+		if (units == null) {
+		  units = ((N5CosemMetadata)childNode.getMetadata()).units();
 		}
-
-		if ( scaleLevelNodes.isEmpty() )
-			return null;
-
-		final List<AffineTransform3D> transforms = new ArrayList<>();
-		final List<String> paths = new ArrayList<>();
-		scaleLevelNodes.forEach( (k,v) -> {
-			paths.add( v.getPath() );
-			transforms.add( ((N5CosemMetadata)v.getMetadata() ).getTransform().toAffineTransform3d() );
-		});
-
-		return new N5CosemMultiScaleMetadata(
-				node.getPath(),
-				paths.toArray( new String[ 0 ] ),
-				transforms.toArray( new AffineTransform3D[ 0 ] ),
-				units);
-	}
-	
-	@Override
-	public AffineGet physicalTransform()
-	{
-		// spatial transforms are specified by the individual scales 
-		return null;
+		final N5CosemMetadata childMetadata = (N5CosemMetadata)childNode.getMetadata();
+		final double[] curScale = childMetadata.getCosemTransform().scale;
+		final double[] downsamplingFactors = new double[3];
+		downsamplingFactors[0] = curScale[0] / zeroScale[0];
+		downsamplingFactors[1] = curScale[1] / zeroScale[1];
+		downsamplingFactors[2] = curScale[2] / zeroScale[2];
+		childMetadata.setDownsamplingFactors(downsamplingFactors);
+	  }
 	}
 
+	if (scaleLevelNodes.isEmpty())
+	  return Optional.empty();
+
+	final N5CosemMetadata[] childMetadata = scaleLevelNodes.values().stream().map(N5TreeNode::getMetadata).toArray(N5CosemMetadata[]::new);
+	if (!sortScaleMetadata(childMetadata)) {
+	  return Optional.empty();
+	}
+	return Optional.of(new N5CosemMultiScaleMetadata(childMetadata, node.getPath()));
+  }
+
+  /**
+   * Sort the array according to scale level; If not all metadata are scale sets, no sorting is done.
+   * All metadata names as returned by {@code N5Metadata::getName()} should be of the form sN.
+   *
+   * @param metadataToBeSorted array of the unsorted scale metadata to be sorted
+   * @param <T>                the type of the metadata
+   */
+  public static <T extends N5DatasetMetadata> boolean sortScaleMetadata(T[] metadataToBeSorted) {
+
+	final boolean allAreScaleSets = Arrays.stream(metadataToBeSorted).allMatch(x -> x.getName().matches("^s\\d+$"));
+	if (!allAreScaleSets)
+	  return false;
+
+	Arrays.sort(metadataToBeSorted, Comparator.comparingInt(s -> Integer.parseInt(s.getName().replaceAll("[^\\d]", ""))));
+	return true;
+  }
+
+  @Override public boolean isLabel() {
+
+	return childrenMetadata[0].getAttributes().getDataType() == DataType.UINT64;
+  }
+
+  @Override
+  public AffineGet physicalTransform() {
+	// spatial transforms are specified by the individual scales
+	return null;
+  }
+
+  @Override public double[] getDownsamplingFactors(int scaleIdx) {
+
+	return getChildrenMetadata()[scaleIdx].getDownsamplingFactors();
+  }
 }

@@ -25,10 +25,25 @@
  */
 package org.janelia.saalfeldlab.n5.metadata;
 
-import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
-public interface N5GroupParser<T extends N5Metadata> {
+/**
+ * Abstract class for single-scale or multi-scale N5 metadata.
+ */
+public abstract class AbstractN5DatasetMetadata extends AbstractN5Metadata implements N5DatasetMetadata {
 
-  T parseMetadataGroup(N5TreeNode node);
+  private DatasetAttributes attributes;
+
+  public AbstractN5DatasetMetadata(final String path, final DatasetAttributes attributes) {
+
+	super(path);
+	this.attributes = attributes;
+  }
+
+  @Override
+  public DatasetAttributes getAttributes() {
+
+	return attributes;
+  }
 
 }

@@ -25,17 +25,17 @@
  */
 package org.janelia.saalfeldlab.n5.ui;
 
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.GridLayout;
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
+import ij.IJ;
+import net.imglib2.FinalInterval;
+import net.imglib2.Interval;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
+import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5MultiScaleMetadata;
 
 import javax.swing.BoxLayout;
 import javax.swing.DefaultListModel;
@@ -57,31 +57,30 @@ import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeSelectionModel;
-
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
-import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.N5MultiScaleMetadata;
-
-import ij.IJ;
-import net.imglib2.FinalInterval;
-import net.imglib2.Interval;
+import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GridLayout;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class DatasetSelectorDialogV0
 {
-    /**
-     * The dataset/group discoverer that takes a list of metadata parsers.
-     *
-     * Currently, there is only one parser for N5 Viewer-style metadata (that comes from the previous version of this plugin).
-     *
-     * To add more parsers, add a new class that implements {@link N5MetadataParser}
-     * and pass an instance of it to the {@link N5DatasetDiscoverer} constructor here.
-     */
-    private final N5DatasetDiscoverer datasetDiscoverer;
+
+  /**
+   * The dataset/group discoverer that takes a list of metadata parsers.
+   * <p>
+   * Currently, there is only one parser for N5 Viewer-style metadata (that comes from the previous version of this plugin).
+   * <p>
+   * To add more parsers, add a new class that implements {@link N5MetadataParser}
+   * and pass an instance of it to the {@link N5DatasetDiscoverer} constructor here.
+   */
+  private final N5DatasetDiscoverer datasetDiscoverer = null;
 
 	private Consumer< DataSelection > okCallback;
 
@@ -131,10 +130,10 @@ public class DatasetSelectorDialogV0
 	{
 		this.n5Fun = n5Fun;
 		this.pathFun = pathFun;
-		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+//		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
 	}
 
-	public DatasetSelectorDialogV0(
+  public DatasetSelectorDialogV0(
 			final Function< String, N5Reader > n5Fun,
 			final N5GroupParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
@@ -148,10 +147,10 @@ public class DatasetSelectorDialogV0
 			final N5MetadataParser< ? >... parsers )
 	{
 		this.n5 = n5;
-		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
+//		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
 	}
 
-	public void setVirtualOption( final boolean arg )
+  public void setVirtualOption( final boolean arg )
 	{
 		virtualOption = arg;
 	}
