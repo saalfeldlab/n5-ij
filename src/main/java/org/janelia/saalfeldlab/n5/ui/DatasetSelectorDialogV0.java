@@ -25,7 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.ui;
 
-import ij.IJ;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
@@ -61,7 +60,6 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -348,42 +346,45 @@ public class DatasetSelectorDialogV0
 	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener,
 			final Function<String,String> pathToRoot )
     {
-		final String n5Path = opener.get();
-		n5 = n5Fun.apply( n5Path );
-		final String rootPath = pathToRoot.apply( n5Path );
 
-		if ( n5 == null )
-			return;
+	  final String n5Path = opener.get();
+	  n5 = n5Fun.apply(n5Path);
+	  final String rootPath = pathToRoot.apply(n5Path);
 
-        final N5TreeNode n5RootNode;
-        try
-        {
-			n5RootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
-			if( n5RootNode.isDataset() )
-				okBtn.setEnabled( true );
-        }
-		catch ( final IOException e )
-        {
-            IJ.handleException(e);
-            return;
-        }
+	  if (n5 == null)
+		return;
 
-        if( containerPathTxt != null )
-			containerPathTxt.setText(n5Path);
+	  //FIXME during merge
 
-//        treeModel.setRoot(N5DatasetDiscoverer.toJTreeNode(n5RootNode));
-		treeModel.setRoot( n5RootNode.asTreeNode() );
-        listModel.clear();
-
-        containerTree.setEnabled(true);
-        selectedList.setEnabled(true);
-        removeSourceBtn.setEnabled(false);
-
-		if ( n5RootNode.isDataset() )
-			okBtn.setEnabled( true );
-		else
-			okBtn.setEnabled( false );
-    }
+	  //        final N5TreeNode n5RootNode;
+	  //        try
+	  //        {
+	  //			n5RootNode = datasetDiscoverer.discoverAndParseRecursive( n5, rootPath );
+	  //			if( n5RootNode.isDataset() )
+	  //				okBtn.setEnabled( true );
+	  //        }
+	  //		catch ( final IOException e )
+	  //        {
+	  //            IJ.handleException(e);
+	  //            return;
+	  //        }
+	  //
+	  //        if( containerPathTxt != null )
+	  //			containerPathTxt.setText(n5Path);
+	  //
+	  ////        treeModel.setRoot(N5DatasetDiscoverer.toJTreeNode(n5RootNode));
+	  //		treeModel.setRoot( n5RootNode.asTreeNode() );
+	  //        listModel.clear();
+	  //
+	  //        containerTree.setEnabled(true);
+	  //        selectedList.setEnabled(true);
+	  //        removeSourceBtn.setEnabled(false);
+	  //
+	  //		if ( n5RootNode.isDataset() )
+	  //			okBtn.setEnabled( true );
+	  //		else
+	  //			okBtn.setEnabled( false );
+	}
 
 	private void defaultMinMax()
 	{
@@ -475,7 +476,7 @@ public class DatasetSelectorDialogV0
 			N5TreeNode node = null;
 			try
 			{
-				node = datasetDiscoverer.parse( n5, dataset );
+			  //				node = datasetDiscoverer.parse( n5, dataset );
 				if ( node.isDataset() && node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}

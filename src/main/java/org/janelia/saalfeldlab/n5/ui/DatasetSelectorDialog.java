@@ -538,7 +538,7 @@ public class DatasetSelectorDialog
 			N5TreeNode node = null;
 			try
 			{
-				node = datasetDiscoverer.parse( n5, dataset );
+//				node = datasetDiscoverer.parse( n5, dataset );
 				if ( node.isDataset() && node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}

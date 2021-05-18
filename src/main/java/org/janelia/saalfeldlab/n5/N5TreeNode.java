@@ -32,6 +32,8 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import javax.swing.tree.DefaultMutableTreeNode;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -135,6 +137,52 @@ public class N5TreeNode // extends DefaultMutableTreeNode
 	}
 
 	return out.toString();
+  }
+
+  /**
+   * Generates a tree based on the output of {@link N5Reader#deepList}, returning the root node.
+   *
+   * @param base           the path used to call deepList
+   * @param pathList       the output of deepList
+   * @param groupSeparator the n5 group separator
+   * @return the root node
+   */
+  public static N5TreeNode fromFlatList(final String base, final String[] pathList, final String groupSeparator) {
+
+	final HashMap<String, N5TreeNode> pathToNode = new HashMap<>();
+	final N5TreeNode root = new N5TreeNode(base);
+
+	final String normalizedBase = normalDatasetName(base, groupSeparator);
+	pathToNode.put(normalizedBase, root);
+
+	// sort the paths by length such that parent nodes always have smaller
+	// indexes than their children
+	Arrays.sort(pathList);
+
+	final String prefix = normalizedBase == groupSeparator ? "" : normalizedBase;
+	for (final String datasetPath : pathList) {
+
+	  final String fullPath = prefix + groupSeparator + datasetPath;
+	  final N5TreeNode node = new N5TreeNode(fullPath);
+	  pathToNode.put(fullPath, node);
+
+	  final String parentPath = fullPath.substring(0, fullPath.lastIndexOf(groupSeparator));
+
+	  N5TreeNode parent = pathToNode.get(parentPath);
+	  if (parent == null) {
+		// possible for the parent to not appear in the list
+		// if deepList is called with a filter
+		parent = new N5TreeNode(parentPath);
+		pathToNode.put(parentPath, parent);
+	  }
+	  parent.add(node);
+	}
+	return root;
+  }
+
+  private static String normalDatasetName(final String fullPath, final String groupSeparator) {
+
+	return fullPath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
   }
 
   /**
