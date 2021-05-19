@@ -49,11 +49,9 @@ import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
-import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
-import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
 import org.scijava.app.StatusService;
@@ -163,8 +161,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
   public N5Exporter() {
 
 	styles = new HashMap<String, N5MetadataWriter<?>>();
-	styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadata());
-	styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadata("", null, null));
+	//	styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadata());
+	//	styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadata("", null, null));
 	//		styles.put(N5Importer.MetadataImageJKey, new N5ImagePlusMetadata(""));
 
 	// default image plus metadata writers

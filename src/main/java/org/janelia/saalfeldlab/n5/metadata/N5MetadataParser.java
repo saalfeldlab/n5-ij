@@ -31,34 +31,26 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
-public interface N5MetadataParser<T extends N5Metadata> //R extends AbstractGsonReader & N5Reader >
-{
+public interface N5MetadataParser<T extends N5Metadata> {
 
-  /**
-   * Returns a map of keys to class types needed for parsing.
-   * <p>
-   * Optional in general, but used by default implementations.
-   *
-   * @return the map
-   */
-  HashMap<String, Class<?>> keysToTypes();
+  static DatasetAttributes parseDatasetAttributes(N5Reader n5, N5TreeNode node) {
 
-  default boolean check(final Map<String, Object> map) {
+	try {
+	  final int[] blockSize = n5.getAttribute(node.getPath(), "blockSize", int[].class);
+	  final long[] dimensions = n5.getAttribute(node.getPath(), "blockSize", long[].class);
+	  final String dataTypeString = n5.getAttribute(node.getPath(), "blockSize", String.class);
+	  if (dataTypeString == null)
+		return null;
+	  final DataType dataType = DataType.fromString(dataTypeString);
 
-	for (final String k : keysToTypes().keySet()) {
-	  if (!map.containsKey(k))
-		return false;
-	  else if (map.get(k) == null)
-		return false;
+	  if (dimensions != null && dataType != null)
+		return new DatasetAttributes(dimensions, blockSize, dataType, null);
+	} catch (IOException e) {
 	}
-	return true;
+	return null;
   }
-
-  Optional<T> parseMetadata(final Map<String, Object> map);
 
   /**
    * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
@@ -72,62 +64,12 @@ public interface N5MetadataParser<T extends N5Metadata> //R extends AbstractGson
    * @return the metadata
    * @throws Exception parsing exception
    */
-  default Optional<T> parseMetadata(final N5Reader n5, final N5TreeNode node) {
-
-	return parseMetadata(n5, node.getPath());
-  }
+  Optional<T> parseMetadata(final N5Reader n5, final N5TreeNode node);
 
   default Optional<T> parseMetadata(final N5Reader n5, final String dataset) {
 
-	final Map<String, Object> keys = N5MetadataParser.parseMetadataStatic(n5, dataset, keysToTypes());
-	return parseMetadata(keys);
+	if (!n5.exists(dataset))
+	  return Optional.empty();
+	return parseMetadata(n5, new N5TreeNode(dataset));
   }
-
-  static DatasetAttributes parseAttributes(final Map<String, Object> map) {
-
-	final int[] blockSize = (int[])map.get("blockSize");
-	final long[] dimensions = (long[])map.get("dimensions");
-	final DataType dataType = DataType.fromString((String)map.get("dataType"));
-
-	if (dimensions != null && dataType != null)
-	  return new DatasetAttributes(dimensions, blockSize, dataType, null);
-
-	return null;
-  }
-
-  static Map<String, Object> parseMetadataStatic(final N5Reader n5, final String dataset, final Map<String, Class<?>> keys) {
-
-	final HashMap<String, Object> map = new HashMap<>();
-	map.put("dataset", dataset); // TODO doc this
-
-	try {
-	  final DatasetAttributes attrs = n5.getDatasetAttributes(dataset);
-	  map.put("dimensions", attrs.getDimensions());
-	  map.put("blockSize", attrs.getBlockSize());
-	  map.put("dataType", attrs.getDataType().toString());
-	} catch (final IOException ignored) {
-	}
-
-	for (final String k : keys.keySet()) {
-	  try {
-		map.put(k, n5.getAttribute(dataset, k, keys.get(k)));
-	  } catch (final IOException e) {
-		return null;
-	  }
-	}
-
-	return map;
-  }
-
-  static boolean hasRequiredKeys(
-		  final Map<String, Class<?>> keysToTypes,
-		  final Map<String, ?> metaMap) {
-
-	for (final String k : keysToTypes.keySet()) {
-	  if (!metaMap.containsKey(k))
-		return false;
-	}
-	return true;
-  }
-
 }

@@ -2,115 +2,98 @@ package org.janelia.saalfeldlab.n5.metadata;
 
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.Scale3D;
-
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.N5Writer;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
-public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleScaleMetadata> {
+public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleScaleMetadata>, N5MetadataWriter<N5SingleScaleMetadata> {
 
-//	 {
-//		 keysToTypes.put(N5SingleScaleMetadata.DOWNSAMPLING_FACTORS_KEY, long[].class);
-//		 keysToTypes.put(N5SingleScaleMetadata.PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class);
-//		 keysToTypes.put(N5SingleScaleMetadata.AFFINE_TRANSFORM_KEY, AffineTransform3D.class);
-//	 }
+  public static final String DOWNSAMPLING_FACTORS_KEY = "downsamplingFactors";
+  public static final String PIXEL_RESOLUTION_KEY = "pixelResolution";
+  public static final String AFFINE_TRANSFORM_KEY = "affineTransform";
 
-//	 @Override
-//	 public boolean check(final Map<String, Object> metaMap) {
-//	
-//	 final Map<String, Class<?>> requiredKeys =
-//	 AbstractN5DatasetMetadataParser.datasetAtttributeKeys();
-//	 for (final String k : requiredKeys.keySet()) {
-//	 if (!metaMap.containsKey(k))
-//	 return false;
-//	 else if (metaMap.get(k) == null)
-//	 return false;
-//	 }
-//	
-//	 // needs to contain one of pixelResolution key
-//	 return metaMap.containsKey(N5SingleScaleMetadata.PIXEL_RESOLUTION_KEY);
-//	 }
+  public static AffineTransform3D buildTransform(
+		  final double[] downsamplingFactors,
+		  final double[] pixelResolution,
+		  final Optional<AffineTransform3D> extraTransformOpt) {
 
-	@Override
-	public Optional<N5SingleScaleMetadata> parseMetadata(final N5Reader n5, final N5TreeNode node) {
+	final AffineTransform3D mipmapTransform = new AffineTransform3D();
+	mipmapTransform.set(
+			downsamplingFactors[0], 0, 0, 0.5 * (downsamplingFactors[0] - 1),
+			0, downsamplingFactors[1], 0, 0.5 * (downsamplingFactors[1] - 1),
+			0, 0, downsamplingFactors[2], 0.5 * (downsamplingFactors[2] - 1));
 
-		// if (!check(metaMap))
-		// return Optional.empty();
-		try {
+	final AffineTransform3D transform = new AffineTransform3D();
+	transform.preConcatenate(mipmapTransform).preConcatenate(new Scale3D(pixelResolution));
+	extraTransformOpt.ifPresent(x -> transform.preConcatenate(x));
+	return transform;
+  }
 
-			final DatasetAttributes attributes = n5.getDatasetAttributes(node.getPath());
-			if (attributes == null)
-				return Optional.empty();
+  public static Optional<double[]> inferDownsamplingFactorsFromDataset(final String dataset) {
 
-			final int nd = attributes.getNumDimensions();
-
-			final Optional<long[]> downsamplingFactors = Optional.ofNullable(
-					n5.getAttribute(node.getPath(), N5SingleScaleMetadata.DOWNSAMPLING_FACTORS_KEY, long[].class));
-
-			final Optional<FinalVoxelDimensions> voxdim = Optional.ofNullable(
-					n5.getAttribute(node.getPath(), N5SingleScaleMetadata.PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class));
-
-			final Optional<double[]> pixelResolution = voxdim.map(x -> {
-				final double[] res = new double[nd];
-				x.dimensions(res);
-				return res;
-			});
-
-			final String unit = voxdim.map(x -> x.unit()).orElse("pixel");
-
-			final Optional<AffineTransform3D> extraTransform = Optional.ofNullable(
-					n5.getAttribute(node.getPath(), N5SingleScaleMetadata.AFFINE_TRANSFORM_KEY, AffineTransform3D.class));
-
-			final AffineTransform3D transform = buildTransform(node.getPath(), downsamplingFactors, pixelResolution, extraTransform);
-
-			return Optional.of(new N5SingleScaleMetadata(node.getPath(), transform, unit, attributes));
-
-		} catch (IOException e) {
-			return Optional.empty();
-		}
+	final String datasetNumber = dataset.replaceAll("^s", "");
+	try {
+	  final long f = Long.parseLong(datasetNumber);
+	  return Optional.of(new double[]{f, f, f});
+	} catch (Exception e) {
+	  return Optional.empty();
 	}
+  }
 
-	public static AffineTransform3D buildTransform(
-			final String datasetName,
-			final Optional<long[]> downsamplingFactorsOpt,
-			final Optional<double[]> pixelResolutionOpt,
-			final Optional<AffineTransform3D> extraTransformOpt ) {
+  @Override
+  public Optional<N5SingleScaleMetadata> parseMetadata(final N5Reader n5, final N5TreeNode node) {
 
-		final long[] downsamplingFactors = downsamplingFactorsOpt.orElse( inferDownsamplingFactorsFromDataset(datasetName));
-		final double[] pixelResolution = pixelResolutionOpt.orElse( new double[] { 1, 1, 1 });
+	try {
 
-		final AffineTransform3D mipmapTransform = new AffineTransform3D();
-		mipmapTransform.set(
-				downsamplingFactors[0], 0, 0, 0.5 * (downsamplingFactors[0] - 1),
-				0, downsamplingFactors[1], 0, 0.5 * (downsamplingFactors[1] - 1),
-				0, 0, downsamplingFactors[2], 0.5 * (downsamplingFactors[2] - 1));
+	  final DatasetAttributes attributes = n5.getDatasetAttributes(node.getPath());
+	  if (attributes == null)
+		return Optional.empty();
 
-		final AffineTransform3D transform = new AffineTransform3D();
-		transform.preConcatenate(mipmapTransform).preConcatenate(new Scale3D(pixelResolution));
-		extraTransformOpt.ifPresent(x -> transform.preConcatenate(x));
-		return transform;
+	  final int nd = attributes.getNumDimensions();
+
+	  final double[] downsamplingFactors = Optional.ofNullable(
+			  n5.getAttribute(node.getPath(), DOWNSAMPLING_FACTORS_KEY, double[].class))
+			  .orElseGet(() -> inferDownsamplingFactorsFromDataset(node.getNodeName()).orElseGet(() -> new double[]{1.0, 1.0, 1.0}));
+
+	  final Optional<FinalVoxelDimensions> voxdim = Optional.ofNullable(
+			  n5.getAttribute(node.getPath(), PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class));
+
+	  final double[] pixelResolution = voxdim.map(x -> {
+		final double[] res = new double[nd];
+		x.dimensions(res);
+		return res;
+	  }).orElseGet(() -> new double[]{1.0, 1.0, 1.0});
+
+	  final String unit = voxdim.map(x -> x.unit()).orElse("pixel");
+
+	  final Optional<AffineTransform3D> extraTransform = Optional.ofNullable(
+			  n5.getAttribute(node.getPath(), AFFINE_TRANSFORM_KEY, AffineTransform3D.class));
+
+	  final AffineTransform3D transform = buildTransform(downsamplingFactors, pixelResolution, extraTransform);
+
+	  double[] offset = new double[]{transform.get(0, 3), transform.get(1, 3), transform.get(2, 3)};
+
+	  return Optional.of(new N5SingleScaleMetadata(node.getPath(), transform, downsamplingFactors, pixelResolution, offset, unit, attributes));
+
+	} catch (IOException e) {
+	  return Optional.empty();
 	}
+  }
 
-	public static long[] inferDownsamplingFactorsFromDataset( final String dataset )
-	{
-		final long f = Long.parseLong( dataset.substring( dataset.lastIndexOf('/') + 2));
-		return new long[] { f, f, f };
-	}
+  @Override
+  public void writeMetadata(final N5SingleScaleMetadata t, final N5Writer n5, final String group) throws Exception {
 
-	@Override
-	public HashMap<String, Class<?>> keysToTypes() {
-		// TODO this probably goes away 
-		return null;
-	}
+	final double[] pixelResolution = new double[]{
+			t.transform.get(0, 0),
+			t.transform.get(1, 1),
+			t.transform.get(2, 2)};
 
-	@Override
-	public Optional<N5SingleScaleMetadata> parseMetadata(Map<String, Object> map) {
-		// TODO this definitely goes away 
-		return null;
-	}
+	final FinalVoxelDimensions voxdims = new FinalVoxelDimensions(t.unit, pixelResolution);
+	n5.setAttribute(group, PIXEL_RESOLUTION_KEY, voxdims);
+  }
+
 }
