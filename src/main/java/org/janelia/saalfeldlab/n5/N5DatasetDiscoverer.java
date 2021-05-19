@@ -26,7 +26,6 @@
 package org.janelia.saalfeldlab.n5;
 
 import com.google.gson.JsonElement;
-import org.janelia.saalfeldlab.n5.metadata.N5GsonMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -267,10 +266,7 @@ public class N5DatasetDiscoverer {
 	for (final BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>> parser : metadataParsers) {
 	  try {
 		Optional<? extends N5Metadata> parsedMeta;
-		if (jsonMap != null && parser instanceof N5GsonMetadataParser) {
-		  parsedMeta = ((N5GsonMetadataParser<?>)parser).parseMetadataGson(node.getPath(), jsonMap);
-		} else
-		  parsedMeta = parser.apply(n5, node);
+		parsedMeta = parser.apply(n5, node);
 
 		parsedMeta.ifPresent(node::setMetadata);
 		if (parsedMeta.isPresent())

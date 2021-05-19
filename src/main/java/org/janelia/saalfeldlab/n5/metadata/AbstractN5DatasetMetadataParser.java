@@ -22,8 +22,8 @@ public abstract class AbstractN5DatasetMetadataParser<T extends N5DatasetMetadat
 	return map;
   }
 
-  @Override public HashMap<String, Class<?>> keysToTypes() {
-
-	return keysToTypes;
-  }
+  //  @Override public HashMap<String, Class<?>> keysToTypes() {
+  //
+  //	return keysToTypes;
+  //  }
 }
