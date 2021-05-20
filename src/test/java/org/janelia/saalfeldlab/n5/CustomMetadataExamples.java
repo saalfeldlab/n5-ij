@@ -51,9 +51,8 @@ public class CustomMetadataExamples
 	{
 		System.out.println( " " );
 		System.out.println( translationSpec );
-		final ImagePlusMetadataTemplate metaTemplate = new ImagePlusMetadataTemplate( "", imp );
+		final ImagePlusMetadataTemplate metaTemplate = ImagePlusMetadataTemplate.readMetadataStatic( imp );
 		final MetadataTemplateMapper mapper = new MetadataTemplateMapper( translationSpec );
-		System.out.println( mapper.toJsonString( metaTemplate ));
 		System.out.println( " " );
 
 	}

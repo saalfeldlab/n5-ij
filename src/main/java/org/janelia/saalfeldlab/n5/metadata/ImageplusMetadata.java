@@ -32,26 +32,33 @@ import java.io.IOException;
 /**
  * A interface for reading and writing metadata to an {@link ImagePlus}.
  *
- * @param <T> the metadata type
+ * @param <T>
+ *            the metadata type
  * @author John Bogovic
  */
 public interface ImageplusMetadata<T extends N5DatasetMetadata> {
 
-  /**
-   * Modify the metadata of the {@link ImagePlus} according to the given metadata.
-   *
-   * @param t metadata
-   * @param ip ImagePlus
-   * @throws IOException the io exception
-   */
-  public void writeMetadata(T t, ImagePlus ip) throws IOException;
+	/**
+	 * Modify the metadata of the {@link ImagePlus} according to the given
+	 * metadata.
+	 *
+	 * @param t
+	 *            metadata
+	 * @param ip
+	 *            ImagePlus
+	 * @throws IOException
+	 *             the io exception
+	 */
+	public void writeMetadata(T t, ImagePlus ip) throws IOException;
 
-  /**
+	/**
 	 * Create and return a new metadata object from the given {@link ImagePlus}.
 	 * 
-	 * @param ip the ImagePlus
+	 * @param ip
+	 *            the ImagePlus
 	 * @return
-	 * @throws IOException the io exception
+	 * @throws IOException
+	 *             the io exception
 	 */
-	public T readMetadata( ImagePlus ip ) throws IOException;
+	public T readMetadata(ImagePlus ip) throws IOException;
 }

@@ -4,9 +4,6 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.ij.N5Factory;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
@@ -18,17 +15,18 @@ public class MultiThreadedParsingBenchmark
 	{
 //		ExecutorService executor = Executors.newSingleThreadExecutor();
 //		ExecutorService executor = Executors.newFixedThreadPool( 16 );
-		ExecutorService executor = Executors.newCachedThreadPool();
-		N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( executor, null, N5Importer.PARSERS );
+		final ExecutorService executor = Executors.newCachedThreadPool();
 
         final String n5RootPath = args[ 0 ];
         final String n5Dataset = args[ 1 ];
 
-		N5Reader n5 = new N5Factory().openReader( n5RootPath );
+		final N5Reader n5 = new N5Factory().openReader( n5RootPath );
+		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( n5, executor, null, 
+				N5DatasetDiscoverer.fromParsers( N5Importer.PARSERS ) );
 
 		long start = System.currentTimeMillis();
 		System.out.println( "discover" );
-		final N5TreeNode root = discoverer.discoverRecursive( n5, n5Dataset );
+		final N5TreeNode root = discoverer.discoverAndParseRecursive(n5Dataset);
 		
 		long end = System.currentTimeMillis();
 
