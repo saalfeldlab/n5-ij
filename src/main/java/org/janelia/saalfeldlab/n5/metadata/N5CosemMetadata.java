@@ -34,21 +34,10 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 public class N5CosemMetadata extends AbstractN5DatasetMetadata implements PainteraSourceMetadata, PhysicalMetadata, N5MetadataWriter<N5CosemMetadata> {
 
   public static final String pixelResolutionKey = "pixelResolution";
+
   double[] downsamplingFactors = new double[]{1.0, 1.0, 1.0};
 
-  private boolean separateChannels = true;
-
   private final CosemTransform cosemTransformMeta;
-
-  public N5CosemMetadata(final CosemTransform cosemTransformMeta) {
-
-	this("", cosemTransformMeta, null);
-  }
-
-  public N5CosemMetadata(final String path, final CosemTransform cosemTransformMeta) {
-
-	this(path, cosemTransformMeta, null);
-  }
 
   public N5CosemMetadata(final String path, final CosemTransform cosemTransformMeta, final DatasetAttributes attributes) {
 
@@ -69,11 +58,6 @@ public class N5CosemMetadata extends AbstractN5DatasetMetadata implements Painte
   public CosemTransform getCosemTransform() {
 
 	return cosemTransformMeta;
-  }
-
-  public void setSeparateChannels(final boolean separateChannels) {
-
-	this.separateChannels = separateChannels;
   }
 
   @Override
