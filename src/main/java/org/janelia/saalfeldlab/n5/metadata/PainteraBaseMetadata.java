@@ -108,6 +108,22 @@ public interface PainteraBaseMetadata extends PhysicalMetadata {
 	return (AffineGet)transform;
   }
 
+  /**
+   * @return the minimum intensity value of the data
+   */
+  default double minIntensity() {
+
+	return 0.0;
+  }
+
+  /**
+   * @return the maximum intensity value of the data
+   */
+  default double maxIntensity() {
+
+	return maxForDataType(getDataType());
+  }
+
   static double maxForDataType(DataType dataType) {
 
 	switch (dataType) {
