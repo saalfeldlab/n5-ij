@@ -36,41 +36,16 @@ import java.util.stream.Stream;
 
 public class DefaultDatasetMetadata extends AbstractN5DatasetMetadata implements PhysicalMetadata {
 
-  private final FinalVoxelDimensions voxDims;
-
-  public static final String dimensionsKey = "dimensions";
-
-  public DefaultDatasetMetadata(final int nd) {
-
-	this("", nd);
-  }
-
   public DefaultDatasetMetadata(final String path, final DatasetAttributes attributes) {
 
+	// TODO this class may not be necessary given N5SingleScaleMetadata defaults
 	super(path, attributes);
-	final int nd = attributes.getNumDimensions();
-	if (nd > 0) {
-	  voxDims = new FinalVoxelDimensions("pixel",
-			  DoubleStream.iterate(1, x -> x).limit(nd).toArray());
-	} else
-	  voxDims = null;
-
-  }
-
-  public DefaultDatasetMetadata(final String path, final int nd) {
-
-	super(path, null);
-	if (nd > 0) {
-	  voxDims = new FinalVoxelDimensions("pixel",
-			  DoubleStream.iterate(1, x -> x).limit(nd).toArray());
-	} else
-	  voxDims = null;
   }
 
   @Override
   public AffineGet physicalTransform() {
 
-	final int nd = voxDims != null ? voxDims.numDimensions() : 0;
+	final int nd = getAttributes().getNumDimensions();
 	if (nd == 0)
 	  return null;
 	else if (nd == 2)
@@ -83,7 +58,7 @@ public class DefaultDatasetMetadata extends AbstractN5DatasetMetadata implements
 
   @Override public String[] units() {
 
-	final int nd = voxDims != null ? voxDims.numDimensions() : 0;
+	final int nd = getAttributes().getNumDimensions();
 	return Stream.generate(() -> "pixel").limit(nd).toArray(String[]::new);
   }
 }
