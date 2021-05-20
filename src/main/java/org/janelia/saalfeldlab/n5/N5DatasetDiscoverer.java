@@ -25,8 +25,8 @@
  */
 package org.janelia.saalfeldlab.n5;
 
-import com.google.gson.JsonElement;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.sawano.java.text.AlphanumericComparator;
@@ -34,8 +34,8 @@ import se.sawano.java.text.AlphanumericComparator;
 import java.io.IOException;
 import java.text.Collator;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -51,7 +51,6 @@ public class N5DatasetDiscoverer {
 
   private static final Logger LOG = LoggerFactory.getLogger(N5DatasetDiscoverer.class);
 
-  @SuppressWarnings("rawtypes")
   private final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers;
   private final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers;
 
@@ -60,6 +59,7 @@ public class N5DatasetDiscoverer {
   private final Predicate<N5TreeNode> filter;
 
   private final ExecutorService executor;
+
   private N5TreeNode root;
 
   private String groupSeparator;
@@ -70,10 +70,9 @@ public class N5DatasetDiscoverer {
    * Creates an N5 discoverer with alphanumeric sorting order of groups/datasets (such as, s9 goes before s10).
    *
    * @param executor        the executor
-   * @param groupParsers    group parsers
    * @param metadataParsers metadata parsers
+   * @param groupParsers    group parsers
    */
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(final ExecutorService executor,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
@@ -85,7 +84,6 @@ public class N5DatasetDiscoverer {
 			metadataParsers);
   }
 
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(
 		  final N5Reader n5,
 		  final ExecutorService executor,
@@ -101,12 +99,11 @@ public class N5DatasetDiscoverer {
   }
 
   /**
-   * Creates an N5 discoverer with alphanumeric sorting order of groups/datasets (such as, s9 goes before s10).
+   * Creates an N5 discoverer.
    *
-   * @param groupParsers    group parsers
    * @param metadataParsers metadata parsers
+   * @param groupParsers    group parsers
    */
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
@@ -118,7 +115,13 @@ public class N5DatasetDiscoverer {
 			metadataParsers);
   }
 
-  @SuppressWarnings("rawtypes")
+  /**
+   * Creates an N5 discoverer.
+   *
+   * @param n5 n5 reader
+   * @param metadataParsers metadata parsers
+   * @param groupParsers    group parsers
+   */
   public N5DatasetDiscoverer(final N5Reader n5,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
@@ -127,11 +130,10 @@ public class N5DatasetDiscoverer {
 			Executors.newSingleThreadExecutor(),
 			Optional.of(new AlphanumericComparator(Collator.getInstance())),
 			null,
-			groupParsers,
-			metadataParsers);
+			metadataParsers,
+			groupParsers);
   }
 
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(
 		  final ExecutorService executor,
 		  final Predicate<N5TreeNode> filter,
@@ -141,11 +143,10 @@ public class N5DatasetDiscoverer {
 	this(executor,
 			Optional.of(new AlphanumericComparator(Collator.getInstance())),
 			filter,
-			groupParsers,
-			metadataParsers);
+			metadataParsers,
+			groupParsers);
   }
 
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(
 		  final N5Reader n5,
 		  final ExecutorService executor,
@@ -157,21 +158,19 @@ public class N5DatasetDiscoverer {
 			executor,
 			Optional.of(new AlphanumericComparator(Collator.getInstance())),
 			filter,
-			groupParsers,
-			metadataParsers);
+			metadataParsers,
+			groupParsers);
   }
 
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(
 		  final ExecutorService executor,
 		  final Optional<Comparator<? super String>> comparator,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
 
-	this(executor, comparator, null, groupParsers, metadataParsers);
+	this(executor, comparator, null, metadataParsers, groupParsers);
   }
 
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(
 		  final N5Reader n5,
 		  final ExecutorService executor,
@@ -179,7 +178,7 @@ public class N5DatasetDiscoverer {
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
 
-	this(n5, executor, comparator, null, groupParsers, metadataParsers);
+	this(n5, executor, comparator, null, metadataParsers, groupParsers);
   }
 
   /**
@@ -191,10 +190,9 @@ public class N5DatasetDiscoverer {
    * @param executor        the executor
    * @param comparator      optional string comparator
    * @param filter          the dataset filter
-   * @param groupParsers    group parsers
    * @param metadataParsers metadata parsers
+   * @param groupParsers    group parsers
    */
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(
 		  final ExecutorService executor,
 		  final Optional<Comparator<? super String>> comparator,
@@ -218,10 +216,9 @@ public class N5DatasetDiscoverer {
    * @param executor        the executor
    * @param comparator      optional string comparator
    * @param filter          the dataset filter
-   * @param groupParsers    group parsers
    * @param metadataParsers metadata parsers
+   * @param groupParsers    group parsers
    */
-  @SuppressWarnings("rawtypes")
   public N5DatasetDiscoverer(
 		  final N5Reader n5,
 		  final ExecutorService executor,
@@ -234,8 +231,8 @@ public class N5DatasetDiscoverer {
 	this.executor = executor;
 	this.comparator = comparator.orElseGet(null);
 	this.filter = filter;
-	this.groupParsers = groupParsers;
 	this.metadataParsers = metadataParsers;
+	this.groupParsers = groupParsers;
   }
 
   public static void parseMetadata(final N5Reader n5, final N5TreeNode node,
@@ -244,23 +241,9 @@ public class N5DatasetDiscoverer {
 	parseMetadata(n5, node, metadataParsers, new ArrayList<>());
   }
 
-  // TODO needs testing
-  //	public static void parseMetadataRecursiveNew(final N5Reader n5, final N5TreeNode node,
-  //			final N5MetadataParser< ? >[] metadataParsers )
-  //	{
-  //		node.flatStream().forEach( n -> parseMetadata( n5, n, metadataParsers ));
-  //	}
   public static void parseMetadata(final N5Reader n5, final N5TreeNode node,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
 		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) throws IOException {
-
-	HashMap<String, JsonElement> jsonMap = null;
-	if (n5 instanceof AbstractGsonReader) {
-	  jsonMap = ((AbstractGsonReader)n5).getAttributes(node.getPath());
-	  if (jsonMap == null) {
-		return;
-	  }
-	}
 
 	// Go through all parsers to populate metadata
 	for (final BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>> parser : metadataParsers) {
@@ -472,4 +455,17 @@ public class N5DatasetDiscoverer {
 	}
 	LOG.debug("parsed metadata for: {}:\t found: {}", rootNode.getPath(), rootNode.getMetadata() == null ? "NONE" : rootNode.getMetadata().getClass().getSimpleName());
   }
+
+  public static final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> fromParsers( final List<N5MetadataParser<?>> parsers ) {
+	  ArrayList<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> funs = new ArrayList<>();
+	  for( N5MetadataParser<?> p : parsers ) {
+		 funs.add( p::parseMetadata ) ;
+	  }
+	  return funs;
+  }
+
+  public static final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> fromParsers( final N5MetadataParser<?>[] parsers ) {
+	  return fromParsers( Arrays.asList( parsers ));
+  }
+
 }
