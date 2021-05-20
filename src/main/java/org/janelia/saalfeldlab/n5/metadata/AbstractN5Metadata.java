@@ -42,9 +42,4 @@ public abstract class AbstractN5Metadata implements N5DatasetMetadata {
 
 	return path;
   }
-
-  public static abstract class AbstractN5MetadataParser<T extends N5Metadata> { //implements N5GsonMetadataParser<T> {
-
-  }
-
 }

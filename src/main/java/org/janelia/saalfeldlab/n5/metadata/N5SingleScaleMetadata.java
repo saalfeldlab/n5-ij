@@ -32,14 +32,15 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements PhysicalMetadata {
+public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements PhysicalMetadata, IntensityMetadata {
 
   public final AffineTransform3D transform;
+  public final String unit;
   final double[] downsamplingFactors;
   final double[] pixelResolution;
   final double[] offset;
-
-  public final String unit;
+  private final Double minIntensity;
+  private final Double maxIntensity;
 
   public N5SingleScaleMetadata(final String path, final AffineTransform3D transform,
 		  final double[] downsamplingFactors,
@@ -47,6 +48,18 @@ public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements 
 		  final double[] offset,
 		  final String unit,
 		  final DatasetAttributes attributes) {
+
+	this(path, transform, downsamplingFactors, pixelResolution, offset, unit, attributes, null, null);
+  }
+
+  public N5SingleScaleMetadata(final String path, final AffineTransform3D transform,
+		  final double[] downsamplingFactors,
+		  final double[] pixelResolution,
+		  final double[] offset,
+		  final String unit,
+		  final DatasetAttributes attributes,
+		  final Double minIntensity,
+		  final Double maxIntensity) {
 
 	super(path, attributes);
 
@@ -59,6 +72,9 @@ public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements 
 	this.downsamplingFactors = downsamplingFactors;
 	this.pixelResolution = pixelResolution;
 	this.offset = offset;
+	/* These are allowed to be null, if we wish to use implementation defaults */
+	this.minIntensity = minIntensity;
+	this.maxIntensity = maxIntensity;
 
 	if (unit == null)
 	  this.unit = "pixel";
@@ -78,4 +94,13 @@ public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements 
 	return Stream.generate(() -> unit).limit(3).toArray(String[]::new);
   }
 
+  @Override public double minIntensity() {
+
+	return minIntensity != null ? minIntensity : IntensityMetadata.super.minIntensity();
+  }
+
+  @Override public double maxIntensity() {
+
+	return maxIntensity != null ? maxIntensity : IntensityMetadata.super.maxIntensity();
+  }
 }
