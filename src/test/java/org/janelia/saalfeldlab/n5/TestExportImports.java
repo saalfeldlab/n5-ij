@@ -47,39 +47,39 @@ public class TestExportImports
 		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metaType, compressionString, false );
 	}
 	
-	@Test
-	public void testReadWriteParse()
-	{
-		final HashMap<String,String> typeToExtension = new HashMap<>();
-		typeToExtension.put( "FILESYSTEM", "n5" );
-		typeToExtension.put( "ZARR", "zarr" );
-		typeToExtension.put( "HDF5", "h5" );
-		
-		final String blockSizeString = "16,16,16";
-		final String compressionString = "gzip";
-		String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
-
-		final String[] metadataTypes = new String[]{
-				N5Importer.MetadataImageJKey,
-				N5Importer.MetadataN5CosemKey,
-				N5Importer.MetadataN5ViewerKey
-		};
-
-		for( int bitDepth : new int[]{ 8, 16, 32 })
-		{
-			final ImagePlus imp = NewImage.createImage("test", 8, 6, 4, bitDepth, NewImage.FILL_NOISE);
-			for( final String containerType : containerTypes )
-			{
-				for( final String metatype : metadataTypes )
-				{
-					final String n5RootPath = baseDir + "/test." + typeToExtension.get( containerType );
-					final String dataset = "/test_"+metatype+"_"+bitDepth;
-
-					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
-				}
-			}
-		}
-	}
+//	@Test
+//	public void testReadWriteParse()
+//	{
+//		final HashMap<String,String> typeToExtension = new HashMap<>();
+//		typeToExtension.put( "FILESYSTEM", "n5" );
+//		typeToExtension.put( "ZARR", "zarr" );
+//		typeToExtension.put( "HDF5", "h5" );
+//		
+//		final String blockSizeString = "16,16,16";
+//		final String compressionString = "gzip";
+//		String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
+//
+//		final String[] metadataTypes = new String[]{
+//				N5Importer.MetadataImageJKey,
+//				N5Importer.MetadataN5CosemKey,
+//				N5Importer.MetadataN5ViewerKey
+//		};
+//
+//		for( int bitDepth : new int[]{ 8, 16, 32 })
+//		{
+//			final ImagePlus imp = NewImage.createImage("test", 8, 6, 4, bitDepth, NewImage.FILL_NOISE);
+//			for( final String containerType : containerTypes )
+//			{
+//				for( final String metatype : metadataTypes )
+//				{
+//					final String n5RootPath = baseDir + "/test." + typeToExtension.get( containerType );
+//					final String dataset = "/test_"+metatype+"_"+bitDepth;
+//
+//					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
+//				}
+//			}
+//		}
+//	}
 
 	private static < T extends RealType< T > & NativeType< T > > boolean equal( final ImagePlus a, final ImagePlus b )
 	{
@@ -152,7 +152,7 @@ public class TestExportImports
 		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
 
-		assertEquals( String.format( "%s one image opened ", dataset ), 1, impList.size() );
+		assertEquals( String.format( "%s %s one image opened ", outputPath, dataset ), 1, impList.size() );
 
 		final ImagePlus impRead = impList.get( 0 );
 
@@ -183,17 +183,17 @@ public class TestExportImports
 
 	}
 
-	@Test
-	public void testRgb()
-	{
-		final ImagePlus imp = NewImage.createRGBImage("test", 8, 6, 4, NewImage.FILL_NOISE);
-		String metaType = N5Importer.MetadataImageJKey;
-
-		final String n5RootPath = baseDir + "/test_rgb.n5";
-		final String dataset = "/ij";
-		final String blockSizeString = "16,16,16";
-		final String compressionString = "raw";
-
-		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metaType, compressionString, false );
-	}
+//	@Test
+//	public void testRgb()
+//	{
+//		final ImagePlus imp = NewImage.createRGBImage("test", 8, 6, 4, NewImage.FILL_NOISE);
+//		String metaType = N5Importer.MetadataImageJKey;
+//
+//		final String n5RootPath = baseDir + "/test_rgb.n5";
+//		final String dataset = "/ij";
+//		final String blockSizeString = "16,16,16";
+//		final String compressionString = "raw";
+//
+//		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metaType, compressionString, false );
+//	}
 }

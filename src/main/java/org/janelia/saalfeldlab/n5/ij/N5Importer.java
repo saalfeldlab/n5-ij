@@ -554,23 +554,25 @@ public class N5Importer implements PlugIn {
 
   public List<ImagePlus> process(final String n5FullPath, final boolean asVirtual, final Interval cropInterval) {
 
-	//	n5 = new N5ViewerReaderFun().apply(n5FullPath);
-	//	final String dataset = new N5BasePathFun().apply(n5FullPath);
-	//	N5DatasetMetadata metadata;
-	//	try {
-	//	  metadata = new N5DatasetDiscoverer(null, PARSERS).parse(n5, dataset).getMetadata();
-	//	} catch (final IOException e) {
-	//	  System.err.println("Could not parse metadata.");
-	//	  return null;
-	//	}
-	//
-	//	List<ImagePlus> result = process(n5, dataset, Collections.singletonList(metadata),
-	//			asVirtual, cropInterval, show, getImagePlusMetadataWriterMap());
-	//
-	//	n5.close();
-	//
-	//	return result;
-	return new ArrayList<>();
+		n5 = new N5ViewerReaderFun().apply(n5FullPath);
+		final String dataset = new N5BasePathFun().apply(n5FullPath);
+		N5DatasetMetadata metadata;
+		try {
+		  N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5, 
+				  N5DatasetDiscoverer.fromParsers(PARSERS), null );
+		  metadata = (N5DatasetMetadata) discoverer.parse(dataset).getMetadata();
+		} catch (final Exception e) {
+		  System.err.println("Could not parse metadata.");
+		  return null;
+		}
+	
+		List<ImagePlus> result = process(n5, dataset, Collections.singletonList(metadata),
+				asVirtual, cropInterval, show, getImagePlusMetadataWriterMap());
+	
+		n5.close();
+	
+		return result;
+//	return new ArrayList<>();
   }
 
   public void processThread() {
