@@ -7,13 +7,16 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
-public abstract class MultiscaleMetadata<T extends N5DatasetMetadata & PhysicalMetadata> implements PhysicalMetadata, N5MetadataGroup<T> {
+public abstract class MultiscaleMetadata<T extends N5DatasetMetadata & PhysicalMetadata> implements PhysicalMetadata, N5Metadata, N5MetadataGroup<T> {
 
   public static final String MULTI_SCALE_KEY = "multiScale";
   public static final String IS_LABEL_MULTISET_KEY = "isLabelMultiset";
   public static final String RESOLUTION_KEY = "resolution";
 
   static final Predicate<String> scaleLevelPredicate = Pattern.compile("^s\\d+$").asPredicate();
+
+  final private String basePath;
+
   final private String[] paths;
 
   final private AffineTransform3D[] transforms;
@@ -26,15 +29,20 @@ public abstract class MultiscaleMetadata<T extends N5DatasetMetadata & PhysicalM
 
   protected MultiscaleMetadata() {
 
+	// TODO Caleb - what is this for?
+	basePath = null;
 	childrenMetadata = null;
 	paths = null;
 	transforms = null;
 	units = null;
   }
 
-  public MultiscaleMetadata(final T[] childrenMetadata) {
+  public MultiscaleMetadata(final String basePath, final T[] childrenMetadata) {
 
+	Objects.requireNonNull(basePath);
 	Objects.requireNonNull(childrenMetadata);
+
+	this.basePath = basePath;
 	this.childrenMetadata = childrenMetadata;
 
 	final int N = childrenMetadata.length;
@@ -51,8 +59,9 @@ public abstract class MultiscaleMetadata<T extends N5DatasetMetadata & PhysicalM
 	}
   }
 
-  public MultiscaleMetadata(final String[] paths, final AffineTransform3D[] transforms, final String[] units) {
+  public MultiscaleMetadata(final String basePath, final String[] paths, final AffineTransform3D[] transforms, final String[] units) {
 
+	Objects.requireNonNull(basePath);
 	Objects.requireNonNull(paths);
 	Objects.requireNonNull(transforms);
 
@@ -61,10 +70,16 @@ public abstract class MultiscaleMetadata<T extends N5DatasetMetadata & PhysicalM
 	for (final AffineTransform3D transform : transforms)
 	  Objects.requireNonNull(transform);
 
+	this.basePath = basePath;
 	this.paths = paths;
 	this.transforms = transforms;
 	this.units = units;
 	this.childrenMetadata = null;
+  }
+
+  public String getPath()
+  {
+	  return basePath;
   }
 
   @Override public String[] getPaths() {

@@ -23,11 +23,13 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.janelia.saalfeldlab.n5.metadata;
+package org.janelia.saalfeldlab.n5.metadata.imagej;
 
 import ij.ImagePlus;
 
 import java.io.IOException;
+
+import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 
 /**
  * A interface for reading and writing metadata to an {@link ImagePlus}.

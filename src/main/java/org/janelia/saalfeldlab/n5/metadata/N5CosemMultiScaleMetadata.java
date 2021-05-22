@@ -37,26 +37,18 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadata> implements N5Metadata, PhysicalMetadata, PainteraMultiscaleGroup<N5CosemMetadata> {
+public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadata> implements 
+	N5Metadata, PhysicalMetadata, 
+	PainteraMultiscaleGroup<N5CosemMetadata>, N5MetadataParser<N5CosemMultiScaleMetadata> {
 
-  public final String basePath;
+  public N5CosemMultiScaleMetadata(String basePath, N5CosemMetadata[] childrenMetadata ) {
 
-  public N5CosemMultiScaleMetadata(N5CosemMetadata[] childrenMetadata, String basePath) {
-
-	super(childrenMetadata);
-	this.basePath = basePath;
+	super(basePath, childrenMetadata);
   }
 
-  protected N5CosemMultiScaleMetadata() {
+  public N5CosemMultiScaleMetadata() {
 
 	super();
-	basePath = null;
-  }
-
-  @Override
-  public String getPath() {
-
-	return basePath;
   }
 
   /**
@@ -66,7 +58,8 @@ public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadat
    * @param node the node
    * @return the metadata
    */
-  public static Optional<N5CosemMultiScaleMetadata> parseMetadataGroup(final N5Reader reader, final N5TreeNode node) {
+  @Override
+  public Optional<N5CosemMultiScaleMetadata> parseMetadata(final N5Reader reader, final N5TreeNode node) {
 
 	final Map<String, N5TreeNode> scaleLevelNodes = new HashMap<>();
 	String[] units = null;
@@ -104,7 +97,7 @@ public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadat
 	if (!sortScaleMetadata(childMetadata)) {
 	  return Optional.empty();
 	}
-	return Optional.of(new N5CosemMultiScaleMetadata(childMetadata, node.getPath()));
+	return Optional.of(new N5CosemMultiScaleMetadata(node.getPath(), childMetadata));
   }
 
   /**

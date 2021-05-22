@@ -40,11 +40,12 @@ public class MetadataTests
 	{
 		final double eps = 1e-6;
 		final N5MetadataParser<?>[] parsers = new N5MetadataParser[] { new N5CosemMetadataParser() };
+		final N5MetadataParser<?>[] grpparsers = new N5MetadataParser[] { new N5CosemMultiScaleMetadata() };
 
 		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( 
 				n5,
-				Collections.singletonList( parsers[0]::parseMetadata ),
-				Collections.singletonList( N5CosemMultiScaleMetadata::parseMetadataGroup ));
+				N5DatasetDiscoverer.fromParsers( parsers ),
+				N5DatasetDiscoverer.fromParsers( grpparsers ));
 
 		try
 		{

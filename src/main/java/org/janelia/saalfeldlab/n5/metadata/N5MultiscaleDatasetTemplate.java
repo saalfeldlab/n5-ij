@@ -27,6 +27,7 @@ package org.janelia.saalfeldlab.n5.metadata;
 
 import java.util.Arrays;
 
+// TODO is this class necessary? - John
 public class N5MultiscaleDatasetTemplate
 {
 	public String dataset;

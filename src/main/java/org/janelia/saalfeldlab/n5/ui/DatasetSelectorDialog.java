@@ -61,7 +61,9 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -138,7 +140,7 @@ public class DatasetSelectorDialog
 
 	private TreeCellRenderer treeRenderer;
 
-	private final N5GroupParser<?>[] groupParsers;
+	private final N5MetadataParser<?>[] groupParsers;
 
 	private final N5MetadataParser<?>[] parsers;
 
@@ -150,7 +152,7 @@ public class DatasetSelectorDialog
 			final Function< String, N5Reader > n5Fun,
 			final Function< String, String > pathFun,
 			final String initialContainerPath,
-			final N5GroupParser<?>[] groupParsers,
+			final N5MetadataParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
 		this.n5Fun = n5Fun;
@@ -166,7 +168,7 @@ public class DatasetSelectorDialog
 	public DatasetSelectorDialog(
 			final Function< String, N5Reader > n5Fun,
 			final Function< String, String > pathFun,
-			final N5GroupParser<?>[] groupParsers,
+			final N5MetadataParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
 		this( n5Fun, pathFun, "", groupParsers, parsers );
@@ -174,7 +176,7 @@ public class DatasetSelectorDialog
 
 	public DatasetSelectorDialog(
 			final Function< String, N5Reader > n5Fun,
-			final N5GroupParser<?>[] groupParsers,
+			final N5MetadataParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
 		this( n5Fun, x -> "", groupParsers, parsers );
@@ -182,7 +184,7 @@ public class DatasetSelectorDialog
 
 	public DatasetSelectorDialog(
 			final N5Reader n5,
-			final N5GroupParser<?>[] groupParsers,
+			final N5MetadataParser<?>[] groupParsers,
 			final N5MetadataParser< ? >... parsers )
 	{
 		this.n5 = n5;
@@ -501,15 +503,18 @@ public class DatasetSelectorDialog
 		loaderExecutor = Executors.newCachedThreadPool();
 	  }
 
-	  //		datasetDiscoverer = new N5DatasetDiscoverer( loaderExecutor, n5NodeFilter, groupParsers, parsers );
-	  //		try
-	  //		{
-	  //			rootNode = datasetDiscoverer.discoverRecursive( n5, rootPath );
-	  //		}
-	  //		catch ( IOException e )
-	  //		{
-	  //			e.printStackTrace();
-	  //		}
+	  datasetDiscoverer = new N5DatasetDiscoverer( n5, loaderExecutor, n5NodeFilter, 
+			  N5DatasetDiscoverer.fromParsers( parsers ), 
+			  N5DatasetDiscoverer.fromParsers( groupParsers ));
+
+	  try
+	  {
+		  rootNode = datasetDiscoverer.discoverAndParseRecursive( rootPath );
+	  }
+	  catch ( IOException e )
+	  {
+		  e.printStackTrace();
+	  }
 
 	  // set the root node for the JTree
 	  rootJTreeNode = rootNode.asTreeNode();
@@ -539,6 +544,7 @@ public class DatasetSelectorDialog
 			try
 			{
 //				node = datasetDiscoverer.parse( n5, dataset );
+				node = datasetDiscoverer.parse( dataset );
 				if ( node.isDataset() && node.getMetadata() != null )
 					selectedMetadata.add( node.getMetadata() );
 			}

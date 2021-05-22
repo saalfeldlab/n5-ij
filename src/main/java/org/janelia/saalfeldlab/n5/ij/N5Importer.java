@@ -51,15 +51,19 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
-import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerMultiscaleMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
@@ -68,6 +72,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -92,6 +97,8 @@ public class N5Importer implements PlugIn {
   public static final String MetadataDefaultKey = "Default";
 
   public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
+		  new N5CosemMetadataParser(),
+		  new N5SingleScaleMetadataParser()
 		  //					new N5ImagePlusMetadata( "" ),
 		  //					new N5CosemMetadata( "", null, null ),
 		  //					new N5SingleScaleMetadata(),
@@ -99,11 +106,15 @@ public class N5Importer implements PlugIn {
 		  //					new DefaultMetadata( "", -1 )
   };
 
-  public static final N5GroupParser<?>[] GROUP_PARSERS = new N5GroupParser[]{
-		  //			new N5CosemMultiScaleMetadata(),
-		  //			new N5ViewerMultiscaleMetadataParser()
-  };
+//  public static final N5GroupParser<?>[] GROUP_PARSERS = new N5GroupParser[]{
+//		  			new N5CosemMultiScaleMetadata(),
+//		  			new N5ViewerMultiscaleMetadataParser()
+//  };
 
+  public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
+		  			new N5CosemMultiScaleMetadata()
+  };
+  
   private N5Reader n5;
 
   private DatasetSelectorDialog selectionDialog;
@@ -263,18 +274,22 @@ public class N5Importer implements PlugIn {
 	  Recorder.record = record;
 
 	  final N5Reader n5ForThisDataset = new N5ViewerReaderFun().apply(n5Path);
-	  //			N5DatasetMetadata meta;
-	  //			try
-	  //			{
-	  //				meta = new N5DatasetDiscoverer( null, PARSERS ).parse( n5ForThisDataset, "" ).getMetadata();
-	  //
-	  //				process( n5ForThisDataset, n5Path, Collections.singletonList( meta ), openAsVirtual, thisDatasetCropInterval,
-	  //						impMetaWriterTypes );
-	  //			}
-	  //			catch ( final IOException e )
-	  //			{
-	  //				e.printStackTrace();
-	  //			}
+	  N5Metadata meta;
+	  try
+	  {
+		  final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( n5ForThisDataset, N5DatasetDiscoverer.fromParsers(PARSERS), null );
+		  meta = discoverer.parse( "" ).getMetadata();
+		  
+		  if( meta instanceof N5DatasetMetadata )
+			  process( n5ForThisDataset, n5Path, Collections.singletonList( (N5DatasetMetadata)meta ), openAsVirtual, thisDatasetCropInterval,
+				  impMetaWriterTypes );
+		  else
+			  System.err.println( "not a dataset : " + n5Path );
+	  }
+	  catch ( final IOException e )
+	  {
+		  e.printStackTrace();
+	  }
 	}
   }
 
@@ -599,18 +614,10 @@ public class N5Importer implements PlugIn {
 	@Override
 	public String apply(final String n5Path) {
 
-	  final DataAccessType type = DataAccessType.detectType(n5Path.trim());
-	  if (type == null) {
-		message = "Not a valid path or link to an N5 container.";
-		return null;
-	  }
-
-	  switch (type) {
-	  case HDF5:
-		return h5DatasetPath(n5Path);
-	  default:
-		return "";
-	  }
+		if( n5Path.contains(".h5"))
+			return h5DatasetPath(n5Path);
+		else
+			return "";
 	}
   }
 

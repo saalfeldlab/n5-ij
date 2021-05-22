@@ -23,7 +23,7 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.janelia.saalfeldlab.n5.metadata;
+package org.janelia.saalfeldlab.n5.metadata.imagej;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.metadata.AbstractN5Metadata;
 
 import ij.ImagePlus;
 

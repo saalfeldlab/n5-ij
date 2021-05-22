@@ -25,7 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
-import com.amazonaws.services.s3.AmazonS3URI;
 import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
@@ -34,7 +33,6 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
-import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
@@ -44,14 +42,12 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
 import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
-import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
-import org.janelia.saalfeldlab.n5.dataaccess.DataAccessType;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.metadata.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
 import org.scijava.app.StatusService;
@@ -65,7 +61,6 @@ import org.scijava.ui.UIService;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -148,8 +143,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
   private int[] blockSize;
 
-  private DataAccessType dataType;
-
   private Map<String, N5MetadataWriter<?>> styles;
 
   private ImageplusMetadata<?> impMeta;
@@ -185,7 +178,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 	this.image = image;
 	this.n5RootLocation = n5RootLocation;
-	dataType = detectType(n5RootLocation);
 
 	this.n5Dataset = n5Dataset;
 
@@ -197,66 +189,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	this.subsetOffset = subsetOffset;
   }
 
-	@Deprecated
-	public void setType(final String type)
-	{
-		dataType = typeFromString( type );
-	}
-
-	public static DataAccessType typeFromString(final String type)
-	{
-		DataAccessType dataType;
-		try {
-			dataType = DataAccessType.valueOf(type.toUpperCase());
-		} catch (final IllegalArgumentException e) {
-			if (type.equals("N5"))
-				dataType = DataAccessType.FILESYSTEM;
-			else
-				dataType = null;
-		}
-		return dataType;
-	}
-
-	@Deprecated
-	public static DataAccessType detectType(final String rootPath)
-	{
-		URI uri = null;
-		try {
-			uri = URI.create(rootPath);
-		} catch (final IllegalArgumentException e) {}
-
-		// try parsing as S3 link
-		AmazonS3URI s3Uri;
-		try {
-			s3Uri = new AmazonS3URI(uri);
-		} catch (final Exception e) {
-			s3Uri = null;
-		}
-		if (s3Uri != null) {
-			return DataAccessType.AMAZON_S3;
-		}
-
-		// try parsing as Google Cloud link
-		GoogleCloudStorageURI googleCloudUri;
-		try {
-			googleCloudUri = new GoogleCloudStorageURI(uri);
-		} catch (final Exception e) {
-			googleCloudUri = null;
-		}
-		if (googleCloudUri != null) {
-			return DataAccessType.GOOGLE_CLOUD;
-		}
-
-		if (rootPath.endsWith("n5")) {
-			return DataAccessType.FILESYSTEM;
-		} else if (rootPath.endsWith("zarr")) {
-			return DataAccessType.ZARR;
-		} else if (rootPath.endsWith("h5") || rootPath.endsWith("hdf5") || rootPath.endsWith("hdf")) {
-			return DataAccessType.HDF5;
-		} else
-			return null;
-	}
-
 	/**
 	 * Set the custom metadata mapper to use programmically.
 	 *
@@ -264,30 +196,32 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	 */
 	public void setMetadataMapper(final MetadataTemplateMapper metadataMapper) {
 
-	  //	  styles.put(N5Importer.MetadataCustomKey, metadataMapper);
-	  //		impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate(""));
+		// styles.put(N5Importer.MetadataCustomKey, metadataMapper);
+		// impMetaWriterTypes.put(MetadataTemplateMapper.class, new
+		// ImagePlusMetadataTemplate(""));
 	}
 
-  public void parseBlockSize() {
+	public void parseBlockSize() {
 
-	final int nd = image.getNDimensions();
-	String[] blockArgList = blockSizeArg.split(",");
-	blockSize = new int[nd];
-	int i = 0;
-	while (i < blockArgList.length && i < nd) {
-	  blockSize[i] = Integer.parseInt(blockArgList[i]);
-	  i++;
-	}
-	int N = blockArgList.length - 1;
+		final int nd = image.getNDimensions();
+		String[] blockArgList = blockSizeArg.split(",");
+		blockSize = new int[nd];
+		int i = 0;
+		while (i < blockArgList.length && i < nd) {
+			blockSize[i] = Integer.parseInt(blockArgList[i]);
+			i++;
+		}
+		int N = blockArgList.length - 1;
 
-	while (i < nd) {
-	  blockSize[i] = blockSize[N];
-	  i++;
+		while (i < nd) {
+			blockSize[i] = blockSize[N];
+			i++;
+		}
 	}
-  }
 
   @SuppressWarnings("unchecked")
-  public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, DataAccessException, InterruptedException, ExecutionException {
+  public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, InterruptedException, ExecutionException {
+
 
 	final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
 	final Compression compression = getCompression();
@@ -409,6 +343,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		return offset;
 	}
 
+	@SuppressWarnings("rawtypes")
 	private <T extends RealType & NativeType, M extends N5Metadata> void writeSplitChannels(
 			final N5Writer n5,
 			final Compression compression,
@@ -417,7 +352,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 //		final ImagePlusImg<T,?> img;
 		final Img<T> img;
 		if( image.getType() == ImagePlus.COLOR_RGB )
-			img = ( Img< T > ) N5IJUtils.wrapRgbAsInt( image );
+			img = (( Img< T > ) N5IJUtils.wrapRgbAsInt( image ));
 		else
 			img = ImageJFunctions.wrap(image);
 
@@ -479,8 +414,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 				process();
 			} catch (final IOException e) {
 				e.printStackTrace();
-			} catch (final DataAccessException e) {
-				e.printStackTrace();
 			} catch (final InterruptedException e) {
 				e.printStackTrace();
 			} catch (final ExecutionException e) {
@@ -527,8 +460,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	  try {
 		process();
 	  } catch (final IOException e1) {
-		e1.printStackTrace();
-	  } catch (final DataAccessException e1) {
 		e1.printStackTrace();
 	  } catch (final InterruptedException e1) {
 		e1.printStackTrace();

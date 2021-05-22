@@ -4,14 +4,13 @@ import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import org.janelia.saalfeldlab.n5.dataaccess.DataAccessException;
 import org.janelia.saalfeldlab.n5.ij.N5Factory;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 
 public class MultiThreadedParsingBenchmark
 {
 
-	public static void main( String[] args ) throws IOException, DataAccessException
+	public static void main( String[] args ) throws IOException
 	{
 //		ExecutorService executor = Executors.newSingleThreadExecutor();
 //		ExecutorService executor = Executors.newFixedThreadPool( 16 );

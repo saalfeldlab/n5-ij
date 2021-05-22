@@ -465,6 +465,9 @@ public class N5DatasetDiscoverer {
   }
 
   public static final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> fromParsers( final N5MetadataParser<?>[] parsers ) {
+	  if( parsers == null )
+		  return null;
+
 	  return fromParsers( Arrays.asList( parsers ));
   }
 

@@ -25,8 +25,8 @@
  */
 package org.janelia.saalfeldlab.n5;
 
-import org.janelia.saalfeldlab.n5.metadata.ImagePlusMetadataTemplate;
 import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
 
 import ij.IJ;
 import ij.ImagePlus;

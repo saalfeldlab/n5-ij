@@ -32,37 +32,22 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public class N5ViewerMultiscaleMetadataParser
-		extends MultiscaleMetadata<N5SingleScaleMetadata>
-		implements N5Metadata {
-
-  private final String basePath;
-
-  public N5ViewerMultiscaleMetadataParser() {
-
-	super();
-	this.basePath = null;
-  }
-
-  public N5ViewerMultiscaleMetadataParser(N5SingleScaleMetadata[] childrenMetadata, String basePath) {
-
-	super(childrenMetadata);
-	this.basePath = basePath;
-  }
+public class N5ViewerMultiscaleMetadataParser implements N5MetadataParser<N5MultiScaleMetadata> {
 
   /**
    * Called by the {@link org.janelia.saalfeldlab.n5.N5DatasetDiscoverer}
    * while discovering the N5 tree and filling the metadata for datasets or groups.
    *
+   * @param reader the n5 reader
    * @param node the node
    * @return the metadata
    */
-  public static Optional<N5ViewerMultiscaleMetadataParser> parseMetadataGroup(final N5Reader reader, final N5TreeNode node) {
+  public Optional<N5MultiScaleMetadata> parseMetadata(final N5Reader reader, final N5TreeNode node) {
 
 	final Map<String, N5TreeNode> scaleLevelNodes = new HashMap<>();
 	String[] units = null;
 	for (final N5TreeNode childNode : node.childrenList()) {
-	  if (scaleLevelPredicate.test(childNode.getNodeName()) &&
+	  if (MultiscaleMetadata.scaleLevelPredicate.test(childNode.getNodeName()) &&
 			  childNode.isDataset() &&
 			  childNode.getMetadata() instanceof N5SingleScaleMetadata) {
 		scaleLevelNodes.put(childNode.getNodeName(), childNode);
@@ -75,11 +60,7 @@ public class N5ViewerMultiscaleMetadataParser
 	  return Optional.empty();
 
 	final N5SingleScaleMetadata[] childMetadata = scaleLevelNodes.values().stream().map(N5TreeNode::getMetadata).toArray(N5SingleScaleMetadata[]::new);
-	return Optional.of(new N5ViewerMultiscaleMetadataParser(childMetadata, node.getPath()));
+	return Optional.of(new N5MultiScaleMetadata(node.getPath(), childMetadata));
   }
 
-  @Override public String getPath() {
-
-	return this.basePath;
-  }
 }

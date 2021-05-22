@@ -35,24 +35,14 @@ import java.util.Optional;
 
 public class N5RawMultiScaleMetadata extends MultiscaleMetadata<N5SingleScaleMetadata> implements N5Metadata, PhysicalMetadata {
 
-  public final String basePath;
+  public N5RawMultiScaleMetadata( String basePath, N5SingleScaleMetadata[] childrenMetadata) {
 
-  public N5RawMultiScaleMetadata(N5SingleScaleMetadata[] childrenMetadata, String basePath) {
-
-	super(childrenMetadata);
-	this.basePath = basePath;
+	super(basePath, childrenMetadata);
   }
 
   protected N5RawMultiScaleMetadata(String basePath) {
 
 	super();
-	this.basePath = basePath;
-  }
-
-  @Override
-  public String getPath() {
-
-	return basePath;
   }
 
   /**
