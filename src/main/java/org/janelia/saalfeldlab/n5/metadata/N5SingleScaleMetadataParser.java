@@ -37,7 +37,7 @@ public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleSca
 
 	final String datasetNumber = dataset.replaceAll("^s", "");
 	try {
-	  final long f = Long.parseLong(datasetNumber);
+	  final long f = Long.parseLong(datasetNumber) + 1;
 	  return Optional.of(new double[]{f, f, f});
 	} catch (Exception e) {
 	  return Optional.empty();
@@ -59,16 +59,33 @@ public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleSca
 			  n5.getAttribute(node.getPath(), DOWNSAMPLING_FACTORS_KEY, double[].class))
 			  .orElseGet(() -> inferDownsamplingFactorsFromDataset(node.getNodeName()).orElseGet(() -> new double[]{1.0, 1.0, 1.0}));
 
-	  final Optional<FinalVoxelDimensions> voxdim = Optional.ofNullable(
+	  Optional<FinalVoxelDimensions> voxdim;
+	  try {
+		  voxdim = Optional.ofNullable(
 			  n5.getAttribute(node.getPath(), PIXEL_RESOLUTION_KEY, FinalVoxelDimensions.class));
+	  } catch ( Exception e ) {
+		  voxdim = Optional.empty();
+	  }
 
-	  final double[] pixelResolution = voxdim.map(x -> {
-		final double[] res = new double[nd];
-		x.dimensions(res);
-		return res;
-	  }).orElseGet(() -> new double[]{1.0, 1.0, 1.0});
+	  final String unit;
+	  final double[] pixelResolution;
+	  if( voxdim.isPresent() ) {
 
-	  final String unit = voxdim.map(x -> x.unit()).orElse("pixel");
+		  pixelResolution = voxdim.map(x -> {
+			final double[] res = new double[nd];
+			x.dimensions(res);
+			return res;
+		  }).orElseGet(() -> new double[]{1.0, 1.0, 1.0});
+		  unit = voxdim.map(x -> x.unit()).orElse("pixel");
+
+	  } else {
+
+		  pixelResolution = 
+				  Optional.ofNullable( n5.getAttribute(node.getPath(), PIXEL_RESOLUTION_KEY, double[].class))
+				  	.orElseGet(() -> new double[]{1.0, 1.0, 1.0});
+		  unit = "pixel";
+	  }
+
 
 	  final Optional<AffineTransform3D> extraTransform = Optional.ofNullable(
 			  n5.getAttribute(node.getPath(), AFFINE_TRANSFORM_KEY, AffineTransform3D.class));
@@ -80,6 +97,7 @@ public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleSca
 	  return Optional.of(new N5SingleScaleMetadata(node.getPath(), transform, downsamplingFactors, pixelResolution, offset, unit, attributes));
 
 	} catch (IOException e) {
+		e.printStackTrace();
 	  return Optional.empty();
 	}
   }
@@ -94,6 +112,10 @@ public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleSca
 
 	final FinalVoxelDimensions voxdims = new FinalVoxelDimensions(t.unit, pixelResolution);
 	n5.setAttribute(group, PIXEL_RESOLUTION_KEY, voxdims);
+
+	if( t.downsamplingFactors != null )
+		n5.setAttribute(group, PIXEL_RESOLUTION_KEY, t.downsamplingFactors);
+
   }
 
 }

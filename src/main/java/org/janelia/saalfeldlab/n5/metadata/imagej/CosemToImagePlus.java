@@ -31,11 +31,6 @@ public class CosemToImagePlus extends PhysicalMetadataToImagePlus<N5CosemMetadat
 			axes[ 2 ] = "x";
 		}
 
-		int c = 2;
-		if ( imp.getNChannels() > 1 ){ axes[ c++ ] = "c"; }
-		if ( imp.getNSlices() > 1 ){ axes[ c++ ] = "z"; }
-		if ( imp.getNFrames() > 1 ){ axes[ c++ ] = "t"; }
-
 		// unit
 		final String[] units = new String[ nd ];
 		Arrays.fill( units, imp.getCalibration().getUnit());

@@ -346,20 +346,23 @@ public class N5DatasetDiscoverer {
 	return fullPath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
   }
 
-  public N5TreeNode parse(final String dataset) throws IOException {
+  public N5TreeNode parse(final String dataset) {
 
 	final N5TreeNode node = new N5TreeNode(dataset);
 	return parse(node);
   }
 
-  public N5TreeNode parse(final N5TreeNode node) throws IOException {
+  public N5TreeNode parse(final N5TreeNode node) {
 	// Go through all parsers to populate metadata
 	for (final BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>> parser : metadataParsers) {
-	  Optional<? extends N5Metadata> metadata = parser.apply(n5, node);
-	  if (metadata.isPresent()) {
-		node.setMetadata(metadata.get());
-		break;
-	  }
+		try {
+	      Optional<? extends N5Metadata> metadata = parser.apply(n5, node);
+		  if (metadata.isPresent()) {
+			node.setMetadata(metadata.get());
+			break;
+		  }
+		} catch( Exception e ) {
+		}
 	}
 	return node;
   }

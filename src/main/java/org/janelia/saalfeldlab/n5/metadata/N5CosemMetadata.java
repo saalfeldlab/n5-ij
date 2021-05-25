@@ -29,9 +29,8 @@ import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.ScaleAndTranslation;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.N5Writer;
 
-public class N5CosemMetadata extends AbstractN5DatasetMetadata implements PainteraSourceMetadata, PhysicalMetadata, N5MetadataWriter<N5CosemMetadata> {
+public class N5CosemMetadata extends AbstractN5DatasetMetadata implements PainteraSourceMetadata, PhysicalMetadata {
 
   public static final String pixelResolutionKey = "pixelResolution";
 
@@ -58,13 +57,6 @@ public class N5CosemMetadata extends AbstractN5DatasetMetadata implements Painte
   public CosemTransform getCosemTransform() {
 
 	return cosemTransformMeta;
-  }
-
-  @Override
-  public void writeMetadata(final N5CosemMetadata t, final N5Writer n5, final String group) throws Exception {
-
-	if (t.cosemTransformMeta != null)
-	  n5.setAttribute(group, CosemTransform.KEY, t.cosemTransformMeta);
   }
 
   public static class CosemTransform {

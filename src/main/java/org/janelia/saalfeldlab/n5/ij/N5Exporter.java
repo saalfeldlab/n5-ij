@@ -45,6 +45,7 @@ import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
@@ -163,14 +164,14 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 	styles = new HashMap<String, N5MetadataWriter<?>>();
 	styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadataParser());
-	styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadata("", null, null));
+	styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadataParser());
 	styles.put(N5Importer.MetadataImageJKey, new ImagePlusLegacyMetadataParser());
 
 	// default image plus metadata writers
 	impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
 	impMetaWriterTypes.put(ImagePlusLegacyMetadataParser.class, new ImagePlusLegacyMetadataParser());
-	impMetaWriterTypes.put(N5CosemMetadata.class, new CosemToImagePlus());
-	impMetaWriterTypes.put(N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
+	impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
+	impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
 	
   }
 
@@ -239,7 +240,9 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	if (!metadataStyle.equals(NONE)) {
 	  writer = (N5MetadataWriter<M>)styles.get(metadataStyle);
 	  if (writer != null)
+	  {
 		impMeta = impMetaWriterTypes.get(writer.getClass());
+	  }
 	}
 
 	// check and warn re: RGB image if relevant

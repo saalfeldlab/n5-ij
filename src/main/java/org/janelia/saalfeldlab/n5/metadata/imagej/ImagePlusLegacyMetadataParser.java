@@ -12,11 +12,9 @@ import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
-import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 
 import ij.ImagePlus;
 import ij.measure.Calibration;
-import net.imglib2.realtransform.AffineTransform3D;
 
 public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePlusMetadata>, 
 	N5MetadataWriter<N5ImagePlusMetadata>, ImageplusMetadata<N5ImagePlusMetadata> 
@@ -168,7 +166,6 @@ public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePl
 			final Integer type = n5.getAttribute(dataset, typeKey, Integer.class);
 
 			final Map<String, Object> properties = null;
-
 			final N5ImagePlusMetadata meta = new N5ImagePlusMetadata(dataset, attributes, name, fps, frameInterval,
 					unit, pixelWidth, pixelHeight, pixelDepth, xOrigin, yOrigin, zOrigin, numChannels, numSlices,
 					numFrames, type, properties);
