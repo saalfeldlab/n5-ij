@@ -126,7 +126,15 @@ public class N5Factory implements Serializable {
 		return this;
 	}
 
-	private static boolean isHDF5(final String path) throws FileNotFoundException, IOException {
+	private static boolean isHDF5Writer(final String path) throws FileNotFoundException, IOException {
+
+		if (path.contains(".h5") || path.contains(".hdf5"))
+			return true;
+		else
+			return false;
+	}
+
+	private static boolean isHDF5Reader(final String path) throws FileNotFoundException, IOException {
 
 		if (Files.isRegularFile(Paths.get(path))) {
 			/* optimistic */
@@ -368,7 +376,7 @@ public class N5Factory implements Serializable {
 					return openGoogleCloudReader(url);
 			}
 		} catch (final URISyntaxException e) {}
-		if (isHDF5(url))
+		if (isHDF5Reader(url))
 			return openHDF5Reader(url);
 //		else if (url.matches("(?i).*\\.zarr"))
 		else if (url.contains(".zarr"))
@@ -401,7 +409,7 @@ public class N5Factory implements Serializable {
 					return openGoogleCloudWriter(url);
 			}
 		} catch (final URISyntaxException e) {}
-		if (isHDF5(url))
+		if (isHDF5Writer(url))
 			return openHDF5Writer(url);
 		else if (url.matches("(?i).*\\.zarr"))
 			return openZarrWriter(url);
