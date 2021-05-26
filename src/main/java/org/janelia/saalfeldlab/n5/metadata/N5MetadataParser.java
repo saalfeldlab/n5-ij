@@ -32,8 +32,9 @@ import org.janelia.saalfeldlab.n5.N5TreeNode;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
-public interface N5MetadataParser<T extends N5Metadata> {
+public interface N5MetadataParser<T extends N5Metadata> extends BiFunction<N5Reader, N5TreeNode, Optional<T>> {
 
   static DatasetAttributes parseDatasetAttributes(N5Reader n5, N5TreeNode node) {
 
@@ -71,5 +72,10 @@ public interface N5MetadataParser<T extends N5Metadata> {
 	if (!n5.exists(dataset))
 	  return Optional.empty();
 	return parseMetadata(n5, new N5TreeNode(dataset));
+  }
+
+  @Override default Optional<T> apply(N5Reader n5Reader, N5TreeNode n5TreeNode) {
+
+	return parseMetadata(n5Reader, n5TreeNode);
   }
 }

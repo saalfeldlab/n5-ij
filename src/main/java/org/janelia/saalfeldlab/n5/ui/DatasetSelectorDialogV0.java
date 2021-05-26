@@ -27,11 +27,11 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
+import org.apache.commons.lang.NotImplementedException;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5MultiScaleMetadata;
@@ -121,10 +121,10 @@ public class DatasetSelectorDialogV0
 	private int nd;
 
 	public DatasetSelectorDialogV0(
-			final Function< String, N5Reader > n5Fun,
-			final Function< String, String > pathFun,
-			final N5GroupParser<?>[] groupParsers,
-			final N5MetadataParser< ? >... parsers )
+			final Function<String, N5Reader> n5Fun,
+			final Function<String, String> pathFun,
+			final N5MetadataParser<?>[] groupParsers,
+			final N5MetadataParser<?>... parsers)
 	{
 		this.n5Fun = n5Fun;
 		this.pathFun = pathFun;
@@ -132,17 +132,17 @@ public class DatasetSelectorDialogV0
 	}
 
   public DatasetSelectorDialogV0(
-			final Function< String, N5Reader > n5Fun,
-			final N5GroupParser<?>[] groupParsers,
-			final N5MetadataParser< ? >... parsers )
+		  final Function<String, N5Reader> n5Fun,
+		  final N5MetadataParser<?>[] groupParsers,
+		  final N5MetadataParser<?>... parsers)
 	{
 		this( n5Fun, x -> "", groupParsers, parsers );
 	}
 
 	public DatasetSelectorDialogV0(
 			final N5Reader n5,
-			final N5GroupParser<?>[] groupParsers,
-			final N5MetadataParser< ? >... parsers )
+			final N5MetadataParser<?>[] groupParsers,
+			final N5MetadataParser<?>... parsers)
 	{
 		this.n5 = n5;
 //		datasetDiscoverer = new N5DatasetDiscoverer( groupParsers, parsers );
@@ -347,43 +347,7 @@ public class DatasetSelectorDialogV0
 			final Function<String,String> pathToRoot )
     {
 
-	  final String n5Path = opener.get();
-	  n5 = n5Fun.apply(n5Path);
-	  final String rootPath = pathToRoot.apply(n5Path);
-
-	  if (n5 == null)
-		return;
-
-	  //FIXME during merge
-
-	  //        final N5TreeNode n5RootNode;
-	  //        try
-	  //        {
-	  //			n5RootNode = datasetDiscoverer.discoverAndParseRecursive( n5, rootPath );
-	  //			if( n5RootNode.isDataset() )
-	  //				okBtn.setEnabled( true );
-	  //        }
-	  //		catch ( final IOException e )
-	  //        {
-	  //            IJ.handleException(e);
-	  //            return;
-	  //        }
-	  //
-	  //        if( containerPathTxt != null )
-	  //			containerPathTxt.setText(n5Path);
-	  //
-	  ////        treeModel.setRoot(N5DatasetDiscoverer.toJTreeNode(n5RootNode));
-	  //		treeModel.setRoot( n5RootNode.asTreeNode() );
-	  //        listModel.clear();
-	  //
-	  //        containerTree.setEnabled(true);
-	  //        selectedList.setEnabled(true);
-	  //        removeSourceBtn.setEnabled(false);
-	  //
-	  //		if ( n5RootNode.isDataset() )
-	  //			okBtn.setEnabled( true );
-	  //		else
-	  //			okBtn.setEnabled( false );
+	  throw new NotImplementedException("This dialog is not currently supported. ");
 	}
 
 	private void defaultMinMax()

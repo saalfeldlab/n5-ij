@@ -39,20 +39,17 @@ public class N5ViewerMultiscaleMetadataParser implements N5MetadataParser<N5Mult
    * while discovering the N5 tree and filling the metadata for datasets or groups.
    *
    * @param reader the n5 reader
-   * @param node the node
+   * @param node   the node
    * @return the metadata
    */
-  public Optional<N5MultiScaleMetadata> parseMetadata(final N5Reader reader, final N5TreeNode node) {
+  @Override public Optional<N5MultiScaleMetadata> parseMetadata(final N5Reader reader, final N5TreeNode node) {
 
 	final Map<String, N5TreeNode> scaleLevelNodes = new HashMap<>();
-	String[] units = null;
 	for (final N5TreeNode childNode : node.childrenList()) {
 	  if (MultiscaleMetadata.scaleLevelPredicate.test(childNode.getNodeName()) &&
 			  childNode.isDataset() &&
 			  childNode.getMetadata() instanceof N5SingleScaleMetadata) {
 		scaleLevelNodes.put(childNode.getNodeName(), childNode);
-		if (units == null)
-		  units = ((N5SingleScaleMetadata)childNode.getMetadata()).units();
 	  }
 	}
 

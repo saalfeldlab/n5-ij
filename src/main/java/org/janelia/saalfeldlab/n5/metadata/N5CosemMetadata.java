@@ -30,28 +30,21 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.ScaleAndTranslation;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
-public class N5CosemMetadata extends AbstractN5DatasetMetadata implements PainteraSourceMetadata, PhysicalMetadata {
-
-  public static final String pixelResolutionKey = "pixelResolution";
-
-  double[] downsamplingFactors = new double[]{1.0, 1.0, 1.0};
+public class N5CosemMetadata extends N5SingleScaleMetadata {
 
   private final CosemTransform cosemTransformMeta;
 
-  public N5CosemMetadata(final String path, final CosemTransform cosemTransformMeta, final DatasetAttributes attributes) {
+  public N5CosemMetadata(final String path, final CosemTransform transform, final DatasetAttributes attributes) {
 
-	super(path, attributes);
-	this.cosemTransformMeta = cosemTransformMeta;
-  }
-
-  @Override public double[] getDownsamplingFactors() {
-
-	return downsamplingFactors;
-  }
-
-  void setDownsamplingFactors(double[] downsamplingFactors) {
-
-	this.downsamplingFactors = downsamplingFactors;
+	super(
+			path,
+			transform.toAffineTransform3d(),
+			new double[]{1.0, 1.0, 1.0},
+			transform.scale,
+			transform.translate,
+			transform.units[0],
+			attributes);
+	this.cosemTransformMeta = transform;
   }
 
   public CosemTransform getCosemTransform() {
@@ -105,31 +98,6 @@ public class N5CosemMetadata extends AbstractN5DatasetMetadata implements Painte
 			  0, 0, scale[0], translate[0]);
 	  return transform;
 	}
-  }
-
-  @Override
-  public AffineGet physicalTransform() {
-
-	return getCosemTransform().getAffine();
-  }
-
-  @Override
-  public String[] units() {
-
-	String[] rawUnits = getCosemTransform().units;
-	String[] out = new String[rawUnits.length];
-	int j = rawUnits.length - 1;
-	for (int i = 0; i < rawUnits.length; i++) {
-	  out[i] = rawUnits[j];
-	  j--;
-	}
-	return out;
-  }
-
-  @Override
-  public AffineTransform3D physicalTransform3d() {
-
-	return getCosemTransform().toAffineTransform3d();
   }
 
 }

@@ -3,15 +3,15 @@ package org.janelia.saalfeldlab.n5.metadata;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 
-public interface PhysicalMetadata extends N5Metadata {
+public interface SpatialMetadata extends N5Metadata {
 
-  AffineGet physicalTransform();
+  AffineGet spatialTransform();
 
-  String[] units();
+  String unit();
 
-  default AffineTransform3D physicalTransform3d() {
+  default AffineTransform3D spatialTransform3d() {
 
-	final AffineGet transform = physicalTransform();
+	final AffineGet transform = spatialTransform();
 
 	// return identity if null
 	if (transform == null)

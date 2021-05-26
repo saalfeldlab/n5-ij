@@ -57,7 +57,6 @@ import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
@@ -111,15 +110,15 @@ public class N5Importer implements PlugIn {
 		  //					new DefaultMetadata( "", -1 )
   };
 
-//  public static final N5GroupParser<?>[] GROUP_PARSERS = new N5GroupParser[]{
-//		  			new N5CosemMultiScaleMetadata(),
-//		  			new N5ViewerMultiscaleMetadataParser()
-//  };
+  //  public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
+  //		  			new N5CosemMultiScaleMetadata(),
+  //		  			new N5ViewerMultiscaleMetadataParser()
+  //  };
 
   public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
-		  			new N5CosemMultiScaleMetadata()
+		  //		  			new N5CosemMultiScaleMetadata()
   };
-  
+
   private N5Reader n5;
 
   private DatasetSelectorDialog selectionDialog;

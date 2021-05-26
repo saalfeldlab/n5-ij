@@ -44,15 +44,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
-import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
 public class N5DatasetDiscoverer {
 
   private static final Logger LOG = LoggerFactory.getLogger(N5DatasetDiscoverer.class);
 
-  private final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers;
-  private final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers;
+  private final List<N5MetadataParser<?>> metadataParsers;
+  private final List<N5MetadataParser<?>> groupParsers;
 
   private final Comparator<? super String> comparator;
 
@@ -74,28 +73,28 @@ public class N5DatasetDiscoverer {
    * @param groupParsers    group parsers
    */
   public N5DatasetDiscoverer(final ExecutorService executor,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this(executor,
 			Optional.of(new AlphanumericComparator(Collator.getInstance())),
 			null,
-			groupParsers,
-			metadataParsers);
+			metadataParsers,
+			groupParsers);
   }
 
   public N5DatasetDiscoverer(
 		  final N5Reader n5,
 		  final ExecutorService executor,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this(n5,
 			executor,
 			Optional.of(new AlphanumericComparator(Collator.getInstance())),
 			null,
-			groupParsers,
-			metadataParsers);
+			metadataParsers,
+			groupParsers);
   }
 
   /**
@@ -105,26 +104,26 @@ public class N5DatasetDiscoverer {
    * @param groupParsers    group parsers
    */
   public N5DatasetDiscoverer(
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this(Executors.newSingleThreadExecutor(),
 			Optional.of(new AlphanumericComparator(Collator.getInstance())),
 			null,
-			groupParsers,
-			metadataParsers);
+			metadataParsers,
+			groupParsers);
   }
 
   /**
    * Creates an N5 discoverer.
    *
-   * @param n5 n5 reader
+   * @param n5              n5 reader
    * @param metadataParsers metadata parsers
    * @param groupParsers    group parsers
    */
   public N5DatasetDiscoverer(final N5Reader n5,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this(n5,
 			Executors.newSingleThreadExecutor(),
@@ -137,8 +136,8 @@ public class N5DatasetDiscoverer {
   public N5DatasetDiscoverer(
 		  final ExecutorService executor,
 		  final Predicate<N5TreeNode> filter,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this(executor,
 			Optional.of(new AlphanumericComparator(Collator.getInstance())),
@@ -151,8 +150,8 @@ public class N5DatasetDiscoverer {
 		  final N5Reader n5,
 		  final ExecutorService executor,
 		  final Predicate<N5TreeNode> filter,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this(n5,
 			executor,
@@ -165,8 +164,8 @@ public class N5DatasetDiscoverer {
   public N5DatasetDiscoverer(
 		  final ExecutorService executor,
 		  final Optional<Comparator<? super String>> comparator,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this(executor, comparator, null, metadataParsers, groupParsers);
   }
@@ -175,8 +174,8 @@ public class N5DatasetDiscoverer {
 		  final N5Reader n5,
 		  final ExecutorService executor,
 		  final Optional<Comparator<? super String>> comparator,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this(n5, executor, comparator, null, metadataParsers, groupParsers);
   }
@@ -197,14 +196,14 @@ public class N5DatasetDiscoverer {
 		  final ExecutorService executor,
 		  final Optional<Comparator<? super String>> comparator,
 		  final Predicate<N5TreeNode> filter,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this.executor = executor;
 	this.comparator = comparator.orElseGet(null);
 	this.filter = filter;
-	this.groupParsers = groupParsers;
 	this.metadataParsers = metadataParsers;
+	this.groupParsers = groupParsers;
   }
 
   /**
@@ -224,8 +223,8 @@ public class N5DatasetDiscoverer {
 		  final ExecutorService executor,
 		  final Optional<Comparator<? super String>> comparator,
 		  final Predicate<N5TreeNode> filter,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) {
 
 	this.n5 = n5;
 	this.executor = executor;
@@ -236,17 +235,17 @@ public class N5DatasetDiscoverer {
   }
 
   public static void parseMetadata(final N5Reader n5, final N5TreeNode node,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers) throws IOException {
+		  final List<N5MetadataParser<?>> metadataParsers) throws IOException {
 
 	parseMetadata(n5, node, metadataParsers, new ArrayList<>());
   }
 
   public static void parseMetadata(final N5Reader n5, final N5TreeNode node,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> metadataParsers,
-		  final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> groupParsers) throws IOException {
+		  final List<N5MetadataParser<?>> metadataParsers,
+		  final List<N5MetadataParser<?>> groupParsers) throws IOException {
 
 	// Go through all parsers to populate metadata
-	for (final BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>> parser : metadataParsers) {
+	for (final N5MetadataParser<?> parser : metadataParsers) {
 	  try {
 		Optional<? extends N5Metadata> parsedMeta;
 		parsedMeta = parser.apply(n5, node);
@@ -260,7 +259,7 @@ public class N5DatasetDiscoverer {
 
 	// this may be a group (e.g. multiscale pyramid) try to parse groups
 	if ((node.getMetadata() == null) && !node.childrenList().isEmpty() && groupParsers != null) {
-	  for (final BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>> gp : groupParsers) {
+	  for (final N5MetadataParser<?> gp : groupParsers) {
 		final Optional<? extends N5Metadata> groupMeta = gp.apply(n5, node);
 		groupMeta.ifPresent(node::setMetadata);
 		if (groupMeta.isPresent())
@@ -354,44 +353,45 @@ public class N5DatasetDiscoverer {
 
   public N5TreeNode parse(final N5TreeNode node) {
 	// Go through all parsers to populate metadata
-	for (final BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>> parser : metadataParsers) {
-		try {
-	      Optional<? extends N5Metadata> metadata = parser.apply(n5, node);
-		  if (metadata.isPresent()) {
-			node.setMetadata(metadata.get());
-			break;
-		  }
-		} catch( Exception e ) {
+	for (final N5MetadataParser<?> parser : metadataParsers) {
+	  try {
+		Optional<? extends N5Metadata> metadata = parser.apply(n5, node);
+		if (metadata.isPresent()) {
+		  node.setMetadata(metadata.get());
+		  break;
 		}
+	  } catch (Exception e) {
+	  }
 	}
 	return node;
   }
 
-  public void parseGroupsRecursive(final N5TreeNode node) {
-
-	if (groupParsers == null)
-	  return;
-
-	// the group parser is responsible for
-	// checking whether the node's metad
-	// ata exist or not,
-	// and may more may not  run
-
-	// this is not a dataset but may be a group (e.g. multiscale pyramid)
-	// try to parse groups
-
-	for (final BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>> gp : groupParsers) {
-
-	  final Optional<? extends N5Metadata> groupMeta = gp.apply(n5, node);
-	  if (groupMeta.isPresent()) {
-		node.setMetadata(groupMeta.get());
-		break;
-	  }
-	}
-
-	for (final N5TreeNode c : node.childrenList())
-	  parseGroupsRecursive(c);
-  }
+  //TODO ensure this isn't used before removal
+  //  public void parseGroupsRecursive(final N5TreeNode node) {
+  //
+  //	if (groupParsers == null)
+  //	  return;
+  //
+  //	// the group parser is responsible for
+  //	// checking whether the node's metad
+  //	// ata exist or not,
+  //	// and may more may not  run
+  //
+  //	// this is not a dataset but may be a group (e.g. multiscale pyramid)
+  //	// try to parse groups
+  //
+  //	for (final N5MetadataParser<?> gp : groupParsers) {
+  //
+  //	  final Optional<? extends N5Metadata> groupMeta = gp.apply(n5, node);
+  //	  if (groupMeta.isPresent()) {
+  //		node.setMetadata(groupMeta.get());
+  //		break;
+  //	  }
+  //	}
+  //
+  //	for (final N5TreeNode c : node.childrenList())
+  //	  parseGroupsRecursive(c);
+  //  }
 
   public void sortAndTrimRecursive(final N5TreeNode node) {
 
@@ -459,19 +459,9 @@ public class N5DatasetDiscoverer {
 	LOG.debug("parsed metadata for: {}:\t found: {}", rootNode.getPath(), rootNode.getMetadata() == null ? "NONE" : rootNode.getMetadata().getClass().getSimpleName());
   }
 
-  public static final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> fromParsers( final List<N5MetadataParser<?>> parsers ) {
-	  ArrayList<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> funs = new ArrayList<>();
-	  for( N5MetadataParser<?> p : parsers ) {
-		 funs.add( p::parseMetadata ) ;
-	  }
-	  return funs;
-  }
+  public static final List<N5MetadataParser<?>> fromParsers(final N5MetadataParser<?>[] parsers) {
 
-  public static final List<BiFunction<N5Reader, N5TreeNode, Optional<? extends N5Metadata>>> fromParsers( final N5MetadataParser<?>[] parsers ) {
-	  if( parsers == null )
-		  return null;
-
-	  return fromParsers( Arrays.asList( parsers ));
+	return Arrays.asList(parsers);
   }
 
 }

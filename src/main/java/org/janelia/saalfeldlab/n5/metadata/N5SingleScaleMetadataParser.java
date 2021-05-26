@@ -6,6 +6,7 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5Writer;
+import org.janelia.saalfeldlab.n5.imglib2.N5LabelMultisets;
 
 import java.io.IOException;
 import java.util.Optional;
@@ -80,12 +81,11 @@ public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleSca
 
 	  } else {
 
-		  pixelResolution = 
-				  Optional.ofNullable( n5.getAttribute(node.getPath(), PIXEL_RESOLUTION_KEY, double[].class))
-				  	.orElseGet(() -> new double[]{1.0, 1.0, 1.0});
-		  unit = "pixel";
+		pixelResolution =
+				Optional.ofNullable(n5.getAttribute(node.getPath(), PIXEL_RESOLUTION_KEY, double[].class))
+						.orElseGet(() -> new double[]{1.0, 1.0, 1.0});
+		unit = "pixel";
 	  }
-
 
 	  final Optional<AffineTransform3D> extraTransform = Optional.ofNullable(
 			  n5.getAttribute(node.getPath(), AFFINE_TRANSFORM_KEY, AffineTransform3D.class));
@@ -94,7 +94,9 @@ public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleSca
 
 	  double[] offset = new double[]{transform.get(0, 3), transform.get(1, 3), transform.get(2, 3)};
 
-	  return Optional.of(new N5SingleScaleMetadata(node.getPath(), transform, downsamplingFactors, pixelResolution, offset, unit, attributes));
+	  final boolean isLabelMultiset = N5LabelMultisets.isLabelMultisetType(n5, node.getPath());
+
+	  return Optional.of(new N5SingleScaleMetadata(node.getPath(), transform, downsamplingFactors, pixelResolution, offset, unit, attributes, isLabelMultiset));
 
 	} catch (IOException e) {
 		e.printStackTrace();
@@ -106,15 +108,15 @@ public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleSca
   public void writeMetadata(final N5SingleScaleMetadata t, final N5Writer n5, final String group) throws Exception {
 
 	final double[] pixelResolution = new double[]{
-			t.transform.get(0, 0),
-			t.transform.get(1, 1),
-			t.transform.get(2, 2)};
+			t.spatialTransform3d().get(0, 0),
+			t.spatialTransform3d().get(1, 1),
+			t.spatialTransform3d().get(2, 2)};
 
-	final FinalVoxelDimensions voxdims = new FinalVoxelDimensions(t.unit, pixelResolution);
+	final FinalVoxelDimensions voxdims = new FinalVoxelDimensions(t.unit(), pixelResolution);
 	n5.setAttribute(group, PIXEL_RESOLUTION_KEY, voxdims);
 
-	if( t.downsamplingFactors != null )
-		n5.setAttribute(group, PIXEL_RESOLUTION_KEY, t.downsamplingFactors);
+	if (t.getDownsamplingFactors() != null)
+	  n5.setAttribute(group, DOWNSAMPLING_FACTORS_KEY, t.getDownsamplingFactors());
 
   }
 

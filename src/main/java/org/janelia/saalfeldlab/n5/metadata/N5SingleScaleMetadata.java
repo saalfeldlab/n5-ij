@@ -30,17 +30,17 @@ import net.imglib2.realtransform.AffineTransform3D;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
 import java.util.Objects;
-import java.util.stream.Stream;
 
-public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements PhysicalMetadata, IntensityMetadata {
+public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements SpatialMetadata, IntensityMetadata {
 
-  public final AffineTransform3D transform;
-  public final String unit;
-  final double[] downsamplingFactors;
-  final double[] pixelResolution;
-  final double[] offset;
+  private final AffineTransform3D transform;
+  private final String unit;
+  private final double[] downsamplingFactors;
+  private final double[] pixelResolution;
+  private final double[] offset;
   private final Double minIntensity;
   private final Double maxIntensity;
+  private final boolean isLabelMultiset;
 
   public N5SingleScaleMetadata(final String path, final AffineTransform3D transform,
 		  final double[] downsamplingFactors,
@@ -49,7 +49,18 @@ public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements 
 		  final String unit,
 		  final DatasetAttributes attributes) {
 
-	this(path, transform, downsamplingFactors, pixelResolution, offset, unit, attributes, null, null);
+	this(path, transform, downsamplingFactors, pixelResolution, offset, unit, attributes, null, null, false);
+  }
+
+  public N5SingleScaleMetadata(final String path, final AffineTransform3D transform,
+		  final double[] downsamplingFactors,
+		  final double[] pixelResolution,
+		  final double[] offset,
+		  final String unit,
+		  final DatasetAttributes attributes,
+		  final boolean isLabelMultiset) {
+
+	this(path, transform, downsamplingFactors, pixelResolution, offset, unit, attributes, null, null, isLabelMultiset);
   }
 
   public N5SingleScaleMetadata(final String path, final AffineTransform3D transform,
@@ -59,7 +70,8 @@ public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements 
 		  final String unit,
 		  final DatasetAttributes attributes,
 		  final Double minIntensity,
-		  final Double maxIntensity) {
+		  final Double maxIntensity,
+		  boolean isLabelMultiset) {
 
 	super(path, attributes);
 
@@ -75,6 +87,7 @@ public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements 
 	/* These are allowed to be null, if we wish to use implementation defaults */
 	this.minIntensity = minIntensity;
 	this.maxIntensity = maxIntensity;
+	this.isLabelMultiset = isLabelMultiset;
 
 	if (unit == null)
 	  this.unit = "pixel";
@@ -83,15 +96,15 @@ public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements 
   }
 
   @Override
-  public AffineGet physicalTransform() {
+  public AffineGet spatialTransform() {
 
 	return transform;
   }
 
   @Override
-  public String[] units() {
+  public String unit() {
 
-	return Stream.generate(() -> unit).limit(3).toArray(String[]::new);
+	return unit;
   }
 
   @Override public double minIntensity() {
@@ -102,5 +115,25 @@ public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements 
   @Override public double maxIntensity() {
 
 	return maxIntensity != null ? maxIntensity : IntensityMetadata.super.maxIntensity();
+  }
+
+  public double[] getPixelResolution() {
+
+	return pixelResolution;
+  }
+
+  public double[] getOffset() {
+
+	return offset;
+  }
+
+  public double[] getDownsamplingFactors() {
+
+	return downsamplingFactors;
+  }
+
+  public boolean isLabelMultiset() {
+
+	return isLabelMultiset;
   }
 }

@@ -26,7 +26,6 @@
 package org.janelia.saalfeldlab.n5;
 
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.N5GroupParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -36,7 +35,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class N5TreeNode // extends DefaultMutableTreeNode
@@ -198,16 +196,7 @@ public class N5TreeNode // extends DefaultMutableTreeNode
 	return pathName.startsWith("/") || pathName.startsWith("\\") ? pathName.substring(1) : pathName;
   }
 
-  public List<N5TreeNode> groups() {
-
-	return groups(N5GroupParser.class);
-  }
-
-  public <T extends N5GroupParser<?>> List<N5TreeNode> groups(Class<T> groupParser) {
-
-	return flattenN5Tree(this).filter(node -> groupParser.isInstance(node.getMetadata())).collect(Collectors.toList());
-  }
-
+  //TODO John move this
   public class JTreeNodeWrapper extends DefaultMutableTreeNode {
 
 	private static final long serialVersionUID = 2650578684960249546L;
