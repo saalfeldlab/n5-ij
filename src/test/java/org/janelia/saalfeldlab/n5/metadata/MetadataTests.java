@@ -1,17 +1,6 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
-import static org.junit.Assert.fail;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
+import net.imglib2.realtransform.AffineTransform3D;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -20,7 +9,18 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import net.imglib2.realtransform.AffineTransform3D;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.junit.Assert.fail;
 
 public class MetadataTests
 {
@@ -133,32 +133,34 @@ public class MetadataTests
 
 		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer( n5, parsers, null );
 		try {
-			final N5TreeNode n5root = discoverer.discoverAndParseRecursive( "/" );
+		  final N5TreeNode n5root = discoverer.discoverAndParseRecursive("/");
 
-			List< N5TreeNode > children = n5root.childrenList();
-			Assert.assertEquals("discovery node count", 6, children.size());
+		  List<N5TreeNode> childrenWithMetadata = n5root.childrenList().stream()
+				  .filter(x -> Objects.nonNull(x.getMetadata()))
+				  .collect(Collectors.toList());
+		  long childrenNoMetadataCount = n5root.childrenList().stream()
+				  .filter(x -> Objects.isNull(x.getMetadata()))
+				  .count();
+		  Assert.assertEquals("discovery node count with single scale metadata", 6, childrenWithMetadata.size());
+		  Assert.assertEquals("discovery node count without single scale metadata", 2, childrenNoMetadataCount);
 
-			children.stream().filter( x -> datasetSet.contains( x.getPath() )).forEach( n -> {
+		  childrenWithMetadata.stream().filter(x -> datasetSet.contains(x.getPath())).forEach(n -> {
 
-				final String dname = n.getPath();
-				Assert.assertNotNull( dname, n.getMetadata() );
+			final String dname = n.getPath();
+			Assert.assertNotNull(dname, n.getMetadata());
 
-				PhysicalMetadata m = ( PhysicalMetadata ) n.getMetadata();
-				AffineTransform3D xfm = m.physicalTransform3d();
-				double s = xfm.get( 0, 0 ); // scale 
-				double t = xfm.get( 0, 3 ); // translation / offset
-				
-				if( dname.contains("ds"))
-				{
-					if( dname.contains("pr"))
-					{
-						Assert.assertEquals( dname + " scale", 3.0, s, eps );
-						Assert.assertEquals( dname + " offset", 0.75, t, eps );
-					}
-					else
-					{
-						Assert.assertEquals( dname + " scale", 2.0, s, eps );
-						Assert.assertEquals( dname + " offset", 0.5, t, eps );
+			PhysicalMetadata m = (PhysicalMetadata)n.getMetadata();
+			AffineTransform3D xfm = m.physicalTransform3d();
+			double s = xfm.get(0, 0); // scale
+			double t = xfm.get(0, 3); // translation / offset
+
+			if (dname.contains("ds")) {
+			  if (dname.contains("pr")) {
+				Assert.assertEquals(dname + " scale", 3.0, s, eps);
+				Assert.assertEquals(dname + " offset", 0.75, t, eps);
+			  } else {
+				Assert.assertEquals(dname + " scale", 2.0, s, eps);
+				Assert.assertEquals(dname + " offset", 0.5, t, eps);
 					}
 				}
 				else
