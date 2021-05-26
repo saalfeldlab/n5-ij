@@ -40,7 +40,7 @@ public class N5GenericSingleScaleMetadataParser implements N5MetadataParser<N5Si
 	  if (resolution.length != 3)
 		return Optional.empty();
 
-	  final double[] offset = Optional.ofNullable(n5.getAttribute(node.getPath(), OFFSET, double[].class)).orElse(new double[]{1.0, 1.0, 1.0});
+	  final double[] offset = Optional.ofNullable(n5.getAttribute(node.getPath(), OFFSET, double[].class)).orElse(new double[]{0.0, 0.0, 0.0});
 	  if (offset.length != 3)
 		return Optional.empty();
 
