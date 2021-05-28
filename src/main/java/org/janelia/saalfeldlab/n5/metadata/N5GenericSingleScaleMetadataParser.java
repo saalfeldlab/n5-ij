@@ -12,23 +12,45 @@ import java.util.Optional;
 
 public class N5GenericSingleScaleMetadataParser implements N5MetadataParser<N5SingleScaleMetadata>, N5MetadataWriter<N5SingleScaleMetadata> {
 
-  public static final String MIN = "min";
-  public static final String MAX = "max";
-  public static final String RESOLUTION = "resolution";
-  public static final String OFFSET = "offset";
-  public static final String IS_LABEL_MULTISET = "isLabelMultiset";
-  public static final String DOWNSAMPLING_FACTORS = "downsamplingFactors";
+  public static final String DEFAULT_MIN = "min";
+  public static final String DEFAULT_MAX = "max";
+  public static final String DEFAULT_RESOLUTION = "resolution";
+  public static final String DEFAULT_OFFSET = "offset";
+  public static final String DEFAULT_UNIT = "unit";
+  public static final String DEFAULT_DOWNSAMPLING_FACTORS = "downsamplingFactors";
+  public static final String DEFAULT_IS_LABEL_MULTISET = "isLabelMultiset";
+  
+  public final String minKey;
+  public final String maxKey;
+  public final String resolutionKey;
+  public final String offsetKey;
+  public final String downsamplingFactorsKey;
+  public final String isLabelMultisetKey;
+
+  public N5GenericSingleScaleMetadataParser() {
+	  minKey = DEFAULT_MIN;
+	  maxKey = DEFAULT_MAX;
+	  resolutionKey = DEFAULT_RESOLUTION;
+	  offsetKey = DEFAULT_OFFSET;
+	  downsamplingFactorsKey = DEFAULT_DOWNSAMPLING_FACTORS;
+	  isLabelMultisetKey = DEFAULT_IS_LABEL_MULTISET;
+  }
+
+  public N5GenericSingleScaleMetadataParser( final String minKey, final String maxKey,
+		  final String resolutionKey, final String offsetKey, 
+		  final String downsamplingFactorsKey, final String isLabelMultisetKey ) {
+	  this.minKey = minKey;
+	  this.maxKey = maxKey;
+	  this.resolutionKey = resolutionKey;
+	  this.offsetKey = offsetKey;
+	  this.downsamplingFactorsKey = downsamplingFactorsKey;
+	  this.isLabelMultisetKey = isLabelMultisetKey;
+  }
 
   @Override
   public Optional<N5SingleScaleMetadata> parseMetadata(N5Reader n5, N5TreeNode node) {
 
 	try {
-	  n5.getAttribute(node.getPath(), MIN, double.class);
-	  n5.getAttribute(node.getPath(), MAX, double.class);
-	  n5.getAttribute(node.getPath(), RESOLUTION, double[].class);
-	  n5.getAttribute(node.getPath(), OFFSET, double[].class);
-	  n5.getAttribute(node.getPath(), DOWNSAMPLING_FACTORS, double[].class);
-	  n5.getAttribute(node.getPath(), IS_LABEL_MULTISET, boolean.class);
 	  final DatasetAttributes attributes = n5.getDatasetAttributes(node.getPath());
 
 	  if (attributes == null)
@@ -36,27 +58,41 @@ public class N5GenericSingleScaleMetadataParser implements N5MetadataParser<N5Si
 
 	  final String path = node.getPath();
 
-	  final double[] resolution = Optional.ofNullable(n5.getAttribute(node.getPath(), RESOLUTION, double[].class)).orElse(new double[]{1.0, 1.0, 1.0});
-	  if (resolution.length != 3)
+	  final double[] resolution = Optional.ofNullable(n5.getAttribute(node.getPath(), resolutionKey, double[].class)).orElse(new double[]{1.0, 1.0, 1.0});
+	  if (resolution.length < attributes.getNumDimensions() )
 		return Optional.empty();
 
-	  final double[] offset = Optional.ofNullable(n5.getAttribute(node.getPath(), OFFSET, double[].class)).orElse(new double[]{0.0, 0.0, 0.0});
-	  if (offset.length != 3)
+
+	  final double[] downsamplingFactors = Optional.ofNullable(n5.getAttribute(node.getPath(), downsamplingFactorsKey, double[].class)).orElse(new double[]{1.0, 1.0, 1.0});
+	  if (downsamplingFactors.length < attributes.getNumDimensions() )
 		return Optional.empty();
 
-	  final double[] downsamplingFactors = Optional.ofNullable(n5.getAttribute(node.getPath(), DOWNSAMPLING_FACTORS, double[].class)).orElse(new double[]{1.0, 1.0, 1.0});
-
-	  final double min = Optional.ofNullable(n5.getAttribute(node.getPath(), MIN, double.class)).orElse(0.0);
-	  final double max = Optional.ofNullable(n5.getAttribute(node.getPath(), MAX, double.class)).orElseGet(() -> IntensityMetadata.maxForDataType(attributes.getDataType()));
+	  final double min = Optional.ofNullable(n5.getAttribute(node.getPath(), minKey, double.class)).orElse(0.0);
+	  final double max = Optional.ofNullable(n5.getAttribute(node.getPath(), maxKey, double.class)).orElseGet(() -> IntensityMetadata.maxForDataType(attributes.getDataType()));
 
 	  final Boolean isLabelMultiset = N5LabelMultisets.isLabelMultisetType(n5, node.getPath());
+	  
+	  final AffineTransform3D transform = N5SingleScaleMetadataParser.buildTransform(downsamplingFactors, resolution, Optional.empty());
+	  
+	  final Optional<double[]> offsetOpt = Optional.ofNullable(n5.getAttribute(node.getPath(), offsetKey, double[].class));
 
-	  final AffineTransform3D transform = new AffineTransform3D();
-	  transform.set(
-			  resolution[0], 0, 0, offset[0],
-			  0, resolution[1], 0, offset[1],
-			  0, 0, resolution[2], offset[2]
-	  );
+	  final double[] offset;
+	  if (offsetOpt.isPresent()) {
+		offset = offsetOpt.get();
+		for (int i = 0; i < offset.length; i++)
+			transform.set(offset[i], i, 3);
+	  } else {
+		  offset = new double[3];
+		  for (int i = 0; i < offset.length; i++)
+	   		offset[i] = transform.get(i, 3);
+	  }		  
+
+//	  final AffineTransform3D transform = new AffineTransform3D();
+//	  transform.set(
+//			  resolution[0], 0, 0, offset[0],
+//			  0, resolution[1], 0, offset[1],
+//			  0, 0, resolution[2], offset[2]
+//	  );
 
 	  N5SingleScaleMetadata metadata = new N5SingleScaleMetadata(path, transform, downsamplingFactors, resolution, offset, "pixel", attributes, min, max, isLabelMultiset);
 	  return Optional.of(metadata);
