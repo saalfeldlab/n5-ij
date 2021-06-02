@@ -30,6 +30,8 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.ScaleAndTranslation;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
+import java.util.stream.IntStream;
+
 public class N5CosemMetadata extends N5SingleScaleMetadata {
 
   private final CosemTransform cosemTransformMeta;
@@ -40,8 +42,8 @@ public class N5CosemMetadata extends N5SingleScaleMetadata {
 			path,
 			transform.toAffineTransform3d(),
 			new double[]{1.0, 1.0, 1.0},
-			transform.scale,
-			transform.translate,
+			transform.fOrderedScale(),
+			transform.fOrderedTranslation(),
 			transform.units[0],
 			attributes);
 	this.cosemTransformMeta = transform;
@@ -97,6 +99,22 @@ public class N5CosemMetadata extends N5SingleScaleMetadata {
 			  0, scale[1], 0, translate[1],
 			  0, 0, scale[0], translate[0]);
 	  return transform;
+	}
+
+	/**
+	 * @return scale with fortran ordering (x, y, z)
+	 */
+	public double[] fOrderedScale() {
+
+	  return IntStream.range(0, scale.length).mapToDouble(i -> scale[scale.length - i - 1]).toArray();
+	}
+
+	/**
+	 * @return translation with fortran ordering (x, y, z)
+	 */
+	public double[] fOrderedTranslation() {
+
+	  return IntStream.range(0, translate.length).mapToDouble(i -> translate[translate.length - i - 1]).toArray();
 	}
   }
 

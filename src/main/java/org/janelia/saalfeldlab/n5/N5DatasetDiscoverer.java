@@ -323,7 +323,6 @@ public class N5DatasetDiscoverer {
 	  datasetPaths = n5.deepList(base, executor);
 	  root = N5TreeNode.fromFlatList(base, datasetPaths, groupSeparator);
 	} catch (Exception e) {
-	  e.printStackTrace();
 	  return null;
 	}
 

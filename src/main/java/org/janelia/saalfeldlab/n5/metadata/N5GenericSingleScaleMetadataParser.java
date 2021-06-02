@@ -36,15 +36,72 @@ public class N5GenericSingleScaleMetadataParser implements N5MetadataParser<N5Si
 	  isLabelMultisetKey = DEFAULT_IS_LABEL_MULTISET;
   }
 
-  public N5GenericSingleScaleMetadataParser( final String minKey, final String maxKey,
-		  final String resolutionKey, final String offsetKey, 
-		  final String downsamplingFactorsKey, final String isLabelMultisetKey ) {
-	  this.minKey = minKey;
-	  this.maxKey = maxKey;
-	  this.resolutionKey = resolutionKey;
-	  this.offsetKey = offsetKey;
-	  this.downsamplingFactorsKey = downsamplingFactorsKey;
-	  this.isLabelMultisetKey = isLabelMultisetKey;
+  public N5GenericSingleScaleMetadataParser(final String minKey, final String maxKey,
+		  final String resolutionKey, final String offsetKey,
+		  final String downsamplingFactorsKey, final String isLabelMultisetKey) {
+
+	this.minKey = minKey;
+	this.maxKey = maxKey;
+	this.resolutionKey = resolutionKey;
+	this.offsetKey = offsetKey;
+	this.downsamplingFactorsKey = downsamplingFactorsKey;
+	this.isLabelMultisetKey = isLabelMultisetKey;
+  }
+
+  public static Builder builder() {
+
+	return new Builder();
+  }
+
+  public static class Builder {
+
+	private String minKey = DEFAULT_MIN;
+	private String maxKey = DEFAULT_MAX;
+	private String resolutionKey = DEFAULT_RESOLUTION;
+	private String offsetKey = DEFAULT_OFFSET;
+	private String downsamplingFactorsKey = DEFAULT_DOWNSAMPLING_FACTORS;
+	private String isLabelMultisetKey = DEFAULT_IS_LABEL_MULTISET;
+
+	public Builder min(String key) {
+
+	  this.minKey = key;
+	  return this;
+	}
+
+	public Builder max(String key) {
+
+	  this.maxKey = key;
+	  return this;
+	}
+
+	public Builder resolution(String key) {
+
+	  this.resolutionKey = key;
+	  return this;
+	}
+
+	public Builder offset(String key) {
+
+	  this.offsetKey = key;
+	  return this;
+	}
+
+	public Builder downsamplingFactors(String key) {
+
+	  this.downsamplingFactorsKey = key;
+	  return this;
+	}
+
+	public Builder isLabelMultiset(String key) {
+
+	  this.isLabelMultisetKey = key;
+	  return this;
+	}
+
+	public N5GenericSingleScaleMetadataParser build() {
+
+	  return new N5GenericSingleScaleMetadataParser(minKey, maxKey, resolutionKey, offsetKey, downsamplingFactorsKey, isLabelMultisetKey);
+	}
   }
 
   @Override
@@ -80,19 +137,12 @@ public class N5GenericSingleScaleMetadataParser implements N5MetadataParser<N5Si
 	  if (offsetOpt.isPresent()) {
 		offset = offsetOpt.get();
 		for (int i = 0; i < offset.length; i++)
-			transform.set(offset[i], i, 3);
+		  transform.set(offset[i], i, 3);
 	  } else {
-		  offset = new double[3];
-		  for (int i = 0; i < offset.length; i++)
-	   		offset[i] = transform.get(i, 3);
-	  }		  
-
-//	  final AffineTransform3D transform = new AffineTransform3D();
-//	  transform.set(
-//			  resolution[0], 0, 0, offset[0],
-//			  0, resolution[1], 0, offset[1],
-//			  0, 0, resolution[2], offset[2]
-//	  );
+		offset = new double[3];
+		for (int i = 0; i < offset.length; i++)
+		  offset[i] = transform.get(i, 3);
+	  }
 
 	  N5SingleScaleMetadata metadata = new N5SingleScaleMetadata(path, transform, downsamplingFactors, resolution, offset, "pixel", attributes, min, max, isLabelMultiset);
 	  return Optional.of(metadata);
