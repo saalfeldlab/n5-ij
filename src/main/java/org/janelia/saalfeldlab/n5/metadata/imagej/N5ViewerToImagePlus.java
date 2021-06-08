@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Optional;
 
-public class N5ViewerToImagePlus extends PhysicalMetadataToImagePlus<N5SingleScaleMetadata> {
+public class N5ViewerToImagePlus extends SpatialMetadataToImagePlus<N5SingleScaleMetadata> {
 
   @Override
   public N5SingleScaleMetadata readMetadata(final ImagePlus imp) throws IOException {

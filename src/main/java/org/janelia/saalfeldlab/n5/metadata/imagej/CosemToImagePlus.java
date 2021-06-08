@@ -10,7 +10,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata.CosemTransform;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class CosemToImagePlus extends PhysicalMetadataToImagePlus<N5CosemMetadata> {
+public class CosemToImagePlus extends SpatialMetadataToImagePlus<N5CosemMetadata> {
 
   @Override
   public N5CosemMetadata readMetadata(final ImagePlus imp) throws IOException {

@@ -8,13 +8,14 @@ import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
 
 import java.io.IOException;
 
-public abstract class PhysicalMetadataToImagePlus<T extends SpatialMetadata & N5DatasetMetadata> implements ImageplusMetadata<T> {
+public abstract class SpatialMetadataToImagePlus<T extends SpatialMetadata & N5DatasetMetadata> implements ImageplusMetadata<T> {
 
   @Override
   public void writeMetadata(final T t, final ImagePlus ip) throws IOException {
 
 	AffineTransform3D xfm = t.spatialTransform3d();
 
+	ip.setTitle( t.getPath() );
 	final Calibration cal = ip.getCalibration();
 	cal.pixelWidth = xfm.get(0, 0);
 	cal.pixelHeight = xfm.get(1, 1);
