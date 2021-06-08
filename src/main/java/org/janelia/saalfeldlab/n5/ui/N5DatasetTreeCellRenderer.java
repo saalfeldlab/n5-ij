@@ -5,6 +5,7 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
 import javax.swing.JTree;
 import javax.swing.tree.DefaultTreeCellRenderer;
@@ -74,7 +75,8 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 	public static String conversionSuffix( final N5TreeNode node ) {
 
 	  DataType type;
-	  if (node.getMetadata() != null)
+	  N5Metadata meta = node.getMetadata();
+	  if ( meta != null && meta instanceof N5DatasetMetadata )
 		type = ((N5DatasetMetadata)node.getMetadata()).getAttributes().getDataType();
 	  else
 		return "";
@@ -101,7 +103,8 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 	public String getParameterString( final N5TreeNode node ) {
 
-	  if (node.getMetadata() == null)
+	  N5Metadata meta = node.getMetadata();
+	  if ( meta == null || !(meta instanceof N5DatasetMetadata ) )
 		return "";
 
 	  final DatasetAttributes attributes = ((N5DatasetMetadata)node.getMetadata()).getAttributes();

@@ -57,11 +57,13 @@ import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.N5ViewerMultiscaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
@@ -103,20 +105,11 @@ public class N5Importer implements PlugIn {
 		  new ImagePlusLegacyMetadataParser(),
 		  new N5CosemMetadataParser(),
 		  new N5SingleScaleMetadataParser()
-		  //					new N5ImagePlusMetadata( "" ),
-		  //					new N5CosemMetadata( "", null, null ),
-		  //					new N5SingleScaleMetadata(),
-		  //					new N5SingleScaleLegacyMetadata(),
-		  //					new DefaultMetadata( "", -1 )
   };
 
-  //  public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
-  //		  			new N5CosemMultiScaleMetadata(),
-  //		  			new N5ViewerMultiscaleMetadataParser()
-  //  };
-
   public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
-		  //		  			new N5CosemMultiScaleMetadata()
+			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
+			new N5ViewerMultiscaleMetadataParser()
   };
 
   private N5Reader n5;
@@ -158,8 +151,6 @@ public class N5Importer implements PlugIn {
 	impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 	impMetaWriterTypes.put( N5CosemMetadata.class, new CosemToImagePlus());
 	impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
-	//	impMetaWriterTypes.put(N5SingleScaleLegacyMetadata.class, new N5SingleScaleLegacyMetadata());
-	//	impMetaWriterTypes.put(DefaultMetadata.class, new DefaultMetadata("", 1));
 
 	numDimensionsForCrop = 5;
 	initMaxValuesForCrop = new long[numDimensionsForCrop];
@@ -205,7 +196,7 @@ public class N5Importer implements PlugIn {
 			  new N5ViewerReaderFun(),
 			  new N5BasePathFun(),
 			  lastOpenedContainer,
-			  null, // no group parsers
+			  new N5MetadataParser[]{}, // no group parsers
 			  PARSERS);
 
 	  selectionDialog.setTreeRenderer(new N5DatasetTreeCellRenderer(true));
@@ -569,7 +560,6 @@ public class N5Importer implements PlugIn {
 		n5.close();
 	
 		return result;
-//	return new ArrayList<>();
   }
 
   public void processThread() {
