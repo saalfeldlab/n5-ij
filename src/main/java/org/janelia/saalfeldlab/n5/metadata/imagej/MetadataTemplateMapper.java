@@ -48,10 +48,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 
@@ -95,6 +92,11 @@ public class MetadataTemplateMapper implements N5MetadataWriter<ImagePlusMetadat
 	public Scope getScope()
 	{
 		return scope;
+	}
+
+	public String mapToJson( final ImagePlusMetadataTemplate metadata ) throws IOException
+	{
+		return map( gson.toJson( metadata ));
 	}
 
 	public List<JsonNode> map( final JsonNode in ) throws JsonQueryException
@@ -148,10 +150,10 @@ public class MetadataTemplateMapper implements N5MetadataWriter<ImagePlusMetadat
 
 	public static final String COSEM_MAPPER = "{\n\t\"transform\":\n" +
 			"\t{\n" +
-			"\t\"scale\": [.xResolution, .yResolution, .zResolution],\n" +
-			"\t\"translate\": [.xOrigin, .yOrigin, .zOrigin],\n" +
-			"\t\"axes\": [.axis0, .axis1, .axis2, .axis3, .axis4],\n" +
-			"\t\"units\": [.xUnit, .yUnit, .zUnit]\n" +
+			"\t\"scale\": [.zResolution, .yResolution, .xResolution],\n" +
+			"\t\"translate\": [.zOrigin, .yOrigin, .xOrigin],\n" +
+			"\t\"axes\": [\"z\", \"y\", \"x\"],\n" +
+			"\t\"units\": [.globalUnit, .globalUnit, .globalUnit]\n" +
 			"\t}\n" +
 			"}";
 
