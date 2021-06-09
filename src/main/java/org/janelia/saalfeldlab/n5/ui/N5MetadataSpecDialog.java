@@ -32,6 +32,8 @@ import java.awt.event.ActionListener;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -39,7 +41,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
-import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
+import org.janelia.saalfeldlab.n5.metadata.imagej.MetadataTemplateMapper;
 
 import ij.Prefs;
 
@@ -129,8 +131,8 @@ public class N5MetadataSpecDialog
         return frame;
 	}
 
-	public static void main( final String[] args ) throws IOException
-	{
+//	public static void main( final String[] args ) throws IOException
+//	{
 //		System.out.println( MetadataTemplateMapper.COSEM_MAPPER);
 //
 //		N5MetadataSpecDialog dialog = new N5MetadataSpecDialog( );
@@ -139,16 +141,16 @@ public class N5MetadataSpecDialog
 //		String content = new String(Files.readAllBytes(Paths.get( templateJsonF )));
 //
 //		dialog.show( MetadataTemplateMapper.RESOLUTION_ONLY_MAPPER );
-//				String result;
-//				try
-//				{
-//					mapperString = mapper.compute( metadataSpecText, content );
-//					System.out.println( "result: " );
-//					System.out.println( result );
-//				}
-//				catch ( IOException e )
-//				{
-//					e.printStackTrace();
-//				}
-	}
+//		String result;
+//		try
+//		{
+//			mapperString = mapper.compute( metadataSpecText, content );
+//			System.out.println( "result: " );
+//			System.out.println( result );
+//		}
+//		catch ( IOException e )
+//		{
+//			e.printStackTrace();
+//		}
+//	}
 }

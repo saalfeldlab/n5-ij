@@ -43,7 +43,6 @@ import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
 import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
@@ -51,7 +50,9 @@ import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.imagej.MetadataTemplateMapper;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.scijava.ItemVisibility;
@@ -201,9 +202,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	 */
 	public void setMetadataMapper(final MetadataTemplateMapper metadataMapper) {
 
-//		 styles.put(N5Importer.MetadataCustomKey, metadataMapper);
-//		 impMetaWriterTypes.put(MetadataTemplateMapper.class, new
-//		 ImagePlusMetadataTemplate(""));
+		 styles.put(N5Importer.MetadataCustomKey, metadataMapper);
+		 impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate());
 	}
 
 	public void parseBlockSize() {
@@ -462,8 +462,9 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	@Override
 	public void windowClosing(final WindowEvent e) {
 
-	  //		styles.put(N5Importer.MetadataCustomKey, metaSpecDialog.getMapper());
-	  //		impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate(""));
+	  styles.put(N5Importer.MetadataCustomKey, metaSpecDialog.getMapper());
+	  impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate());
+
 	  try {
 		process();
 	  } catch (final IOException e1) {
