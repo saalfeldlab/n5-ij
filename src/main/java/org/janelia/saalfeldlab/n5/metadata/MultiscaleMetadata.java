@@ -28,12 +28,13 @@ public abstract class MultiscaleMetadata<T extends N5DatasetMetadata & SpatialMe
 
 	final int N = childrenMetadata.length;
 	paths = new String[N];
-	units = Arrays.stream(childrenMetadata).map(SpatialMetadata::unit).toArray(String[]::new);
+	units = new String[N];
 
 	int i = 0;
 	for (T meta : childrenMetadata) {
 	  Objects.requireNonNull(meta);
 	  paths[i] = meta.getPath();
+	  units[i] = meta.unit();
 	  i++;
 	}
   }
