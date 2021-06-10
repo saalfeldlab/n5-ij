@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.janelia.saalfeldlab.n5.ij.N5Exporter;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -22,6 +23,8 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.view.IntervalView;
+import net.imglib2.view.Views;
 
 public class TestExportImports
 {
@@ -45,6 +48,39 @@ public class TestExportImports
 		final String blockSizeString = "32,32";
 		final String compressionString = "raw";
 		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metaType, compressionString, false );
+	}
+
+	@Test
+	public void test4dN5v()
+	{
+		final int nChannels = 3;
+		final int nSlices = 5;
+		final ImagePlus imp = NewImage.createImage("test", 8, 6, nChannels*nSlices, 16, NewImage.FILL_NOISE);
+		imp.setDimensions( nChannels, nSlices, 1 ); // 3 channels, 5 slices
+
+		final String n5RootPath = baseDir + "/test.n5" ;
+		final String dataset = "/n5v_4d";
+
+		final N5Exporter writer = new N5Exporter();
+		writer.setOptions( imp, n5RootPath, dataset, "32", N5Importer.MetadataN5ViewerKey, "gzip", N5Exporter.OVERWRITE, "");
+		writer.run();
+
+		try {
+			final N5Importer reader = new N5Importer();
+			reader.setShow( false );
+			for( int i = 0; i < nChannels; i++)
+			{
+				final String n5PathAndDataset = String.format("%s/%s/c%d/s0", n5RootPath, dataset, i);
+				final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
+				Assert.assertEquals("n5v load channel", 1, impList.size());
+				Assert.assertTrue("n5v channel equals", equalChannel(imp, i, impList.get(0)));
+			}
+		}
+		catch(Exception e)
+		{
+			e.printStackTrace();
+			Assert.fail();
+		}
 	}
 	
 	@Test
@@ -73,7 +109,8 @@ public class TestExportImports
 				for( final String metatype : metadataTypes )
 				{
 					final String n5RootPath = baseDir + "/test." + typeToExtension.get( containerType );
-					final String dataset = "/test_"+metatype+"_"+bitDepth;
+					final String datasetBase = "/test_"+metatype+"_"+bitDepth;
+					final String dataset = datasetBase;
 
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
 				}
@@ -96,11 +133,38 @@ public class TestExportImports
 				r.setPosition( c );
 				if( c.get().getRealDouble() != r.get().getRealDouble() )
 					return false;
-
 			}
-
 			return true;
+		}catch( final Exception e )
+		{
+			return false;
+		}
+	}
 
+	/**
+	 * Checks that image b is equal to channel c of
+	 * @param <T>
+	 * @param a
+	 * @param b
+	 * @return
+	 */
+	private static < T extends RealType< T > & NativeType< T > > boolean equalChannel( final ImagePlus all, final int i, final ImagePlus cimg )
+	{
+		try {
+			final Img<T> imgAll = ImageJFunctions.wrapRealNative( all  );
+			final Img<T> imgC = ImageJFunctions.wrapRealNative( cimg );
+
+			IntervalView<T> channelGtImg = Views.hyperSlice( imgAll, 2, i);
+			final Cursor< T > c = channelGtImg.cursor();
+			final RandomAccess< T > r = imgC.randomAccess();
+			while( c.hasNext() )
+			{
+				c.fwd();
+				r.setPosition( c );
+				if( c.get().getRealDouble() != r.get().getRealDouble() )
+					return false;
+			}
+			return true;
 		}catch( final Exception e )
 		{
 			return false;
@@ -148,6 +212,7 @@ public class TestExportImports
 
 		final String readerDataset = metadataType.equals( N5Importer.MetadataN5ViewerKey ) ? dataset + "/c0/s0" : dataset;
 		final String n5PathAndDataset = outputPath + readerDataset;
+
 		final N5Importer reader = new N5Importer();
 		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
@@ -161,7 +226,7 @@ public class TestExportImports
 			boolean resEqual = impRead.getCalibration().pixelWidth == imp.getCalibration().pixelWidth && 
 					impRead.getCalibration().pixelHeight == imp.getCalibration().pixelHeight
 					&& impRead.getCalibration().pixelDepth == imp.getCalibration().pixelDepth;
-			
+
 			assertTrue( String.format( "%s resolutions ", dataset ), resEqual );
 
 			boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() );

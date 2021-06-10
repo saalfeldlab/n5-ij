@@ -14,16 +14,7 @@ public class N5ViewerToImagePlus extends SpatialMetadataToImagePlus<N5SingleScal
   @Override
   public N5SingleScaleMetadata readMetadata(final ImagePlus imp) throws IOException {
 
-	int nd = 2;
-	if (imp.getNChannels() > 1) {
-	  nd++;
-	}
-	if (imp.getNSlices() > 1) {
-	  nd++;
-	}
-	if (imp.getNFrames() > 1) {
-	  nd++;
-	}
+	final int nd = (imp.getNSlices() > 1) ? 3 : 2;
 
 	// unit
 	final String[] units = new String[nd];

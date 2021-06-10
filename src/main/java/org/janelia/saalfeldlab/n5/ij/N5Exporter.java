@@ -350,13 +350,12 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		return offset;
 	}
 
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	private <T extends RealType & NativeType, M extends N5Metadata> void writeSplitChannels(
 			final N5Writer n5,
 			final Compression compression,
 			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException
 	{
-//		final ImagePlusImg<T,?> img;
 		final Img<T> img;
 		if( image.getType() == ImagePlus.COLOR_RGB )
 			img = (( Img< T > ) N5IJUtils.wrapRgbAsInt( image ));
