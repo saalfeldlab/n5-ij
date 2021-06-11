@@ -31,6 +31,7 @@ import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
+import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 
@@ -42,6 +43,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
@@ -63,6 +65,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -146,6 +150,8 @@ public class DatasetSelectorDialog {
   private N5TreeNode rootNode;
 
   private DefaultMutableTreeNode rootJTreeNode;
+
+  private N5SpatialKeySpecDialog spatialMetaSpec;
 
   public DatasetSelectorDialog(
 		  final Function<String, N5Reader> n5Fun,
@@ -294,7 +300,15 @@ public class DatasetSelectorDialog {
 	dialog.setMinimumSize(dialog.getPreferredSize());
 
 	final Container pane = dialog.getContentPane();
-	pane.setLayout(new GridBagLayout());
+	final JTabbedPane tabs = new JTabbedPane();
+	pane.add( tabs );
+
+	final JPanel panel = new JPanel(false);
+	panel.setLayout(new GridBagLayout());
+	tabs.addTab("Main", panel);
+
+	spatialMetaSpec = new N5SpatialKeySpecDialog();
+	tabs.addTab("Metadata", spatialMetaSpec.buildPanel() );
 
 	containerPathText = new JTextField();
 	containerPathText.setText(initialContainerPath);
@@ -311,7 +325,7 @@ public class DatasetSelectorDialog {
 	ctxt.weighty = 0.0;
 	ctxt.fill = GridBagConstraints.HORIZONTAL;
 	ctxt.insets = new Insets(OUTER_PAD, OUTER_PAD, MID_PAD, BUTTON_PAD);
-	pane.add(containerPathText, ctxt);
+	panel.add(containerPathText, ctxt);
 
 	browseBtn = scaleFont(new JButton("Browse"));
 	final GridBagConstraints cbrowse = new GridBagConstraints();
@@ -323,7 +337,7 @@ public class DatasetSelectorDialog {
 	cbrowse.weighty = 0.0;
 	cbrowse.fill = GridBagConstraints.HORIZONTAL;
 	cbrowse.insets = new Insets(OUTER_PAD, BUTTON_PAD, MID_PAD, BUTTON_PAD);
-	pane.add(browseBtn, cbrowse);
+	panel.add(browseBtn, cbrowse);
 
 	detectBtn = scaleFont(new JButton("Detect datasets"));
 	final GridBagConstraints cdetect = new GridBagConstraints();
@@ -335,7 +349,7 @@ public class DatasetSelectorDialog {
 	cdetect.weighty = 0.0;
 	cdetect.fill = GridBagConstraints.HORIZONTAL;
 	cdetect.insets = new Insets(OUTER_PAD, BUTTON_PAD, MID_PAD, OUTER_PAD);
-	pane.add(detectBtn, cdetect);
+	panel.add(detectBtn, cdetect);
 
 	final GridBagConstraints ctree = new GridBagConstraints();
 	ctree.gridx = 0;
@@ -369,7 +383,7 @@ public class DatasetSelectorDialog {
 	final JScrollPane treeScroller = new JScrollPane(containerTree);
 	treeScroller.setViewportView(containerTree);
 	treeScroller.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
-	pane.add(treeScroller, ctree);
+	panel.add(treeScroller, ctree);
 
 	// bottom button
 	final GridBagConstraints cbot = new GridBagConstraints();
@@ -388,7 +402,7 @@ public class DatasetSelectorDialog {
 	  final JLabel virtLabel = scaleFont(new JLabel("Open as virtual"));
 	  virtPanel.add(virtualBox);
 	  virtPanel.add(virtLabel);
-	  pane.add(virtPanel, cbot);
+	  panel.add(virtPanel, cbot);
 	}
 
 	if (cropOption) {
@@ -399,14 +413,14 @@ public class DatasetSelectorDialog {
 	  cbot.anchor = GridBagConstraints.WEST;
 	  cropPanel.add(cropBox);
 	  cropPanel.add(cropLabel);
-	  pane.add(cropPanel, cbot);
+	  panel.add(cropPanel, cbot);
 	}
 
 	messageLabel = scaleFont(new JLabel(""));
 	messageLabel.setVisible(false);
 	cbot.gridx = 2;
 	cbot.anchor = GridBagConstraints.CENTER;
-	pane.add(messageLabel, cbot);
+	panel.add(messageLabel, cbot);
 
 	okBtn = scaleFont(new JButton("OK"));
 	cbot.gridx = 4;
@@ -414,7 +428,7 @@ public class DatasetSelectorDialog {
 	cbot.anchor = GridBagConstraints.EAST;
 	cbot.fill = GridBagConstraints.HORIZONTAL;
 	cbot.insets = new Insets(MID_PAD, OUTER_PAD, OUTER_PAD, BUTTON_PAD);
-	pane.add(okBtn, cbot);
+	panel.add(okBtn, cbot);
 
 	cancelBtn = scaleFont(new JButton("Cancel"));
 	cbot.gridx = 5;
@@ -422,7 +436,7 @@ public class DatasetSelectorDialog {
 	cbot.anchor = GridBagConstraints.EAST;
 	cbot.fill = GridBagConstraints.HORIZONTAL;
 	cbot.insets = new Insets(MID_PAD, BUTTON_PAD, OUTER_PAD, OUTER_PAD);
-	pane.add(cancelBtn, cbot);
+	panel.add(cancelBtn, cbot);
 
 	dialog.pack();
 	return dialog;
@@ -496,9 +510,22 @@ public class DatasetSelectorDialog {
 	  loaderExecutor = Executors.newCachedThreadPool();
 	}
 
+	// copy list
+	final ArrayList<N5MetadataParser<?>> parserList = new ArrayList<>();
+
+	// add custom metadata parser into the first position in the list if it exists
+	Optional<N5GenericSingleScaleMetadataParser> parserOptional = spatialMetaSpec.getParserOptional();
+	if( parserOptional.isPresent() )
+	{
+		parserList.add(parserOptional.get());
+		parserList.addAll(Arrays.asList(parsers));
+	}
+	else
+		parserList.addAll(Arrays.asList(parsers));
+
+	final List<N5MetadataParser<?>> groupParserList = Arrays.asList(groupParsers);
 	datasetDiscoverer = new N5DatasetDiscoverer(n5, loaderExecutor, n5NodeFilter,
-			Arrays.asList(parsers),
-			Arrays.asList(groupParsers));
+			parserList, groupParserList );
 
 	try {
 	  rootNode = datasetDiscoverer.discoverAndParseRecursive(rootPath);
