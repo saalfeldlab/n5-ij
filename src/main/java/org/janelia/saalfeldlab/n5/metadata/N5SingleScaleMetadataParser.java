@@ -38,10 +38,20 @@ public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleSca
 		  final Optional<AffineTransform3D> extraTransformOpt) {
 
 	final AffineTransform3D mipmapTransform = new AffineTransform3D();
-	mipmapTransform.set(
-			downsamplingFactors[0], 0, 0, 0.5 * (downsamplingFactors[0] - 1),
-			0, downsamplingFactors[1], 0, 0.5 * (downsamplingFactors[1] - 1),
-			0, 0, downsamplingFactors[2], 0.5 * (downsamplingFactors[2] - 1));
+	if( downsamplingFactors.length >= 3 )
+	{
+		mipmapTransform.set(
+				downsamplingFactors[0], 0, 0, 0.5 * (downsamplingFactors[0] - 1),
+				0, downsamplingFactors[1], 0, 0.5 * (downsamplingFactors[1] - 1),
+				0, 0, downsamplingFactors[2], 0.5 * (downsamplingFactors[2] - 1));
+	}
+	else if( downsamplingFactors.length == 2 )
+	{
+		mipmapTransform.set(
+				downsamplingFactors[0], 0, 0, 0.5 * (downsamplingFactors[0] - 1),
+				0, downsamplingFactors[1], 0, 0.5 * (downsamplingFactors[1] - 1),
+				0, 0, 1.0, 0.0);
+	}
 
 	final AffineTransform3D transform = new AffineTransform3D();
 	transform.preConcatenate(mipmapTransform).preConcatenate(new Scale3D(pixelResolution));
