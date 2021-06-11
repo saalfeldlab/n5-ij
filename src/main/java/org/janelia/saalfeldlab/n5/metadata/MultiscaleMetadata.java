@@ -6,6 +6,15 @@ import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
+/**
+ * An abstract class for a {@link SpatialMetadataGroup} whose children contain
+ * the same data sampled at different resolutions.
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ *
+ * @param <T> metadata type
+ */
 public abstract class MultiscaleMetadata<T extends N5DatasetMetadata & SpatialMetadata> implements SpatialMetadataGroup<T> {
 
   static final Predicate<String> scaleLevelPredicate = Pattern.compile("^s\\d+$").asPredicate();

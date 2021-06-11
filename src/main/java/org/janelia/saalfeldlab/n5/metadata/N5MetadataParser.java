@@ -34,6 +34,12 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.function.BiFunction;
 
+/**
+ * Interface for reading metadata from N5 containers.
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ */
 public interface N5MetadataParser<T extends N5Metadata> extends BiFunction<N5Reader, N5TreeNode, Optional<T>> {
 
   static DatasetAttributes parseDatasetAttributes(N5Reader n5, N5TreeNode node) {

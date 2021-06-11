@@ -8,6 +8,14 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import java.io.IOException;
 import java.util.Optional;
 
+/**
+ * The {@link N5MetadataParser} for {@link N5CosemMetadata}.
+ * 
+ * @see <a href="https://www.janelia.org/project-team/cosem">https://www.janelia.org/project-team/cosem</a>
+ * 
+ * @author John Bogovic
+ *
+ */
 public class N5CosemMetadataParser implements N5MetadataParser<N5CosemMetadata>, N5MetadataWriter<N5CosemMetadata> {
 
   @Override public Optional<N5CosemMetadata> parseMetadata(N5Reader n5, N5TreeNode node) {

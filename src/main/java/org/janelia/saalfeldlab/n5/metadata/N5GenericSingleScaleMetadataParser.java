@@ -10,6 +10,13 @@ import org.janelia.saalfeldlab.n5.imglib2.N5LabelMultisets;
 import java.io.IOException;
 import java.util.Optional;
 
+/**
+ * A parser for {@link N5SingleScaleMetadata} with whose keys
+ * can be specified. 
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ */
 public class N5GenericSingleScaleMetadataParser implements N5MetadataParser<N5SingleScaleMetadata>, N5MetadataWriter<N5SingleScaleMetadata> {
 
   public static final String DEFAULT_MIN = "min";

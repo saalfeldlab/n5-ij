@@ -2,6 +2,12 @@ package org.janelia.saalfeldlab.n5.metadata;
 
 import org.janelia.saalfeldlab.n5.DataType;
 
+/**
+ * Interface for metadata that describes 
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ */
 public interface IntensityMetadata extends N5DatasetMetadata {
 
   static double maxForDataType(DataType dataType) {

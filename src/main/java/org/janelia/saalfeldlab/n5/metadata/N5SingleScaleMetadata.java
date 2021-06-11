@@ -31,6 +31,12 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
 import java.util.Objects;
 
+/**
+ * Metadata representing an N5Dataset that implements {@link SpatialMetadata} and {@link IntensityMetadata}.
+ *
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ */
 public class N5SingleScaleMetadata extends AbstractN5DatasetMetadata implements SpatialMetadata, IntensityMetadata {
 
   private final AffineTransform3D transform;

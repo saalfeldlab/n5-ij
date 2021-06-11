@@ -6,7 +6,17 @@ import net.imglib2.realtransform.AffineTransform3D;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+/**
+ * Interface for a metadata whose children are each {@link SpatialMetadata}.
+ * <p>
+ * The children metadata are usually related in some way. For example, a
+ * {@link MultiscaleMetadata} is a set of SpatialMetadata where each
+ * child is a resampling of the same underlying data at a different spatial 
+ * resolution.
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ */
 public interface SpatialMetadataGroup<T extends SpatialMetadata> extends N5MetadataGroup<T> {
 
   default AffineGet[] spatialTransforms() {

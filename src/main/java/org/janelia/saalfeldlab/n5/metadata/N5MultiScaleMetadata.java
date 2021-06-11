@@ -33,6 +33,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * An implementation of {@link MultiscaleMetadata} whose children are instances of {@link N5SingleScaleMetadata}.
+ *
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ *
+ */
 public class N5MultiScaleMetadata extends MultiscaleMetadata<N5SingleScaleMetadata> implements N5Metadata {
 
   public N5MultiScaleMetadata(final String basePath, final N5SingleScaleMetadata[] childrenMetadata) {

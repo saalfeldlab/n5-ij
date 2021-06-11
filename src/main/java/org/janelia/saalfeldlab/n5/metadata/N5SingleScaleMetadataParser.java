@@ -11,6 +11,21 @@ import org.janelia.saalfeldlab.n5.imglib2.N5LabelMultisets;
 import java.io.IOException;
 import java.util.Optional;
 
+/**
+ * Default {@link N5MetadataParser} for {@link N5SingleScaleMetadata}.
+ * <p>
+ * This parser provides default values for all metadata fields when values for the corresponding
+ * keys are not found, i.e., it returns empty metadata only when parsing throws an exception.
+ * As a result, this parser should appear as the last element of parser lists that are passed to
+ * {@link N5DatasetDiscoverer}.
+ * <p>
+ * When <i>downsamplingFactors</i> are specified, this parser assumes downsampling was performed using
+ * averaging and includes an offset to the resulting spatial transformation. Specifically, for a downsamplling
+ * factor of <i>f</i>, this parser yields an offset of <i>(f-1)/2</i>.
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ */
 public class N5SingleScaleMetadataParser implements N5MetadataParser<N5SingleScaleMetadata>, N5MetadataWriter<N5SingleScaleMetadata> {
 
   public static final String DOWNSAMPLING_FACTORS_KEY = "downsamplingFactors";

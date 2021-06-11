@@ -3,8 +3,17 @@ package org.janelia.saalfeldlab.n5.metadata;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 
+/**
+ * Interface for metadata describing how spatial data are oriented in physical space.
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ */
 public interface SpatialMetadata extends N5Metadata {
 
+  /**
+   * @return the transformation from pixel to physical space.
+   */
   AffineGet spatialTransform();
 
   String unit();

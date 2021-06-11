@@ -33,6 +33,13 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Janelia COSEM's implementation of a {@link MultiscaleMetadata}.
+ * 
+ * @see <a href="https://www.janelia.org/project-team/cosem">https://www.janelia.org/project-team/cosem</a>
+ * 
+ * @author John Bogovic
+ */
 public class N5CosemMultiScaleMetadata extends MultiscaleMetadata<N5CosemMetadata> implements SpatialMetadataGroup<N5CosemMetadata> {
 
   public N5CosemMultiScaleMetadata(String basePath, N5CosemMetadata[] childMetadata) {

@@ -37,8 +37,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class N5TreeNode // extends DefaultMutableTreeNode
-{
+/**
+ * A node representing a dataset or group in an N5 container,
+ * and stores its corresponding {@link N5Metadata}, and
+ * child nodes if any exist.
+ *
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ *
+ */
+public class N5TreeNode {
 
   private final String path;
 

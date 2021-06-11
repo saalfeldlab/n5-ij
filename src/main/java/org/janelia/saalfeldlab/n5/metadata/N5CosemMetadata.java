@@ -32,6 +32,13 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
 import java.util.stream.IntStream;
 
+/**
+ * Janelia COSEM's implementation of a {@link N5SingleScaleMetadata}.
+ * 
+ * @see <a href="https://www.janelia.org/project-team/cosem">https://www.janelia.org/project-team/cosem</a>
+ * 
+ * @author John Bogovic
+ */
 public class N5CosemMetadata extends N5SingleScaleMetadata {
 
   private final CosemTransform cosemTransformMeta;

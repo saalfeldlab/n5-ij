@@ -28,7 +28,10 @@ package org.janelia.saalfeldlab.n5.metadata;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 
 /**
- * Marker interface for single-scale or multi-scale N5 metadata (and possibly more).
+ * Interface for metadata that corresponds to an N5 dataset.
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
  */
 public interface N5DatasetMetadata extends N5Metadata {
 

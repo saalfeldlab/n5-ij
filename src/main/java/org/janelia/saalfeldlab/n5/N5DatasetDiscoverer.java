@@ -46,6 +46,25 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Predicate;
 
+/**
+ * This class aids in detecting and parsing datsets in an N5 container.
+ * <p>
+ * An N5DatasetDiscoverer specifies the types of {@link N5MetadataParser}s 
+ * to attempt, and an {@link ExecutorService} that enables parsing in parallel. 
+ * The parsers are passed to the constructor in a list.
+ * Group parsers are called after all others are called, and should
+ * be used when a parsers result depends on its children.
+ * <p> 
+ * The {@link discoverAndParseRecursive} method returns a {@link N5TreeNode}
+ * containing all child nodes, each of which contains pased metadata.
+ * For each group/dataset, the parsers will be called in order,
+ * and will return the first non-empty result.  As such 
+ * parsers should be ordered from most- to least-strict.
+ * 
+ * @author Caleb Hulbert
+ * @author John Bogovic
+ *
+ */
 public class N5DatasetDiscoverer {
 
   private static final Logger LOG = LoggerFactory.getLogger(N5DatasetDiscoverer.class);
