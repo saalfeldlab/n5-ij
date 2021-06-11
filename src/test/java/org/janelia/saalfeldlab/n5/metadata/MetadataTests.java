@@ -168,22 +168,27 @@ public class MetadataTests {
   public void testGenericMetadata() {
 
 	final double eps = 1e-6;
-	final N5MetadataParser<?> parser = N5GenericSingleScaleMetadataParser.builder()
-			.resolution("pixelResolution")
-			.downsamplingFactors("downsamplingFactors")
-			.build();
-	final List<N5MetadataParser<?>> parsers = Collections
-			.singletonList(parser);
 
-	final N5MetadataParser<?> parserResOff = N5GenericSingleScaleMetadataParser.builder()
-			.offset("off")
-			.resolution("res")
-			.build();
-	final List<N5MetadataParser<?>> parsersResOff = Collections
-			.singletonList(parserResOff);
+	final N5DatasetDiscoverer discoverer= new N5DatasetDiscoverer(n5, 
+			Collections.singletonList( 
+					N5GenericSingleScaleMetadataParser.builder().resolution("pixelResolution")
+					.build()),
+			null);
 
-	final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5, parsers, null);
-	final N5DatasetDiscoverer discovererResOff = new N5DatasetDiscoverer(n5, parsersResOff, null);
+	final N5DatasetDiscoverer discovererDf= new N5DatasetDiscoverer(n5, 
+			Collections.singletonList( 
+					N5GenericSingleScaleMetadataParser.builder().resolution("pixelResolution")
+					.downsamplingFactors("downsamplingFactors").build()),
+			null);
+
+	final N5DatasetDiscoverer discovererRes= new N5DatasetDiscoverer(n5, 
+			Collections.singletonList( 
+					N5GenericSingleScaleMetadataParser.builder().resolution("res").build()),
+			null);
+	final N5DatasetDiscoverer discovererResOff = new N5DatasetDiscoverer(n5, 
+			Collections.singletonList( 
+					N5GenericSingleScaleMetadataParser.builder().offset("off").resolution("res").build()),
+			null);
 
 	try {
 	  final N5TreeNode n5pra = discoverer.discoverAndParseRecursive("n5v_pra");
@@ -193,14 +198,14 @@ public class MetadataTests {
 	  Assert.assertEquals("n5v_pra generic scale", 1.5, xfm.get(0, 0), eps);
 	  Assert.assertEquals("n5v_pra generic offset", 0.0, xfm.get(0, 3), eps);
 
-	  final N5TreeNode n5prads = discoverer.discoverAndParseRecursive("n5v_pra-ds");
+	  final N5TreeNode n5prads = discovererDf.discoverAndParseRecursive("n5v_pra-ds");
 	  Assert.assertNotNull("n5v_pra_ds metadata", n5prads.getMetadata());
 	  SpatialMetadata mds = (SpatialMetadata)n5prads.getMetadata();
 	  AffineTransform3D xfmds = mds.spatialTransform3d();
 	  Assert.assertEquals("n5v_pra_ds generic scale", 3.0, xfmds.get(0, 0), eps);
 	  Assert.assertEquals("n5v_pra_ds generic offset", 0.75, xfmds.get(0, 3), eps);
 
-	  final N5TreeNode nodeRes = discovererResOff.discoverAndParseRecursive("others/res");
+	  final N5TreeNode nodeRes = discovererRes.discoverAndParseRecursive("others/res");
 	  Assert.assertNotNull("res metadata", nodeRes.getMetadata());
 	  SpatialMetadata metaRes = (SpatialMetadata)nodeRes.getMetadata();
 	  AffineTransform3D xfmRes = metaRes.spatialTransform3d();
