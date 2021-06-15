@@ -117,7 +117,7 @@ public class N5ImagePlusMetadata extends AbstractN5Metadata<N5ImagePlusMetadata>
 			pixelWidth = resolution[ 0 ];
 
 		if( resolution.length > 1 )
-			pixelWidth = resolution[ 1 ];
+			pixelHeight = resolution[ 1 ];
 
 		if( resolution.length > 2 )
 			pixelDepth = resolution[ 2 ];
