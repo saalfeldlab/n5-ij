@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.metadata.AbstractN5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.AbstractN5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
 
@@ -38,7 +39,7 @@ import ij.ImagePlus;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.ScaleAndTranslation;
 
-public class ImagePlusMetadataTemplate extends AbstractN5Metadata
+public class ImagePlusMetadataTemplate extends AbstractN5DatasetMetadata
 	implements ImageplusMetadata< ImagePlusMetadataTemplate >, SpatialMetadata
 {
 	public int numDims;
@@ -67,12 +68,10 @@ public class ImagePlusMetadataTemplate extends AbstractN5Metadata
 
 	public String globalUnit;
 
-	private DatasetAttributes attributes;
-
 	public Map<String,String> otherMetadata;
 
 	public ImagePlusMetadataTemplate( ) {
-		super("");
+		super("", null);
 	}
 
 	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp ) {
@@ -85,8 +84,7 @@ public class ImagePlusMetadataTemplate extends AbstractN5Metadata
 
 	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp, final DatasetAttributes attributes ) {
 
-		super( path );
-		this.attributes = attributes;
+		super( path, attributes );
 
 		numChannels = imp.getNChannels();
 		numFrames = imp.getNFrames();
@@ -119,12 +117,6 @@ public class ImagePlusMetadataTemplate extends AbstractN5Metadata
 		if ( props != null )
 			for ( final Object k : props.keySet() )
 				otherMetadata.put( k.toString(), props.get( k ).toString() );
-	}
-
-	@Override
-	public DatasetAttributes getAttributes() {
-
-		return attributes;
 	}
 
 	@Override
