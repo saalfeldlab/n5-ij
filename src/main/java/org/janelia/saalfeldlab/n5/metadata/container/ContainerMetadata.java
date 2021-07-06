@@ -11,7 +11,6 @@ import org.janelia.saalfeldlab.n5.AbstractGsonReader;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.demos.JqExps;
 import org.janelia.saalfeldlab.n5.metadata.template.FinalTranslations;
 import org.janelia.saalfeldlab.n5.metadata.template.SpatialMetadataTemplate;
 import org.janelia.saalfeldlab.n5.metadata.template.SpatialMetadataTemplateParser;
@@ -92,14 +91,14 @@ public class ContainerMetadata {
 //		System.out.println( childNode );
 
 		StringBuffer translation = new StringBuffer();
-		translation.append(FinalTranslations.ISATTRIBUTESFUN + "\n");
+		translation.append( FinalTranslations.ISATTRIBUTESFUN + "\n");
 		translation.append( FinalTranslations.N5VFUNS + "\n");
 		translation.append( FinalTranslations.MULTISCALEFUNS + "\n");
 		translation.append( "n5vToTransformAll | addPaths |  walk ( if isChannel then . |= addMultiscale else . end ) " );
 		
 		System.out.println( translation.toString() );
 
-		final String jsonTranslated = JqExps.translate( jsonString, translation.toString() );
+		final String jsonTranslated = FinalTranslations.translate( jsonString, translation.toString() );
 		System.out.println( "" );
 		System.out.println( jsonTranslated );
 		System.out.println( "" );
