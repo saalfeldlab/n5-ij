@@ -28,12 +28,17 @@ package org.janelia.saalfeldlab.n5;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
+import com.google.gson.JsonElement;
+
 import javax.swing.tree.DefaultMutableTreeNode;
+
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -202,6 +207,33 @@ public class N5TreeNode {
   protected static String removeLeadingSlash(final String pathName) {
 
 	return pathName.startsWith("/") || pathName.startsWith("\\") ? pathName.substring(1) : pathName;
+  }
+
+	public static HashMap<String, Object> getMetadataMap(final N5Reader n5, final String dataset) {
+
+		try {
+			Map<String, Class<?>> attrClasses = n5.listAttributes(dataset);
+			HashMap<String, Object> attrs = new HashMap<String, Object>();
+
+			for (String k : attrClasses.keySet())
+				attrs.put(k, n5.getAttribute(dataset, k, attrClasses.get(k)));
+
+			return attrs;
+		} catch (IOException e) {}
+		return new HashMap<>(); // empty map
+	}
+
+  public static Optional<HashMap<String, JsonElement>> getMetadataMapJson( final AbstractGsonReader n5, final String dataset )
+  {
+	try {
+		final HashMap<String, JsonElement> attrs = n5.getAttributes(dataset);
+		if( attrs != null )
+			return Optional.of( attrs );
+		else
+			return Optional.empty();
+
+	} catch (Exception e) { }
+	return Optional.empty();
   }
 
   //TODO John move this
