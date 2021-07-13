@@ -1,4 +1,4 @@
-package org.janelia.saalfeldlab.n5.metadata.template;
+package org.janelia.saalfeldlab.n5.metadata.canonical;
 
 import java.util.HashMap;
 import java.util.Optional;
@@ -18,18 +18,17 @@ import net.imglib2.realtransform.AffineTransform3D;
  * @author Caleb Hulbert
  * @author John Bogovic
  */
-public class MultiResolutionSpatialMetadataTemplateParser extends AbstractMetadataTemplateParser<SpatialMetadataTemplate>{
+public class MultiResolutionSpatialMetadataCanonicalParser extends AbstractMetadataTemplateParser<SpatialMetadataCanonical>{
 
-	public MultiResolutionSpatialMetadataTemplateParser( final Gson gson, final String translation )
+	public MultiResolutionSpatialMetadataCanonicalParser( final Gson gson, final String translation )
 	{
 		super( gson, translation );
 	}
 
 	@Override
-	public Optional<SpatialMetadataTemplate> parseFromMap( final Gson gson, final HashMap<String, JsonElement> attributeMap ) {
+	public Optional<SpatialMetadataCanonical> parseFromMap( final Gson gson, final HashMap<String, JsonElement> attributeMap ) {
 
 		try { 
-
 
 			return Optional.empty();
 		}

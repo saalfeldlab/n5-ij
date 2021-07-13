@@ -1,8 +1,7 @@
-package org.janelia.saalfeldlab.n5.metadata.template;
+package org.janelia.saalfeldlab.n5.metadata.canonical;
 
 import java.util.Arrays;
 
-import org.janelia.saalfeldlab.n5.metadata.MultiscaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.SpatialMetadataGroup;
 
 /**
@@ -10,13 +9,13 @@ import org.janelia.saalfeldlab.n5.metadata.SpatialMetadataGroup;
  * @author Caleb Hulbert
  * @author John Bogovic
  */
-public class MultiResolutionSpatialMetadataTemplate implements SpatialMetadataGroup<CalibratedTransformMetadata> {
+public class MultiResolutionSpatialMetadataCanonical implements SpatialMetadataGroup<CalibratedTransformMetadata> {
 
 	private String path;
 
 	private CalibratedTransformMetadata[] datasets;
 
-	public MultiResolutionSpatialMetadataTemplate( String path, CalibratedTransformMetadata[] datasets )
+	public MultiResolutionSpatialMetadataCanonical( String path, CalibratedTransformMetadata[] datasets )
 	{
 		this.path = path;
 		this.datasets = datasets;
@@ -44,7 +43,7 @@ public class MultiResolutionSpatialMetadataTemplate implements SpatialMetadataGr
 	@Override
 	public String[] units() {
 
-		return Arrays.stream( datasets ).map( CalibratedTransformMetadata::getUnit ).toArray( String[]::new );
+		return Arrays.stream( datasets ).map( CalibratedTransformMetadata::unit ).toArray( String[]::new );
 	}
 
 }

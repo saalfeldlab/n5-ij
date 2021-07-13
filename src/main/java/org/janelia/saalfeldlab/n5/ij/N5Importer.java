@@ -200,6 +200,11 @@ public class N5Importer implements PlugIn {
 			  PARSERS);
 
 	  selectionDialog.setTreeRenderer(new N5DatasetTreeCellRenderer(true));
+//	  selectionDialog.getTranslationPanel().setFilter(
+//			  x -> 
+//			  	x.getMultiscales() == null && 
+//			  	x.getSpatialTransform() != null &&
+//			  	x.getAttributes() != null );
 
 	  selectionDialog.setContainerPathUpdateCallback(x -> {
 		if (x != null)

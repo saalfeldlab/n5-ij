@@ -11,9 +11,9 @@ import org.janelia.saalfeldlab.n5.AbstractGsonReader;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.metadata.template.FinalTranslations;
-import org.janelia.saalfeldlab.n5.metadata.template.SpatialMetadataTemplate;
-import org.janelia.saalfeldlab.n5.metadata.template.SpatialMetadataTemplateParser;
+import org.janelia.saalfeldlab.n5.metadata.canonical.FinalTranslations;
+import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
+import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataTemplateCanonical;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;

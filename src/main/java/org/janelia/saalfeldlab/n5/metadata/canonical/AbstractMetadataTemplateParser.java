@@ -1,12 +1,10 @@
-package org.janelia.saalfeldlab.n5.metadata.template;
+package org.janelia.saalfeldlab.n5.metadata.canonical;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 import java.lang.reflect.Type;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
@@ -33,6 +31,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -137,7 +136,7 @@ public abstract class AbstractMetadataTemplateParser<T extends N5Metadata> imple
 
 		ContainerMetadataNode treeNode;
 		try {
-			treeNode = ContainerMetadata.build(n5);
+			treeNode = ContainerMetadataNode.build(n5);
 		} catch (Exception e) {
 			return Optional.empty();
 		}
@@ -170,6 +169,7 @@ public abstract class AbstractMetadataTemplateParser<T extends N5Metadata> imple
 //				obj.addProperty("path", node.getPath());
 //
 //			return parse( gson, elem );
+
 		} catch ( Exception e) {
 		}
 
@@ -246,5 +246,50 @@ public abstract class AbstractMetadataTemplateParser<T extends N5Metadata> imple
 		return Optional.empty();
 	}
 
+	public static Optional<DatasetAttributes> datasetAttributes(final JsonDeserializationContext context, JsonElement elem ) {
+
+		try {
+
+			final long[] dimensions = context.deserialize( elem.getAsJsonObject().get("dimensions"), long[].class);
+			if (dimensions == null)
+				return Optional.empty();
+
+			final DataType dataType = context.deserialize( elem.getAsJsonObject().get("dataType"), DataType.class);
+			if (dataType == null)
+				return Optional.empty();
+
+			int[] blockSize = context.deserialize( elem.getAsJsonObject().get("blockSize"), int[].class );
+			if (blockSize == null)
+				blockSize = Arrays.stream(dimensions).mapToInt(a -> (int)a).toArray();
+
+			Compression compression = context.deserialize( elem.getAsJsonObject().get("compression"), Compression.class );
+
+			/* version 0 */
+			if (compression == null) {
+				switch ( compression.getType() ) {
+				case "raw":
+					compression = new RawCompression();
+					break;
+				case "gzip":
+					compression = new GzipCompression();
+					break;
+				case "bzip2":
+					compression = new Bzip2Compression();
+					break;
+				case "lz4":
+					compression = new Lz4Compression();
+					break;
+				case "xz":
+					compression = new XzCompression();
+					break;
+				}
+			}
+
+			return Optional.of(new DatasetAttributes(dimensions, blockSize, dataType, compression));
+
+		} catch (Exception e) {}
+
+		return Optional.empty();
+	}
 	
 }

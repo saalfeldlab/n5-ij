@@ -39,7 +39,8 @@ import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
 import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.template.SpatialMetadataTemplateParser;
+import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataTemplateCanonical;
+import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParser;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -178,6 +179,9 @@ public class DatasetSelectorDialog {
 	this.parsers = parsers;
 	this.groupParsers = groupParsers;
 
+	spatialMetaSpec = new N5SpatialKeySpecDialog();
+	translationPanel = new N5MetadataTranslationPanel();
+
 	guiScale = Prefs.getGuiScale();
   }
 
@@ -211,6 +215,10 @@ public class DatasetSelectorDialog {
 	this.groupParsers = groupParsers;
 
   }
+
+	public N5MetadataTranslationPanel getTranslationPanel() {
+		return translationPanel;
+	}
 
   public void setLoaderExecutor(final ExecutorService loaderExecutor) {
 
@@ -318,10 +326,7 @@ public class DatasetSelectorDialog {
 	panel.setLayout(new GridBagLayout());
 	tabs.addTab("Main", panel);
 
-	spatialMetaSpec = new N5SpatialKeySpecDialog();
 	tabs.addTab("Spatial Metadata", spatialMetaSpec.buildPanel() );
-
-	translationPanel = new N5MetadataTranslationPanel();
 	tabs.addTab("Metadata Translation", translationPanel.buildPanel());
 
 	containerPathText = new JTextField();
@@ -548,12 +553,18 @@ public class DatasetSelectorDialog {
 		gson = gsonBuilder.create();
 	}
 
-	Optional<SpatialMetadataTemplateParser> translatedParser = translationPanel.getParserOptional( gson );
-	if (translationPanel.isTranslationProvided() && translatedParser.isPresent()) {
+//	Optional<SpatialMetadataTemplateParser> translatedParser = translationPanel.getParserOptional( gson );
+	Optional<TranslatedTreeMetadataParser> translatedParser = translationPanel.getParserOptional( n5 );
+	translatedParser.ifPresent( p -> {
 		parserList.clear();
 		parserList.add(translatedParser.get());
 		System.out.println( parserList );
-	}
+	});
+//	if (translationPanel.isTranslationProvided() && translatedParser.isPresent()) {
+//		parserList.clear();
+//		parserList.add(translatedParser.get());
+//		System.out.println( parserList );
+//	}
 
 	final List<N5MetadataParser<?>> groupParserList = Arrays.asList(groupParsers);
 	datasetDiscoverer = new N5DatasetDiscoverer(n5, loaderExecutor, n5NodeFilter,

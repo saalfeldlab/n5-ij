@@ -27,6 +27,7 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import java.awt.BorderLayout;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
@@ -34,7 +35,9 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
-import org.janelia.saalfeldlab.n5.metadata.template.SpatialMetadataTemplateParser;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParser;
 
 import com.google.gson.Gson;
 
@@ -44,14 +47,41 @@ public class N5MetadataTranslationPanel {
 	
 	private JTextArea textArea;
 
-	public N5MetadataTranslationPanel() {}
+	private Predicate<CanonicalMetadata> filter;
 
-	public N5MetadataTranslationPanel( final float fontScale) {
+	public N5MetadataTranslationPanel() {
+	}
+
+	public N5MetadataTranslationPanel(final float fontScale) {
 		this.fontScale = fontScale;
 	}
 
-	public SpatialMetadataTemplateParser getParser( final Gson gson ) {
-		return new SpatialMetadataTemplateParser( gson, textArea.getText() );
+	public void setFilter(Predicate<CanonicalMetadata> filter) {
+		this.filter = filter;
+	}
+
+//	public SpatialMetadataTemplateParser getParser( final Gson gson ) {
+//		return new SpatialMetadataTemplateParser( gson, textArea.getText() );
+//	}
+//
+//	/**
+//	 * Returns an optional containing the parser if any fields are non empty.
+//	 * 
+//	 * @return the parser optional
+//	 */
+//	public Optional<SpatialMetadataTemplateParser> getParserOptional( final Gson gson ) {
+//
+//		if (isTranslationProvided())
+//			return Optional.of(getParser( gson ));
+//		else
+//			return Optional.empty();
+//	}
+
+	public TranslatedTreeMetadataParser getParser(final N5Reader n5) {
+		if (filter == null)
+			return new TranslatedTreeMetadataParser(n5, textArea.getText());
+		else
+			return new TranslatedTreeMetadataParser(n5, textArea.getText(), filter);
 	}
 
 	/**
@@ -59,10 +89,10 @@ public class N5MetadataTranslationPanel {
 	 * 
 	 * @return the parser optional
 	 */
-	public Optional<SpatialMetadataTemplateParser> getParserOptional( final Gson gson ) {
+	public Optional<TranslatedTreeMetadataParser> getParserOptional(final N5Reader n5) {
 
 		if (isTranslationProvided())
-			return Optional.of(getParser( gson ));
+			return Optional.of(getParser(n5));
 		else
 			return Optional.empty();
 	}

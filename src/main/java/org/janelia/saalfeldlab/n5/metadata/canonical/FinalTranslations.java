@@ -1,4 +1,4 @@
-package org.janelia.saalfeldlab.n5.metadata.template;
+package org.janelia.saalfeldlab.n5.metadata.canonical;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,9 +31,21 @@ public class FinalTranslations {
 	public static final String ADDPATHSFUN = "def addPaths: reduce attrPaths as $path ( . ; setpath( [ ($path | .[]), \"path\"] ; ( $path | parentPath )));";
 	public static final String PATHFUNS = ATTRPATHSFUN + "\n" + PARENTPATHFUN + "\n" + ADDPATHSFUN;
 	
-	public static final String BUILDMULTISCALEFUN = "def buildMultiscale: [(.children | keys | .[]) as $k | .children |  {\"path\": (.[$k].attributes.path | split(\"/\") |.[-1]), \"transform\" : .[$k].attributes.transform }];";
-	public static final String ADDMULTISCALEFUN = "def addMultiscale: buildMultiscale as $ms | .attributes |= . + { \"multiscales\": { \"datasets\": $ms } };";
-	public static final String MULTISCALEFUNS = PATHFUNS + "\n" + BUILDMULTISCALEFUN  + "\n" + ADDMULTISCALEFUN;
+	public static final String BUILDMULTISCALEFUN = "def buildMultiscale: [(.children | keys | .[]) as $k | .children |  {\"path\": (.[$k].attributes.path | split(\"/\") |.[-1]), \"spatialTransform\" : .[$k].attributes.spatialTransform }];\n";
+	public static final String ADDMULTISCALEFUNS = "def addMultiscale: buildMultiscale as $ms | .attributes |= . + { \"multiscales\": { \"datasets\": $ms } };"
+		+ "def addAllMultiscales: walk( if hasMultiscales then addMultiscale else . end );";
+	public static final String HASMULTISCALEFUNS = "def attrHasTform: (.attributes | has(\"spatialTransform\"));\n"
+		+ "def numTformChildren: .children | reduce (keys| .[]) as $k ( \n"
+		+ "    [.,0]; \n"
+		+ "    [  .[0], \n"
+		+ "       if (.[0] | .[$k] | attrHasTform) then .[1] + 1 else .[1] end ]) \n"
+		+ "      | .[1];                                                                                                                                                                                         \n"
+		+ "def hasMultiscales: type == \"object\" and has(\"children\") and ( numTformChildren > 1 );\n";
+
+	public static final String MULTISCALEFUNS = PATHFUNS + "\n" 
+	+ HASMULTISCALEFUNS + "\n" 
+	+ BUILDMULTISCALEFUN  + "\n" 
+	+ ADDMULTISCALEFUNS; 
 
 	public static final String COSEM2AFFINEFUN = "def cosemToAffine: [ .transform.scale[0], 0, 0, .transform.translate[0], 0, .transform.scale[1], 0, .transform.translate[1], 0, 0, .transform.scale[2], .transform.translate[2] ];";
 	public static final String COSEMAXISINDEXESFUN = "def cosemAxisIndexes: [ (.axes | index(\"x\")) , (.axes | index(\"y\")), (.axes | index(\"z\"))];";
@@ -66,7 +78,9 @@ public class FinalTranslations {
 		+ "($s[0]*$d[0]), 0, 0, ($d[0]-1)/2.0, 0, ($s[1]*$d[1]), 0, ($d[1]-1)/2.0, 0, 0,  ($s[2]*$d[2]), ($d[2]-1)/2.0 ] "
 		+ "else null end;";
 
-	public static final String N5VCHECKFUNS = "def n5visResObjDs: has(\"downsamplingFactors\") and has(\"pixelResolution\") and (.pixelResolution | type == \"object\");\n"
+	public static final String N5VCHECKFUNS = 
+		  "def isN5v: type == \"object\" and has(\"pixelResolution\");"
+		+ "def n5visResObjDs: has(\"downsamplingFactors\") and has(\"pixelResolution\") and (.pixelResolution | type == \"object\");\n"
 		+ "def n5visResObj: has(\"pixelResolution\") and (.pixelResolution | type == \"object\");\n"
 		+ "def n5visResArrDs: has(\"downsamplingFactors\") and has(\"pixelResolution\") and (.pixelResolution | type == \"array\");\n"
 		+ "def n5visResArr: has(\"pixelResolution\") and (.pixelResolution | type == \"array\");"; 
@@ -77,15 +91,28 @@ public class FinalTranslations {
 			+ "def addDsOffsets: if ( .[1] | length ) == 2 then addDsOffsets2d elif ( .[1] | length ) == 3 then addDsOffsets3d else null end;";
 
 
-	public static final String N5VTOTRANSFORMFUN  = "def n5vToTransform:"
-		+ "{  \"transform\":"
-		+ "{ \"type\": \"affine\","
-		+ "\"affine\": [ "
-		+ "if n5visResObj then .pixelResolution.dimensions elif n5visResArr then .pixelResolution else null end,"
-		+ ".downsamplingFactors // [1, 1, 1] ] | affineFromScaleAndFactors\n"
-		+ "},"
-		+ "\"unit\" : (.pixelResolution.unit // \"pixel\")"
-		+ "};";
+//	public static final String N5VTOTRANSFORMFUN  = "def n5vToTransform:"
+//		+ "{  \"transform\":"
+//		+ "{ \"type\": \"affine\","
+//		+ "\"affine\": [ "
+//		+ "if n5visResObj then .pixelResolution.dimensions elif n5visResArr then .pixelResolution else null end,"
+//		+ ".downsamplingFactors // [1, 1, 1] ] | affineFromScaleAndFactors\n"
+//		+ "},"
+//		+ "\"unit\" : (.pixelResolution.unit // \"pixel\")"
+//		+ "};";
+	
+	public static final String N5VTOTRANSFORMFUN  =
+			"    def n5vToTransform: . + { \n"
+			+ "        \"spatialTransform\": { \n"
+			+ "            \"transform\": {\n"
+			+ "                \"type\": \"affine\",\n"
+			+ "                \"affine\": \n"
+			+ "                    [ if n5visResObj then .pixelResolution.dimensions elif n5visResArr then .pixelResolution else null end,\n"
+			+ "                       .downsamplingFactors // [1, 1, 1] ] \n"
+			+ "                    | affineFromScaleAndFactors },\n"
+			+ "            \"unit\" : (.pixelResolution.unit // \"pixel\") \n"
+			+ "         }\n"
+			+ "    };";
 
 	public static final String N5VTOTRANSFORMOLDFUN  = "def n5vToTransformOld:"
 			+ "{\"transform\":"
@@ -134,7 +161,9 @@ public class FinalTranslations {
 			"}\n";
 
 	public static final String COSEM_TO_AFFINE = 
-			"def cosemAxisIndexes: [ (.axes | index(\"x\")) , (.axes | index(\"y\")), (.axes | index(\"z\"))];\n"
+			"def isCosem: has(\"transform\") and "
+			+ 	"(.transform | has(\"axes\") and has(\"scale\") and has(\"translate\") and has(\"units\") );"
+			+ "def cosemAxisIndexes: [ (.axes | index(\"x\")) , (.axes | index(\"y\")), (.axes | index(\"z\"))];\n"
 			+ "def cosemToAffine: [ .transform.scale[ .transform.axisIndexes[0] ], 0, 0, .transform.translate[.transform.axisIndexes[0]],"
 				+ "0, .transform.scale[ .transform.axisIndexes[1] ], 0, .transform.translate[.transform.axisIndexes[1]]," 
 				+ "0, 0, .transform.scale[ .transform.axisIndexes[2] ], .transform.translate[.transform.axisIndexes[2]] ];"
@@ -142,6 +171,21 @@ public class FinalTranslations {
 			+ " { \"affine\": cosemToAffine, "
 			+ 	"\"unit\": .transform.units[0],"
 			+ 	"\"path\": \"\"}";
+	
+	public static final String COSEMFUNS = 
+			  "def isCosem: type == \"object\" and has(\"transform\") and (.transform | has(\"axes\") and has(\"scale\") and has(\"translate\") and has(\"units\") );\n"
+			+ "def cosemAxisIndexes: {\"axisIndexes\":[ (.axes | index(\"x\")) , (.axes | index(\"y\")), (.axes | index(\"z\")) ]};\n"
+			+ "def cosemToTransformSimple: { \"spatialTransform\": {\n"
+			+ "        \"transform\": {\n"
+			+ "            \"type\":\"affine\", \n"
+			+ "            \"affine\": [ .scale[.axisIndexes[0]], 0.0, 0.0, .translate[.axisIndexes[0]], \n"
+			+ "                        0.0, .scale[.axisIndexes[1]], 0.0, .translate[.axisIndexes[1]], \n"
+			+ "                        0.0, 0.0, .scale[.axisIndexes[2]], .translate[.axisIndexes[2]]]\n"
+			+ "        },\n"
+			+ "        \"unit\" : .units[0]\n"
+			+ "        }\n"
+			+ "    };\n"
+			+ "def cosemToTransform: (.transform |= . + cosemAxisIndexes) | . + (.transform | cosemToTransformSimple);";
 
 	public static final String IJ_TO_AFFINE = "{\n"
 			+ "\t\"affine\": [.pixelWidth, 0, 0, 0, 0, .pixelHeight, 0, 0, 0, 0, .pixelDepth, 0],\n" +
