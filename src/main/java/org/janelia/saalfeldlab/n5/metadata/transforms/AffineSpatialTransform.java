@@ -4,16 +4,15 @@ import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.realtransform.RealTransform;
 
-public class AffineSpatialTransform extends AbstractSpatialTransform{
+public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 
-	public double[] affine;
+	public final double[] affine;
 
 	public transient AffineGet transform;
 
-	public AffineSpatialTransform( String type, double[] affine ) {
-		super(type);
+	public AffineSpatialTransform( final double[] affine ) {
+		super("affine");
 		this.affine = affine;
 	}
 	
@@ -41,7 +40,7 @@ public class AffineSpatialTransform extends AbstractSpatialTransform{
 	}
 
 	@Override
-	public RealTransform getTransform()
+	public AffineGet getTransform()
 	{
 		if( transform == null )
 			return buildTransform();
