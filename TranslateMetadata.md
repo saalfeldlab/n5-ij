@@ -9,24 +9,32 @@
 
 Returns true when called from a tree node that represents an n5 dataset.
 
-Example:
+<details>
+<summary>Example</summary>
+
+Input:
 ```json
 { 
     "attributes": { 
         "dimensions": [8, 8],
         "dataType": "uint8"
-    }
+    },
     "children" : {}
 }
 ```
-returns `true`
+    
+Output: 
+`true`
+</details>
 
 #### `addPaths`
 
-
+Adds `path` variables into attribute objects throughout the tree.  Useful for making local operations
+aware of their global location in the tree.
 
 <details>
 <summary>Example</summary>
+
 Input:
 ```json
 {
@@ -45,7 +53,6 @@ Input:
     }
   }
 }
-
 ```
 
 Output:
@@ -75,7 +82,6 @@ Output:
   }
 }
 ```
-
 </details>
 
 
@@ -86,6 +92,7 @@ and spatial units.
 
 <details>
 <summary>Example</summary>
+
 Input:
 ```json
 [ [1, 2, 3, 4, 5, 6], "parsec"]
