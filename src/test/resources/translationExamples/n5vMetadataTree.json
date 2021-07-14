@@ -1,0 +1,41 @@
+{
+  "attributes": {},
+  "children": {
+    "c0": {
+      "attributes": {},
+      "children": {
+        "s0": {
+          "attributes": {
+            "pixelResolution": {
+              "dimensions": [ 2, 2, 2 ],
+              "unit": "mm"
+            },
+            "compression": {
+              "type": "gzip",
+              "useZlib": false,
+              "level": -1
+            },
+            "blockSize": [ 32, 32, 32 ],
+            "dataType": "uint16",
+            "dimensions": [ 256, 256, 129 ]
+          }
+        },
+        "s1": {
+          "attributes": {
+            "pixelResolution": {
+              "dimensions": [ 4, 4, 4 ],
+              "unit": "mm"
+            },
+            "compression": {
+              "type": "gzip",
+              "useZlib": false,
+              "level": -1
+            },
+            "blockSize": [ 32, 32, 32 ],
+            "dataType": "uint16", "dimensions": [ 256, 256, 129 ]
+          }
+        }
+      }
+    }
+  }
+}

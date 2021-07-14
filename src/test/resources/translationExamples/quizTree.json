@@ -1,0 +1,45 @@
+{
+  "attributes": {},
+  "children": {
+    "c0": {
+      "attributes": {},
+      "children": {
+        "s0": {
+          "attributes": {
+            "physicalScales": {
+                "x":2.0,
+                "y":3.0,
+                "z":4.0
+            },
+            "physicalUnit": "cm",
+            "compression": {
+              "type": "gzip",
+              "useZlib": false,
+              "level": -1
+            },
+            "blockSize": [ 32, 32, 32 ],
+            "dataType": "uint16",
+            "dimensions": [ 256, 256, 129 ]
+          }
+        },
+        "s1": {
+          "attributes": {
+            "physicalScales": {
+                "x":4.1,
+                "y":6.2,
+                "z":8.3
+            },
+            "physicalUnit": "cm",
+            "compression": {
+              "type": "gzip",
+              "useZlib": false,
+              "level": -1
+            },
+            "blockSize": [ 32, 32, 32 ],
+            "dataType": "uint16", "dimensions": [ 256, 256, 129 ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+#!/bin/bash
+
+jq 'include "n5";
+    def convert: .pixelResolution | 
+        [ [ .dimensions[0], 0, 0, 0, 0, .dimensions[1], 0, 0, 0, 0, .dimensions[2], 0 ],
+          .unit ] 
+        | arrayAndUnitToTransform;
+    def isN5v: type == "object" and has("pixelResolution");
+
+    walk( if isN5v then . + convert else . end )' n5vMetadataTree.json
