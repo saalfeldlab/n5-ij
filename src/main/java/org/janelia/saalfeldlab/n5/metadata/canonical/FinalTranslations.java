@@ -101,6 +101,16 @@ public class FinalTranslations {
 //		+ "\"unit\" : (.pixelResolution.unit // \"pixel\")"
 //		+ "};";
 	
+	public static final String arrayAndUnitToTransformFun = "def arrayAndUnitToTransform: {"
+			+ "    \"spatialTransform\": {"
+			+ "        \"transform\" : {"
+			+ "            \"type\": \"affine\","
+			+ "            \"affine\": .[0]"
+			+ "        },"
+			+ "        \"unit\": .[1]"
+			+ "    }"
+			+ "};";
+
 	public static final String N5VTOTRANSFORMFUN  =
 			"    def n5vToTransform: . + { \n"
 			+ "        \"spatialTransform\": { \n"
