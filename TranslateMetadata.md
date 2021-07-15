@@ -123,6 +123,41 @@ walk( if isN5v then . + convert else . end )
 ```
 
 
+#### Quiz 
+
+Try writing a translation function that applies to [this metadata tree](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/test/resources/translationExamples/quizTree.json#L9-L14).
+
+I.e. we need a function that converts this input:
+```json
+{
+    "physicalScales": {
+        "x":2.0,
+        "y":3.0,
+        "z":4.0
+    },
+    "physicalUnit": "cm"
+}
+```
+
+to this output:
+```json
+{
+    "physicalScales": {
+        "x":2.0,
+        "y":3.0,
+        "z":4.0
+    },
+    "physicalUnit": "cm",
+    "spatialTransform": {
+    "transform":{
+        "type": "affine",
+        "affine": [2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4, 0]
+    },
+    "unit":"mm"
+    }
+}
+```
+
 ### Built-in functions
 
 #### `isDataset`
