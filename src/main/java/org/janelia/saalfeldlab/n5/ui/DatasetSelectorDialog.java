@@ -558,7 +558,6 @@ public class DatasetSelectorDialog {
 	translatedParser.ifPresent( p -> {
 		parserList.clear();
 		parserList.add(translatedParser.get());
-		System.out.println( parserList );
 	});
 //	if (translationPanel.isTranslationProvided() && translatedParser.isPresent()) {
 //		parserList.clear();
@@ -572,6 +571,7 @@ public class DatasetSelectorDialog {
 
 	try {
 	  rootNode = datasetDiscoverer.discoverAndParseRecursive(rootPath);
+
 	} catch (IOException e) {
 	  e.printStackTrace();
 	}

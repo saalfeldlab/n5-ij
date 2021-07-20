@@ -31,8 +31,23 @@ public class FinalTranslations {
 	public static final String ADDPATHSFUN = "def addPaths: reduce attrPaths as $path ( . ; setpath( [ ($path | .[]), \"path\"] ; ( $path | parentPath )));";
 	public static final String PATHFUNS = ATTRPATHSFUN + "\n" + PARENTPATHFUN + "\n" + ADDPATHSFUN;
 	
+	public static final String MULTICHANNELFUNSSIMPLE = "def isMultiChannel: type == \"object\" and has(\"children\") and ( .children | has(\"c0\"));"
+			+ "def buildMultiChannelSimple: [(.children | keys | .[]) as $k | .children |  {\"path\": (.[$k].attributes.path | split(\"/\") |.[-1]) }];\n"
+			+ "def addMultiChannelSimple: buildMultiChannelSimple as $ms | .attributes |= . + { \"multichannel\": { \"datasets\": $ms , \"path\": .path }};\n"
+			+ "def addAllMultiChannelSimple: walk( if isMultiChannel then addMultiChannelSimple else . end );";
+
+//	public static final String MULTICHANNELFUNS = "def isMultiChannel: type == \"object\" and has(\"children\") and ( .children | has(\"c0\"));"
+//			+ "def buildMultiChannel: [(.children | keys | .[]) as $k | .children |  {\"path\": (.[$k].attributes.path | split(\"/\") |.[-1]), \"attributes\" : .[$k].attributes }];\n"
+//			+ "def addMultiChannel: buildMultiChannel as $ms | .attributes |= . + { \"multichannel\": { \"datasets\": $ms , \"path\": .path }};\n"
+//			+ "def addAllMultiChannel: walk( if isMultiChannel then addMultiChannel else . end );\n";
+
+	public static final String MULTICHANNELFUNS = "def isMultiChannel: type == \"object\" and has(\"children\") and ( .children | has(\"c0\"));"
+			+ "def buildMultiChannel: [(.children | keys | .[]) as $k | .children |  ( .[$k].attributes ) ];"
+			+ "def addMultiChannel: buildMultiChannel as $ms | .attributes |= . + { \"multichannel\": { \"datasets\": $ms , \"path\": .path }};\n"
+			+ "def addAllMultiChannel: walk( if isMultiChannel then addMultiChannel else . end );\n";
+	
 	public static final String BUILDMULTISCALEFUN = "def buildMultiscale: [(.children | keys | .[]) as $k | .children |  {\"path\": (.[$k].attributes.path | split(\"/\") |.[-1]), \"spatialTransform\" : .[$k].attributes.spatialTransform }];\n";
-	public static final String ADDMULTISCALEFUNS = "def addMultiscale: buildMultiscale as $ms | .attributes |= . + { \"multiscales\": { \"datasets\": $ms } };"
+	public static final String ADDMULTISCALEFUNS = "def addMultiscale: buildMultiscale as $ms | .attributes |= . + { \"multiscales\": { \"datasets\": $ms, \"path\":.path } };"
 		+ "def addAllMultiscales: walk( if hasMultiscales then addMultiscale else . end );";
 	public static final String HASMULTISCALEFUNS = "def attrHasTform: (.attributes | has(\"spatialTransform\"));\n"
 		+ "def numTformChildren: .children | reduce (keys| .[]) as $k ( \n"
@@ -70,6 +85,17 @@ public class FinalTranslations {
 		+ "if length == 2 then [.[0], 0, 0, 0, .[1], 0] \n"
 		+ "elif length == 3 then [.[0], 0, 0, 0, 0, .[1], 0, 0, 0, 0, .[2], 0] \n"
 		+ "else null end;\n";
+	
+	public static final String ARRAYUNITTOTRANSFORMFUN = 
+			"def arrayUnitToTransform($a;$u): {\n"
+			+ "    \"spatialTransform\": {\n"
+			+ "        \"transform\" : {\n"
+			+ "            \"type\": \"affine\",\n"
+			+ "            \"affine\": $a \n"
+			+ "        },\n"
+			+ "        \"unit\": $u\n"
+			+ "    }\n"
+			+ "};";
 	
 	public static final String AFFINEFROMSCALESANDFACTORSFUN = "def affineFromScaleAndFactors: .[0] as $s | .[1] as $d |\n"
 		+ "if ( $s | length) == 2 then [ \n"
@@ -138,6 +164,7 @@ public class FinalTranslations {
 			+ "walk ( if isAttributes and has(\"pixelResolution\") then . + (.|n5vToTransform) else . end );";
 	
 	public static final String N5VFUNS = String.join( "\n",
+			ARRAYUNITTOTRANSFORMFUN,
 			N5VISCHANNELFUN,
 			AFFINEFROMSCALESFUN,
 			AFFINEFROMSCALESANDFACTORSFUN,

@@ -92,7 +92,7 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 
 		root = ContainerMetadataNode.build(n5);
 		try {
-			translatedRoot = gson.fromJson(transform(gson.toJson(root)), ContainerMetadataNode.class);
+			translatedRoot = gson.fromJson( transform(gson.toJson(root)), ContainerMetadataNode.class);
 		} catch (Exception e) {
 			e.printStackTrace();
 			translatedRoot = null;
@@ -150,13 +150,23 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 	@Override
 	public Optional<CanonicalMetadata> parseMetadata(N5Reader n5, N5TreeNode node) {
 
-		if( translatedRoot == null )
+		if( translatedRoot == null ) {
 			return Optional.empty();
+		}
 
 		return translatedRoot.getChild( node.getPath(), n5.getGroupSeparator() )
 			.map( ContainerMetadataNode::getAttributes )
 			.map( this::canonicalMetadata )
 			.filter(filter);
+	}
+
+	@Override
+	public Optional<CanonicalMetadata> parseMetadata(final N5Reader n5, final String dataset) {
+		return parseMetadata( new N5TreeNode( dataset ), n5.getGroupSeparator() );
+	}
+
+	public Optional<CanonicalMetadata> parseMetadata(final String dataset, final String groupSep ) {
+		return parseMetadata( new N5TreeNode( dataset ), groupSep );
 	}
 
 	public Optional<CanonicalMetadata> parseMetadata(N5TreeNode node, String groupSep) {
@@ -169,7 +179,8 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 	}
 
 	public CanonicalMetadata canonicalMetadata(final HashMap<String, JsonElement> attrMap) {
-		return gson.fromJson(gson.toJson(attrMap), CanonicalMetadata.class);
+		CanonicalMetadata meta = gson.fromJson(gson.toJson(attrMap), CanonicalMetadata.class);
+		return meta;
 	}
 
 	public static Scope buildRootScope() {

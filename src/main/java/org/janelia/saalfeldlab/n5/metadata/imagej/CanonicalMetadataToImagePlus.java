@@ -70,7 +70,7 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 				new AffineSpatialTransform( params ),
 				imp.getCalibration().getUnit());
 
-		return new CanonicalDatasetMetadata( "", spatialMeta, null, attributes );
+		return new CanonicalDatasetMetadata( "", spatialMeta, null, null, attributes );
 	}
 
 }

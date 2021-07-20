@@ -44,13 +44,13 @@ public class ContainerMetadataNode {
 		if (relativePath.isEmpty())
 			return Optional.of(this);
 
-		final String normPath = relativePath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
+		final String normPath = relativePath.replaceAll("^(" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
 		final int i = normPath.indexOf(groupSeparator);
 
 		final String cpath;
 		final String relToChild;
 		if (i < 0) {
-			cpath = relativePath;
+			cpath = normPath;
 			relToChild = "";
 		} else {
 			final String[] pathSplit = normPath.split(groupSeparator);

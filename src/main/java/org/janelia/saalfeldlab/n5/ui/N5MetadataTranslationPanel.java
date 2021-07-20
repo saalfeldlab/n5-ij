@@ -39,8 +39,6 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParser;
 
-import com.google.gson.Gson;
-
 public class N5MetadataTranslationPanel {
 
 	private float fontScale = 1.0f;
