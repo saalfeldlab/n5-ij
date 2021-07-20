@@ -1,20 +1,12 @@
 package org.janelia.saalfeldlab.n5.metadata.container;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 
-import org.janelia.saalfeldlab.n5.AbstractGsonReader;
-import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.demos.GsonOneOffs;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.FinalTranslations;
