@@ -30,7 +30,33 @@ public class FinalTranslations {
 	public static final String PARENTPATHFUN = "def parentPath: if length <= 1 then \"\" elif length == 2 then .[0] else .[0:-1] | map(select( . != \"children\")) | join(\"/\") end;";
 	public static final String ADDPATHSFUN = "def addPaths: reduce attrPaths as $path ( . ; setpath( [ ($path | .[]), \"path\"] ; ( $path | parentPath )));";
 	public static final String PATHFUNS = ATTRPATHSFUN + "\n" + PARENTPATHFUN + "\n" + ADDPATHSFUN;
+
+	public static final String arrayAndUnitToTransformFun = "def arrayAndUnitToTransform: {"
+			+ "    \"spatialTransform\": {"
+			+ "        \"transform\" : {"
+			+ "            \"type\": \"affine\","
+			+ "            \"affine\": .[0]"
+			+ "        },"
+			+ "        \"unit\": .[1]"
+			+ "    }"
+			+ "};";
 	
+	public static final String AFFINEFROMSCALESANDFACTORSFUN = "def affineFromScaleAndFactors: .[0] as $s | .[1] as $d |\n"
+		+ "if ( $s | length) == 2 then [ \n"
+		+ "($s[0]*$d[0]), 0, ($d[0]-1)/2.0, 0, ($s[1]*$d[1]), ($d[1]-1)/2.0 ]"
+		+ "elif ($s | length) == 3 then ["
+		+ "($s[0]*$d[0]), 0, 0, ($d[0]-1)/2.0, 0, ($s[1]*$d[1]), 0, ($d[1]-1)/2.0, 0, 0,  ($s[2]*$d[2]), ($d[2]-1)/2.0 ] "
+		+ "else null end;";
+
+	public static final String AFFINEFUNS=
+			arrayAndUnitToTransformFun + AFFINEFROMSCALESANDFACTORSFUN +
+			"def id2d: [1,0,0, 0,1,0];\n"
+			+ "def id3d: [1,0,0,0, 0,1,0,0, 0,0,1,0];\n"
+			+ "def setScale2d( $s ): .[0] = $s[0] | .[4] = $s[1];\n"
+			+ "def setTranslation2d( $t ): .[2] = $t[0] | .[5] = $t[1];\n"
+			+ "def setScale3d( $s ): .[0] = $s[0] | .[5] = $s[1] | .[10] = $s[2];\n"
+			+ "def setTranslation3d( $t ): .[3] = $t[0] | .[7] = $t[1] | .[11] = $t[2];\n";
+
 	public static final String MULTICHANNELFUNSSIMPLE = "def isMultiChannel: type == \"object\" and has(\"children\") and ( .children | has(\"c0\"));"
 			+ "def buildMultiChannelSimple: [(.children | keys | .[]) as $k | .children |  {\"path\": (.[$k].attributes.path | split(\"/\") |.[-1]) }];\n"
 			+ "def addMultiChannelSimple: buildMultiChannelSimple as $ms | .attributes |= . + { \"multichannel\": { \"datasets\": $ms , \"path\": .path }};\n"
@@ -86,23 +112,7 @@ public class FinalTranslations {
 		+ "elif length == 3 then [.[0], 0, 0, 0, 0, .[1], 0, 0, 0, 0, .[2], 0] \n"
 		+ "else null end;\n";
 	
-	public static final String ARRAYUNITTOTRANSFORMFUN = 
-			"def arrayUnitToTransform($a;$u): {\n"
-			+ "    \"spatialTransform\": {\n"
-			+ "        \"transform\" : {\n"
-			+ "            \"type\": \"affine\",\n"
-			+ "            \"affine\": $a \n"
-			+ "        },\n"
-			+ "        \"unit\": $u\n"
-			+ "    }\n"
-			+ "};";
-	
-	public static final String AFFINEFROMSCALESANDFACTORSFUN = "def affineFromScaleAndFactors: .[0] as $s | .[1] as $d |\n"
-		+ "if ( $s | length) == 2 then [ \n"
-		+ "($s[0]*$d[0]), 0, ($d[0]-1)/2.0, 0, ($s[1]*$d[1]), ($d[1]-1)/2.0 ]"
-		+ "elif ($s | length) == 3 then ["
-		+ "($s[0]*$d[0]), 0, 0, ($d[0]-1)/2.0, 0, ($s[1]*$d[1]), 0, ($d[1]-1)/2.0, 0, 0,  ($s[2]*$d[2]), ($d[2]-1)/2.0 ] "
-		+ "else null end;";
+
 
 	public static final String N5VCHECKFUNS = 
 		  "def isN5v: type == \"object\" and has(\"pixelResolution\");"
@@ -127,15 +137,6 @@ public class FinalTranslations {
 //		+ "\"unit\" : (.pixelResolution.unit // \"pixel\")"
 //		+ "};";
 	
-	public static final String arrayAndUnitToTransformFun = "def arrayAndUnitToTransform: {"
-			+ "    \"spatialTransform\": {"
-			+ "        \"transform\" : {"
-			+ "            \"type\": \"affine\","
-			+ "            \"affine\": .[0]"
-			+ "        },"
-			+ "        \"unit\": .[1]"
-			+ "    }"
-			+ "};";
 
 	public static final String N5VTOTRANSFORMFUN  =
 			"    def n5vToTransform: . + { \n"
@@ -164,7 +165,7 @@ public class FinalTranslations {
 			+ "walk ( if isAttributes and has(\"pixelResolution\") then . + (.|n5vToTransform) else . end );";
 	
 	public static final String N5VFUNS = String.join( "\n",
-			ARRAYUNITTOTRANSFORMFUN,
+			AFFINEFUNS,
 			N5VISCHANNELFUN,
 			AFFINEFROMSCALESFUN,
 			AFFINEFROMSCALESANDFACTORSFUN,
@@ -174,6 +175,14 @@ public class FinalTranslations {
 			N5VADDDSOFFSETSFUNS,
 			N5VTOTRANSFORMFUN,
 			N5VTOTRANSFORMALLFUN);
+
+	public static final String IMPORTFUNS = String.join( "\n",
+			ISATTRIBUTESFUN, 
+			ISDATASETFUN, 
+			FLATTENTREEFUN,
+			N5VFUNS,
+			MULTISCALEFUNS,
+			MULTICHANNELFUNS);
 
 	public static final java.util.function.Function<String,String> IJ2AFFINEFUN_WITHPATH = s -> String.format( 
 			"{ \"affine\": [.pixelWidth, 0, 0, 0, 0, .pixelHeight, 0, 0, 0, 0, .pixelDepth, 0], "

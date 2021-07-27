@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import org.janelia.saalfeldlab.n5.Bzip2Compression;
 import org.janelia.saalfeldlab.n5.Compression;
@@ -75,7 +76,7 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 	public TranslatedTreeMetadataParser(final N5Reader n5, final String translation,
 			final Predicate<CanonicalMetadata> filter) {
 
-		this.translation = translation;
+		this.translation = resolveImports( translation );
 		this.filter = filter;
 
 		scope = buildRootScope();
@@ -99,13 +100,20 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 		}
 	}
 
+	public static String resolveImports(String query) {
+		if (query.startsWith("include"))
+			return FinalTranslations.IMPORTFUNS + query.replaceFirst("^\\s*include\\s+\"n5\"\\s*;", "");
+		else
+			return query;
+	}
+
 	public void setFilter(final Predicate<CanonicalMetadata> filter) {
 		this.filter = filter;
 	}
 
 	public TranslatedTreeMetadataParser(final String n5Tree, final String translation) {
 
-		this.translation = translation;
+		this.translation = resolveImports( translation );
 
 		scope = buildRootScope();
 		objMapper = new ObjectMapper();	
