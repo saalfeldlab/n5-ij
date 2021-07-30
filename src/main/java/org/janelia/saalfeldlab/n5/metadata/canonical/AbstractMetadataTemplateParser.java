@@ -143,7 +143,6 @@ public abstract class AbstractMetadataTemplateParser<T extends N5Metadata> imple
 		JsonNode in;
 		try {
 			in = objMapper.readTree( gson.toJson( treeNode ));
-			System.out.println( "parsemetadata tree in: " + in );
 
 			final List< JsonNode > out = new ArrayList<>();
 			JsonQuery.compile( translation, Versions.JQ_1_6 ).apply( scope, in, out::add );	
