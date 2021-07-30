@@ -14,7 +14,10 @@ import org.janelia.saalfeldlab.n5.AbstractGsonReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 
 /**
  * 
@@ -69,18 +72,24 @@ public class ContainerMetadataNode {
 
 	}
 
-	public static ContainerMetadataNode build(final N5Reader n5) {
+	public static ContainerMetadataNode build(final N5Reader n5, final Gson gson ) {
 		if (n5 instanceof AbstractGsonReader) {
 			try {
-				return buildGson((AbstractGsonReader) n5);
+				return buildGson((AbstractGsonReader) n5, gson );
 			} catch (Exception e) {
 			}
 			return null;
-		} else
-			return null;
+		} else {
+			try {
+				return buildH5(n5, gson);
+			} catch (Exception e) {
+			}
+		}
+
+		return null;
 	}
 
-	public static <T extends AbstractGsonReader> ContainerMetadataNode buildGson(final T n5)
+	public static <T extends AbstractGsonReader> ContainerMetadataNode buildGson(final T n5, final Gson gson )
 			throws InterruptedException, ExecutionException {
 		String[] datasets;
 		N5TreeNode root;
@@ -88,7 +97,7 @@ public class ContainerMetadataNode {
 
 			datasets = n5.deepList("", Executors.newSingleThreadExecutor());
 			root = N5TreeNode.fromFlatList("", datasets, "/");
-			return buildHelper(n5, root);
+			return buildHelper(n5, root );
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -96,7 +105,8 @@ public class ContainerMetadataNode {
 		return null;
 	}
 
-	public static ContainerMetadataNode buildHelper(final AbstractGsonReader n5, N5TreeNode baseNode) {
+	public static ContainerMetadataNode buildHelper(final AbstractGsonReader n5, N5TreeNode baseNode ) {
+
 		final Optional<HashMap<String, JsonElement>> attrs = N5TreeNode.getMetadataMapJson(n5, baseNode.getPath());
 		final List<N5TreeNode> children = baseNode.childrenList();
 
@@ -104,10 +114,78 @@ public class ContainerMetadataNode {
 		for (N5TreeNode child : children)
 			childMap.put(child.getNodeName(), buildHelper(n5, child));
 
+		if (attrs.isPresent() )
+			return new ContainerMetadataNode(attrs.get(), childMap);
+		else
+			return new ContainerMetadataNode(new HashMap<>(), childMap);
+	}
+
+	public static <T extends N5Reader> ContainerMetadataNode buildH5(final T n5, final Gson gson )
+			throws InterruptedException, ExecutionException {
+		String[] datasets;
+		N5TreeNode root;
+		try {
+
+			datasets = n5.deepList("", Executors.newSingleThreadExecutor());
+			root = N5TreeNode.fromFlatList("", datasets, "/");
+			return buildHelperH5(n5, root, gson );
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
+
+	public static ContainerMetadataNode buildHelperH5(final N5Reader n5, N5TreeNode baseNode, Gson gson ) {
+		final Optional<HashMap<String, JsonElement>> attrs = getMetadataMapH5(n5, baseNode.getPath(), gson );
+		final List<N5TreeNode> children = baseNode.childrenList();
+
+		final HashMap<String, ContainerMetadataNode> childMap = new HashMap<>();
+		for (N5TreeNode child : children)
+			childMap.put(child.getNodeName(), buildHelperH5(n5, child, gson));
+
 		if (attrs.isPresent())
 			return new ContainerMetadataNode(attrs.get(), childMap);
 		else
 			return new ContainerMetadataNode(new HashMap<>(), childMap);
+	}
+
+	public static Optional<HashMap<String, JsonElement>> getMetadataMapH5(final N5Reader n5, final String dataset,
+			final Gson gson) {
+		try {
+			final HashMap<String, JsonElement> attrs = new HashMap<>();
+			Map<String, Class<?>> attrClasses = n5.listAttributes(dataset);
+			for (String k : attrClasses.keySet()) {
+
+				if( attrClasses.get(k).equals(String.class)) {
+
+					String s = n5.getAttribute(dataset, k, String.class );
+					Optional<JsonObject> elem = stringToJson( s, gson );
+					if( elem.isPresent())
+						attrs.put( k, elem.get());
+					else
+						attrs.put( k, gson.toJsonTree( s ));
+				}
+				else
+					attrs.put(k, gson.toJsonTree(n5.getAttribute(dataset, k, attrClasses.get(k))));
+			}
+
+			if (attrs != null)
+				return Optional.of(attrs);
+
+		} catch (Exception e) {
+		}
+		return Optional.empty();
+	}
+
+	public static Optional<JsonObject> stringToJson(String s, final Gson gson) {
+
+		try {
+			JsonObject elem = gson.fromJson(s, JsonObject.class);
+			return Optional.of(elem);
+		} catch (JsonSyntaxException e) {
+			return Optional.empty();
+		}
 	}
 
 }

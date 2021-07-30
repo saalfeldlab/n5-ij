@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 import org.janelia.saalfeldlab.n5.Bzip2Compression;
 import org.janelia.saalfeldlab.n5.Compression;
@@ -91,9 +90,10 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 		gsonBuilder.disableHtmlEscaping();
 		gson = gsonBuilder.create();
 
-		root = ContainerMetadataNode.build(n5);
+		root = ContainerMetadataNode.build(n5, gson);
 		try {
 			translatedRoot = gson.fromJson( transform(gson.toJson(root)), ContainerMetadataNode.class);
+			addPaths();
 		} catch (Exception e) {
 			e.printStackTrace();
 			translatedRoot = null;
@@ -130,10 +130,24 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 		root = gson.fromJson( n5Tree, ContainerMetadataNode.class );
 		try {
 			translatedRoot = gson.fromJson( transform(gson.toJson(root)), ContainerMetadataNode.class );
+			addPaths();
 		} catch (Exception e) {
 			e.printStackTrace();
 			translatedRoot = null;
 		}
+	}
+
+	private void addPaths() throws Exception {
+		JsonNode inJsonNode = objMapper.readTree(gson.toJson(translatedRoot));
+
+		final List<JsonNode> out = new ArrayList<>();
+		JsonQuery.compile( FinalTranslations.PATHFUNS + " addPaths", Versions.JQ_1_6).apply(scope, inJsonNode, out::add);
+
+		final StringBuffer stringOutput = new StringBuffer();
+		for (final JsonNode n : out)
+			stringOutput.append(n.toString() + "\n");
+
+		translatedRoot = gson.fromJson(stringOutput.toString(), ContainerMetadataNode.class);
 	}
 
 	public Gson getGson()
