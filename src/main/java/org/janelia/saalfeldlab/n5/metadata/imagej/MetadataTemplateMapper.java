@@ -86,7 +86,7 @@ public class MetadataTemplateMapper implements N5MetadataWriter<ImagePlusMetadat
 	
 	public JsonQuery getQuery() throws JsonQueryException
 	{
-		return JsonQuery.compile( query, Versions.JQ_1_5 );	
+		return JsonQuery.compile( query, Versions.JQ_1_6 );
 	}
 	
 	public Scope getScope()
@@ -132,7 +132,7 @@ public class MetadataTemplateMapper implements N5MetadataWriter<ImagePlusMetadat
 		final Scope rootScope = Scope.newEmptyScope();
 
 		// Use BuiltinFunctionLoader to load built-in functions from the classpath.
-		BuiltinFunctionLoader.getInstance().loadFunctions(Versions.JQ_1_5, rootScope);
+		BuiltinFunctionLoader.getInstance().loadFunctions(Versions.JQ_1_6, rootScope);
 
 		// You can also define a custom function. E.g.
 		rootScope.addFunction("repeat", 1, new Function() {
