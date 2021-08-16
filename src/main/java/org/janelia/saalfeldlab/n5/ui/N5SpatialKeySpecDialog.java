@@ -92,8 +92,9 @@ public class N5SpatialKeySpecDialog {
 		unitField = new JTextField();
 		panel.add( unitField );
 
-		panel.add(  new JLabel( "Downsampling factors key"));
+		panel.add( new JLabel( "Downsampling factors key"));
 		downsamplingFactorsField = new JTextField();
+		downsamplingFactorsField = new JTextField("downsamplingFactors");
 		panel.add( downsamplingFactorsField );
 
 		panel.add(  new JLabel( "min intensity key"));

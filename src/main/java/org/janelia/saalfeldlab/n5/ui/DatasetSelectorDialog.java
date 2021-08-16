@@ -27,6 +27,7 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import ij.IJ;
 import ij.Prefs;
+
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
@@ -308,7 +309,7 @@ public class DatasetSelectorDialog {
 	tabs.addTab("Main", panel);
 
 	spatialMetaSpec = new N5SpatialKeySpecDialog();
-	tabs.addTab("Metadata", spatialMetaSpec.buildPanel() );
+	tabs.addTab("Spatial Metadata", spatialMetaSpec.buildPanel() );
 
 	containerPathText = new JTextField();
 	containerPathText.setText(initialContainerPath);
@@ -515,8 +516,7 @@ public class DatasetSelectorDialog {
 
 	// add custom metadata parser into the first position in the list if it exists
 	Optional<N5GenericSingleScaleMetadataParser> parserOptional = spatialMetaSpec.getParserOptional();
-	if( parserOptional.isPresent() )
-	{
+	if( parserOptional.isPresent() ) {
 		parserList.add(parserOptional.get());
 		parserList.addAll(Arrays.asList(parsers));
 	}
