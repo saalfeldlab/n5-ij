@@ -25,8 +25,8 @@
  */
 package org.janelia.saalfeldlab.n5;
 
-import org.janelia.saalfeldlab.n5.metadata.ImagePlusMetadataTemplate;
-import org.janelia.saalfeldlab.n5.metadata.MetadataTemplateMapper;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
+import org.janelia.saalfeldlab.n5.metadata.imagej.MetadataTemplateMapper;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -51,9 +51,8 @@ public class CustomMetadataExamples
 	{
 		System.out.println( " " );
 		System.out.println( translationSpec );
-		final ImagePlusMetadataTemplate metaTemplate = new ImagePlusMetadataTemplate( "", imp );
+		final ImagePlusMetadataTemplate metaTemplate = ImagePlusMetadataTemplate.readMetadataStatic( imp );
 		final MetadataTemplateMapper mapper = new MetadataTemplateMapper( translationSpec );
-		System.out.println( mapper.toJsonString( metaTemplate ));
 		System.out.println( " " );
 
 	}

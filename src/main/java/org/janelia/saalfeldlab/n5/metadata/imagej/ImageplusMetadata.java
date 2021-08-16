@@ -23,13 +23,44 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.janelia.saalfeldlab.n5.metadata;
+package org.janelia.saalfeldlab.n5.metadata.imagej;
 
-import org.janelia.saalfeldlab.n5.N5TreeNode;
+import ij.ImagePlus;
 
-public interface N5GroupParser<T extends N5Metadata>
-{
+import java.io.IOException;
 
-	public T parseMetadataGroup( N5TreeNode node );
+import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 
+/**
+ * A interface for reading and writing metadata to an {@link ImagePlus}.
+ *
+ * @param <T>
+ *            the metadata type
+ * @author John Bogovic
+ */
+public interface ImageplusMetadata<T extends N5DatasetMetadata> {
+
+	/**
+	 * Modify the metadata of the {@link ImagePlus} according to the given
+	 * metadata.
+	 *
+	 * @param t
+	 *            metadata
+	 * @param ip
+	 *            ImagePlus
+	 * @throws IOException
+	 *             the io exception
+	 */
+	public void writeMetadata(T t, ImagePlus ip) throws IOException;
+
+	/**
+	 * Create and return a new metadata object from the given {@link ImagePlus}.
+	 * 
+	 * @param ip
+	 *            the ImagePlus
+	 * @return
+	 * @throws IOException
+	 *             the io exception
+	 */
+	public T readMetadata(ImagePlus ip) throws IOException;
 }

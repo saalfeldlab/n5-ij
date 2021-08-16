@@ -1,19 +1,17 @@
 package org.janelia.saalfeldlab.n5.ui;
 
-import java.awt.Component;
-import java.util.Arrays;
-import java.util.stream.Collectors;
-
-import javax.swing.JTree;
-import javax.swing.tree.DefaultTreeCellRenderer;
-
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
-import org.janelia.saalfeldlab.n5.metadata.N5ImagePlusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
-import ij.ImagePlus;
+import javax.swing.JTree;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import java.awt.Component;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 {
@@ -74,30 +72,27 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		return this;
     }
 
-	public static String conversionSuffix( final N5TreeNode node )
-	{
-		DataType type;
-		if ( node.getMetadata() != null )
-			type = node.getMetadata().getAttributes().getDataType();
-		else
-			return "";
+	public static String conversionSuffix( final N5TreeNode node ) {
 
-		if ( node.getMetadata() instanceof N5ImagePlusMetadata )
-		{
-			N5ImagePlusMetadata ijMeta = (N5ImagePlusMetadata)node.getMetadata();
-			if( ijMeta.getType() == ImagePlus.COLOR_RGB && type == DataType.UINT32 )
-				return "(RGB)";
-		}
+	  DataType type;
+	  N5Metadata meta = node.getMetadata();
+	  if ( meta != null && meta instanceof N5DatasetMetadata )
+		type = ((N5DatasetMetadata)node.getMetadata()).getAttributes().getDataType();
+	  else
+		return "";
 
-		if ( type == DataType.FLOAT64 )
-		{
-			return "&#x2192; 32-bit";
-		}
-		else if( type == DataType.INT8 )
-		{
-			return "&#x2192; 8-bit";
-		}
-		else if ( type == DataType.INT32 || type == DataType.INT64 ||
+	  //		if ( node.getMetadata() instanceof N5ImagePlusMetadata )
+	  //		{
+	  //			N5ImagePlusMetadata ijMeta = (N5ImagePlusMetadata)node.getMetadata();
+	  //			if( ijMeta.getType() == ImagePlus.COLOR_RGB && type == DataType.UINT32 )
+	  //				return "(RGB)";
+	  //		}
+
+	  if (type == DataType.FLOAT64) {
+		return "&#x2192; 32-bit";
+	  } else if (type == DataType.INT8) {
+		return "&#x2192; 8-bit";
+	  } else if (type == DataType.INT32 || type == DataType.INT64 ||
 				type == DataType.UINT32 || type == DataType.UINT64 ||
 				type == DataType.INT16 )
 		{
@@ -106,17 +101,18 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		return "";
 	}
 
-	public String getParameterString( final N5TreeNode node )
-	{
-		if( node.getMetadata() == null )
-			return "";
+	public String getParameterString( final N5TreeNode node ) {
 
-		final DatasetAttributes attributes = node.getMetadata().getAttributes();
-		final String dimString = String.join( dimDelimeter,
-				Arrays.stream(attributes.getDimensions())
-					.mapToObj( d -> Long.toString( d ))
-					.collect( Collectors.toList() ) );
-		return  dimString + ", " + attributes.getDataType();
+	  N5Metadata meta = node.getMetadata();
+	  if ( meta == null || !(meta instanceof N5DatasetMetadata ) )
+		return "";
+
+	  final DatasetAttributes attributes = ((N5DatasetMetadata)node.getMetadata()).getAttributes();
+	  final String dimString = String.join(dimDelimeter,
+			  Arrays.stream(attributes.getDimensions())
+					  .mapToObj(d -> Long.toString(d))
+					  .collect(Collectors.toList()));
+	  return dimString + ", " + attributes.getDataType();
 	}
 
 }

@@ -23,87 +23,76 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-package org.janelia.saalfeldlab.n5.metadata;
+package org.janelia.saalfeldlab.n5.metadata.imagej;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.N5Writer;
+import org.janelia.saalfeldlab.n5.metadata.AbstractN5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.AbstractN5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
 
 import ij.ImagePlus;
+import net.imglib2.realtransform.AffineGet;
+import net.imglib2.realtransform.ScaleAndTranslation;
 
-public class ImagePlusMetadataTemplate extends AbstractN5Metadata<ImagePlusMetadataTemplate> 
-	implements ImageplusMetadata< ImagePlusMetadataTemplate >
+public class ImagePlusMetadataTemplate extends AbstractN5DatasetMetadata
+	implements ImageplusMetadata< ImagePlusMetadataTemplate >, SpatialMetadata
 {
-	public final String name;
+	public int numDims;
+	public int numSpatialDims;
 
-	public final double xResolution;
-	public final double yResolution;
-	public final double zResolution;
-	public final double tResolution;
+	public int numChannels;
+	public int numFrames;
+	public int numSlices;
 
-	public final double xOrigin;
-	public final double yOrigin;
-	public final double zOrigin;
-	public final double tOrigin;
+	public String name;
 
-	public final String xUnit;
-	public final String yUnit;
-	public final String zUnit;
-	public final String tUnit;
+	public double xResolution;
+	public double yResolution;
+	public double zResolution;
+	public double tResolution;
 
-	public final String globalUnit;
+	public double xOrigin;
+	public double yOrigin;
+	public double zOrigin;
+	public double tOrigin;
 
-	public final String axis0;
-	public final String axis1;
-	public final String axis2;
-	public final String axis3;
-	public final String axis4;
+	public String xUnit;
+	public String yUnit;
+	public String zUnit;
+	public String tUnit;
 
-	public final Map<String,String> otherMetadata;
+	public String globalUnit;
 
-	public ImagePlusMetadataTemplate( final String path )
-	{
-		super( path );
+	public Map<String,String> otherMetadata;
 
-		name = "";
-
-		xResolution = -1;
-		yResolution = -1;
-		zResolution = -1;
-		tResolution = -1;
-
-		xOrigin = -1;
-		yOrigin = -1;
-		zOrigin = -1;
-		tOrigin = -1;
-
-		xUnit = "";
-		yUnit = "";
-		zUnit = "";
-		tUnit = "";
-
-		globalUnit = "";
-
-		axis0 = "x";
-		axis1 = "y";
-		axis2 = "c";
-		axis3 = "z";
-		axis4 = "t";
-
-		otherMetadata = new HashMap<>();
+	public ImagePlusMetadataTemplate( ) {
+		super("", null);
 	}
 
-	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp )
-	{
+	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp ) {
 		this( path, imp, null );
 	}
 
-	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp, final DatasetAttributes attributes )
-	{
+	public ImagePlusMetadataTemplate( final String path, final DatasetAttributes attributes ) {
+		this( path, null, attributes );
+	}
+
+	public ImagePlusMetadataTemplate( final String path, final ImagePlus imp, final DatasetAttributes attributes ) {
+
 		super( path, attributes );
+
+		numChannels = imp.getNChannels();
+		numFrames = imp.getNFrames();
+		numSlices = imp.getNSlices();
+
+		numDims = imp.getNDimensions();
+		numSpatialDims = numSlices > 1 ? 3 : 2;
+
 		name = imp.getTitle();
 
 		xResolution = imp.getCalibration().pixelWidth;
@@ -123,24 +112,19 @@ public class ImagePlusMetadataTemplate extends AbstractN5Metadata<ImagePlusMetad
 
 		globalUnit = imp.getCalibration().getUnit();
 
-		axis0 = "x";
-		axis1 = "y";
-		axis2 = "c";
-		axis3 = "z";
-		axis4 = "t";
-
 		otherMetadata = new HashMap<>();
 		final Properties props = imp.getProperties();
 		if ( props != null )
 			for ( final Object k : props.keySet() )
 				otherMetadata.put( k.toString(), props.get( k ).toString() );
-
 	}
 
 	@Override
 	public void writeMetadata( final ImagePlusMetadataTemplate t, final ImagePlus ip )
 	{
 		ip.setTitle( t.name );
+		ip.setDimensions(numChannels, numSlices, numFrames);
+
 		ip.getCalibration().pixelWidth = t.xResolution;
 		ip.getCalibration().pixelDepth = t.yResolution;
 		ip.getCalibration().pixelHeight = t.zResolution;
@@ -164,29 +148,33 @@ public class ImagePlusMetadataTemplate extends AbstractN5Metadata<ImagePlusMetad
 	}
 
 	@Override
-	public ImagePlusMetadataTemplate readMetadata( final ImagePlus ip )
-	{
-		return new ImagePlusMetadataTemplate( "", ip );
+	public ImagePlusMetadataTemplate readMetadata(ImagePlus ip) throws IOException {
+
+		return new ImagePlusMetadataTemplate( "", ip, null );
+	}
+
+	public static ImagePlusMetadataTemplate readMetadataStatic(ImagePlus ip) throws IOException {
+
+		return new ImagePlusMetadataTemplate( "", ip, null );
 	}
 
 	@Override
-	public void writeMetadata( ImagePlusMetadataTemplate t, N5Writer n5, String dataset ) throws Exception
-	{
-		// TODO Auto-generated method stub
+	public AffineGet spatialTransform() {
+
+		if( numSpatialDims == 3 )
+			return new ScaleAndTranslation(
+					new double[] {xResolution, yResolution, zResolution},
+					new double[] {xOrigin, yOrigin, zOrigin });
+		else
+			return new ScaleAndTranslation(
+					new double[] {xResolution, yResolution },
+					new double[] {xOrigin, yOrigin });
 	}
 
 	@Override
-	public HashMap< String, Class< ? > > keysToTypes()
-	{
-		// TODO
-		return null;
-	}
+	public String unit() {
 
-	@Override
-	public ImagePlusMetadataTemplate parseMetadata( Map< String, Object > map ) throws Exception
-	{
-		// TODO
-		return null;
+		return globalUnit;
 	}
 
 }
