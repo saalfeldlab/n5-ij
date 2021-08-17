@@ -28,6 +28,7 @@ package org.janelia.saalfeldlab.n5.ij;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.Macro;
+import ij.Prefs;
 import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
@@ -41,6 +42,7 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
+import net.imglib2.parallel.DefaultTaskExecutor;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
@@ -81,6 +83,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 public class N5Importer implements PlugIn {
@@ -359,6 +362,7 @@ public class N5Importer implements PlugIn {
 		  final N5DatasetMetadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
 		  final ImageplusMetadata<M> ipMeta) throws IOException {
 
+	final int nThreads = Prefs.getThreads();
 	final String d = datasetMeta.getPath();
 	final RandomAccessibleInterval imgRaw = N5Utils.open(n5, d);
 
@@ -394,7 +398,10 @@ public class N5Importer implements PlugIn {
 	  imp = ImageJFunctions.wrap(convImg, d);
 	} else {
 	  ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(img);
-	  LoopBuilder.setImages(convImg, ipImg).forEachPixel((x, y) -> y.set(x));
+	  LoopBuilder.setImages( convImg, ipImg )
+			.multiThreaded( new DefaultTaskExecutor( Executors.newFixedThreadPool( nThreads )))
+			.forEachPixel( (x,y) -> y.set( x ));
+
 	  imp = ipImg.getImagePlus();
 	}
 
