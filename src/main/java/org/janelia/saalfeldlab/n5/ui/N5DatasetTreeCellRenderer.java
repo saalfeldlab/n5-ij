@@ -3,7 +3,6 @@ package org.janelia.saalfeldlab.n5.ui;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
@@ -43,9 +42,9 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		super.getTreeCellRendererComponent( tree, value, sel, exp, leaf, row, hasFocus );
 
 		N5TreeNode node;
-		if ( value instanceof JTreeNodeWrapper )
+		if ( value instanceof N5TreeNodeWrapper )
 		{
-			node = ( ( JTreeNodeWrapper ) value ).getNode();
+			node = ( ( N5TreeNodeWrapper ) value ).getNode();
 			if ( node.getMetadata() != null )
 			{
 				final String conversionString;
