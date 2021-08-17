@@ -70,8 +70,8 @@
 		<url>https://github.com/saalfeldlab/n5-ij/issues</url>
 	</issueManagement>
 	<ciManagement>
-		<system>Travis CI</system>
-		<url>https://travis-ci.com/saalfeldlab/n5-ij</url>
+		<system>GitHub Actions</system>
+		<url>https://github.com/saalfeldlab/n5-ij/actions</url>
 	</ciManagement>
 
 	<properties>
