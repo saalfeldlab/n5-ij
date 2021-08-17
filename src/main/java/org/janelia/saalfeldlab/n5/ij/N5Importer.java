@@ -148,7 +148,7 @@ public class N5Importer implements PlugIn {
 
 	// default image plus metadata parsers
 	impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
-	impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
+	impMetaWriterTypes.put( N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 	impMetaWriterTypes.put( N5CosemMetadata.class, new CosemToImagePlus());
 	impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
 

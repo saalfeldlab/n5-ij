@@ -83,7 +83,10 @@ public class N5ImagePlusMetadata extends AbstractN5DatasetMetadata implements Sp
 	this.numFrames = Objects.requireNonNull(numFrames, "numFrames must be non null");
 
 	// type is not required and so may be null
-	this.type = type;
+	if( type == null )
+		this.type = -1;
+	else
+		this.type = type;
 
 	this.properties = properties;
   }
