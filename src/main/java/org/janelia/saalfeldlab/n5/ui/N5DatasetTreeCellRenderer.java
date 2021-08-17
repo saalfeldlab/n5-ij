@@ -5,6 +5,9 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
+
+import ij.ImagePlus;
 
 import javax.swing.JTree;
 import javax.swing.tree.DefaultTreeCellRenderer;
@@ -80,12 +83,11 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 	  else
 		return "";
 
-	  //		if ( node.getMetadata() instanceof N5ImagePlusMetadata )
-	  //		{
-	  //			N5ImagePlusMetadata ijMeta = (N5ImagePlusMetadata)node.getMetadata();
-	  //			if( ijMeta.getType() == ImagePlus.COLOR_RGB && type == DataType.UINT32 )
-	  //				return "(RGB)";
-	  //		}
+	  if ( node.getMetadata() instanceof N5ImagePlusMetadata ) {
+		  N5ImagePlusMetadata ijMeta = (N5ImagePlusMetadata)node.getMetadata();
+		  if( ijMeta.getType() == ImagePlus.COLOR_RGB && type == DataType.UINT32 )
+			  return "(RGB)";
+	  }
 
 	  if (type == DataType.FLOAT64) {
 		return "&#x2192; 32-bit";
