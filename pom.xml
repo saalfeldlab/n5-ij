@@ -83,7 +83,7 @@
 		<license.copyrightOwners>Stephan Saalfeld</license.copyrightOwners>
 
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
-		<releaseProfiles>deploy-to-scijava</releaseProfiles>
+		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
 		<n5.version>2.5.1</n5.version>
 		<n5-imglib2.version>4.1.1</n5-imglib2.version>
