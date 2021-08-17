@@ -1,4 +1,4 @@
-# n5-ij [![Build Status](https://travis-ci.com/saalfeldlab/n5-ij.svg?branch=master)](https://travis-ci.com/saalfeldlab/n5-ij)
+# n5-ij [![Build Status](https://github.com/saalfeldlab/n5-ij/actions/workflows/build-main.yml/badge.svg)](https://github.com/saalfeldlab/n5-ij/actions/workflows/build-main.yml)
 
 A Fiji plugin for loading and saving image data to N5 containers. Supports [HDF5](https://www.hdfgroup.org/solutions/hdf5/), [Zarr](https://zarr.readthedocs.io/en/stable/#), [Amazon S3](https://aws.amazon.com/s3/), and [Google cloud storage](https://cloud.google.com/storage).
 
