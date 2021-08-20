@@ -102,7 +102,10 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 
 	public static String resolveImports(String query) {
 		if (query.startsWith("include"))
-			return FinalTranslations.IMPORTFUNS + query.replaceFirst("^\\s*include\\s+\"n5\"\\s*;", "");
+		{
+			return new ImportedTranslations().getTranslation() + query.replaceFirst("^\\s*include\\s+\"n5\"\\s*;", "");
+//			return FinalTranslations.IMPORTFUNS + query.replaceFirst("^\\s*include\\s+\"n5\"\\s*;", "");
+		}
 		else
 			return query;
 	}
