@@ -164,39 +164,6 @@ public class FinalTranslations {
 	public static final String N5VTOTRANSFORMALLFUN  = "def n5vToTransformAll: "
 			+ "walk ( if isAttributes and has(\"pixelResolution\") then . + (.|n5vToTransform) else . end );";
 	
-	public static final String N5VFUNS = String.join( "\n",
-			AFFINEFUNS,
-			N5VISCHANNELFUN,
-			AFFINEFROMSCALESFUN,
-			AFFINEFROMSCALESANDFACTORSFUN,
-			N5VTOTRANSFORMARRFUN,
-			N5VTOTRANSFORMOBJFUN,
-			N5VCHECKFUNS,
-			N5VADDDSOFFSETSFUNS,
-			N5VTOTRANSFORMFUN,
-			N5VTOTRANSFORMALLFUN);
-
-	public static final String IMPORTFUNS = String.join( "\n",
-			ISATTRIBUTESFUN, 
-			ISDATASETFUN, 
-			FLATTENTREEFUN,
-			N5VFUNS,
-			MULTISCALEFUNS,
-			MULTICHANNELFUNS);
-
-	public static final java.util.function.Function<String,String> IJ2AFFINEFUN_WITHPATH = s -> String.format( 
-			"{ \"affine\": [.pixelWidth, 0, 0, 0, 0, .pixelHeight, 0, 0, 0, 0, .pixelDepth, 0], "
-			+ "\"unit\": .pixelUnit, "
-			+ "\"path\": \"%s\" }",
-			s );
-	
-//	public static final java.util.function.Function<String,String> APPLY2DATASETS = s -> String.format( 
-//			"{ \"affine\": [.pixelWidth, 0, 0, 0, 0, .pixelHeight, 0, 0, 0, 0, .pixelDepth, 0], "
-//			+ "\"unit\": .pixelUnit, "
-//			+ "\"path\": \"%s\" }",
-//			s );
-
-
 	// TODO need to incorporate path variable here
 	public static final String COSEM_TO_AFFINE_NOAXES= 
 			"def cosemToAffine: [ .transform.scale[0], 0, 0, .transform.translate[0], 0, .transform.scale[1], 0, .transform.translate[1], 0, 0, .transform.scale[2], .transform.translate[2] ];\n" 
@@ -233,6 +200,41 @@ public class FinalTranslations {
 			+ "    };\n"
 			+ "def cosemToTransform: (.transform |= . + cosemAxisIndexes) | . + (.transform | cosemToTransformSimple);";
 
+	public static final String N5VFUNS = String.join( "\n",
+			AFFINEFUNS,
+			N5VISCHANNELFUN,
+			AFFINEFROMSCALESFUN,
+			AFFINEFROMSCALESANDFACTORSFUN,
+			N5VTOTRANSFORMARRFUN,
+			N5VTOTRANSFORMOBJFUN,
+			N5VCHECKFUNS,
+			N5VADDDSOFFSETSFUNS,
+			N5VTOTRANSFORMFUN,
+			N5VTOTRANSFORMALLFUN);
+
+	public static final String IMPORTFUNS = String.join( "\n",
+			ISATTRIBUTESFUN, 
+			ISDATASETFUN, 
+			FLATTENTREEFUN,
+			N5VFUNS,
+			COSEMFUNS,
+			MULTISCALEFUNS,
+			MULTICHANNELFUNS);
+
+	public static final java.util.function.Function<String,String> IJ2AFFINEFUN_WITHPATH = s -> String.format( 
+			"{ \"affine\": [.pixelWidth, 0, 0, 0, 0, .pixelHeight, 0, 0, 0, 0, .pixelDepth, 0], "
+			+ "\"unit\": .pixelUnit, "
+			+ "\"path\": \"%s\" }",
+			s );
+	
+//	public static final java.util.function.Function<String,String> APPLY2DATASETS = s -> String.format( 
+//			"{ \"affine\": [.pixelWidth, 0, 0, 0, 0, .pixelHeight, 0, 0, 0, 0, .pixelDepth, 0], "
+//			+ "\"unit\": .pixelUnit, "
+//			+ "\"path\": \"%s\" }",
+//			s );
+
+
+
 	public static final String IJ_TO_AFFINE = "{\n"
 			+ "\t\"affine\": [.pixelWidth, 0, 0, 0, 0, .pixelHeight, 0, 0, 0, 0, .pixelDepth, 0],\n" +
 			"\t\"unit\": .pixelUnit,\n" +
@@ -247,7 +249,7 @@ public class FinalTranslations {
 //		final String attributesPath = "/home/john/tmp/assorted.n5/mitosis/attributes.json";
 //		final String attributesPath = "/home/john/tmp/jfrc2010.n5/volumes/raw/attributes.json";
 		final String attributesPath = "/home/john/tmp/jqExamples/flipAxes.json";
-		
+
 		final List<String> lines = Files.readAllLines(Paths.get(attributesPath));
 
 //		lines.stream().forEach( System.out::println );

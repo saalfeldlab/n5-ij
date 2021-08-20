@@ -58,21 +58,14 @@ public class CanonicalMetadata implements N5Metadata {
 		public CanonicalMetadata deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
 				throws JsonParseException {
 
-//			System.out.println("deserialize CanonicalMetadata");
 			JsonObject jsonObj = json.getAsJsonObject();
-
 			final String path = json.getAsJsonObject().get("path").getAsString();
-//			System.out.println("  path: " + path );
 			final Optional<DatasetAttributes> attrs = AbstractMetadataTemplateParser.datasetAttributes(context, json);
-
-//			System.out.println("  attrs: " + attrs );
 
 			SpatialMetadataCanonical spatial = null;
 			if( jsonObj.has("spatialTransform")) {
 				spatial = context.deserialize( jsonObj.get("spatialTransform"), SpatialMetadataCanonical.class);
 			}
-
-//			System.out.println("  spatial: " + spatial );
 
 			MultiResolutionSpatialMetadataCanonical multiscale = null;
 			if( jsonObj.has("multiscales")) {
@@ -81,30 +74,19 @@ public class CanonicalMetadata implements N5Metadata {
 
 			MultiChannelMetadataCanonical multichannel = null;
 			if( jsonObj.has("multichannel")) {
-//				MultiChannelMetadataCanonical mcTmp = context.deserialize( jsonObj.get("multichannel"), MultiChannelMetadataCanonical.class);
 				multichannel = context.deserialize( jsonObj.get("multichannel"), MultiChannelMetadataCanonical.class);
 			}
 
-//			System.out.println("  ms: " + multiscale );
-
-			if( attrs.isPresent() )
-			{
-//				System.out.println( "  parsed CanonicalDatasetMetadata");
+			if( attrs.isPresent() ) {
 				return new CanonicalDatasetMetadata(path, spatial, multiscale, multichannel, attrs.get());
 			}
-			else if( multiscale != null && multiscale.getChildrenMetadata() != null )
-			{
-//				System.out.println( "  parsed CanonicalMultiscaleMetadata");
+			else if( multiscale != null && multiscale.getChildrenMetadata() != null ) {
 				return new CanonicalMultiscaleMetadata(path, spatial, multiscale, multichannel, null );
 			}
-			else if( multichannel != null && multichannel.getPaths() != null )
-			{
-//				System.out.println( "  parsed CanonicalMultiscaleMetadata");
+			else if( multichannel != null && multichannel.getPaths() != null ) {
 				return new CanonicalMultichannelMetadata(path, null, null, multichannel, null );
 			}
-			else
-			{
-//				System.out.println( "  parsed CanonicalMetadata");
+			else {
 				return new CanonicalMetadata(path, spatial, multiscale, multichannel, null );
 			}
 		}

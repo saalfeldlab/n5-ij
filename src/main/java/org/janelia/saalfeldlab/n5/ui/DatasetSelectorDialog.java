@@ -39,7 +39,6 @@ import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
 import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataTemplateCanonical;
 import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParser;
 
 import com.google.gson.Gson;
@@ -57,6 +56,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -71,6 +71,8 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -457,8 +459,14 @@ public class DatasetSelectorDialog {
 	cbot.insets = new Insets(MID_PAD, BUTTON_PAD, OUTER_PAD, OUTER_PAD);
 	panel.add(cancelBtn, cbot);
 
+	containerTree.addMouseListener( new NodePopupMenu(this).getPopupListener() );
+
 	dialog.pack();
 	return dialog;
+  }
+
+  public JTree getJTree() {
+    return containerTree;
   }
 
   private String openBrowseDialog() {

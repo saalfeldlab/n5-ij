@@ -12,4 +12,10 @@ public class CanonicalDatasetMetadata extends CanonicalMetadata implements N5Dat
 			final DatasetAttributes attributes) {
 		super( path, spatialTransform, multiscales, multichannels, attributes );
 	}
+
+	public CanonicalDatasetMetadata( CanonicalMetadata meta) {
+		super( meta.getPath(), meta.getSpatialTransform(),
+				meta.getMultiscales(), meta.getMultichannels(),
+				meta.getAttributes() );
+	}
 }

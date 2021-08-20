@@ -201,8 +201,7 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 	}
 
 	public CanonicalMetadata canonicalMetadata(final HashMap<String, JsonElement> attrMap) {
-		CanonicalMetadata meta = gson.fromJson(gson.toJson(attrMap), CanonicalMetadata.class);
-		return meta;
+		return gson.fromJson(gson.toJson(attrMap), CanonicalMetadata.class);
 	}
 
 	public static Scope buildRootScope() {

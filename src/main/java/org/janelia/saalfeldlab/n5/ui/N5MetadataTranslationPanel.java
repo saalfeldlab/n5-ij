@@ -109,6 +109,7 @@ public class N5MetadataTranslationPanel {
 
 		textArea = new JTextArea();
 		textArea.setFont( textArea.getFont().deriveFont( (float)fontScale * 18f) );
+		textArea.setText("include \"n5\";");
 
 		final JScrollPane textView = new JScrollPane( textArea );
 		panel.add( textView, BorderLayout.CENTER );
