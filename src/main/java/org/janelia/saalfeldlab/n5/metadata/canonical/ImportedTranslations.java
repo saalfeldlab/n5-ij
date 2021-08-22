@@ -23,8 +23,6 @@ public class ImportedTranslations {
 			translation = "";
 		else
 			translation = new String(encoded, StandardCharsets.US_ASCII );	
-
-		System.out.println( translation );
 	}
 	
 	public String getTranslation()

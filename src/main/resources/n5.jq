@@ -1,4 +1,3 @@
-
 def isDataset: type == "object" and has("attribute") and (.attributes | has("dimensions") and has("dataType") );
 
 def isAttributes: type == "object" and has("dimensions") and has("dataType");
@@ -47,13 +46,21 @@ def arrayUnitToTransform($a;$u): {
 
 def affineFromScaleAndFactors( $s; $f ):
   if ( $s | length) == 2 then [ ($s[0]*$f[0]), 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), ($f[1]-1)/2.0 ]
-  elif ($s | length) == 3 then [($s[0]*$f[0]), 0, 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), 0, ($f[1]-1)/2.0, 0, 0,  ($s[2]*$f[2]), ($f[2]-1)/2.0 ]    
+  elif ($s | length) == 3 then [($s[0]*$f[0]), 0, 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), 0, ($f[1]-1)/2.0, 0, 0,  ($s[2]*$f[2]), ($f[2]-1)/2.0 ] 
+  else null end;
+  
+def affineFromScaleAndFactorsArr:
+  .[0] as $s | .[1] as $f | 
+  if ( $s | length) == 2 then [ ($s[0]*$f[0]), 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), ($f[1]-1)/2.0 ]
+  elif ($s | length) == 3 then [($s[0]*$f[0]), 0, 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), 0, ($f[1]-1)/2.0, 0, 0,  ($s[2]*$f[2]), ($f[2]-1)/2.0 ] 
   else null end;
 
 def applyDownsamplingToFlatAffine( $a; $f ):
   if ( $s | length) == 2 then [ ($s[0]*$f[0]), 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), ($f[1]-1)/2.0 ]
   elif ($s | length) == 3 then [($s[0]*$f[0]), 0, 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), 0, ($f[1]-1)/2.0, 0, 0,  ($s[2]*$f[2]), ($f[2]-1)/2.0 ]    
   else null end;
+
+def isN5V: type == "object" and has("pixelResolution");
 
 def n5vTransformArr: { "type":"affine", "affine": (.pixelResolution | affineFromScaleArray)};
 
@@ -67,6 +74,26 @@ def n5visResArrDs: has("downsamplingFactors") and has("pixelResolution") and (.p
 
 def n5visResArr: has("pixelResolution") and (.pixelResolution | type == "array");
 
+def n5vToTransform: . + {
+  "transform": {
+    "type": "affine",
+    "affine": [ 
+            (if n5visResObj then .pixelResolution.dimensions elif n5visResArr then .pixelResolution else null end),
+            (.downsamplingFactors // [1, 1, 1] )] |
+            affineFromScaleAndFactorsArr  
+  },
+  "unit" : (.pixelResolution.unit // "pixel")
+};
+
+def n5vToTransformF: . + {
+  "transform": {
+    "type": "affine",
+    "affine":  affineFromScaleAndFactors(
+            (if n5visResObj then .pixelResolution.dimensions elif n5visResArr then .pixelResolution else null end),
+            (.downsamplingFactors // [1, 1, 1] ) )
+  },
+  "unit" : (.pixelResolution.unit // "pixel")
+};
 def attrHasTform: (.attributes | has("spatialTransform"));
 
 def numTformChildren: .children | reduce (keys| .[]) as $k (

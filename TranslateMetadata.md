@@ -2,11 +2,66 @@
 
 Translations are writtein in [jq](https://stedolan.github.io/jq). See the [jq manual](https://stedolan.github.io/jq/manual/v1.6/) to learn more.
 
-### Examples
+### Practical examples
+
+## COSEM to canonical
+
+With multiscales:
+```
+include "n5";
+addPaths | walk ( if isCosem then cosemToTransform else . end ) | addAllMultiscales
+```
+
+If you know your n5 container only has single scales, you can omit the `addPaths` and `addAllMultiscales`
+functions:
+```
+include "n5";
+walk ( if isCosem then cosemToTransform else . end )
+```
+
+These use the built-in functions:
+* [`isCosem`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L78)
+* [`cosemToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L82-L93)
+* [`addPaths`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L14)
+* [`addAllMultiscales`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L101)
+
+## N5Viewer to canonical
+
+With multiscales:
+```
+include "n5";
+addPaths | walk ( if isN5V then n5vToTransform else . end ) | addAllMultiscales
+```
+
+If you know your n5 container only has single scales, you can omit the `addPaths` and `addAllMultiscales`
+functions:
+```
+include "n5";
+walk ( if isN5V then n5vToTransform else . end )
+```
+
+These use the built-in functions:
+* `isN5V`
+* `n5vToTransform`
+
+
+## N5Viewer and COSEM to canonical
+
+```
+include "n5";
+addPaths |  walk (
+	if isCosem then cosemToTransform
+	elif isN5V then n5vToTransform
+	else . end )
+| addAlMultiscales
+```
+
+
+### Tutorial
 
 #### N5viewer to canonical
 
-This examples shows how to write a translation that converts n5-viewer style spatial metadata to "canonical" metadata style.
+This tutorial shows how to write a translation that converts n5-viewer style spatial metadata to "canonical" metadata style from scratch.
 I.e. a function that adds a new attribute to any `attribute` object in the tree with a `pixelResolution` field.
 
 <details>
@@ -268,5 +323,34 @@ Output:
 ```
 
 </details>
+
+
+#### `id2d`
+
+Returns the 2D identity matrix (homogeneous coordinates) as a flat array, i.e. `[1,0,0, 0,1,0]`
+
+#### `id3d`
+
+Returns the 3D identity matrix (homogeneous coordinates) as a flat array, i.e. `[1,0,0,0, 0,1,0,0, 0,0,1,0]`
+
+#### `setScale2d`
+
+Returns a 2D matrix (homogeneous coordinates) as a flat array, but replaces the diagonal elements
+with the elements of the argument.
+
+#### `setTranslation2d`
+
+Returns a 2D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
+with the elements of the argument.
+
+#### `setScale3d`
+
+Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the diagonal elements
+with the elements of the argument.
+
+#### `setTranslation3d`
+
+Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
+with the elements of the argument.
 
 
