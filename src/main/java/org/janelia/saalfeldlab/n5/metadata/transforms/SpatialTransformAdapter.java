@@ -9,9 +9,11 @@ import com.google.gson.JsonDeserializer;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
 
 public class SpatialTransformAdapter //implements JsonDeserializer<SpatialTransform> {
-	implements JsonDeserializer<SpatialTransform> {
+	implements JsonDeserializer<SpatialTransform>, JsonSerializer<SpatialTransform> {
 //	implements JsonDeserializer<LinearSpatialTransform> {
 
 	@Override
@@ -40,6 +42,11 @@ public class SpatialTransformAdapter //implements JsonDeserializer<SpatialTransf
 		
 		}
 		return null;
+	}
+
+	@Override
+	public JsonElement serialize(SpatialTransform src, Type typeOfSrc, JsonSerializationContext context) {
+		return context.serialize(src);
 	}
 	
 	public static void main( String[] args )
@@ -118,6 +125,4 @@ public class SpatialTransformAdapter //implements JsonDeserializer<SpatialTransf
 		System.out.println( gson.toJson(seq) );
 
 	}
-
-
 }

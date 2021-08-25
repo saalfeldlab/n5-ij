@@ -34,10 +34,11 @@ public class SpatialMetadataTemplateCanonical extends AbstractMetadataTemplatePa
 		try { 
 			final String path = GsonAttributesParser.parseAttribute(attributeMap, "path", String.class, gson);
 			final CalibratedSpatialTransform transform = GsonAttributesParser.parseAttribute(attributeMap, "spatialTransform", CalibratedSpatialTransform.class, gson);
+			final Axis[] axes = GsonAttributesParser.parseAttribute(attributeMap, "axes", Axis[].class, gson);
 			final Optional<DatasetAttributes> attributes = AbstractMetadataTemplateParser.datasetAttributes(gson, attributeMap);
 
 			if( attributes.isPresent())
-				return Optional.of( new SpatialMetadataCanonical( path, transform ));
+				return Optional.of( new SpatialMetadataCanonical( path, transform, axes ));
 			else
 				return Optional.empty();
 		}

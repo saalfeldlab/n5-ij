@@ -16,23 +16,20 @@ public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 		this.affine = affine;
 	}
 	
-	public AffineGet buildTransform()
-	{
-		if( affine.length == 6 )
-		{
+	public AffineGet buildTransform() {
+		if( affine.length == 6 ) {
 			AffineTransform2D tmp = new AffineTransform2D();
 			tmp.set( affine );
 			transform = tmp;
 		}
-		else if( affine.length == 12 )
-		{
+		else if( affine.length == 12 ) {
 			AffineTransform3D tmp = new AffineTransform3D();
 			tmp.set( affine );
 			transform = tmp;
 		}
-		else
-		{
-			AffineTransform tmp = new AffineTransform();
+		else {
+			int nd = (int)Math.floor( Math.sqrt( affine.length ));
+			AffineTransform tmp = new AffineTransform( nd );
 			tmp.set(affine);
 			transform = tmp;
 		}
@@ -40,8 +37,7 @@ public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 	}
 
 	@Override
-	public AffineGet getTransform()
-	{
+	public AffineGet getTransform() {
 		if( transform == null )
 			return buildTransform();
 		else

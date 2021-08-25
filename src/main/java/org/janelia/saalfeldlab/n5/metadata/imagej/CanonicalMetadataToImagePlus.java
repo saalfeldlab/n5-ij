@@ -2,75 +2,170 @@ package org.janelia.saalfeldlab.n5.metadata.imagej;
 
 import ij.ImagePlus;
 import ij.measure.Calibration;
+import net.imglib2.realtransform.AffineGet;
+import net.imglib2.realtransform.AffineTransform;
 import net.imglib2.realtransform.AffineTransform3D;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
+import org.janelia.saalfeldlab.n5.metadata.canonical.Axis;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.canonical.MultiResolutionSpatialMetadataCanonical;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
 import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class CanonicalMetadataToImagePlus implements ImageplusMetadata<CanonicalDatasetMetadata> {
 
-  @Override
-  public void writeMetadata(final CanonicalDatasetMetadata t, final ImagePlus ip) throws IOException {
-
-	final AffineTransform3D xfm = t.getSpatialTransform().spatialTransform3d();
-	final String unit = t.getSpatialTransform().unit();
-
-	ip.setTitle( t.getPath() );
-	final Calibration cal = ip.getCalibration();
-	cal.pixelWidth = xfm.get(0, 0);
-	cal.pixelHeight = xfm.get(1, 1);
-	cal.pixelDepth = xfm.get(2, 2);
-	cal.setUnit(unit);
-
-	cal.xOrigin = xfm.get(0, 3);
-	cal.yOrigin = xfm.get(1, 3);
-	cal.zOrigin = xfm.get(2, 3);
-
-	final int nd = t.getAttributes().getNumDimensions();
-	final long[] dims = t.getAttributes().getDimensions();
-
-	if (nd == 3)
-	  ip.setDimensions(1, (int)dims[2], 1);
-	else if (nd == 4)
-	  ip.setDimensions((int)dims[3], (int)dims[2], 1);
-  }
-	
 	@Override
-	public CanonicalDatasetMetadata readMetadata(final ImagePlus imp) throws IOException
-	{
-		int nd = 2;
-		if (imp.getNSlices() > 1) {
-		  nd++;
+	public void writeMetadata(final CanonicalDatasetMetadata t, final ImagePlus ip) throws IOException {
+
+		final int nd = t.getAttributes().getNumDimensions();
+		final AffineGet xfm = t.getSpatialTransform().spatialTransform();
+		final String unit = t.getSpatialTransform().unit();
+
+		ip.setTitle(t.getPath());
+		final Calibration cal = ip.getCalibration();
+		cal.pixelWidth = xfm.get(0, 0);
+		cal.xOrigin = xfm.get(0, nd);
+		cal.pixelHeight = xfm.get(1, 1);
+		cal.yOrigin = xfm.get(1, nd);
+
+		cal.setUnit(unit);
+
+
+		final Axis[] axes = t.getSpatialTransform().getAxes();
+		final long[] dims = t.getAttributes().getDimensions();
+
+		if( axes != null ) {
+			ip.getCalibration().setXUnit( axes[0].getUnit() );
+			ip.getCalibration().setYUnit( axes[1].getUnit() );
+
+			int i = 2;
+			int nz = 1;
+			int nc = 1;
+			int nt = 1;
+			while( i < axes.length ) {
+				System.out.println( axes[i].getType() );
+				// anything that is not space or time goes into channels
+				// could be wrong if multiple dimensions are neither space nor time
+				// if so, flatten all those dimensions into channels
+				// (I think adding to dimensions accomplishes this - JB) 
+				// TODO reconsider if these defaults are what we want
+				if( axes[i].getType().equals("space")) {
+					nz  += (int)dims[i];
+					cal.pixelDepth = xfm.get(i, i);
+					cal.zOrigin = xfm.get(i, i+1);
+				}
+				else if( axes[i].getType().equals("time")) {
+					nt  += (int)dims[i];
+					cal.frameInterval = xfm.get(i, i);
+				}
+				else
+					nc  += (int)dims[i];
+
+				i++;
+			}
+			ip.setDimensions(nc, nz, nt);
 		}
-		
-		double[] params;
-		if( nd == 2 )
-			params = new double[] {};
-		else if( nd == 3 )
-			params = new double[] {};
-		else
-			return null;
+		else {
+			// if axes are not specified, assume xyz for 3d 
+			// and assume xyzc for 4d
+			if (nd == 3) {
+				ip.setDimensions(1, (int) dims[2], 1);
+				cal.pixelDepth = xfm.get(2, 2);
+				cal.zOrigin = xfm.get(2, nd);
+			}
+			else if (nd == 4) {
+				ip.setDimensions((int) dims[3], (int) dims[2], 1);
+				cal.pixelDepth = xfm.get(3, 3);
+				cal.zOrigin = xfm.get(3, nd);
+			}
+		}
+
+	}
+
+	public Axis[] axesFromImageplus(final ImagePlus imp) {
+
+		int nd = imp.getNDimensions();
+		Axis[] axes = new Axis[ nd ];
+
+		axes[ 0 ] = new Axis( "X", "space", imp.getCalibration().getXUnit());
+		axes[ 1 ] = new Axis( "Y", "space", imp.getCalibration().getYUnit());
+
+		int i = 2;
+		if( imp.getNChannels() > 1 )
+			axes[ i++ ] = new Axis( "channels", "C", "null" );
+
+		if( imp.getNSlices() > 1 )
+			axes[ i++ ] = new Axis( "space", "Z", imp.getCalibration().getZUnit());
+
+		if( imp.getNFrames() > 1 )
+			axes[ i++ ] = new Axis( "time", "T", imp.getCalibration().getTimeUnit() );
+
+		return axes;
+	}
+
+	public AffineTransform getAffine( final ImagePlus imp ) {
+		int nd = imp.getNDimensions();
+		AffineTransform affine = new AffineTransform( nd );
+
+		affine.set( imp.getCalibration().pixelWidth, 0, 0);
+		affine.set( imp.getCalibration().xOrigin, 0, nd);
+
+		affine.set( imp.getCalibration().pixelHeight, 1, 1);
+		affine.set( imp.getCalibration().yOrigin, 1, nd);
+
+		int i = 2;
+		if( imp.getNChannels() > 1 ) {
+			// channels dont have spacing information
+			i++;
+		}
+
+		if( imp.getNSlices() > 1 ) {
+			affine.set( imp.getCalibration().pixelDepth, i, i);
+			affine.set( imp.getCalibration().zOrigin, i, nd);
+			i++;
+		}
+
+		if( imp.getNFrames() > 1 ) {
+			affine.set( imp.getCalibration().frameInterval, i, i);
+			i++;
+		}
+
+		return affine;
+	}
+
+	@Override
+	public CanonicalDatasetMetadata readMetadata(final ImagePlus imp) throws IOException {
+		int nd = imp.getNDimensions();
+
+		double[] params = getAffine( imp ).getRowPackedCopy();
+//		double[] params;
+//		if (nd == 2)
+//			params = new double[] { 
+//					imp.getCalibration().pixelWidth, 0, imp.getCalibration().xOrigin, 
+//					0, imp.getCalibration().pixelHeight, imp.getCalibration().yOrigin };
+//		else if (nd == 3)
+//			params = new double[]{
+//					imp.getCalibration().pixelWidth, 0, 0, imp.getCalibration().xOrigin, 
+//					0, imp.getCalibration().pixelHeight, 0, imp.getCalibration().yOrigin, 
+//					0, 0, imp.getCalibration().pixelDepth, imp.getCalibration().zOrigin };
+//		else
+//			return null;
 
 		// TODO what to about attrs?
-		DatasetAttributes attributes = new DatasetAttributes(
-				new long[]{0, 0, 0},
-				imp.getDimensions(),
-				DataType.FLOAT32,
-				new GzipCompression());
+		final int[] impDims = Arrays.stream(imp.getDimensions()).filter( x -> x > 1 ).toArray();
+		final long[] dims = Arrays.stream(impDims).mapToLong( x -> x ).toArray();
+		final DatasetAttributes attributes = new DatasetAttributes( dims, impDims, DataType.FLOAT32, new GzipCompression());
 
-		final SpatialMetadataCanonical spatialMeta = new SpatialMetadataCanonical(
-				"", 
-				new AffineSpatialTransform( params ),
-				imp.getCalibration().getUnit());
+		final SpatialMetadataCanonical spatialMeta = new SpatialMetadataCanonical("",
+				new AffineSpatialTransform(params), imp.getCalibration().getUnit(),
+				axesFromImageplus(imp));
 
-		return new CanonicalDatasetMetadata( "", spatialMeta, null, null, attributes );
+		return new CanonicalDatasetMetadata("", spatialMeta, attributes);
 	}
 
 }

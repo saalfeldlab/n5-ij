@@ -1,19 +1,8 @@
 package org.janelia.saalfeldlab.n5.metadata.canonical;
 
-import java.lang.reflect.Type;
-import java.util.Optional;
-
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.metadata.AbstractN5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.AbstractN5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
 import org.janelia.saalfeldlab.n5.metadata.transforms.CalibratedSpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.LinearSpatialTransform;
-
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
 
 import net.imglib2.realtransform.AffineGet;
 
@@ -26,21 +15,29 @@ import net.imglib2.realtransform.AffineGet;
 public class SpatialMetadataCanonical implements SpatialMetadata {
 
 	private final LinearSpatialTransform transform;
-	private final String unit;
+	private final String unit; // redundant, also in axis list
 	private final String path;
+	private final Axis[] axes;
 	
-	public SpatialMetadataCanonical( final String path, final LinearSpatialTransform transform, final String unit) {
+	public SpatialMetadataCanonical( final String path, final LinearSpatialTransform transform,
+			final String unit, final Axis[] axes ) {
 
 		this.path = path;
 		this.unit = unit;
 		this.transform = transform;
+		this.axes = axes;
 	}	
-	
-	public SpatialMetadataCanonical( final String path, CalibratedSpatialTransform calTransform) {
+
+	public SpatialMetadataCanonical( final String path, CalibratedSpatialTransform calTransform, final Axis[] axes) {
 
 		this.path = path;
 		this.unit = calTransform.getUnit();
 		this.transform = calTransform.getSpatialTransform();
+		this.axes = axes;
+	}
+
+	public LinearSpatialTransform transform() {
+		return transform;
 	}
 
 	@Override
@@ -58,7 +55,11 @@ public class SpatialMetadataCanonical implements SpatialMetadata {
 	public String getPath() {
 		return path;
 	}
-	
+
+	public Axis[] getAxes() {
+		return axes;
+	}
+
 //	public static class SpatialMetadataTemplateAdapter implements JsonDeserializer<SpatialMetadataTemplate>
 //	{
 //

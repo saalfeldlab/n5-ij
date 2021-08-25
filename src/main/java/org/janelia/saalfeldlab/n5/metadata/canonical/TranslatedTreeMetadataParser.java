@@ -80,15 +80,7 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 
 		scope = buildRootScope();
 		objMapper = new ObjectMapper();
-
-		final GsonBuilder gsonBuilder = new GsonBuilder();
-		gsonBuilder.registerTypeAdapter(SpatialTransform.class, new SpatialTransformAdapter());
-		gsonBuilder.registerTypeAdapter(LinearSpatialTransform.class, new SpatialTransformAdapter());
-		gsonBuilder.registerTypeAdapter(CanonicalMetadata.class, new CanonicalMetadata.CanonicalMetadataAdapter());
-		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
-		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
-		gsonBuilder.disableHtmlEscaping();
-		gson = gsonBuilder.create();
+		gson = buildGson();
 
 		root = ContainerMetadataNode.build(n5, gson);
 		try {
@@ -98,6 +90,17 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 			e.printStackTrace();
 			translatedRoot = null;
 		}
+	}
+
+	public static Gson buildGson() {
+		final GsonBuilder gsonBuilder = new GsonBuilder();
+		gsonBuilder.registerTypeAdapter(SpatialTransform.class, new SpatialTransformAdapter());
+		gsonBuilder.registerTypeAdapter(LinearSpatialTransform.class, new SpatialTransformAdapter());
+		gsonBuilder.registerTypeAdapter(CanonicalMetadata.class, new CanonicalMetadata.CanonicalMetadataAdapter());
+		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
+		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
+		gsonBuilder.disableHtmlEscaping();
+		return gsonBuilder.create();
 	}
 
 	public static String resolveImports(String query) {
