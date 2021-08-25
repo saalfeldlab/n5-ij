@@ -2,6 +2,8 @@ def isDataset: type == "object" and has("attribute") and (.attributes | has("dim
 
 def isAttributes: type == "object" and has("dimensions") and has("dataType");
 
+def numDimensions: .dimensions | length;
+
 def hasDims: .attributes | has("dimensions");
 
 def flattenTree: .. | select( type == "object" and has("path")) | del(.children);
@@ -23,6 +25,12 @@ def setTranslation2d( $t ): .[2] = $t[0] | .[5] = $t[1];
 def setScale3d( $s ): .[0] = $s[0] | .[5] = $s[1] | .[10] = $s[2];
 
 def setTranslation3d( $t ): .[3] = $t[0] | .[7] = $t[1] | .[11] = $t[2];
+
+def setFlatAffine( $val; $nd; $i; $j ): ($i * ($nd +1)  + $j) as $k | .[$k] = $val;
+
+def identityAsFlatAffine( $nd ): 
+    reduce range( $nd * ($nd +1)) as $i ([]; . + [0]) |
+    reduce range($nd) as $i (.; . | setFlatAffine( 1; $nd; $i; $i ));
 
 def arrayAndUnitToTransform: {
     "spatialTransform": {
@@ -118,6 +126,49 @@ def cosemToTransformSimple: { "spatialTransform": {
     };
 
 def cosemToTransform: (.transform |= . + cosemAxisIndexes) | . + (.transform | cosemToTransformSimple);
+
+def isIJ: isAttributes and has("pixelWidth") and has("pixelHeight") and has("pixelUnit") and has("xOrigin") and has("yOrigin");
+
+def ijToAffine: 
+    . as $this |
+    if ( .dimensions | length ) == 2 then
+        id2d | setScale2d( [$this.pixelWidth, $this.pixelHeight] ) | setTranslation2d([ $this.xOrigin, $this.yOrigin] ) 
+    elif ( .dimensions | length ) == 3 then
+        id3d | setScale3d( [$this.pixelWidth, $this.pixelHeight, $this.pixelDepth]) | setTranslation3d([ $this.xOrigin, $this.yOrigin, $this.zOrigin])
+    else null end;
+
+def ijDimensionsSafe: . as $this | [1,1,1] 
+    | if ( $this.numChannels > 1 ) then .[0] = $this.numChannels else . end 
+    | if ( $this.numSlices > 1 ) then .[1] = $this.numSlices else . end 
+    | if ( $this.numFrames > 1 ) then .[2] = $this.numFrames else . end;
+
+def ijDimensions: [.numChannels, .numSlices, .numFrames];
+
+def axis( $l; $t; $u ): { label : $l, type : $t, unit : $u };
+
+def ijAxes: .pixelUnit as $unit | ijDimensions as $czt | 
+     [  axis( "x"; "space"; $unit ), axis( "y"; "space"; $unit ) ] 
+     | if ($czt | .[0]) > 1 then . + [axis("c";"channels";"na")] else . end
+     | if ($czt | .[1]) > 1 then . + [axis("z";"space";$unit)] else . end
+     | if ($czt | .[2]) > 1 then . + [axis("t";"time";"s")] else . end;
+
+def ijTransform: . as $this | numDimensions as $nd | ijDimensions as $czt 
+    | identityAsFlatAffine($nd)
+    | setFlatAffine( $this.pixelWidth; $nd; 0; 0 )
+    | setFlatAffine( $this.xOrigin; $nd; 0; $nd )
+    | setFlatAffine( $this.pixelHeight; $nd; 1; 1 )
+    | setFlatAffine( $this.yOrigin; $nd; 1; $nd )
+    | [2, .]
+    | if ($czt | .[0]) > 1 then [ .[0] +1, .[1] ] else . end
+    | if ($czt | .[1]) > 1 then 
+        .[0] as $i | .[1] | setFlatAffine( $this.pixelDepth; $nd; $i; $i) | setFlatAffine( $this.zOrigin; $nd; $i; $nd) 
+        | [ $i +1, . ]
+        else . end
+    | if ($czt | .[2]) > 1 then 
+        .[0] as $i | .[1] | setFlatAffine( $this.frameInterval; $nd; $i; $i) | [ $i +1, . ]
+        else . end
+    | .[1];
+
 
 def hasMultiscales: type == "object" and has("children") and ( numTformChildren > 1 );
 
