@@ -18,12 +18,11 @@ functions:
 include "n5";
 walk ( if isCosem then cosemToTransform else . end )
 ```
-
-These use the built-in functions:
-* [`isCosem`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L78)
-* [`cosemToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L82-L93)
-* [`addPaths`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L14)
-* [`addAllMultiscales`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L101)
+uses:
+* [`isCosem`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L113)
+* [`cosemToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L128)
+* [`addPaths`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L15)
+* [`addAllMultiscales`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L181)
 
 ## N5Viewer to canonical
 
@@ -40,9 +39,9 @@ include "n5";
 walk ( if isN5V then n5vToTransform else . end )
 ```
 
-These use the built-in functions:
-* `isN5V`
-* `n5vToTransform`
+uses:
+* [`isN5V`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L71)
+* [`n5vToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L85)
 
 
 ## N5Viewer and COSEM to canonical
@@ -55,6 +54,18 @@ addPaths |  walk (
 	else . end )
 | addAlMultiscales
 ```
+
+## ImageJ to canonical
+
+```
+include "n5";
+walk (
+	if isIJ then ijToTransform
+	else . end )
+```
+
+uses:
+* [`ijToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L172)
 
 
 ### Tutorial
@@ -325,30 +336,30 @@ Output:
 </details>
 
 
-#### `id2d`
+#### [`id2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L19)
 
 Returns the 2D identity matrix (homogeneous coordinates) as a flat array, i.e. `[1,0,0, 0,1,0]`
 
-#### `id3d`
+#### [`id3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L17)
 
 Returns the 3D identity matrix (homogeneous coordinates) as a flat array, i.e. `[1,0,0,0, 0,1,0,0, 0,0,1,0]`
 
-#### `setScale2d`
+#### [`setScale2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L21)
 
 Returns a 2D matrix (homogeneous coordinates) as a flat array, but replaces the diagonal elements
 with the elements of the argument.
 
-#### `setTranslation2d`
+#### [`setTranslation2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L23)
 
 Returns a 2D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
 with the elements of the argument.
 
-#### `setScale3d`
+#### [`setScale3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L25)
 
 Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the diagonal elements
 with the elements of the argument.
 
-#### `setTranslation3d`
+#### [`setTranslation3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L27)
 
 Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
 with the elements of the argument.
