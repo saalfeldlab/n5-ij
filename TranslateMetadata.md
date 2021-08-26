@@ -208,25 +208,178 @@ I.e. we need a function that converts this input:
 to this output:
 ```json
 {
-    "physicalScales": {
-        "x":2.0,
-        "y":3.0,
-        "z":4.0
-    },
-    "physicalUnit": "cm",
-    "spatialTransform": {
-    "transform":{
-        "type": "affine",
-        "affine": [2, 0, 0, 0, 0, 3, 0, 0, 0, 0, 4, 0]
-    },
-    "unit":"mm"
-    }
+  "pixelResolution": {
+    "dimensions": [ 1, 2, 3 ],
+    "unit": "um"
+  },
+  "downsamplingFactors": [ 2, 4, 8 ],
+  "transform": {
+    "type": "affine",
+    "affine": [ 2, 0, 0, 0.5, 0, 8, 0, 1.5, 0, 0, 24, 3.5 ]
+  },
+  "unit": "um"
 }
 ```
 
 ### Built-in functions
 
-#### `isDataset`
+#### N5Viewer
+
+##### [`isN5v`]
+
+Returns true when called from a tree node that has metadata in n5 viewers metadata dialect.
+
+<details>
+<summary>Example</summary>
+
+Input 1:
+```json
+{
+    "pixelResolution": [1,2,3],
+    "downsamplingFactors": [2,2,2]
+}
+```
+
+Output 1:
+`true`
+
+Input 2:
+```json
+{
+	"resolution": [1,2,3],
+	"downsamplingFactors": [2,2,2]
+}
+```
+
+Output 2:
+`false`
+
+</details>
+
+##### [`n5vToTransform`]
+
+Adds a canonical transform object from n5 viewer metadata dialect.
+
+<details>
+<summary>Example</summary>
+
+Input:
+```json
+{
+	"pixelResolution": {
+		"dimensions":[1,2,3],
+		"unit": "um"
+    }
+	"downsamplingFactors": [2,2,2]
+}
+```
+
+Output:
+```json
+{
+  "pixelResolution": {
+    "dimensions": [ 1, 2, 3 ],
+    "unit": "um"
+  },
+  "downsamplingFactors": [ 2, 4, 8 ],
+  "transform": {
+    "type": "affine",
+    "affine": [ 2, 0, 0, 0.5, 0, 8, 0, 1.5, 0, 0, 24, 3.5 ]
+  },
+  "unit": "um"
+}
+```
+
+</details>
+
+#### COSEM
+
+##### `isCosem`
+
+Returns true when called from a tree node that has metadata in the COSEM metadata dialect.
+
+<details>
+<summary>Example</summary>
+
+Input 1:
+```json
+{
+  "transform": {
+    "axes": [ "z", "y", "x" ],
+    "scale": [ 3, 2, 1 ],
+    "translate": [ 0.3, 0.2, 0.1 ],
+    "units": [ "mm", "mm", "mm" ]
+  }
+}
+```
+
+Output 1:
+`true`
+
+Input 2:
+```json
+{
+    "pixelResolution": {
+		"dimensions": [1,2,3],
+		"unit": "um"
+    }
+    "downsamplingFactors": [2,2,2]
+}
+```
+
+Output 2:
+`false`
+
+</details>
+
+##### `cosemToTransform`
+
+Adds a canonical transform object from the COSEM metadata attributes.
+
+<details>
+<summary>Example</summary>
+
+Input:
+
+```json
+{
+  "transform": {
+    "axes": [ "z", "y", "x" ],
+    "scale": [ 3, 2, 1 ],
+    "translate": [ 0.3, 0.2, 0.1 ],
+    "units": [ "mm", "mm", "mm" ],
+    "axisIndexes": [ 2, 1, 0 ]
+  }
+}
+```
+
+
+Output:
+
+```json
+{
+  "transform": {
+    "axes": [ "z", "y", "x" ],
+    "scale": [ 3, 2, 1 ],
+    "translate": [ 0.3, 0.2, 0.1 ],
+    "units": [ "mm", "mm", "mm" ],
+    "axisIndexes": [ 2, 1, 0 ]
+  },
+  "spatialTransform": {
+    "transform": {
+      "type": "affine",
+      "affine": [ 1, 0, 0, 0.1, 0, 2, 0, 0.2, 0, 0, 3, 0.3 ]
+    },
+    "unit": "mm"
+  }
+}
+```
+
+</details>
+
+#### Others
+
+##### [`isDataset`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L1)
 
 Returns true when called from a tree node that represents an n5 dataset.
 
@@ -248,7 +401,42 @@ Output:
 `true`
 </details>
 
-#### `addPaths`
+##### [`isAttributes`]
+
+Returns true when called from a tree node that represents the attributes of an n5 group or dataset.
+
+<details>
+<summary>Examples</summary>
+
+
+Input 1:
+```json
+{
+    "attributes": {
+        "dimensions": [8, 8],
+        "dataType": "uint8"
+    },
+    "children" : {}
+}
+```
+
+Output 2:
+`false`
+
+Input 1:
+```json
+{
+	"dimensions": [8, 8],
+	"dataType": "uint8"
+}
+```
+
+Output 2:
+`true`
+
+</details
+
+##### [`addPaths`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L15)
 
 Adds `path` variables into attribute objects throughout the tree.  Useful for making local operations
 aware of their global location in the tree.
@@ -306,7 +494,7 @@ Output:
 </details>
 
 
-#### `arrayAndUnitToTransform`
+##### [`arrayAndUnitToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L35)
 
 Creates a canonical `spatialTransform` object from a two element array containing a flat affine tranform,
 and spatial units.
@@ -336,30 +524,30 @@ Output:
 </details>
 
 
-#### [`id2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L19)
+##### [`id2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L19)
 
 Returns the 2D identity matrix (homogeneous coordinates) as a flat array, i.e. `[1,0,0, 0,1,0]`
 
-#### [`id3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L17)
+##### [`id3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L17)
 
 Returns the 3D identity matrix (homogeneous coordinates) as a flat array, i.e. `[1,0,0,0, 0,1,0,0, 0,0,1,0]`
 
-#### [`setScale2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L21)
+##### [`setScale2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L21)
 
 Returns a 2D matrix (homogeneous coordinates) as a flat array, but replaces the diagonal elements
 with the elements of the argument.
 
-#### [`setTranslation2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L23)
+##### [`setTranslation2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L23)
 
 Returns a 2D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
 with the elements of the argument.
 
-#### [`setScale3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L25)
+##### [`setScale3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L25)
 
 Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the diagonal elements
 with the elements of the argument.
 
-#### [`setTranslation3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L27)
+##### [`setTranslation3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L27)
 
 Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
 with the elements of the argument.
