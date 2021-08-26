@@ -129,14 +129,6 @@ def cosemToTransform: (.transform |= . + cosemAxisIndexes) | . + (.transform | c
 
 def isIJ: isAttributes and has("pixelWidth") and has("pixelHeight") and has("pixelUnit") and has("xOrigin") and has("yOrigin");
 
-def ijToAffine: 
-    . as $this |
-    if ( .dimensions | length ) == 2 then
-        id2d | setScale2d( [$this.pixelWidth, $this.pixelHeight] ) | setTranslation2d([ $this.xOrigin, $this.yOrigin] ) 
-    elif ( .dimensions | length ) == 3 then
-        id3d | setScale3d( [$this.pixelWidth, $this.pixelHeight, $this.pixelDepth]) | setTranslation3d([ $this.xOrigin, $this.yOrigin, $this.zOrigin])
-    else null end;
-
 def ijDimensionsSafe: . as $this | [1,1,1] 
     | if ( $this.numChannels > 1 ) then .[0] = $this.numChannels else . end 
     | if ( $this.numSlices > 1 ) then .[1] = $this.numSlices else . end 
@@ -152,7 +144,15 @@ def ijAxes: .pixelUnit as $unit | ijDimensions as $czt |
      | if ($czt | .[1]) > 1 then . + [axis("z";"space";$unit)] else . end
      | if ($czt | .[2]) > 1 then . + [axis("t";"time";"s")] else . end;
 
-def ijTransform: . as $this | numDimensions as $nd | ijDimensions as $czt 
+def ijAffine2d3d: 
+    . as $this |
+    if ( .dimensions | length ) == 2 then
+        id2d | setScale2d( [$this.pixelWidth, $this.pixelHeight] ) | setTranslation2d([ $this.xOrigin, $this.yOrigin] ) 
+    elif ( .dimensions | length ) == 3 then
+        id3d | setScale3d( [$this.pixelWidth, $this.pixelHeight, $this.pixelDepth]) | setTranslation3d([ $this.xOrigin, $this.yOrigin, $this.zOrigin])
+    else null end;
+
+def ijAffineNd: . as $this | numDimensions as $nd | ijDimensions as $czt 
     | identityAsFlatAffine($nd)
     | setFlatAffine( $this.pixelWidth; $nd; 0; 0 )
     | setFlatAffine( $this.xOrigin; $nd; 0; $nd )
@@ -169,6 +169,8 @@ def ijTransform: . as $this | numDimensions as $nd | ijDimensions as $czt
         else . end
     | .[1];
 
+def ijToTransform: ([ijAffineNd, null] | arrayAndUnitToTransform) as $transform |
+    ijAxes as $axes | . + $transform | . + { axes: $axes } ;
 
 def hasMultiscales: type == "object" and has("children") and ( numTformChildren > 1 );
 
