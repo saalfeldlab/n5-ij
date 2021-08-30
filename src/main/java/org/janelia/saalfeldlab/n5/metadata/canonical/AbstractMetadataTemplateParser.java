@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.io.IOException;
 import java.lang.reflect.Type;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
@@ -90,7 +91,17 @@ public abstract class AbstractMetadataTemplateParser<T extends N5Metadata> imple
 	@Override
 	public Optional<T> parseMetadata(N5Reader n5, N5TreeNode node) {
 
-		HashMap<String, Object> attrs = N5TreeNode.getMetadataMap(n5, node.getPath());
+		HashMap<String, JsonElement> attrs;
+		if( n5 instanceof AbstractGsonReader ) {
+			try {
+				attrs = ((AbstractGsonReader) n5).getAttributes( node.getPath() );
+			} catch (IOException e) {
+				return Optional.empty();
+			}
+		}
+		else
+			return Optional.empty();
+
 		if( attrs.isEmpty() )
 		{
 			// TODO should i display this warning?

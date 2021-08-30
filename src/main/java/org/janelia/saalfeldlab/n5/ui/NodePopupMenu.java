@@ -22,7 +22,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.tree.TreePath;
 
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -106,16 +105,13 @@ public class NodePopupMenu extends JPopupMenu {
         if( popupListener.selPath != null ) {
         	System.out.println( popupListener.selPath.getPath());
         	Object o = popupListener.selPath.getLastPathComponent();
-        	if( o instanceof N5TreeNode )
-        	{
-        		final N5TreeNode node = (N5TreeNode)o;
-        		setText( node );
-        	}
-        	else if ( o instanceof JTreeNodeWrapper )
-        	{
-        		final JTreeNodeWrapper wrapper = (JTreeNodeWrapper)o;
-        		setText( wrapper.getNode());
-        	}
+			if (o instanceof N5TreeNode) {
+				final N5TreeNode node = (N5TreeNode) o;
+				setText(node);
+			} else if (o instanceof N5TreeNodeWrapper) {
+				final N5TreeNodeWrapper wrapper = (N5TreeNodeWrapper) o;
+				setText(wrapper.getNode());
+			}
 			else
 				System.out.println( o.getClass());
         }

@@ -107,15 +107,20 @@ public class ContainerMetadataNode {
 
 	public static ContainerMetadataNode buildHelper(final AbstractGsonReader n5, N5TreeNode baseNode ) {
 
-		final Optional<HashMap<String, JsonElement>> attrs = N5TreeNode.getMetadataMapJson(n5, baseNode.getPath());
+		HashMap<String, JsonElement> attrs = null;
+		try {
+			attrs = n5.getAttributes(baseNode.getPath());
+		} catch (IOException e) {
+		}
+
 		final List<N5TreeNode> children = baseNode.childrenList();
 
 		final HashMap<String, ContainerMetadataNode> childMap = new HashMap<>();
 		for (N5TreeNode child : children)
 			childMap.put(child.getNodeName(), buildHelper(n5, child));
 
-		if (attrs.isPresent() )
-			return new ContainerMetadataNode(attrs.get(), childMap);
+		if ( attrs != null )
+			return new ContainerMetadataNode(attrs, childMap);
 		else
 			return new ContainerMetadataNode(new HashMap<>(), childMap);
 	}
