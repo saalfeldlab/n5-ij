@@ -47,7 +47,6 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 			int nc = 0;
 			int nt = 0;
 			while( i < axes.length ) {
-				System.out.println( axes[i].getType() );
 				// anything that is not space or time goes into channels
 				// could be wrong if multiple dimensions are neither space nor time
 				// if so, flatten all those dimensions into channels

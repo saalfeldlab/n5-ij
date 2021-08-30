@@ -210,6 +210,17 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 		return gson.fromJson(gson.toJson(attrMap), CanonicalMetadata.class);
 	}
 
+	public static boolean testTranslation( String translationRaw )
+	{
+		String translation = resolveImports( translationRaw );
+		try {
+			JsonQuery.compile( translation, Versions.JQ_1_6 );
+		} catch (JsonQueryException e) {
+			return false;
+		}
+		return true;
+	}
+
 	public static Scope buildRootScope() {
 		// First of all, you have to prepare a Scope which s a container of
 		// built-in/user-defined functions and variables.

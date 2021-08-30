@@ -41,6 +41,8 @@ import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParse
 
 public class N5MetadataTranslationPanel {
 
+	private static final String DEFAULT_TEXT = "include \"n5\";";
+
 	private float fontScale = 1.0f;
 	
 	private JTextArea textArea;
@@ -97,7 +99,13 @@ public class N5MetadataTranslationPanel {
 
 	public boolean isTranslationProvided() {
 
-		return !textArea.getText().isEmpty();
+		final String txt = textArea.getText();
+		boolean textSet = !( txt.isEmpty() || txt.equals(DEFAULT_TEXT));
+		if( textSet ) {
+			return TranslatedTreeMetadataParser.testTranslation( txt );
+		}
+		else
+			return false;
 	}
 
 	public JPanel buildPanel()
@@ -108,8 +116,8 @@ public class N5MetadataTranslationPanel {
 		panel.add( new JLabel("Translation specification"));
 
 		textArea = new JTextArea();
-		textArea.setFont( textArea.getFont().deriveFont( (float)fontScale * 18f) );
-		textArea.setText("include \"n5\";");
+		textArea.setFont(textArea.getFont().deriveFont((float) fontScale * 18f));
+		textArea.setText(DEFAULT_TEXT);
 
 		final JScrollPane textView = new JScrollPane( textArea );
 		panel.add( textView, BorderLayout.CENTER );
