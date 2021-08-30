@@ -35,7 +35,6 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 
 		cal.setUnit(unit);
 
-
 		final Axis[] axes = t.getSpatialTransform().getAxes();
 		final long[] dims = t.getAttributes().getDimensions();
 
@@ -44,9 +43,9 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 			ip.getCalibration().setYUnit( axes[1].getUnit() );
 
 			int i = 2;
-			int nz = 1;
-			int nc = 1;
-			int nt = 1;
+			int nz = 0;
+			int nc = 0;
+			int nt = 0;
 			while( i < axes.length ) {
 				System.out.println( axes[i].getType() );
 				// anything that is not space or time goes into channels
@@ -68,6 +67,9 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 
 				i++;
 			}
+			nc = nc == 0 ? 1 : nc;
+			nz = nz == 0 ? 1 : nz;
+			nt = nt == 0 ? 1 : nt;
 			ip.setDimensions(nc, nz, nt);
 		}
 		else {
