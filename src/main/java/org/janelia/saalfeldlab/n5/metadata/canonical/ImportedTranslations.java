@@ -1,21 +1,21 @@
 package org.janelia.saalfeldlab.n5.metadata.canonical;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
+
+import org.apache.commons.compress.utils.IOUtils;
 
 public class ImportedTranslations {
-	
-	final File jqFile;
 	
 	final String translation;
 	
 	public ImportedTranslations() {
-		jqFile = new File("src/main/resources/n5.jq");	
+
+		InputStream stream = this.getClass().getResourceAsStream("/n5.jq");
 		byte[] encoded = null;
 		try {
-		  encoded = Files.readAllBytes( jqFile.toPath() );
+			encoded = IOUtils.toByteArray(stream);
 		} catch (IOException e) {
 		}
 
