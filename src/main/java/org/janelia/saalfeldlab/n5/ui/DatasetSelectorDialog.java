@@ -55,7 +55,6 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
-import javax.swing.SwingUtilities;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultMutableTreeNode;
@@ -70,8 +69,6 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -326,9 +323,8 @@ public class DatasetSelectorDialog {
 	final JPanel panel = new JPanel(false);
 	panel.setLayout(new GridBagLayout());
 	tabs.addTab("Main", panel);
-
-	spatialMetaSpec = new N5SpatialKeySpecDialog();
 	tabs.addTab("Spatial Metadata", spatialMetaSpec.buildPanel() );
+	tabs.addTab("Metadata Translation", translationPanel.buildPanel());
 
 	containerPathText = new JTextField();
 	containerPathText.setText(initialContainerPath);
