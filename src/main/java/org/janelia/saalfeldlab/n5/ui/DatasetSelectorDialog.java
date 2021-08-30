@@ -35,7 +35,6 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.N5TreeNode.JTreeNodeWrapper;
 import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
@@ -328,8 +327,8 @@ public class DatasetSelectorDialog {
 	panel.setLayout(new GridBagLayout());
 	tabs.addTab("Main", panel);
 
+	spatialMetaSpec = new N5SpatialKeySpecDialog();
 	tabs.addTab("Spatial Metadata", spatialMetaSpec.buildPanel() );
-	tabs.addTab("Metadata Translation", translationPanel.buildPanel());
 
 	containerPathText = new JTextField();
 	containerPathText.setText(initialContainerPath);
@@ -585,7 +584,7 @@ public class DatasetSelectorDialog {
 	}
 
 	// set the root node for the JTree
-	rootJTreeNode = rootNode.asTreeNode();
+	rootJTreeNode = new N5TreeNodeWrapper( rootNode );
 	treeModel.setRoot(rootJTreeNode);
 	messageLabel.setText("Done");
 	dialog.repaint();
@@ -623,7 +622,7 @@ public class DatasetSelectorDialog {
 	} else {
 	  // datasets were selected by the user
 	  for (final TreePath path : containerTree.getSelectionPaths())
-		selectedMetadata.add(((JTreeNodeWrapper)path.getLastPathComponent()).getNode().getMetadata());
+		selectedMetadata.add(((N5TreeNodeWrapper)path.getLastPathComponent()).getNode().getMetadata());
 	}
 	okCallback.accept(new DataSelection(n5, selectedMetadata));
 	dialog.setVisible(false);
@@ -704,8 +703,8 @@ public class DatasetSelectorDialog {
 		  continue;
 
 		final Object last = path.getLastPathComponent();
-		if (last instanceof JTreeNodeWrapper) {
-		  final N5TreeNode node = ((JTreeNodeWrapper)last).getNode();
+		if (last instanceof N5TreeNodeWrapper) {
+		  final N5TreeNode node = ((N5TreeNodeWrapper)last).getNode();
 		  if (node.getMetadata() == null) {
 			selectionModel.removeSelectionPath(path);
 		  }

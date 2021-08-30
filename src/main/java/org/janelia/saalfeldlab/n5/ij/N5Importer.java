@@ -28,6 +28,7 @@ package org.janelia.saalfeldlab.n5.ij;
 import ij.IJ;
 import ij.ImagePlus;
 import ij.Macro;
+import ij.Prefs;
 import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
@@ -41,6 +42,7 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
+import net.imglib2.parallel.DefaultTaskExecutor;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
@@ -81,6 +83,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 public class N5Importer implements PlugIn {
@@ -132,6 +136,8 @@ public class N5Importer implements PlugIn {
 
   private Thread loaderThread;
 
+  private ExecutorService exec;
+
   private boolean record;
 
   private int numDimensionsForCrop;
@@ -148,13 +154,15 @@ public class N5Importer implements PlugIn {
 
 	// default image plus metadata parsers
 	impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
-	impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
+	impMetaWriterTypes.put( N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 	impMetaWriterTypes.put( N5CosemMetadata.class, new CosemToImagePlus());
 	impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
 
 	numDimensionsForCrop = 5;
 	initMaxValuesForCrop = new long[numDimensionsForCrop];
 	Arrays.fill(initMaxValuesForCrop, Long.MAX_VALUE);
+
+	exec =  Executors.newFixedThreadPool( Prefs.getThreads() );
   }
 
   public N5Reader getN5() {
@@ -199,6 +207,7 @@ public class N5Importer implements PlugIn {
 			  new N5MetadataParser[]{}, // no group parsers
 			  PARSERS);
 
+	  selectionDialog.setLoaderExecutor( exec );
 	  selectionDialog.setTreeRenderer(new N5DatasetTreeCellRenderer(true));
 //	  selectionDialog.getTranslationPanel().setFilter(
 //			  x -> 
@@ -279,7 +288,7 @@ public class N5Importer implements PlugIn {
 	  meta = discoverer.parse( "" ).getMetadata();
 
 	  if( meta instanceof N5DatasetMetadata )
-		  process( n5ForThisDataset, n5Path, Collections.singletonList( (N5DatasetMetadata)meta ), openAsVirtual, thisDatasetCropInterval,
+		  process( n5ForThisDataset, n5Path, exec, Collections.singletonList( (N5DatasetMetadata)meta ), openAsVirtual, thisDatasetCropInterval,
 			  impMetaWriterTypes );
 	  else
 		  System.err.println( "not a dataset : " + n5Path );
@@ -361,6 +370,7 @@ public class N5Importer implements PlugIn {
   @SuppressWarnings({"rawtypes", "unchecked"})
   public static <T extends NumericType<T> & NativeType<T>, M extends N5DatasetMetadata> ImagePlus read(
 		  final N5Reader n5,
+		  final ExecutorService exec,
 		  final N5DatasetMetadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
 		  final ImageplusMetadata<M> ipMeta) throws IOException {
 
@@ -399,7 +409,10 @@ public class N5Importer implements PlugIn {
 	  imp = ImageJFunctions.wrap(convImg, d);
 	} else {
 	  ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(img);
-	  LoopBuilder.setImages(convImg, ipImg).forEachPixel((x, y) -> y.set(x));
+	  LoopBuilder.setImages( convImg, ipImg )
+			.multiThreaded( new DefaultTaskExecutor( exec ))
+			.forEachPixel( (x,y) -> y.set( x ));
+
 	  imp = ipImg.getImagePlus();
 	}
 
@@ -488,12 +501,13 @@ public class N5Importer implements PlugIn {
    */
   public static List<ImagePlus> process(final N5Reader n5,
 		  final String rootPath,
+		  final ExecutorService exec,
 		  final List<N5DatasetMetadata> datasetMetadataList,
 		  final boolean asVirtual,
 		  final Interval cropInterval,
 		  final Map<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes) {
 
-	return process(n5, rootPath, datasetMetadataList, asVirtual, cropInterval, true, impMetaWriterTypes);
+	return process(n5, rootPath, exec, datasetMetadataList, asVirtual, cropInterval, true, impMetaWriterTypes);
   }
 
   /*
@@ -501,6 +515,7 @@ public class N5Importer implements PlugIn {
    */
   public static List<ImagePlus> process(final N5Reader n5,
 		  final String rootPath,
+		  final ExecutorService exec,
 		  final List<N5DatasetMetadata> datasetMetadataList,
 		  final boolean asVirtual,
 		  final Interval cropInterval,
@@ -519,7 +534,7 @@ public class N5Importer implements PlugIn {
 	  final ImageplusMetadata<?> impMeta = impMetaWriterTypes.get(datasetMeta.getClass());
 	  ImagePlus imp;
 	  try {
-		imp = N5Importer.read(n5, datasetMeta, cropInterval, asVirtual, impMeta);
+		imp = N5Importer.read(n5, exec, datasetMeta, cropInterval, asVirtual, impMeta);
 		record(pathToN5Dataset, asVirtual, cropInterval);
 		imgList.add(imp);
 		if (show)
@@ -537,7 +552,7 @@ public class N5Importer implements PlugIn {
    */
   public void process() {
 
-	process(n5, selectionDialog.getN5RootPath(), (List)selection.metadata, asVirtual, cropInterval, impMetaWriterTypes);
+	process(n5, selectionDialog.getN5RootPath(), exec, (List)selection.metadata, asVirtual, cropInterval, impMetaWriterTypes);
   }
 
   public List<ImagePlus> process(final String n5FullPath, final boolean asVirtual) {
@@ -559,7 +574,7 @@ public class N5Importer implements PlugIn {
 		  return null;
 		}
 	
-		List<ImagePlus> result = process(n5, dataset, Collections.singletonList(metadata),
+		List<ImagePlus> result = process(n5, dataset, exec, Collections.singletonList(metadata),
 				asVirtual, cropInterval, show, getImagePlusMetadataWriterMap());
 	
 		n5.close();

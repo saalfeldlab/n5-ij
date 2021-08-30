@@ -67,14 +67,16 @@ public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePl
 
 		attrs.put(typeKey, t.type);
 
-		if (t.properties != null) {
-			for (final Object k : t.properties.keySet()) {
-				try {
-					attrs.put(k.toString(), t.properties.get(k).toString());
-				} catch (final Exception e) {
-				}
-			}
-		}
+		attrs.put( imagePropertiesKey, t.properties );
+
+//		if (t.properties != null) {
+//			for (final Object k : t.properties.keySet()) {
+//				try {
+//					attrs.put(k.toString(), t.properties.get(k).toString());
+//				} catch (final Exception e) {
+//				}
+//			}
+//		}
 
 		n5.setAttributes(dataset, attrs);
 	}
@@ -94,6 +96,7 @@ public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePl
 		cal.xOrigin = t.xOrigin;
 		cal.yOrigin = t.yOrigin;
 		cal.zOrigin = t.zOrigin;
+		ip.setCalibration( cal );
 
 		ip.setDimensions(t.numChannels, t.numSlices, t.numFrames);
 
@@ -165,7 +168,10 @@ public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePl
 
 			final Integer type = n5.getAttribute(dataset, typeKey, Integer.class);
 
-			final Map<String, Object> properties = null;
+			Map<String,Object> properties = n5.getAttribute(dataset, imagePropertiesKey, HashMap.class);
+			if( properties == null )
+				properties = new HashMap<>();
+
 			final N5ImagePlusMetadata meta = new N5ImagePlusMetadata(dataset, attributes, name, fps, frameInterval,
 					unit, pixelWidth, pixelHeight, pixelDepth, xOrigin, yOrigin, zOrigin, numChannels, numSlices,
 					numFrames, type, properties);
