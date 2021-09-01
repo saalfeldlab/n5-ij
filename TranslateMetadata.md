@@ -1,6 +1,6 @@
 ## Translate Metadata
 
-Translations are writtein in [jq](https://stedolan.github.io/jq). See the [jq manual](https://stedolan.github.io/jq/manual/v1.6/) to learn more.
+Translations are written in [jq](https://stedolan.github.io/jq). See the [jq manual](https://stedolan.github.io/jq/manual/v1.6/) to learn more.
 
 ### Practical examples
 
@@ -496,7 +496,7 @@ Output:
 
 ##### [`arrayAndUnitToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L35)
 
-Creates a canonical `spatialTransform` object from a two element array containing a flat affine tranform,
+Creates a canonical `spatialTransform` object from a two element array containing a flat affine transform,
 and spatial units.
 
 <details>
