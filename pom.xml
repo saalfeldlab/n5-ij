@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>30.0.0</version>
+		<version>31.0.0</version>
 		<relativePath />
 	</parent>
 
@@ -85,38 +85,28 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
+		<aws-java-sdk-core.version>1.11.796</aws-java-sdk-core.version>
+		<gax.version>1.56.0</gax.version>
+		<jackson-jq.version>1.0.0-preview.20191208</jackson-jq.version>
+
 		<n5.version>2.5.1</n5.version>
 		<n5-imglib2.version>4.1.1</n5-imglib2.version>
 		<n5-hdf5.version>1.4.1</n5-hdf5.version>
-		<n5-google-cloud.version>3.3.2</n5-google-cloud.version>
-		<n5-aws-s3.version>3.2.0</n5-aws-s3.version>
-		<n5-zarr.version>0.0.6</n5-zarr.version>
-
-		<alphanumeric-comparator.version>1.4.1</alphanumeric-comparator.version>
 	</properties>
 
 	<dependencies>
+		<!-- N5 dependencies -->
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5</artifactId>
 		</dependency>
-
-		<dependency>
-			<groupId>net.imglib2</groupId>
-			<artifactId>imglib2</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>net.thisptr</groupId>
-			<artifactId>jackson-jq</artifactId>
-			<version>1.0.0-preview.20191208</version>
-		</dependency>
-		<dependency>
-			<groupId>net.imagej</groupId>
-			<artifactId>ij</artifactId>
-		</dependency>
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-aws-s3</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5-blosc</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
@@ -127,29 +117,79 @@
 			<artifactId>n5-imglib2</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>net.imglib2</groupId>
-			<artifactId>imglib2-ij</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-hdf5</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>net.imagej</groupId>
-			<artifactId>imagej</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>se.sawano.java</groupId>
-			<artifactId>alphanumeric-comparator</artifactId>
-			<version>${alphanumeric-comparator.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>net.imagej</groupId>
-			<artifactId>imagej-legacy</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-zarr</artifactId>
+		</dependency>
+
+		<!-- ImgLib2 dependencies -->
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-ij</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-realtransform</artifactId>
+		</dependency>
+
+		<!-- ImageJ dependencies -->
+		<dependency>
+			<groupId>net.imagej</groupId>
+			<artifactId>ij</artifactId>
+		</dependency>
+
+		<!-- SciJava dependencies -->
+		<dependency>
+			<groupId>org.scijava</groupId>
+			<artifactId>scijava-common</artifactId>
+		</dependency>
+
+		<!-- Third-party dependencies -->
+		<dependency>
+			<groupId>com.amazonaws</groupId>
+			<artifactId>aws-java-sdk-s3</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-resourcemanager</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.google.cloud</groupId>
+			<artifactId>google-cloud-storage</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>com.amazonaws</groupId>
+			<artifactId>aws-java-sdk-core</artifactId>
+			<version>${aws-java-sdk-core.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.api</groupId>
+			<artifactId>gax</artifactId>
+			<version>${gax.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>net.thisptr</groupId>
+			<artifactId>jackson-jq</artifactId>
+			<version>${jackson-jq.version}</version>
 		</dependency>
 
 		<!-- Test dependencies -->
