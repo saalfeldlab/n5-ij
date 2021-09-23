@@ -179,3 +179,35 @@ def buildMultiscale: [(.children | keys | .[]) as $k | .children |  {"path": (.[
 def addMultiscale: buildMultiscale as $ms | .attributes |= . + { "multiscales": { "datasets": $ms , "path": .path }};
 
 def addAllMultiscales: walk( if hasMultiscales then addMultiscale else . end );
+
+def getScales: .multiscales | .[0] | .metadata | .scale;
+
+def arrMultiply( $s1; $s2 ): [$s1, $s2] | transpose | map(.[0] * .[1]) ;
+
+def scaleTransform( $scales ): { "type" : "scale", "scale" : $scales };
+
+def isOmeZarrMultiscale:
+    has("attributes") and
+    (.attributes | has("multiscales")) and
+    (.attributes | .multiscales | type == "array") and
+    (.attributes | .multiscales | length > 0 ) and
+    (.attributes | .multiscales | .[0] | has("datasets") );
+
+def omeZarrTransformsFromMultiscale:
+    (.metadata | .scale) as $scales |
+    reduce (.datasets | .[]) as $d (
+        [ {}, $scales, $scales ];
+        [ .[0] + { ($d | .path) : { "transform": scaleTransform(.[1])} },
+        arrMultiply( .[1]; .[2]),
+        .[2] ])
+    | .[0];
+
+def omeZarrAddTransformsToChildren:
+    .children as $children |
+    (.attributes | .multiscales | .[0]) as $ms |
+    ( $ms | omeZarrTransformsFromMultiscale) as $transforms |
+    ( $ms | .datasets | map (.path)) as $paths |
+    ( reduce ($paths | .[] ) as $p (
+        $children;
+        .[$p] |= . + ( $transforms | .[$p]) )) as $newChildren |
+    .children |= $newChildren;
