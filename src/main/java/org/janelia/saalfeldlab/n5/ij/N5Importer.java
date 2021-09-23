@@ -43,6 +43,7 @@ import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.parallel.DefaultTaskExecutor;
+import net.imglib2.transform.integer.MixedTransform;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
@@ -50,7 +51,10 @@ import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Intervals;
 import net.imglib2.util.Util;
+import net.imglib2.view.IntervalView;
+import net.imglib2.view.MixedTransformView;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
@@ -66,7 +70,12 @@ import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMultiscaleMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.axes.AxisMetadata;
+import org.janelia.saalfeldlab.n5.metadata.axes.AxisUtils;
+import org.janelia.saalfeldlab.n5.metadata.axes.DefaultDatasetAxisMetadata;
+import org.janelia.saalfeldlab.n5.metadata.axes.DefaultDatasetAxisMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusAxes;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
@@ -106,6 +115,7 @@ public class N5Importer implements PlugIn {
   public static final String MetadataDefaultKey = "Default";
 
   public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
+		  new DefaultDatasetAxisMetadataParser(),
 		  new ImagePlusLegacyMetadataParser(),
 		  new N5CosemMetadataParser(),
 		  new N5SingleScaleMetadataParser()
@@ -157,6 +167,7 @@ public class N5Importer implements PlugIn {
 	impMetaWriterTypes.put( N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 	impMetaWriterTypes.put( N5CosemMetadata.class, new CosemToImagePlus());
 	impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
+	impMetaWriterTypes.put( DefaultDatasetAxisMetadata.class, new ImagePlusAxes());
 
 	numDimensionsForCrop = 5;
 	initMaxValuesForCrop = new long[numDimensionsForCrop];
@@ -377,14 +388,21 @@ public class N5Importer implements PlugIn {
 	final String d = datasetMeta.getPath();
 	final RandomAccessibleInterval imgRaw = N5Utils.open(n5, d);
 
+	// permute axes if necessary (specified by metadata)
+	final RandomAccessibleInterval imgP;
+	if (datasetMeta != null && datasetMeta instanceof AxisMetadata)
+		imgP = AxisUtils.permuteForImagePlus( imgRaw, (AxisMetadata) datasetMeta );
+	else
+		imgP = imgRaw;
+
 	RandomAccessibleInterval img;
 	if (cropIntervalIn != null) {
-	  img = Views.interval(imgRaw, processCropInterval(imgRaw, cropIntervalIn));
+	  img = Views.interval(imgP, processCropInterval(imgP, cropIntervalIn));
 	  //	  if (datasetMeta instanceof N5ImagePlusMetadata) {
 	  //		((N5ImagePlusMetadata)datasetMeta).crop(cropIntervalIn);
 	  //	  }
 	} else
-	  img = imgRaw;
+	  img = imgP;
 
 	RandomAccessibleInterval<T> convImg;
 	DataType type = datasetMeta.getAttributes().getDataType();
