@@ -16,6 +16,7 @@ public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 	public AffineSpatialTransform( final double[] affine ) {
 		super("affine");
 		this.affine = affine;
+		buildTransform( affine );
 	}
 
 	public AffineSpatialTransform( final N5Reader n5, final String path ) {

@@ -16,6 +16,7 @@ public class ScaleSpatialTransform extends AbstractLinearSpatialTransform {
 	public ScaleSpatialTransform( final double[] scale ) {
 		super("scale");
 		this.scale = scale;
+		buildTransform( scale );
 	}
 
 	public ScaleSpatialTransform( final N5Reader n5, final String path ) {
