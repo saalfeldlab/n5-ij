@@ -2,6 +2,8 @@ package org.janelia.saalfeldlab.n5.metadata.transforms;
 
 import java.lang.reflect.Type;
 
+import org.janelia.saalfeldlab.n5.N5Reader;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonDeserializationContext;
@@ -16,6 +18,12 @@ public class SpatialTransformAdapter //implements JsonDeserializer<SpatialTransf
 	implements JsonDeserializer<SpatialTransform>, JsonSerializer<SpatialTransform> {
 //	implements JsonDeserializer<LinearSpatialTransform> {
 
+	final N5Reader n5;
+
+	public SpatialTransformAdapter( final N5Reader n5 ) {
+		this.n5 = n5;
+	}
+
 	@Override
 	public SpatialTransform deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
 			throws JsonParseException {
@@ -27,21 +35,41 @@ public class SpatialTransformAdapter //implements JsonDeserializer<SpatialTransf
 		if( !jobj.has("type") )
 			return null;
 
+		SpatialTransform out = null;
 		switch( jobj.get("type").getAsString() )
 		{
 		case("identity"):
-			return context.deserialize( jobj, IdentitySpatialTransform.class );
+			out = context.deserialize( jobj, IdentitySpatialTransform.class );
+			break;
 		case("scale"):
-			return context.deserialize( jobj, ScaleSpatialTransform.class );
+			out = context.deserialize( jobj, ScaleSpatialTransform.class );
+			break;
 		case("translation"):
-			return context.deserialize( jobj, TranslationSpatialTransform.class );
+			out = context.deserialize( jobj, TranslationSpatialTransform.class );
+			break;
 		case("affine"):
-			return context.deserialize( jobj, AffineSpatialTransform.class );
+			out = context.deserialize( jobj, AffineSpatialTransform.class );
+			break;
 		case("sequence"):
-			return context.deserialize( jobj, SequenceSpatialTransform.class );
-		
+			out = context.deserialize( jobj, SequenceSpatialTransform.class );
+			break;
 		}
-		return null;
+		readTransformParameters(out);
+		
+		return out;
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private final SpatialTransform readTransformParameters( final SpatialTransform transform ) {
+
+		if( transform instanceof ParametrizedTransform ) {
+			System.out.println( "reading transform params" );
+			ParametrizedTransform pt = (ParametrizedTransform)transform;
+			if( pt.getParameterPath() != null ) {
+				pt.buildTransform( pt.getParameters(n5));
+			}
+		}
+		return transform;
 	}
 
 	@Override
@@ -79,7 +107,7 @@ public class SpatialTransformAdapter //implements JsonDeserializer<SpatialTransf
 		
 
 		
-		final SpatialTransformAdapter adapter = new SpatialTransformAdapter();
+		final SpatialTransformAdapter adapter = new SpatialTransformAdapter( null );
 
 		final GsonBuilder gsonBuilder = new GsonBuilder();
 //		gsonBuilder.registerTypeHierarchyAdapter(SpatialTransform.class, adapter );

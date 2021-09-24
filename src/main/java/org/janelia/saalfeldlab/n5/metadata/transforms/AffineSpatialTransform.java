@@ -1,5 +1,7 @@
 package org.janelia.saalfeldlab.n5.metadata.transforms;
 
+import org.janelia.saalfeldlab.n5.N5Reader;
+
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform;
 import net.imglib2.realtransform.AffineTransform2D;
@@ -15,22 +17,29 @@ public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 		super("affine");
 		this.affine = affine;
 	}
-	
-	public AffineGet buildTransform() {
-		if( affine.length == 6 ) {
+
+	public AffineSpatialTransform( final N5Reader n5, final String path ) {
+		super("affine");
+		this.affine = getParameters(n5);
+		buildTransform( affine );
+	}
+
+	@Override
+	public AffineGet buildTransform( double[] parameters ) {
+		if( parameters.length == 6 ) {
 			AffineTransform2D tmp = new AffineTransform2D();
-			tmp.set( affine );
+			tmp.set( parameters );
 			transform = tmp;
 		}
-		else if( affine.length == 12 ) {
+		else if( parameters.length == 12 ) {
 			AffineTransform3D tmp = new AffineTransform3D();
-			tmp.set( affine );
+			tmp.set( parameters );
 			transform = tmp;
 		}
 		else {
-			int nd = (int)Math.floor( Math.sqrt( affine.length ));
+			int nd = (int)Math.floor( Math.sqrt( parameters.length ));
 			AffineTransform tmp = new AffineTransform( nd );
-			tmp.set(affine);
+			tmp.set(parameters);
 			transform = tmp;
 		}
 		return transform;
@@ -38,10 +47,7 @@ public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 
 	@Override
 	public AffineGet getTransform() {
-		if( transform == null )
-			return buildTransform();
-		else
-			return transform;
+		return transform;
 	}
 	
 }

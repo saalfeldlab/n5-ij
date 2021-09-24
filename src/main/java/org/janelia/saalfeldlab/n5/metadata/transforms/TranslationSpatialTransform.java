@@ -1,7 +1,8 @@
 package org.janelia.saalfeldlab.n5.metadata.transforms;
 
+import org.janelia.saalfeldlab.n5.N5Reader;
+
 import net.imglib2.realtransform.AffineGet;
-import net.imglib2.realtransform.RealTransform;
 import net.imglib2.realtransform.Translation;
 import net.imglib2.realtransform.Translation2D;
 import net.imglib2.realtransform.Translation3D;
@@ -15,16 +16,24 @@ public class TranslationSpatialTransform extends AbstractLinearSpatialTransform 
 	public TranslationSpatialTransform( final double[] translation ) {
 		super("translation");
 		this.translation = translation;
+		buildTransform( translation );
 	}
 
-	public AffineGet buildTransform()
+	public TranslationSpatialTransform( final N5Reader n5, final String path ) {
+		super("translation", path );
+		this.translation = getParameters( n5 );
+		buildTransform( translation );
+	}
+
+	@Override
+	public AffineGet buildTransform( double[] parameters )
 	{
-		if( translation.length == 2 )
-			transform = new Translation2D(translation);
-		else if( translation.length == 3 )
-			transform = new Translation3D(translation);
+		if( parameters.length == 2 )
+			transform = new Translation2D(parameters);
+		else if( parameters.length == 3 )
+			transform = new Translation3D(parameters);
 		else
-			transform = new Translation(translation);
+			transform = new Translation(parameters);
 
 		return transform;
 	}
@@ -32,10 +41,7 @@ public class TranslationSpatialTransform extends AbstractLinearSpatialTransform 
 	@Override
 	public AffineGet getTransform()
 	{
-		if( transform == null )
-			return buildTransform();
-		else
-			return transform;
+		return transform;
 	}
 	
 }

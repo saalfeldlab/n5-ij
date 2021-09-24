@@ -1,23 +1,23 @@
 package org.janelia.saalfeldlab.n5.metadata.transforms;
 
-import net.imglib2.realtransform.AffineGet;
+import net.imglib2.realtransform.RealTransform;
 
 public class CalibratedSpatialTransform {
 
-	private final LinearSpatialTransform transform;
+	private final SpatialTransform transform;
 	private final String unit;
 	
-	public CalibratedSpatialTransform( final LinearSpatialTransform transform, final String unit) {
+	public CalibratedSpatialTransform( final SpatialTransform transform, final String unit) {
 		this.transform = transform;
 		this.unit = unit;
 	}
 
-	public LinearSpatialTransform getSpatialTransform() {
+	public SpatialTransform getSpatialTransform() {
 
 		return transform;
 	}
 
-	public AffineGet getTransform() {
+	public RealTransform getTransform() {
 
 		return transform.getTransform();
 	}

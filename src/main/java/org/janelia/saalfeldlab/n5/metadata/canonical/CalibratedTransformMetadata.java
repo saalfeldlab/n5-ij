@@ -2,6 +2,7 @@ package org.janelia.saalfeldlab.n5.metadata.canonical;
 
 import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
 import org.janelia.saalfeldlab.n5.metadata.transforms.CalibratedSpatialTransform;
+import org.janelia.saalfeldlab.n5.metadata.transforms.LinearSpatialTransform;
 
 import net.imglib2.realtransform.AffineGet;
 
@@ -27,7 +28,11 @@ public class CalibratedTransformMetadata implements SpatialMetadata {
 
 	@Override
 	public AffineGet spatialTransform() {
-		return spatialTransform.getTransform();
+		if( spatialTransform.getTransform() instanceof LinearSpatialTransform ) {
+			return ((LinearSpatialTransform) spatialTransform.getTransform()).getTransform();
+		}
+		else
+			return null;
 	}
 
 	@Override

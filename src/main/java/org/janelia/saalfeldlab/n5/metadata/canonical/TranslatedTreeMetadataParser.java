@@ -80,7 +80,7 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 
 		scope = buildRootScope();
 		objMapper = new ObjectMapper();
-		gson = buildGson();
+		gson = buildGson( n5 );
 
 		root = ContainerMetadataNode.build(n5, gson);
 		try {
@@ -92,10 +92,10 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 		}
 	}
 
-	public static Gson buildGson() {
+	public static Gson buildGson( final N5Reader n5 ) {
 		final GsonBuilder gsonBuilder = new GsonBuilder();
-		gsonBuilder.registerTypeAdapter(SpatialTransform.class, new SpatialTransformAdapter());
-		gsonBuilder.registerTypeAdapter(LinearSpatialTransform.class, new SpatialTransformAdapter());
+		gsonBuilder.registerTypeAdapter(SpatialTransform.class, new SpatialTransformAdapter( n5 ));
+		gsonBuilder.registerTypeAdapter(LinearSpatialTransform.class, new SpatialTransformAdapter( n5 ));
 		gsonBuilder.registerTypeAdapter(CanonicalMetadata.class, new CanonicalMetadata.CanonicalMetadataAdapter());
 		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
 		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
@@ -117,7 +117,7 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 		this.filter = filter;
 	}
 
-	public TranslatedTreeMetadataParser(final String n5Tree, final String translation) {
+	public TranslatedTreeMetadataParser( final N5Reader n5, final String n5Tree, final String translation) {
 
 		this.translation = resolveImports( translation );
 
@@ -125,8 +125,8 @@ public class TranslatedTreeMetadataParser implements N5MetadataParser<CanonicalM
 		objMapper = new ObjectMapper();	
 
 		final GsonBuilder gsonBuilder = new GsonBuilder();
-		gsonBuilder.registerTypeAdapter( SpatialTransform.class, new SpatialTransformAdapter() );
-		gsonBuilder.registerTypeAdapter( LinearSpatialTransform.class, new SpatialTransformAdapter() );
+		gsonBuilder.registerTypeAdapter( SpatialTransform.class, new SpatialTransformAdapter( n5 ) );
+		gsonBuilder.registerTypeAdapter( LinearSpatialTransform.class, new SpatialTransformAdapter( n5 ) );
 		gsonBuilder.registerTypeAdapter( CanonicalMetadata.class, new CanonicalMetadata.CanonicalMetadataAdapter() );
 		gsonBuilder.registerTypeAdapter( DataType.class, new DataType.JsonAdapter());
 		gsonBuilder.registerTypeHierarchyAdapter( Compression.class, CompressionAdapter.getJsonAdapter());

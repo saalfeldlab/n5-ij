@@ -7,9 +7,9 @@ import java.nio.charset.StandardCharsets;
 import org.apache.commons.compress.utils.IOUtils;
 
 public class ImportedTranslations {
-	
+
 	final String translation;
-	
+
 	public ImportedTranslations() {
 
 		InputStream stream = this.getClass().getResourceAsStream("/n5.jq");
@@ -24,14 +24,8 @@ public class ImportedTranslations {
 		else
 			translation = new String(encoded, StandardCharsets.US_ASCII );	
 	}
-	
-	public String getTranslation()
-	{
+
+	public String getTranslation() {
 		return translation;
-	}
-	
-	public static void main( String[] args )
-	{
-		new ImportedTranslations();
 	}
 }

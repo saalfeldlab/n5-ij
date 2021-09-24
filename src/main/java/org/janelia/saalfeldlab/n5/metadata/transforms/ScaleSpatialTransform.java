@@ -1,10 +1,8 @@
 package org.janelia.saalfeldlab.n5.metadata.transforms;
 
+import org.janelia.saalfeldlab.n5.N5Reader;
+
 import net.imglib2.realtransform.AffineGet;
-import net.imglib2.realtransform.AffineTransform;
-import net.imglib2.realtransform.AffineTransform2D;
-import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.realtransform.RealTransform;
 import net.imglib2.realtransform.Scale;
 import net.imglib2.realtransform.Scale2D;
 import net.imglib2.realtransform.Scale3D;
@@ -19,15 +17,22 @@ public class ScaleSpatialTransform extends AbstractLinearSpatialTransform {
 		super("scale");
 		this.scale = scale;
 	}
-	
-	public AffineGet buildTransform()
+
+	public ScaleSpatialTransform( final N5Reader n5, final String path ) {
+		super("scale");
+		this.scale = getParameters(n5);
+		buildTransform( scale );
+	}
+
+	@Override
+	public AffineGet buildTransform( double[] parameters )
 	{
-		if( scale.length == 2 )
-			transform = new Scale2D(scale);
-		else if( scale.length == 3 )
-			transform = new Scale3D(scale);
+		if( parameters.length == 2 )
+			transform = new Scale2D(parameters);
+		else if( parameters.length == 3 )
+			transform = new Scale3D(parameters);
 		else
-			transform = new Scale(scale);
+			transform = new Scale(parameters);
 
 		return transform;
 	}
@@ -35,10 +40,7 @@ public class ScaleSpatialTransform extends AbstractLinearSpatialTransform {
 	@Override
 	public AffineGet getTransform()
 	{
-		if( transform == null )
-			return buildTransform();
-		else
-			return transform;
+		return transform;
 	}
 	
 }

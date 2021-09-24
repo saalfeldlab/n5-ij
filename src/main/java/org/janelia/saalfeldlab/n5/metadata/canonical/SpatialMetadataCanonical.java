@@ -3,6 +3,7 @@ package org.janelia.saalfeldlab.n5.metadata.canonical;
 import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
 import org.janelia.saalfeldlab.n5.metadata.transforms.CalibratedSpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.LinearSpatialTransform;
+import org.janelia.saalfeldlab.n5.metadata.transforms.SpatialTransform;
 
 import net.imglib2.realtransform.AffineGet;
 
@@ -14,12 +15,12 @@ import net.imglib2.realtransform.AffineGet;
  */
 public class SpatialMetadataCanonical implements SpatialMetadata {
 
-	private final LinearSpatialTransform transform;
+	private final SpatialTransform transform;
 	private final String unit; // redundant, also in axis list
 	private final String path;
 	private final Axis[] axes;
 	
-	public SpatialMetadataCanonical( final String path, final LinearSpatialTransform transform,
+	public SpatialMetadataCanonical( final String path, final SpatialTransform transform,
 			final String unit, final Axis[] axes ) {
 
 		this.path = path;
@@ -36,13 +37,16 @@ public class SpatialMetadataCanonical implements SpatialMetadata {
 		this.axes = axes;
 	}
 
-	public LinearSpatialTransform transform() {
+	public SpatialTransform transform() {
 		return transform;
 	}
 
 	@Override
 	public AffineGet spatialTransform() {
-		return transform.getTransform();
+		if (transform instanceof LinearSpatialTransform) {
+			return ((LinearSpatialTransform) transform).getTransform();
+		} else
+			return null;
 	}
 
 	@Override
