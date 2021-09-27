@@ -186,14 +186,14 @@ def arrMultiply( $s1; $s2 ): [$s1, $s2] | transpose | map(.[0] * .[1]) ;
 
 def scaleTransform( $scales ): { "type" : "scale", "scale" : $scales };
 
-def isOmeZarrMultiscale:
+def isOmeNgffMultiscale:
     has("attributes") and
     (.attributes | has("multiscales")) and
     (.attributes | .multiscales | type == "array") and
     (.attributes | .multiscales | length > 0 ) and
     (.attributes | .multiscales | .[0] | has("datasets") );
 
-def omeZarrTransformsFromMultiscale:
+def omeNgffTransformsFromMultiscale:
     (.metadata | .scale) as $scales |
     reduce (.datasets | .[]) as $d (
         [ {}, $scales, $scales ];
@@ -202,7 +202,7 @@ def omeZarrTransformsFromMultiscale:
         .[2] ])
     | .[0];
 
-def omeZarrAddTransformsToChildren:
+def omeNgffAddTransformsToChildren:
     .children as $children |
     (.attributes | .multiscales | .[0]) as $ms |
     ( $ms | omeZarrTransformsFromMultiscale) as $transforms |

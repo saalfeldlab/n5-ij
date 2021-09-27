@@ -382,7 +382,7 @@ Output:
 See the [Ome-Ngff v0.3 specification](https://ngff.openmicroscopy.org/0.3/).
 
 
-##### [`isOmeZarrMultiscale`] (https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L189)
+##### [`isOmeNgffMultiscale`] (https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L189)
 
 Returns true when called from a tree node that has metadata in the OME-NGFF multiscale metadata.
 
@@ -421,7 +421,7 @@ Output:
 </details>
 
 
-##### [`omeZarrTransformsFromMultiscale`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L196)
+##### [`omeNgffTransformsFromMultiscale`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L196)
 
 Given a multiscales object, returns a map from dataset names to pixel-to-physical transforms.  Useful because in
 some OME-NGFF specifications, this information is not present in the dataset-level metadata attributes.
@@ -478,11 +478,11 @@ Output:
 </details>
 
 
-##### [`omeZarrAddTransformsToChildren`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L205)
+##### [`omeNgffAddTransformsToChildren`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L205)
 
 When called from a tree node that has metadata in the OME-NGFF multiscale metadata, adds appropriate
 transformation metadata to its child nodes, where this transformation is inferred from the multiscale metadata
-with `omeZarrTransformsFromMultiscale`.
+with `omeNgffTransformsFromMultiscale`.
 
 #### Others
 
