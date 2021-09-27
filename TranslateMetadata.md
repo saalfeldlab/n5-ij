@@ -377,6 +377,113 @@ Output:
 
 </details>
 
+#### OME-NGFF
+
+See the [Ome-Ngff v0.3 specification](https://ngff.openmicroscopy.org/0.3/).
+
+
+##### [`isOmeZarrMultiscale`] (https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L189)
+
+Returns true when called from a tree node that has metadata in the OME-NGFF multiscale metadata.
+
+<details>
+<summary>Example</summary>
+
+Input:
+```json
+{ "attributes: {
+    "multiscales": [
+        {
+            "axes": [ "z", "y", "x" ],
+            "datasets": [
+                { "path": "s0" },
+                { "path": "s1" },
+                { "path": "s2" }
+            ],
+            "metadata": {
+                "order": 0,
+                "preserve_range": true,
+                "scale": [ 0.5, 0.5, 0.5 ]
+            },
+            "name": "zyx",
+            "type": "skimage.transform._warps.rescale",
+            "version": "0.3"
+        }
+    ]
+  },
+  "children" : []
+}
+```
+
+Output:
+`true`
+
+</details>
+
+
+##### [`omeZarrTransformsFromMultiscale`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L196)
+
+Given a multiscales object, returns a map from dataset names to pixel-to-physical transforms.  Useful because in
+some OME-NGFF specifications, this information is not present in the dataset-level metadata attributes.
+
+<details>
+<summary>Example</summary>
+
+Input:
+```json
+{
+  "axes": [ "z", "y", "x" ],
+  "datasets": [
+    { "path": "s0" },
+    { "path": "s1" },
+    { "path": "s2" }
+  ],
+  "metadata": {
+    "order": 0,
+    "preserve_range": true,
+    "scale": [ 0.5, 0.5, 0.5 ]
+  },
+  "name": "zyx",
+  "type": "skimage.transform._warps.rescale",
+  "version": "0.3"
+}
+```
+
+Output:
+```json
+{
+  "s0": {
+    "transform": {
+      "type": "scale",
+      "scale": [ 0.5, 0.5, 0.5 ]
+    }
+  },
+  "s1": {
+    "transform": {
+      "type": "scale",
+      "scale": [ 0.25, 0.25, 0.25
+      ]
+    }
+  },
+  "s2": {
+    "transform": {
+      "type": "scale",
+      "scale": [ 0.125, 0.125, 0.125
+      ]
+    }
+  }
+}
+```
+
+</details>
+
+
+##### [`omeZarrAddTransformsToChildren`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L205)
+
+When called from a tree node that has metadata in the OME-NGFF multiscale metadata, adds appropriate
+transformation metadata to its child nodes, where this transformation is inferred from the multiscale metadata
+with `omeZarrTransformsFromMultiscale`.
+
 #### Others
 
 ##### [`isDataset`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L1)
@@ -552,4 +659,21 @@ with the elements of the argument.
 Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
 with the elements of the argument.
 
+##### [`arrMultiply`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L185
 
+Elementwise array multiplication.
+
+<details>
+<summary>Example</summary>
+
+Input:
+```json
+[1, 2, 3] as $x | [4, 5, 6] as $y | arrMultiply( $x; $y )
+```
+
+Output:
+```json
+[ 4, 10, 18 ]
+```
+
+</details>
