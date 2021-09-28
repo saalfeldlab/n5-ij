@@ -105,12 +105,13 @@ public class AxisUtils {
 
 		int[] p = findImagePlusPermutation( meta );
 		fillPermutation( p );
-		if( isIdentityPermutation( p ))
-			return img;
 
 		RandomAccessibleInterval<T> imgTmp = img;
 		while( imgTmp.numDimensions() < 5 )
 			imgTmp = Views.addDimension(imgTmp, 0, 0 );
+
+		if( isIdentityPermutation( p ))
+			return imgTmp;
 
 		return permute(imgTmp, invertPermutation(p));
 	}
