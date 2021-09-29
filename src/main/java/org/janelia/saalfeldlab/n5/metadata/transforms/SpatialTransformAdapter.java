@@ -63,7 +63,6 @@ public class SpatialTransformAdapter //implements JsonDeserializer<SpatialTransf
 	private final SpatialTransform readTransformParameters( final SpatialTransform transform ) {
 
 		if( transform instanceof ParametrizedTransform ) {
-			System.out.println( "reading transform params" );
 			ParametrizedTransform pt = (ParametrizedTransform)transform;
 			if( pt.getParameterPath() != null ) {
 				pt.buildTransform( pt.getParameters(n5));

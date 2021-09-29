@@ -9,7 +9,7 @@ import net.imglib2.realtransform.Translation3D;
 
 public class TranslationSpatialTransform extends AbstractLinearSpatialTransform {
 
-	public final double[] translation;
+	public double[] translation;
 
 	public transient AffineGet transform;
 
@@ -25,9 +25,15 @@ public class TranslationSpatialTransform extends AbstractLinearSpatialTransform 
 		buildTransform( translation );
 	}
 
+	public TranslationSpatialTransform( final String path ) {
+		super("translation", path );
+		this.translation = null;
+	}
+
 	@Override
 	public AffineGet buildTransform( double[] parameters )
 	{
+		this.translation = parameters;
 		if( parameters.length == 2 )
 			transform = new Translation2D(parameters);
 		else if( parameters.length == 3 )

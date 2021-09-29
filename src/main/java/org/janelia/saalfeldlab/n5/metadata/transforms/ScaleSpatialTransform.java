@@ -9,7 +9,7 @@ import net.imglib2.realtransform.Scale3D;
 
 public class ScaleSpatialTransform extends AbstractLinearSpatialTransform {
 
-	public final double[] scale;
+	public double[] scale;
 
 	public transient AffineGet transform;
 
@@ -20,14 +20,20 @@ public class ScaleSpatialTransform extends AbstractLinearSpatialTransform {
 	}
 
 	public ScaleSpatialTransform( final N5Reader n5, final String path ) {
-		super("scale");
+		super("scale", path );
 		this.scale = getParameters(n5);
 		buildTransform( scale );
+	}
+
+	public ScaleSpatialTransform( final String path ) {
+		super("scale", path );
+		this.scale = null;
 	}
 
 	@Override
 	public AffineGet buildTransform( double[] parameters )
 	{
+		this.scale = parameters;
 		if( parameters.length == 2 )
 			transform = new Scale2D(parameters);
 		else if( parameters.length == 3 )

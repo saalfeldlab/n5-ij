@@ -1,7 +1,6 @@
 package org.janelia.saalfeldlab.n5.metadata.transforms;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
@@ -55,11 +54,8 @@ public abstract class AbstractLinearSpatialTransform implements LinearSpatialTra
 				while (c.hasNext())
 					params[i++] = c.next().getRealDouble();
 
-				System.out.println("got params: " + Arrays.toString(params));
 				return params;
-
-			} catch (IOException e) {
-			}
+			} catch (IOException e) { }
 		}
 		return null;
 	}

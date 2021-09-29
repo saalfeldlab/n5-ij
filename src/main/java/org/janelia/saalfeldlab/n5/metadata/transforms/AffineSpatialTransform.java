@@ -9,7 +9,7 @@ import net.imglib2.realtransform.AffineTransform3D;
 
 public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 
-	public final double[] affine;
+	public double[] affine;
 
 	public transient AffineGet transform;
 
@@ -25,8 +25,14 @@ public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 		buildTransform( affine );
 	}
 
+	public AffineSpatialTransform( final String path ) {
+		super("affine", path );
+		this.affine = null;
+	}
+
 	@Override
 	public AffineGet buildTransform( double[] parameters ) {
+		this.affine = parameters;
 		if( parameters.length == 6 ) {
 			AffineTransform2D tmp = new AffineTransform2D();
 			tmp.set( parameters );
