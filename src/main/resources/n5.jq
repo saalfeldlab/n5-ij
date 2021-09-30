@@ -180,6 +180,20 @@ def addMultiscale: buildMultiscale as $ms | .attributes |= . + { "multiscales": 
 
 def addAllMultiscales: walk( if hasMultiscales then addMultiscale else . end );
 
+def isMultiChannel: type == "object" and has("children") and ( .children | has("c0"));
+
+def buildMultiChannelFull: [(.children | keys | .[]) as $k | .children |  ( .[$k].attributes ) ];
+
+def buildMultiChannel: [(.children | keys | .[]) as $k | .children |  {"path": (.[$k].attributes.path | split("/") |.[-1]) }];
+
+def addMultiChannelFull: buildMultiChannelFull as $ms | .attributes |= . + { "multichannel": { "datasets": $ms , "path": .path }};
+
+def addMultiChannel: buildMultiChannel as $ms | .attributes |= . + { "multichannel": { "datasets": $ms , "path": .path }};
+
+def addAllMultichannelFull: walk( if isMultiChannel then addMultiChannelFull else . end );
+
+def addAllMultichannel: walk( if isMultiChannel then addMultiChannel else . end );
+
 def getScales: .multiscales | .[0] | .metadata | .scale;
 
 def arrMultiply( $s1; $s2 ): [$s1, $s2] | transpose | map(.[0] * .[1]) ;
