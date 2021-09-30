@@ -8,12 +8,11 @@ import java.util.Optional;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.RunImportExportTest;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
-import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.ScaleSpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.SequenceSpatialTransform;
@@ -53,7 +52,7 @@ public class TransformTests {
 	@Before
 	public void before()
 	{
-		URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
+		URL configUrl = TransformTests.class.getResource( "/plugins.config" );
 		File baseDir = new File( configUrl.getFile() ).getParentFile();
 		containerDir = new File( baseDir, "transforms.n5" );
 
@@ -136,7 +135,8 @@ public class TransformTests {
 		final CanonicalMetadataParser parser = new CanonicalMetadataParser();
 		Optional<CanonicalMetadata> metaOpt = parser.parseMetadata(n5, dataset);
 		CanonicalMetadata meta = metaOpt.get();
-		SpatialMetadataCanonical parsedXfm = meta.getSpatialTransform();
+		Assert.assertTrue("meta parsed as CanonicalSpatialDatasetMetadata", meta instanceof CanonicalSpatialDatasetMetadata );
+		SpatialMetadataCanonical parsedXfm = ((CanonicalSpatialDatasetMetadata)meta).getSpatialTransform();
 
 		Assert.assertTrue("parsed as sequence", parsedXfm.transform() instanceof SequenceSpatialTransform);
 		SequenceSpatialTransform parsedSeq = (SequenceSpatialTransform)parsedXfm.transform();

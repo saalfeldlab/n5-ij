@@ -5,7 +5,7 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.metadata.canonical.Axis;
-import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
 import org.janelia.saalfeldlab.n5.metadata.container.ContainerMetadataNode;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CanonicalMetadataToImagePlus;
@@ -88,9 +88,9 @@ public class CanonicalMetadataTests {
 		// 3d tests
 		final DatasetAttributes attrs3d = new DatasetAttributes(dims3d, blkSz3d, DataType.UINT8, new GzipCompression());
 		double[] affineParams3d = identity( 3 );
-		CanonicalDatasetMetadata xyz = makeMeta( affineParams3d, attrs3d, new Axis[] { xAxis, yAxis, zAxis } );
-		CanonicalDatasetMetadata xyc = makeMeta( affineParams3d, attrs3d, new Axis[] { xAxis, yAxis, cAxis } );
-		CanonicalDatasetMetadata xyt = makeMeta( affineParams3d, attrs3d, new Axis[] { xAxis, yAxis, tAxis } );
+		CanonicalSpatialDatasetMetadata xyz = makeMeta( affineParams3d, attrs3d, new Axis[] { xAxis, yAxis, zAxis } );
+		CanonicalSpatialDatasetMetadata xyc = makeMeta( affineParams3d, attrs3d, new Axis[] { xAxis, yAxis, cAxis } );
+		CanonicalSpatialDatasetMetadata xyt = makeMeta( affineParams3d, attrs3d, new Axis[] { xAxis, yAxis, tAxis } );
 
 		ipMeta.writeMetadata(xyc, imp3d);
 		assertEquals("xyc nc", 24, imp3d.getNChannels());
@@ -110,9 +110,9 @@ public class CanonicalMetadataTests {
 		// 4d tests
 		final DatasetAttributes attrs4d = new DatasetAttributes(dims4d, blkSz4d, DataType.UINT8, new GzipCompression());
 		double[] affineParams4d = identity( 4 );
-		CanonicalDatasetMetadata xycz = makeMeta( affineParams4d, attrs4d, new Axis[] { xAxis, yAxis, cAxis, zAxis } );
-		CanonicalDatasetMetadata xyct = makeMeta( affineParams4d, attrs4d, new Axis[] { xAxis, yAxis, cAxis, tAxis } );
-		CanonicalDatasetMetadata xyzt = makeMeta( affineParams4d, attrs4d, new Axis[] { xAxis, yAxis, zAxis, tAxis } );
+		CanonicalSpatialDatasetMetadata xycz = makeMeta( affineParams4d, attrs4d, new Axis[] { xAxis, yAxis, cAxis, zAxis } );
+		CanonicalSpatialDatasetMetadata xyct = makeMeta( affineParams4d, attrs4d, new Axis[] { xAxis, yAxis, cAxis, tAxis } );
+		CanonicalSpatialDatasetMetadata xyzt = makeMeta( affineParams4d, attrs4d, new Axis[] { xAxis, yAxis, zAxis, tAxis } );
 
 		ipMeta.writeMetadata(xycz, imp4d);
 		assertEquals("xycz nc", 4, imp4d.getNChannels());
@@ -132,7 +132,7 @@ public class CanonicalMetadataTests {
 		// 5d tests
 		final DatasetAttributes attrs5d = new DatasetAttributes(dims5d, blkSz5d, DataType.UINT8, new GzipCompression());
 		double[] affineParams5d = identity( 5 );
-		CanonicalDatasetMetadata xyczt = makeMeta( affineParams5d, attrs5d, new Axis[] { xAxis, yAxis, cAxis, zAxis, tAxis } );
+		CanonicalSpatialDatasetMetadata xyczt = makeMeta( affineParams5d, attrs5d, new Axis[] { xAxis, yAxis, cAxis, zAxis, tAxis } );
 		ipMeta.writeMetadata(xyczt, imp5d);
 		assertEquals("xyczt nc", 2, imp5d.getNChannels());
 		assertEquals("xyczt nz", 3, imp5d.getNSlices());
@@ -163,9 +163,10 @@ public class CanonicalMetadataTests {
 		System.out.println(imp.getNFrames());
 	}
 
-	private CanonicalDatasetMetadata makeMeta(double[] affine, DatasetAttributes attrs, Axis[] axes) {
-		return new CanonicalDatasetMetadata("",
-				new SpatialMetadataCanonical("", new AffineSpatialTransform(affine), "mm", axes), attrs);
+	private CanonicalSpatialDatasetMetadata makeMeta(double[] affine, DatasetAttributes attrs, Axis[] axes) {
+		return new CanonicalSpatialDatasetMetadata("",
+				new SpatialMetadataCanonical("", new AffineSpatialTransform(affine), "mm", axes), 
+				attrs);
 	}
 
 //	public static void oneOffAxisTest() {

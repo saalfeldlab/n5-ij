@@ -68,7 +68,7 @@ public class CanonicalMetadataParser implements N5MetadataParser<CanonicalMetada
 		final GsonBuilder gsonBuilder = new GsonBuilder();
 		gsonBuilder.registerTypeAdapter(SpatialTransform.class, new SpatialTransformAdapter( n5 ));
 //		gsonBuilder.registerTypeAdapter(LinearSpatialTransform.class, new SpatialTransformAdapter( n5 ));
-		gsonBuilder.registerTypeAdapter(CanonicalMetadata.class, new CanonicalMetadata.CanonicalMetadataAdapter());
+		gsonBuilder.registerTypeAdapter(CanonicalMetadata.class, new CanonicalMetadataAdapter());
 		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
 		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
 		gsonBuilder.disableHtmlEscaping();
@@ -84,7 +84,7 @@ public class CanonicalMetadataParser implements N5MetadataParser<CanonicalMetada
 		final GsonBuilder gsonBuilder = new GsonBuilder();
 		gsonBuilder.registerTypeAdapter( SpatialTransform.class, new SpatialTransformAdapter( n5 ) );
 		gsonBuilder.registerTypeAdapter( LinearSpatialTransform.class, new SpatialTransformAdapter( n5 ) );
-		gsonBuilder.registerTypeAdapter( CanonicalMetadata.class, new CanonicalMetadata.CanonicalMetadataAdapter() );
+		gsonBuilder.registerTypeAdapter( CanonicalMetadata.class, new CanonicalMetadataAdapter() );
 		gsonBuilder.registerTypeAdapter( DataType.class, new DataType.JsonAdapter());
 		gsonBuilder.registerTypeHierarchyAdapter( Compression.class, CompressionAdapter.getJsonAdapter());
 		gsonBuilder.disableHtmlEscaping();

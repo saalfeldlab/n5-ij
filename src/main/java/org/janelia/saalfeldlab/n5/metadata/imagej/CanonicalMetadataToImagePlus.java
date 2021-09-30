@@ -4,23 +4,22 @@ import ij.ImagePlus;
 import ij.measure.Calibration;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform;
-import net.imglib2.realtransform.AffineTransform3D;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.metadata.canonical.Axis;
-import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
 import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
 
 import java.io.IOException;
 import java.util.Arrays;
 
-public class CanonicalMetadataToImagePlus implements ImageplusMetadata<CanonicalDatasetMetadata> {
+public class CanonicalMetadataToImagePlus implements ImageplusMetadata<CanonicalSpatialDatasetMetadata> {
 
 	@Override
-	public void writeMetadata(final CanonicalDatasetMetadata t, final ImagePlus ip) throws IOException {
+	public void writeMetadata(final CanonicalSpatialDatasetMetadata t, final ImagePlus ip) throws IOException {
 
 		final int nd = t.getAttributes().getNumDimensions();
 		final AffineGet xfm = t.getSpatialTransform().spatialTransform();
@@ -140,7 +139,7 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 	}
 
 	@Override
-	public CanonicalDatasetMetadata readMetadata(final ImagePlus imp) throws IOException {
+	public CanonicalSpatialDatasetMetadata readMetadata(final ImagePlus imp) throws IOException {
 		int nd = imp.getNDimensions();
 
 		double[] params = getAffine( imp ).getRowPackedCopy();
@@ -166,7 +165,7 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 				new AffineSpatialTransform(params), imp.getCalibration().getUnit(),
 				axesFromImageplus(imp));
 
-		return new CanonicalDatasetMetadata("", spatialMeta, attributes);
+		return new CanonicalSpatialDatasetMetadata("", spatialMeta, attributes);
 	}
 
 }

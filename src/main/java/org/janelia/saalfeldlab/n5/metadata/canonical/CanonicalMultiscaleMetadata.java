@@ -1,30 +1,30 @@
 package org.janelia.saalfeldlab.n5.metadata.canonical;
 
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.metadata.AbstractN5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.SpatialMetadataGroup;
 
-public class CanonicalMultiscaleMetadata extends CanonicalMetadata implements SpatialMetadataGroup<CalibratedTransformMetadata> {
+public class CanonicalMultiscaleMetadata extends AbstractN5Metadata implements CanonicalMetadata, SpatialMetadataGroup<CalibratedTransformMetadata> {
+
+	private final MultiResolutionSpatialMetadataCanonical multiscales;
 
 	public CanonicalMultiscaleMetadata(final String path, 
-			final SpatialMetadataCanonical spatialTransform,
-			final MultiResolutionSpatialMetadataCanonical multiscales,
-			final MultiChannelMetadataCanonical multichannels,
-			final DatasetAttributes attributes) {
-		super( path, spatialTransform, multiscales, multichannels, attributes );
+			final MultiResolutionSpatialMetadataCanonical multiscales) {
+		super( path );
+		this.multiscales = multiscales;
 	}
 
 	@Override
 	public String[] getPaths() {
-		return super.getMultiscales().getPaths();
+		return multiscales.getPaths();
 	}
 
 	@Override
 	public CalibratedTransformMetadata[] getChildrenMetadata() {
-		return super.getMultiscales().getChildrenMetadata();
+		return multiscales.getChildrenMetadata();
 	}
 
 	@Override
 	public String[] units() {
-		return super.getMultiscales().units();
+		return multiscales.units();
 	}
 }

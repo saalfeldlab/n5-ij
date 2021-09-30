@@ -70,6 +70,7 @@ import org.janelia.saalfeldlab.n5.metadata.axes.AxisMetadata;
 import org.janelia.saalfeldlab.n5.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.metadata.axes.DefaultDatasetAxisMetadata;
 import org.janelia.saalfeldlab.n5.metadata.axes.DefaultDatasetAxisMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusAxes;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
@@ -220,9 +221,7 @@ public class N5Importer implements PlugIn {
 	  // restrict canonical metadata to those with spatial metadata, but without
 	  // multiscale
 	  selectionDialog.getTranslationPanel().setFilter(
-				x -> x.getMultiscales() == null &&
-				x.getSpatialTransform() != null &&
-				x.getAttributes() != null);
+				x -> ( x instanceof CanonicalDatasetMetadata ));
 
 	  selectionDialog.setContainerPathUpdateCallback(x -> {
 		if (x != null)

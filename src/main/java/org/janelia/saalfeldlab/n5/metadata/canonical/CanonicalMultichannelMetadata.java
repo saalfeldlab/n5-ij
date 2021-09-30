@@ -1,26 +1,26 @@
 package org.janelia.saalfeldlab.n5.metadata.canonical;
 
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.metadata.AbstractN5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataGroup;
 
-public class CanonicalMultichannelMetadata extends CanonicalMetadata implements N5MetadataGroup<CanonicalMetadata> {
+public class CanonicalMultichannelMetadata extends AbstractN5Metadata implements CanonicalMetadata, N5MetadataGroup<CanonicalMetadata> {
+
+	private final MultiChannelMetadataCanonical multichannels;
 
 	public CanonicalMultichannelMetadata(final String path, 
-			final SpatialMetadataCanonical spatialTransform,
-			final MultiResolutionSpatialMetadataCanonical multiscales,
-			final MultiChannelMetadataCanonical multichannels,
-			final DatasetAttributes attributes) {
-		super( path, spatialTransform, multiscales, multichannels, attributes );
+			final MultiChannelMetadataCanonical multichannels) {
+		super( path );
+		this.multichannels = multichannels;
 	}
 
 	@Override
 	public String[] getPaths() {
-		return super.getMultichannels().getPaths();
+		return multichannels.getPaths();
 	}
 
 	@Override
 	public CanonicalMetadata[] getChildrenMetadata() {
-		return super.getMultichannels().getChildrenMetadata();
+		return multichannels.getChildrenMetadata();
 	}
 
 }
