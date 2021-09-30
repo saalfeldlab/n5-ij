@@ -3,16 +3,23 @@ package org.janelia.saalfeldlab.n5.metadata;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
+import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.metadata.canonical.Axis;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
+import org.janelia.saalfeldlab.n5.metadata.container.ContainerMetadataNode;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CanonicalMetadataToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+
 import static org.junit.Assert.*;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.Optional;
 
 import ij.ImagePlus;
 import ij.ImageStack;
@@ -27,8 +34,22 @@ public class CanonicalMetadataTests {
 
 	private int[] blkSz3d, blkSz4d, blkSz5d;
 
+	File n5rootF;
+
+	private N5FSReader n5;
+
 	@Before
 	public void before() {
+
+		final String n5Root = "src/test/resources/test.n5";
+		n5rootF = new File(n5Root);
+
+		try {
+			n5 = new N5FSReader( n5rootF.getCanonicalPath() );
+		}catch( IOException e ) {
+			e.printStackTrace();
+		}
+
 		imp3d = new ImagePlus("imp3d", ImageStack.create(1, 1, 24, 8));
 		imp4d = new ImagePlus("imp4d", ImageStack.create(1, 1, 24, 8));
 		imp5d = new ImagePlus("imp5d", ImageStack.create(1, 1, 24, 8));
@@ -116,6 +137,24 @@ public class CanonicalMetadataTests {
 		assertEquals("xyczt nc", 2, imp5d.getNChannels());
 		assertEquals("xyczt nz", 3, imp5d.getNSlices());
 		assertEquals("xyczt nt", 4, imp5d.getNFrames());
+	}
+
+	@Test
+	public void testMetadataTree()
+	{
+		ContainerMetadataNode rootNode = ContainerMetadataNode.build(n5, n5.getGson());
+		Assert.assertNotNull("rootNode not null", rootNode);
+		Assert.assertEquals( "num children of root", 9, rootNode.getChildren().keySet().size());
+
+		Optional<ContainerMetadataNode> cosemMsNodeOpt = rootNode.getChild("cosem_ms", "/");
+		Assert.assertTrue("has cosem_ms", cosemMsNodeOpt.isPresent());
+		ContainerMetadataNode cosemMsNode = cosemMsNodeOpt.get();
+		Assert.assertEquals( "num children of cosem_ms", 3, cosemMsNode.getChildren().keySet().size());
+
+		Optional<ContainerMetadataNode> s0Opt = cosemMsNode.getChild("s0", "/");
+		Assert.assertTrue("has s0", s0Opt.isPresent());
+		ContainerMetadataNode s0 = s0Opt.get();
+		Assert.assertTrue("s0 has transform attribute", s0.getAttributes().keySet().contains("transform"));
 	}
 
 	private void printDims(ImagePlus imp) {

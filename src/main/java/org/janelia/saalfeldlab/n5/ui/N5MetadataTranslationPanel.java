@@ -77,11 +77,11 @@ public class N5MetadataTranslationPanel {
 //			return Optional.empty();
 //	}
 
-	public TranslatedTreeMetadataParser getParser(final N5Reader n5) {
+	public TranslatedTreeMetadataParser getParser() {
 		if (filter == null)
-			return new TranslatedTreeMetadataParser(n5, textArea.getText());
+			return new TranslatedTreeMetadataParser(textArea.getText());
 		else
-			return new TranslatedTreeMetadataParser(n5, textArea.getText(), filter);
+			return new TranslatedTreeMetadataParser(textArea.getText(), filter);
 	}
 
 	/**
@@ -89,10 +89,10 @@ public class N5MetadataTranslationPanel {
 	 * 
 	 * @return the parser optional
 	 */
-	public Optional<TranslatedTreeMetadataParser> getParserOptional(final N5Reader n5) {
+	public Optional<TranslatedTreeMetadataParser> getParserOptional() {
 
 		if (isTranslationProvided())
-			return Optional.of(getParser(n5));
+			return Optional.of(getParser());
 		else
 			return Optional.empty();
 	}

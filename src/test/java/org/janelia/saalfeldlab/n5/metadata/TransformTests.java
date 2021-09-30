@@ -11,6 +11,7 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RunImportExportTest;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
 import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
@@ -131,7 +132,8 @@ public class TransformTests {
 	private void testParsedTransformSeq( String dataset )
 	{
 		// canonical parser
-		final TranslatedTreeMetadataParser parser = new TranslatedTreeMetadataParser( n5, "." );
+//		final TranslatedTreeMetadataParser parser = new TranslatedTreeMetadataParser( n5, "." );
+		final CanonicalMetadataParser parser = new CanonicalMetadataParser();
 		Optional<CanonicalMetadata> metaOpt = parser.parseMetadata(n5, dataset);
 		CanonicalMetadata meta = metaOpt.get();
 		SpatialMetadataCanonical parsedXfm = meta.getSpatialTransform();

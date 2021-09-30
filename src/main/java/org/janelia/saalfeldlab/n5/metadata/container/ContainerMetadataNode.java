@@ -17,12 +17,12 @@ import org.janelia.saalfeldlab.n5.N5TreeNode;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
 
 /**
  * 
  * @author John Bogovic
- *
  */
 public class ContainerMetadataNode {
 
@@ -41,6 +41,24 @@ public class ContainerMetadataNode {
 
 	public Map<String, ContainerMetadataNode> getChildren() {
 		return children;
+	}
+
+	/**
+	 * Adds path attributes to this node and recursively to its children.
+	 */
+	public void addPathsRecursive() {
+		addPathsRecursive("");
+	}
+
+	/**
+	 * Adds path attributes to this node and recursively to its children.
+	 * 
+	 * @param thisPath
+	 */
+	public void addPathsRecursive( String thisPath ) {
+		attributes.put("path", new JsonPrimitive( thisPath ));
+		for ( String childPath : children.keySet() )
+			children.get(childPath).addPathsRecursive( thisPath + "/" + childPath );
 	}
 
 	public Optional<ContainerMetadataNode> getChild(final String relativePath, final String groupSeparator) {

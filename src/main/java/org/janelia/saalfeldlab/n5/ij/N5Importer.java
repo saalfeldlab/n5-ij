@@ -43,7 +43,6 @@ import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.parallel.DefaultTaskExecutor;
-import net.imglib2.transform.integer.MixedTransform;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
@@ -51,10 +50,7 @@ import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Intervals;
 import net.imglib2.util.Util;
-import net.imglib2.view.IntervalView;
-import net.imglib2.view.MixedTransformView;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
@@ -220,11 +216,13 @@ public class N5Importer implements PlugIn {
 
 	  selectionDialog.setLoaderExecutor( exec );
 	  selectionDialog.setTreeRenderer(new N5DatasetTreeCellRenderer(true));
-//	  selectionDialog.getTranslationPanel().setFilter(
-//			  x -> 
-//			  	x.getMultiscales() == null && 
-//			  	x.getSpatialTransform() != null &&
-//			  	x.getAttributes() != null );
+
+	  // restrict canonical metadata to those with spatial metadata, but without
+	  // multiscale
+	  selectionDialog.getTranslationPanel().setFilter(
+				x -> x.getMultiscales() == null &&
+				x.getSpatialTransform() != null &&
+				x.getAttributes() != null);
 
 	  selectionDialog.setContainerPathUpdateCallback(x -> {
 		if (x != null)

@@ -557,7 +557,7 @@ public class DatasetSelectorDialog {
 	}
 
 //	Optional<SpatialMetadataTemplateParser> translatedParser = translationPanel.getParserOptional( gson );
-	Optional<TranslatedTreeMetadataParser> translatedParser = translationPanel.getParserOptional( n5 );
+	Optional<TranslatedTreeMetadataParser> translatedParser = translationPanel.getParserOptional();
 	translatedParser.ifPresent( p -> {
 		parserList.clear();
 		parserList.add(translatedParser.get());
