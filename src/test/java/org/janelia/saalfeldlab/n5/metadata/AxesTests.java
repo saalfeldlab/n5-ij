@@ -2,22 +2,24 @@ package org.janelia.saalfeldlab.n5.metadata;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Optional;
 
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.RunImportExportTest;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.metadata.axes.DefaultDatasetAxisMetadata;
 import org.janelia.saalfeldlab.n5.metadata.axes.DefaultDatasetAxisMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusAxes;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.process.ByteProcessor;
 import net.imglib2.cache.img.CachedCellImg;
 import net.imglib2.img.array.ArrayCursor;
 import net.imglib2.img.array.ArrayImg;
@@ -35,8 +37,8 @@ public class AxesTests {
 	@Before
 	public void before()
 	{
-		URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
-		File baseDir = new File( configUrl.getFile() ).getParentFile();
+//		URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
+		final String baseDir = "src/test/resources";
 		containerDir = new File( baseDir, "axis.n5" );
 
 		int v = 0;
@@ -74,6 +76,38 @@ public class AxesTests {
 		try {
 			n5.remove();
 		} catch (IOException e) { }
+	}
+
+	@Test
+	public void testImagePlusAxes() throws IOException {
+		final ByteProcessor bp = new ByteProcessor( 8, 6 );
+		final ImageStack stack = new ImageStack();
+		for( int i = 0; i < 8; i++ )
+			stack.addSlice(bp);
+		
+		ImagePlus imp = new ImagePlus( "stack", stack );
+		ImagePlusAxes ipAx = new ImagePlusAxes();
+
+		imp.setDimensions(1, 4, 2);
+		DefaultDatasetAxisMetadata ztAxes = ipAx.readMetadata(imp);
+		Assert.assertEquals("z", ztAxes.getAxisLabels()[2]);
+		Assert.assertEquals("t", ztAxes.getAxisLabels()[3]);
+
+		imp.setDimensions(4, 2, 1);
+		DefaultDatasetAxisMetadata czAxes = ipAx.readMetadata(imp);
+		Assert.assertEquals("c", czAxes.getAxisLabels()[2]);
+		Assert.assertEquals("z", czAxes.getAxisLabels()[3]);
+
+		imp.setDimensions(4, 1, 2);
+		DefaultDatasetAxisMetadata ctAxes = ipAx.readMetadata(imp);
+		Assert.assertEquals("c", ctAxes.getAxisLabels()[2]);
+		Assert.assertEquals("t", ctAxes.getAxisLabels()[3]);
+
+		imp.setDimensions(2, 2, 2);
+		DefaultDatasetAxisMetadata cztAxes = ipAx.readMetadata(imp);
+		Assert.assertEquals("c", cztAxes.getAxisLabels()[2]);
+		Assert.assertEquals("z", cztAxes.getAxisLabels()[3]);
+		Assert.assertEquals("t", cztAxes.getAxisLabels()[4]);
 	}
 
 	@Test

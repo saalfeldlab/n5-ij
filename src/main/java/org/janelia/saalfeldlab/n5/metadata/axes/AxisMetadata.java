@@ -12,4 +12,6 @@ public interface AxisMetadata {
 
 	public String[] getAxisTypes();
 
+	public String[] getUnits();
+
 }

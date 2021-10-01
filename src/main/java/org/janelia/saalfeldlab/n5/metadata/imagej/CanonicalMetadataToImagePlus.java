@@ -8,7 +8,7 @@ import net.imglib2.realtransform.AffineTransform;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
-import org.janelia.saalfeldlab.n5.metadata.canonical.Axis;
+import org.janelia.saalfeldlab.n5.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
 import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;

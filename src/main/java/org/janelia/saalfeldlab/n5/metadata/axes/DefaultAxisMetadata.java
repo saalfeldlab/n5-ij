@@ -16,10 +16,13 @@ public class DefaultAxisMetadata implements AxisMetadata, N5Metadata {
 
 	private final String[] types;
 
-	public DefaultAxisMetadata(String path, String[] labels, String[] types) {
+	private final String[] units;
+
+	public DefaultAxisMetadata(String path, String[] labels, String[] types, String[] units ) {
 		this.path = path;
 		this.labels = labels;
 		this.types = types;
+		this.units = units;
 	}
 
 	@Override
@@ -30,6 +33,11 @@ public class DefaultAxisMetadata implements AxisMetadata, N5Metadata {
 	@Override
 	public String[] getAxisTypes() {
 		return types;
+	}
+
+	@Override
+	public String[] getUnits() {
+		return units;
 	}
 
 	@Override

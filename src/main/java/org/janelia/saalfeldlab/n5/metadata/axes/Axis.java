@@ -1,4 +1,4 @@
-package org.janelia.saalfeldlab.n5.metadata.canonical;
+package org.janelia.saalfeldlab.n5.metadata.axes;
 
 public class Axis {
 

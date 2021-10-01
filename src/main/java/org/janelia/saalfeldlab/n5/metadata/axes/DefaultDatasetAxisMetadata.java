@@ -13,9 +13,9 @@ public class DefaultDatasetAxisMetadata extends DefaultAxisMetadata implements N
 
 	private final DatasetAttributes attributes;
 
-	public DefaultDatasetAxisMetadata(String path, String[] labels, String[] types,
+	public DefaultDatasetAxisMetadata(String path, String[] labels, String[] types, String[] units,
 			final DatasetAttributes attributes ) {
-		super( path, labels, types );
+		super( path, labels, types, units );
 		this.attributes = attributes;
 	}
 

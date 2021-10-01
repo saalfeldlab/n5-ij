@@ -1,18 +1,15 @@
 package org.janelia.saalfeldlab.n5.metadata.canonical;
 
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.Optional;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GsonAttributesParser;
-import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
+import org.janelia.saalfeldlab.n5.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.metadata.transforms.CalibratedSpatialTransform;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.reflect.TypeToken;
 
 
 /**

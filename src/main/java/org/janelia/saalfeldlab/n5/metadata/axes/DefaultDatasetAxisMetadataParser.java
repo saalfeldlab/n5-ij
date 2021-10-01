@@ -28,7 +28,13 @@ public class DefaultDatasetAxisMetadataParser implements N5MetadataParser<Defaul
 					l -> AxisUtils.defaultAxisTypes.get(l))
 					.toArray( String[]::new );
 
-			return Optional.of( new DefaultDatasetAxisMetadata(path, axisLabels, types, attrs));
+			String[] units = n5.getAttribute(path, "units", String[].class);
+			if (units == null ) {
+				units = new String[ n5.getDatasetAttributes(path).getNumDimensions() ] ;
+				Arrays.fill(units, "pixel");
+			}
+
+			return Optional.of( new DefaultDatasetAxisMetadata(path, axisLabels, types, units, attrs));
 		} catch (IOException e) {
 			return Optional.empty();
 		}
