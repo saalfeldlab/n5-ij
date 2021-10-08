@@ -32,6 +32,21 @@ def identityAsFlatAffine( $nd ):
     reduce range( $nd * ($nd +1)) as $i ([]; . + [0]) |
     reduce range($nd) as $i (.; . | setFlatAffine( 1; $nd; $i; $i ));
 
+def scaleAndOffset( $s; $o ):
+{
+    "type" : "scale_offset",
+    "scale" : $s,
+    "offset" : $o
+};
+
+def scaleOffsetUnitToTransform( $s; $o; $u ):
+{
+    "spatialTransform" : {
+        "transform" : scaleAndOffset( $s; $o ),
+        "unit": .[1]
+    }
+};
+
 def arrayAndUnitToTransform: {
     "spatialTransform": {
         "transform" : {
@@ -42,6 +57,7 @@ def arrayAndUnitToTransform: {
     }
 };
 
+
 def arrayUnitToTransform($a;$u): {
     "spatialTransform": {
         "transform" : {
@@ -49,6 +65,17 @@ def arrayUnitToTransform($a;$u): {
             "affine": $a 
         },
         "unit": $u
+    }
+};
+
+def arrayUnitAxisToTransform($a;$u;$x): {
+    "spatialTransform": {
+        "transform" : {
+            "type": "affine",
+            "affine": $a
+        },
+        "unit": $u,
+        "axes" : $x
     }
 };
 
@@ -61,6 +88,12 @@ def affineFromScaleAndFactorsArr:
   .[0] as $s | .[1] as $f | 
   if ( $s | length) == 2 then [ ($s[0]*$f[0]), 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), ($f[1]-1)/2.0 ]
   elif ($s | length) == 3 then [($s[0]*$f[0]), 0, 0, ($f[0]-1)/2.0, 0, ($s[1]*$f[1]), 0, ($f[1]-1)/2.0, 0, 0,  ($s[2]*$f[2]), ($f[2]-1)/2.0 ] 
+  else null end;
+
+def scaleOffsetFromScaleAndFactorsArr:
+  .[0] as $s | .[1] as $f | 
+  if ( $s | length) == 2 then [ [($s[0]*$f[0]), ($s[1]*$f[1])], [ ($f[0]-1)/2.0,  ($f[1]-1)/2.0 ] ]
+  elif ($s | length) == 3 then [ [($s[0]*$f[0]), ($s[1]*$f[1]), ($s[2]*$f[2])], [($f[0]-1)/2.0, ($f[1]-1)/2.0, ($f[2]-1)/2.0 ]]
   else null end;
 
 def applyDownsamplingToFlatAffine( $a; $f ):
@@ -82,7 +115,7 @@ def n5visResArrDs: has("downsamplingFactors") and has("pixelResolution") and (.p
 
 def n5visResArr: has("pixelResolution") and (.pixelResolution | type == "array");
 
-def n5vToTransform: . + {
+def n5vToTransform: {
   "transform": {
     "type": "affine",
     "affine": [ 
@@ -91,6 +124,17 @@ def n5vToTransform: . + {
             affineFromScaleAndFactorsArr  
   },
   "unit" : (.pixelResolution.unit // "pixel")
+};
+
+def n5vToScaleOffset: 
+( [ (if n5visResObj then .pixelResolution.dimensions elif n5visResArr then .pixelResolution else null end),
+(.downsamplingFactors // [1, 1, 1] )] | scaleOffsetFromScaleAndFactorsArr ) as $scaleOffset | 
+{
+  "transform": {
+    "type": "scale_offset",
+    "scale": ($scaleOffset | .[0]),
+    "offset": ($scaleOffset | .[1])
+  }
 };
 
 def n5vToTransformF: . + {
@@ -102,6 +146,18 @@ def n5vToTransformF: . + {
   },
   "unit" : (.pixelResolution.unit // "pixel")
 };
+
+def scaleOffsetToN5v: .spatialTransform | .unit as $unit | .transform | {
+    "pixelResolution" :  {
+        "dimensions": .scale,
+        "unit" : $unit
+    }
+};
+
+def n5vToCanonicalAffine: . + { "spatialTransform" : n5vToTransform };
+
+def n5vToCanonicalScaleOffset: . + { "spatialTransform" : n5vToScaleOffset };
+
 def attrHasTform: (.attributes | has("spatialTransform"));
 
 def numTformChildren: .children | reduce (keys| .[]) as $k (
@@ -114,6 +170,27 @@ def isCosem: type == "object" and has("transform") and (.transform | type == "ob
 
 def cosemAxisIndexes: {"axisIndexes":[ (.axes | index("x")) , (.axes | index("y")), (.axes | index("z")) ]};
 
+def cosemToScaleOffsetSimple: { "spatialTransform": {
+        "transform": {
+            "type":"scale_offset",
+            "scale" : [ .scale[.axisIndexes[0]],
+                .scale[ .axisIndexes[1]],
+                .scale[ .axisIndexes[2]] ],
+            "offset" : [ .translate[.axisIndexes[0]],
+                .translate[.axisIndexes[1]],
+                .translate[.axisIndexes[2]] ]
+        },
+        "unit" : .units[0]
+    }
+};
+
+def scaleOffsetToCosem: .spatialTransform | .unit as $u | .transform | {
+    "scale" : permute( .scale; [2,1,0] ),
+    "translate" : permute( .offset; [2,1,0]),
+    "units" : [ $u, $u, $u ],
+    "axes" : ["z", "y", "x" ]
+};
+
 def cosemToTransformSimple: { "spatialTransform": {
         "transform": {
             "type":"affine",
@@ -125,7 +202,7 @@ def cosemToTransformSimple: { "spatialTransform": {
         }
     };
 
-def cosemToTransform: (.transform |= . + cosemAxisIndexes) | . + (.transform | cosemToTransformSimple);
+def cosemToTransform: (.transform |= . + cosemAxisIndexes) | . + (.transform | cosemToScaleOffsetSimple);
 
 def isIJ: isAttributes and has("pixelWidth") and has("pixelHeight") and has("pixelUnit") and has("xOrigin") and has("yOrigin");
 
@@ -197,6 +274,11 @@ def addAllMultichannel: walk( if isMultiChannel then addMultiChannel else . end 
 def getScales: .multiscales | .[0] | .metadata | .scale;
 
 def arrMultiply( $s1; $s2 ): [$s1, $s2] | transpose | map(.[0] * .[1]) ;
+
+def permute( $arr; $indexes ):
+   if all( (( $arr | type ) == "array" ); ( ($indexes | type) == "array"  )) then
+       reduce ($indexes | .[]) as $i ( []; . + [ $arr | .[$i]])
+   else null end;
 
 def scaleTransform( $scales ): { "type" : "scale", "scale" : $scales };
 
