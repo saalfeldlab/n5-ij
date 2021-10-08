@@ -14,6 +14,7 @@ import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
 import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
+import org.janelia.saalfeldlab.n5.metadata.transforms.ScaleOffsetSpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.ScaleSpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.SequenceSpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.SpatialTransform;
@@ -43,6 +44,10 @@ public class TransformTests {
 	private double[] translation = new double[] { 100, 200, 300 };
 
 	private double[] scale = new double[] { 1.1, 2.2, 3.3 };
+
+	private double[] so = new double[] { 1.9, 0.1, 2.8, 0.2, 3.7, 0.3 };
+	private double[] soScale = new double[] { 1.9, 2.8, 3.7 };
+	private double[] soOffset = new double[] { 0.1, 0.2, 0.3 };
 
 	private double[] affine = new double[] { 
 			1.1, 0.1, 0.2, -10,
@@ -89,6 +94,10 @@ public class TransformTests {
 		ArrayImg<DoubleType, DoubleArray> scaleParams = ArrayImgs.doubles( scale, 3 );
 		N5Utils.save( scaleParams, n5, "scale", new int[]{3}, new GzipCompression());
 
+		// scale-offset
+		ArrayImg<DoubleType, DoubleArray> scaleOffsetParams = ArrayImgs.doubles( so, 2, 3 );
+		N5Utils.save( scaleOffsetParams, n5, "scale_offset", new int[]{3,3}, new GzipCompression());
+
 		// affine
 		ArrayImg<DoubleType, DoubleArray> affineParams = ArrayImgs.doubles( affine, 12 );
 		N5Utils.save( affineParams, n5, "affine", new int[]{12}, new GzipCompression());
@@ -96,8 +105,9 @@ public class TransformTests {
 		final ScaleSpatialTransform scaleTransform = new ScaleSpatialTransform( "scale" );
 		final TranslationSpatialTransform translationTransform = new TranslationSpatialTransform( "translation" );
 		final AffineSpatialTransform affineTransform = new AffineSpatialTransform( "affine" );
+		final ScaleOffsetSpatialTransform scaleOffsetTransform = new ScaleOffsetSpatialTransform( "scale_offset" );
 		final SequenceSpatialTransform seq = new SequenceSpatialTransform( 
-				new SpatialTransform[]{ affineTransform, scaleTransform, translationTransform });
+				new SpatialTransform[]{ affineTransform, scaleTransform, scaleOffsetTransform, translationTransform });
 
 		// make an image
 		N5Utils.save( img, n5, "imgParam", new int[] {5, 5, 5}, new GzipCompression());
@@ -114,9 +124,10 @@ public class TransformTests {
 
 		final ScaleSpatialTransform scaleTransform = new ScaleSpatialTransform( scale );
 		final TranslationSpatialTransform translationTransform = new TranslationSpatialTransform( translation );
+		final ScaleOffsetSpatialTransform scaleOffsetTransform = new ScaleOffsetSpatialTransform(soScale, soOffset);
 		final AffineSpatialTransform affineTransform = new AffineSpatialTransform( affine );
 		final SequenceSpatialTransform seq = new SequenceSpatialTransform( 
-				new SpatialTransform[]{ affineTransform, scaleTransform, translationTransform });
+				new SpatialTransform[]{ affineTransform, scaleTransform, scaleOffsetTransform, translationTransform });
 
 		// make an image
 		N5Utils.save( img, n5, "img", new int[] {5, 5, 5}, new GzipCompression());
@@ -143,6 +154,7 @@ public class TransformTests {
 		SpatialTransform transform0 = parsedSeq.getTransformations()[0];
 		SpatialTransform transform1 = parsedSeq.getTransformations()[1];
 		SpatialTransform transform2 = parsedSeq.getTransformations()[2];
+		SpatialTransform transform3 = parsedSeq.getTransformations()[3];
 
 		Assert.assertTrue("transform0 is affine", transform0 instanceof AffineSpatialTransform);
 		Assert.assertArrayEquals( "parsed affine parameters", affine, ((AffineSpatialTransform)transform0).affine, 1e-9 );
@@ -150,8 +162,12 @@ public class TransformTests {
 		Assert.assertTrue("transform1 is scale", transform1 instanceof ScaleSpatialTransform);
 		Assert.assertArrayEquals( "parsed scale parameters", scale, ((ScaleSpatialTransform)transform1).scale, 1e-9 );
 
-		Assert.assertTrue("transform2 is translation", transform2 instanceof TranslationSpatialTransform);
-		Assert.assertArrayEquals( "parsed translation parameters", translation, ((TranslationSpatialTransform)transform2).translation, 1e-9 );
+		Assert.assertTrue("transform2 is scale", transform2 instanceof ScaleOffsetSpatialTransform);
+		Assert.assertArrayEquals( "parsed scaleOffset scale parameters", soScale, ((ScaleOffsetSpatialTransform)transform2).scale, 1e-9 );
+		Assert.assertArrayEquals( "parsed scaleOffset offset parameters", soOffset, ((ScaleOffsetSpatialTransform)transform2).offset, 1e-9 );
+
+		Assert.assertTrue("transform3 is translation", transform3 instanceof TranslationSpatialTransform);
+		Assert.assertArrayEquals( "parsed translation parameters", translation, ((TranslationSpatialTransform)transform3).translation, 1e-9 );
 	}
 
 }

@@ -47,6 +47,9 @@ public class SpatialTransformAdapter //implements JsonDeserializer<SpatialTransf
 		case("translation"):
 			out = context.deserialize( jobj, TranslationSpatialTransform.class );
 			break;
+		case("scale_offset"):
+			out = context.deserialize( jobj, ScaleOffsetSpatialTransform.class );
+			break;
 		case("affine"):
 			out = context.deserialize( jobj, AffineSpatialTransform.class );
 			break;

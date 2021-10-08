@@ -7,7 +7,7 @@ import net.imglib2.realtransform.Scale;
 import net.imglib2.realtransform.Scale2D;
 import net.imglib2.realtransform.Scale3D;
 
-public class ScaleSpatialTransform extends AbstractLinearSpatialTransform {
+public class ScaleSpatialTransform extends AbstractLinearSpatialTransform<double[]> {
 
 	public double[] scale;
 
@@ -45,9 +45,13 @@ public class ScaleSpatialTransform extends AbstractLinearSpatialTransform {
 	}
 
 	@Override
-	public AffineGet getTransform()
-	{
+	public AffineGet getTransform() {
 		return transform;
+	}
+
+	@Override
+	public double[] getParameters(N5Reader n5) {
+		return getDoubleArray( n5 , getParameterPath() );
 	}
 	
 }

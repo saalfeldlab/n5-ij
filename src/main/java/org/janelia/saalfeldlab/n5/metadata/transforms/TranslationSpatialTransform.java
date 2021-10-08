@@ -7,7 +7,7 @@ import net.imglib2.realtransform.Translation;
 import net.imglib2.realtransform.Translation2D;
 import net.imglib2.realtransform.Translation3D;
 
-public class TranslationSpatialTransform extends AbstractLinearSpatialTransform {
+public class TranslationSpatialTransform extends AbstractLinearSpatialTransform<double[]> {
 
 	public double[] translation;
 
@@ -49,5 +49,11 @@ public class TranslationSpatialTransform extends AbstractLinearSpatialTransform 
 	{
 		return transform;
 	}
+
+	@Override
+	public double[] getParameters(N5Reader n5) {
+		return getDoubleArray( n5 , getParameterPath() );
+	}
+
 	
 }

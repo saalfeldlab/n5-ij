@@ -12,7 +12,7 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.util.Util;
 
-public abstract class AbstractLinearSpatialTransform implements LinearSpatialTransform, ParametrizedTransform<AffineGet, double[]> {
+public abstract class AbstractLinearSpatialTransform<P> implements LinearSpatialTransform, ParametrizedTransform<AffineGet, P> {
 
 	public final String type;
 
@@ -35,11 +35,6 @@ public abstract class AbstractLinearSpatialTransform implements LinearSpatialTra
 	@Override
 	public abstract AffineGet getTransform();
 
-	@Override
-	public double[] getParameters( N5Reader n5 ) {
-		return getDoubleArray( n5, getParameterPath() );
-	}
-
 	protected static <T extends RealType<T> & NativeType<T>> double[] getDoubleArray(final N5Reader n5, final String path) {
 		if (n5.exists(path)) {
 			try {
@@ -53,6 +48,27 @@ public abstract class AbstractLinearSpatialTransform implements LinearSpatialTra
 				int i = 0;
 				while (c.hasNext())
 					params[i++] = c.next().getRealDouble();
+
+				return params;
+			} catch (IOException e) { }
+		}
+		return null;
+	}
+
+	protected static <T extends RealType<T> & NativeType<T>> double[][] getDoubleArray2(final N5Reader n5, final String path) {
+		if (n5.exists(path)) {
+			try {
+				@SuppressWarnings("unchecked")
+				CachedCellImg<T, ?> data = (CachedCellImg<T, ?>) N5Utils.open(n5, path);
+				if (data.numDimensions() != 2 || !(Util.getTypeFromInterval(data) instanceof RealType))
+					return null;
+
+				double[][] params = new double[(int) data.dimension(0)] [(int) data.dimension(1)];
+				CellCursor<T, ?> c = data.cursor();
+				while (c.hasNext()) {
+					c.fwd();
+					params[c.getIntPosition(0)][c.getIntPosition(1)] = c.get().getRealDouble();
+				}
 
 				return params;
 			} catch (IOException e) { }

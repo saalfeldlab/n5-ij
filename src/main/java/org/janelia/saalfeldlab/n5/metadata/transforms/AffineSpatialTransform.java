@@ -7,7 +7,7 @@ import net.imglib2.realtransform.AffineTransform;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
 
-public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
+public class AffineSpatialTransform extends AbstractLinearSpatialTransform<double[]> {
 
 	public double[] affine;
 
@@ -55,6 +55,11 @@ public class AffineSpatialTransform extends AbstractLinearSpatialTransform {
 	@Override
 	public AffineGet getTransform() {
 		return transform;
+	}
+
+	@Override
+	public double[] getParameters(N5Reader n5) {
+		return getDoubleArray( n5 , getParameterPath() );
 	}
 	
 }
