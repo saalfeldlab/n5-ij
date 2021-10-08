@@ -8,6 +8,7 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.metadata.container.ContainerMetadataNode;
 import org.janelia.saalfeldlab.n5.metadata.translation.JqUtils;
+import org.janelia.saalfeldlab.n5.metadata.translation.ImportedTranslations;
 import org.janelia.saalfeldlab.n5.metadata.translation.JqFunction;
 
 import com.google.gson.JsonElement;

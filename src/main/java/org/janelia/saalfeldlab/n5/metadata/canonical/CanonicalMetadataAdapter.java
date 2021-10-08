@@ -4,6 +4,7 @@ import java.lang.reflect.Type;
 import java.util.Optional;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata.IntensityLimits;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;
@@ -36,11 +37,18 @@ public class CanonicalMetadataAdapter implements JsonDeserializer<CanonicalMetad
 			multichannel = context.deserialize(jsonObj.get("multichannel"), MultiChannelMetadataCanonical.class);
 		}
 
+		IntensityLimits intensityLimits = null;
+		if (jsonObj.has("intensityLimits")) {
+			intensityLimits = context.deserialize(jsonObj.get("intensityLimits"), IntensityLimits.class);
+		}
+
 		if (attrs.isPresent()) {
 			if( spatial != null )
-				return new CanonicalSpatialDatasetMetadata(path, spatial, attrs.get());
+				return new CanonicalSpatialDatasetMetadata(path, spatial, attrs.get(), intensityLimits );
 			else 
-				return new CanonicalDatasetMetadata(path, attrs.get());
+				return new CanonicalDatasetMetadata(path, attrs.get(), intensityLimits );
+
+
 		} else if (multiscale != null && multiscale.getChildrenMetadata() != null) {
 			return new CanonicalMultiscaleMetadata(path, multiscale );
 		} else if (multichannel != null && multichannel.getPaths() != null) {

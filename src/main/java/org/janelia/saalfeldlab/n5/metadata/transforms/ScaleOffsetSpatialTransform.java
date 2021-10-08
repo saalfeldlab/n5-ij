@@ -47,6 +47,9 @@ public class ScaleOffsetSpatialTransform extends AbstractLinearSpatialTransform<
 
 	@Override
 	public AffineGet getTransform() {
+		if( scale != null && offset != null && transform == null )
+			transform = new ScaleAndTranslation(scale, offset);
+
 		return transform;
 	}
 

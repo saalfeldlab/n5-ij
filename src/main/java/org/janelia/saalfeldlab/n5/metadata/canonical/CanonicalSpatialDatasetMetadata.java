@@ -15,6 +15,14 @@ public class CanonicalSpatialDatasetMetadata extends CanonicalDatasetMetadata im
 		this.spatialTransform = spatialTransform;
 	}
 
+	public CanonicalSpatialDatasetMetadata(final String path,
+			final SpatialMetadataCanonical spatialTransform,
+			final DatasetAttributes attributes,
+			final IntensityLimits limits) {
+		super( path, attributes, limits );
+		this.spatialTransform = spatialTransform;
+	}
+
 	public SpatialMetadataCanonical getSpatialTransform() {
 		return spatialTransform;
 	}

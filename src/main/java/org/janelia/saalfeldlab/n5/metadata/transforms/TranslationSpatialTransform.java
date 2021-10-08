@@ -45,8 +45,10 @@ public class TranslationSpatialTransform extends AbstractLinearSpatialTransform<
 	}
 
 	@Override
-	public AffineGet getTransform()
-	{
+	public AffineGet getTransform() {
+		if( transform == null && translation != null )
+			buildTransform(translation);
+
 		return transform;
 	}
 

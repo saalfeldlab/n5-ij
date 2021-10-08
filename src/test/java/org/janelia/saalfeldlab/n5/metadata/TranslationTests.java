@@ -79,6 +79,28 @@ public class TranslationTests {
 	}
 
 	@Test
+	public void testIntensity() {
+		final double[] res = new double[] { 1, 2, 3 };
+		FinalVoxelDimensions voxdims = new FinalVoxelDimensions( "um", res );
+
+		N5vMetaObj n5vMetaObj = new N5vMetaObj();
+		n5vMetaObj.pixelResolution = voxdims;
+
+		N5vMetaArr n5vMetaArr = new N5vMetaArr();
+		n5vMetaArr.pixelResolution = res;
+
+		JqFunction<N5vMetaObj,CanonicalSpatialDatasetMetadata > f = new JqFunction<>(
+				"include \"n5\"; . + { \"intensityLimits\": { "
+				+ " \"min\":2, \"max\" : 222 }} ",
+				JqUtils.buildGson(null),
+				CanonicalSpatialDatasetMetadata.class);	
+
+		CanonicalSpatialDatasetMetadata metaOut = f.apply(n5vMetaObj);
+		Assert.assertEquals(2, metaOut.minIntensity(), 1e-9);
+		Assert.assertEquals(222, metaOut.maxIntensity(), 1e-9);
+	}
+
+	@Test
 	public void testN5v() {
 		final double[] res = new double[] { 1, 2, 3 };
 		FinalVoxelDimensions voxdims = new FinalVoxelDimensions( "um", res );

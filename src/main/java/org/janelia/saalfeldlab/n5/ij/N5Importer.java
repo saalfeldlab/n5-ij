@@ -71,6 +71,8 @@ import org.janelia.saalfeldlab.n5.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.metadata.axes.DefaultDatasetAxisMetadata;
 import org.janelia.saalfeldlab.n5.metadata.axes.DefaultDatasetAxisMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.imagej.CanonicalMetadataToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusAxes;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
@@ -165,6 +167,8 @@ public class N5Importer implements PlugIn {
 	impMetaWriterTypes.put( N5CosemMetadata.class, new CosemToImagePlus());
 	impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
 	impMetaWriterTypes.put( DefaultDatasetAxisMetadata.class, new ImagePlusAxes());
+	impMetaWriterTypes.put( CanonicalDatasetMetadata.class, new CanonicalMetadataToImagePlus());
+	impMetaWriterTypes.put( CanonicalSpatialDatasetMetadata.class, new CanonicalMetadataToImagePlus());
 
 	numDimensionsForCrop = 5;
 	initMaxValuesForCrop = new long[numDimensionsForCrop];

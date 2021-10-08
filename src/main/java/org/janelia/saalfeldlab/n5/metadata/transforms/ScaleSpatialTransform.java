@@ -46,6 +46,9 @@ public class ScaleSpatialTransform extends AbstractLinearSpatialTransform<double
 
 	@Override
 	public AffineGet getTransform() {
+		if( transform == null && scale != null )
+			buildTransform(scale);
+
 		return transform;
 	}
 

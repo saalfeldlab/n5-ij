@@ -9,6 +9,7 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.metadata.axes.Axis;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
 import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
@@ -16,10 +17,17 @@ import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
 import java.io.IOException;
 import java.util.Arrays;
 
-public class CanonicalMetadataToImagePlus implements ImageplusMetadata<CanonicalSpatialDatasetMetadata> {
+public class CanonicalMetadataToImagePlus implements ImageplusMetadata<CanonicalDatasetMetadata> {
 
 	@Override
-	public void writeMetadata(final CanonicalSpatialDatasetMetadata t, final ImagePlus ip) throws IOException {
+	public void writeMetadata(final CanonicalDatasetMetadata t, final ImagePlus ip) throws IOException {
+		if( t instanceof CanonicalSpatialDatasetMetadata )
+			writeSpatialMetadata( (CanonicalSpatialDatasetMetadata) t, ip );
+
+		ip.setDisplayRange( t.minIntensity(), t.maxIntensity());
+	}
+
+	public void writeSpatialMetadata(final CanonicalSpatialDatasetMetadata t, final ImagePlus ip) throws IOException {
 
 		final int nd = t.getAttributes().getNumDimensions();
 		final AffineGet xfm = t.getSpatialTransform().spatialTransform();
@@ -37,6 +45,8 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 		final Axis[] axes = t.getSpatialTransform().getAxes();
 		final long[] dims = t.getAttributes().getDimensions();
 
+		// TODO setDimensions is not needed because 
+		// a permutation is applied elsewhere
 		if( axes != null ) {
 			ip.getCalibration().setXUnit( axes[0].getUnit() );
 			ip.getCalibration().setYUnit( axes[1].getUnit() );
@@ -65,24 +75,24 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 
 				i++;
 			}
-			nc = nc == 0 ? 1 : nc;
-			nz = nz == 0 ? 1 : nz;
-			nt = nt == 0 ? 1 : nt;
-			ip.setDimensions(nc, nz, nt);
+//			nc = nc == 0 ? 1 : nc;
+//			nz = nz == 0 ? 1 : nz;
+//			nt = nt == 0 ? 1 : nt;
+//			ip.setDimensions(nc, nz, nt);
 		}
 		else {
 			// if axes are not specified, assume xyz for 3d 
 			// and assume xyzc for 4d
-			if (nd == 3) {
-				ip.setDimensions(1, (int) dims[2], 1);
-				cal.pixelDepth = xfm.get(2, 2);
-				cal.zOrigin = xfm.get(2, nd);
-			}
-			else if (nd == 4) {
-				ip.setDimensions((int) dims[3], (int) dims[2], 1);
-				cal.pixelDepth = xfm.get(3, 3);
-				cal.zOrigin = xfm.get(3, nd);
-			}
+//			if (nd == 3) {
+//				ip.setDimensions(1, (int) dims[2], 1);
+//				cal.pixelDepth = xfm.get(2, 2);
+//				cal.zOrigin = xfm.get(2, nd);
+//			}
+//			else if (nd == 4) {
+//				ip.setDimensions((int) dims[3], (int) dims[2], 1);
+//				cal.pixelDepth = xfm.get(3, 3);
+//				cal.zOrigin = xfm.get(3, nd);
+//			}
 		}
 
 	}

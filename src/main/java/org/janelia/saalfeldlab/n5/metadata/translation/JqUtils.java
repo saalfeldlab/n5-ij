@@ -9,7 +9,6 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadataAdapter;
-import org.janelia.saalfeldlab.n5.metadata.canonical.ImportedTranslations;
 import org.janelia.saalfeldlab.n5.metadata.transforms.SpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.SpatialTransformAdapter;
 

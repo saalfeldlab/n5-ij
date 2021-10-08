@@ -54,6 +54,8 @@ public class AffineSpatialTransform extends AbstractLinearSpatialTransform<doubl
 
 	@Override
 	public AffineGet getTransform() {
+		if( affine != null && transform == null )
+			buildTransform(affine);
 		return transform;
 	}
 

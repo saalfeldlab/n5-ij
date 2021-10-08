@@ -1,4 +1,4 @@
-package org.janelia.saalfeldlab.n5.metadata.canonical;
+package org.janelia.saalfeldlab.n5.metadata.translation;
 
 import java.io.IOException;
 import java.nio.file.Files;
