@@ -9,11 +9,13 @@ import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import org.janelia.saalfeldlab.n5.AbstractGsonReader;
+import org.janelia.saalfeldlab.n5.GsonAttributesParser;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 
+import com.google.common.collect.Streams;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -41,6 +43,13 @@ public class ContainerMetadataNode {
 
 	public Map<String, ContainerMetadataNode> getChildren() {
 		return children;
+	}
+
+	public Stream<String> getChildPathsRecursive( String thisPath )
+	{
+		return Streams.concat( Stream.of(thisPath),
+			this.children.keySet().stream().flatMap( k -> 
+				this.children.get(k).getChildPathsRecursive( thisPath + "/" + k )));
 	}
 
 	/**
@@ -90,30 +99,35 @@ public class ContainerMetadataNode {
 
 	}
 
-	public static ContainerMetadataNode build(final N5Reader n5, final Gson gson ) {
-		if (n5 instanceof AbstractGsonReader) {
+	@SuppressWarnings("unchecked")
+	public static  <N extends GsonAttributesParser & N5Reader > ContainerMetadataNode build(
+			final N5Reader n5, final String dataset, final Gson gson ) {
+		if (n5 instanceof GsonAttributesParser) {
 			try {
-				return buildGson((AbstractGsonReader) n5, gson );
-			} catch (Exception e) {
-			}
-			return null;
-		} else {
-			try {
-				return buildH5(n5, gson);
+				return buildGson((N)n5, dataset, gson );
 			} catch (Exception e) {
 			}
 		}
-
+		else {
+			try {
+				return buildN5( n5, dataset, gson );
+			} catch (Exception e) {
+			}
+		}
 		return null;
 	}
 
-	public static <T extends AbstractGsonReader> ContainerMetadataNode buildGson(final T n5, final Gson gson )
+	public static ContainerMetadataNode build(final N5Reader n5, final Gson gson ) {
+		return build( n5, "", gson );
+	}
+
+	public static <N extends GsonAttributesParser & N5Reader > ContainerMetadataNode buildGson(
+			final N n5, final String dataset, final Gson gson )
 			throws InterruptedException, ExecutionException {
 		String[] datasets;
 		N5TreeNode root;
 		try {
-
-			datasets = n5.deepList("", Executors.newSingleThreadExecutor());
+			datasets = n5.deepList(dataset, Executors.newSingleThreadExecutor());
 			root = N5TreeNode.fromFlatList("", datasets, "/");
 			return buildHelper(n5, root );
 
@@ -123,7 +137,7 @@ public class ContainerMetadataNode {
 		return null;
 	}
 
-	public static ContainerMetadataNode buildHelper(final AbstractGsonReader n5, N5TreeNode baseNode ) {
+	public static <N extends GsonAttributesParser & N5Reader> ContainerMetadataNode buildHelper(final N n5, N5TreeNode baseNode ) {
 
 		HashMap<String, JsonElement> attrs = null;
 		try {
@@ -143,15 +157,15 @@ public class ContainerMetadataNode {
 			return new ContainerMetadataNode(new HashMap<>(), childMap);
 	}
 
-	public static <T extends N5Reader> ContainerMetadataNode buildH5(final T n5, final Gson gson )
+	public static <T extends N5Reader> ContainerMetadataNode buildN5(final T n5, final String dataset, final Gson gson )
 			throws InterruptedException, ExecutionException {
 		String[] datasets;
 		N5TreeNode root;
 		try {
 
-			datasets = n5.deepList("", Executors.newSingleThreadExecutor());
+			datasets = n5.deepList(dataset, Executors.newSingleThreadExecutor());
 			root = N5TreeNode.fromFlatList("", datasets, "/");
-			return buildHelperH5(n5, root, gson );
+			return buildHelperN5(n5, root, gson );
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -159,13 +173,13 @@ public class ContainerMetadataNode {
 		return null;
 	}
 
-	public static ContainerMetadataNode buildHelperH5(final N5Reader n5, N5TreeNode baseNode, Gson gson ) {
-		final Optional<HashMap<String, JsonElement>> attrs = getMetadataMapH5(n5, baseNode.getPath(), gson );
+	public static ContainerMetadataNode buildHelperN5(final N5Reader n5, N5TreeNode baseNode, Gson gson ) {
+		final Optional<HashMap<String, JsonElement>> attrs = getMetadataMapN5(n5, baseNode.getPath(), gson );
 		final List<N5TreeNode> children = baseNode.childrenList();
 
 		final HashMap<String, ContainerMetadataNode> childMap = new HashMap<>();
 		for (N5TreeNode child : children)
-			childMap.put(child.getNodeName(), buildHelperH5(n5, child, gson));
+			childMap.put(child.getNodeName(), buildHelperN5(n5, child, gson));
 
 		if (attrs.isPresent())
 			return new ContainerMetadataNode(attrs.get(), childMap);
@@ -173,7 +187,7 @@ public class ContainerMetadataNode {
 			return new ContainerMetadataNode(new HashMap<>(), childMap);
 	}
 
-	public static Optional<HashMap<String, JsonElement>> getMetadataMapH5(final N5Reader n5, final String dataset,
+	public static Optional<HashMap<String, JsonElement>> getMetadataMapN5(final N5Reader n5, final String dataset,
 			final Gson gson) {
 		try {
 			final HashMap<String, JsonElement> attrs = new HashMap<>();

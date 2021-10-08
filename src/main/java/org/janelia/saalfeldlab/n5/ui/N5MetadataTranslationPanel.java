@@ -60,28 +60,17 @@ public class N5MetadataTranslationPanel {
 		this.filter = filter;
 	}
 
-//	public SpatialMetadataTemplateParser getParser( final Gson gson ) {
-//		return new SpatialMetadataTemplateParser( gson, textArea.getText() );
-//	}
-//
-//	/**
-//	 * Returns an optional containing the parser if any fields are non empty.
-//	 * 
-//	 * @return the parser optional
-//	 */
-//	public Optional<SpatialMetadataTemplateParser> getParserOptional( final Gson gson ) {
-//
-//		if (isTranslationProvided())
-//			return Optional.of(getParser( gson ));
-//		else
-//			return Optional.empty();
-//	}
-
 	public TranslatedTreeMetadataParser getParser() {
+		TranslatedTreeMetadataParser p;
 		if (filter == null)
-			return new TranslatedTreeMetadataParser(textArea.getText());
+			p = new TranslatedTreeMetadataParser(textArea.getText());
 		else
-			return new TranslatedTreeMetadataParser(textArea.getText(), filter);
+			p = new TranslatedTreeMetadataParser(textArea.getText(), filter);
+
+		if( p.validTranslation())
+			return p;
+		else
+			return null;
 	}
 
 	/**
@@ -92,7 +81,7 @@ public class N5MetadataTranslationPanel {
 	public Optional<TranslatedTreeMetadataParser> getParserOptional() {
 
 		if (isTranslationProvided())
-			return Optional.of(getParser());
+			return Optional.ofNullable(getParser());
 		else
 			return Optional.empty();
 	}
@@ -101,11 +90,12 @@ public class N5MetadataTranslationPanel {
 
 		final String txt = textArea.getText();
 		boolean textSet = !( txt.isEmpty() || txt.equals(DEFAULT_TEXT));
-		if( textSet ) {
-			return TranslatedTreeMetadataParser.testTranslation( txt );
-		}
-		else
-			return false;
+		return textSet;
+//		if( textSet ) {
+//			return TranslatedTreeMetadataParser.testTranslation( txt );
+//		}
+//		else
+//			return false;
 	}
 
 	public JPanel buildPanel()
