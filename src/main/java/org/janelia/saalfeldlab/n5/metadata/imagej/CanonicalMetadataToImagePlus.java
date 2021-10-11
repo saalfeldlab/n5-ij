@@ -19,6 +19,16 @@ import java.util.Arrays;
 
 public class CanonicalMetadataToImagePlus implements ImageplusMetadata<CanonicalDatasetMetadata> {
 
+	private final boolean setDims;
+
+	public CanonicalMetadataToImagePlus( boolean setDims ) {
+		this.setDims = setDims;
+	}
+
+	public CanonicalMetadataToImagePlus() {
+		this(false);
+	}
+
 	@Override
 	public void writeMetadata(final CanonicalDatasetMetadata t, final ImagePlus ip) throws IOException {
 		if( t instanceof CanonicalSpatialDatasetMetadata )
@@ -75,24 +85,26 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 
 				i++;
 			}
-//			nc = nc == 0 ? 1 : nc;
-//			nz = nz == 0 ? 1 : nz;
-//			nt = nt == 0 ? 1 : nt;
-//			ip.setDimensions(nc, nz, nt);
+			nc = nc == 0 ? 1 : nc;
+			nz = nz == 0 ? 1 : nz;
+			nt = nt == 0 ? 1 : nt;
+
+			if( setDims )
+				ip.setDimensions(nc, nz, nt);
 		}
-		else {
+		else if( setDims ){
 			// if axes are not specified, assume xyz for 3d 
 			// and assume xyzc for 4d
-//			if (nd == 3) {
-//				ip.setDimensions(1, (int) dims[2], 1);
-//				cal.pixelDepth = xfm.get(2, 2);
-//				cal.zOrigin = xfm.get(2, nd);
-//			}
-//			else if (nd == 4) {
-//				ip.setDimensions((int) dims[3], (int) dims[2], 1);
-//				cal.pixelDepth = xfm.get(3, 3);
-//				cal.zOrigin = xfm.get(3, nd);
-//			}
+			if (nd == 3) {
+				ip.setDimensions(1, (int) dims[2], 1);
+				cal.pixelDepth = xfm.get(2, 2);
+				cal.zOrigin = xfm.get(2, nd);
+			}
+			else if (nd == 4) {
+				ip.setDimensions((int) dims[3], (int) dims[2], 1);
+				cal.pixelDepth = xfm.get(3, 3);
+				cal.zOrigin = xfm.get(3, nd);
+			}
 		}
 
 	}
