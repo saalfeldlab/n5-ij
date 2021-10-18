@@ -37,7 +37,7 @@ import javax.swing.JTextArea;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
-import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.translation.TranslatedTreeMetadataParser;
 
 public class N5MetadataTranslationPanel {
 

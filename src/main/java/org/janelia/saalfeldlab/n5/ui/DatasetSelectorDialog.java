@@ -38,7 +38,7 @@ import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.translation.TranslatedTreeMetadataParser;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

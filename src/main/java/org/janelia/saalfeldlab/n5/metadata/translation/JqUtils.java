@@ -63,14 +63,18 @@ public class JqUtils {
 		return rootScope;
 	}
 
-	public static Gson buildGson( final N5Reader n5 ) {
+	public static GsonBuilder gsonBuilder( final N5Reader n5 ) {
 		final GsonBuilder gsonBuilder = new GsonBuilder();
 		gsonBuilder.registerTypeAdapter(SpatialTransform.class, new SpatialTransformAdapter( n5 ));
 		gsonBuilder.registerTypeAdapter(CanonicalMetadata.class, new CanonicalMetadataAdapter());
 		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
 		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
 		gsonBuilder.disableHtmlEscaping();
-		return gsonBuilder.create();
+		return gsonBuilder;
+	}
+
+	public static Gson buildGson( final N5Reader n5 ) {
+		return gsonBuilder(n5).create();
 	}
 
 	public String transform( final String in, final String translation, final ObjectMapper objMapper, final Scope scope ) throws JsonMappingException, JsonProcessingException 

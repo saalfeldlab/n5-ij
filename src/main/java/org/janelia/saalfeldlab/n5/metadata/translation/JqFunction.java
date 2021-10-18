@@ -36,6 +36,7 @@ public class JqFunction<S,T> implements Function<S,T>{
 		try {
 			qTmp = JsonQuery.compile(JqUtils.resolveImports(translation), Versions.JQ_1_6);
 		} catch (JsonQueryException e) {
+			e.printStackTrace();
 		}
 		query = qTmp;
 	}
@@ -54,6 +55,7 @@ public class JqFunction<S,T> implements Function<S,T>{
 		JsonNode jsonNode;
 		try {
 			jsonNode = objMapper.readTree(gson.toJson(src));
+
 			final List<JsonNode> out = new ArrayList<>();
 			query.apply(scope, jsonNode, out::add);
 

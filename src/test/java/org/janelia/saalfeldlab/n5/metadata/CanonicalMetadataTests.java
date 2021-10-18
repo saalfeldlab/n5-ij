@@ -83,7 +83,7 @@ public class CanonicalMetadataTests {
 	@Test
 	public void testAxesToImagePlus() throws IOException {
 
-		CanonicalMetadataToImagePlus ipMeta = new CanonicalMetadataToImagePlus();
+		CanonicalMetadataToImagePlus ipMeta = new CanonicalMetadataToImagePlus( true );
 
 		// 3d tests
 		final DatasetAttributes attrs3d = new DatasetAttributes(dims3d, blkSz3d, DataType.UINT8, new GzipCompression());
@@ -139,30 +139,6 @@ public class CanonicalMetadataTests {
 		assertEquals("xyczt nt", 4, imp5d.getNFrames());
 	}
 
-	@Test
-	public void testMetadataTree()
-	{
-		ContainerMetadataNode rootNode = ContainerMetadataNode.build(n5, n5.getGson());
-		Assert.assertNotNull("rootNode not null", rootNode);
-		Assert.assertEquals( "num children of root", 9, rootNode.getChildren().keySet().size());
-
-		Optional<ContainerMetadataNode> cosemMsNodeOpt = rootNode.getChild("cosem_ms", "/");
-		Assert.assertTrue("has cosem_ms", cosemMsNodeOpt.isPresent());
-		ContainerMetadataNode cosemMsNode = cosemMsNodeOpt.get();
-		Assert.assertEquals( "num children of cosem_ms", 3, cosemMsNode.getChildren().keySet().size());
-
-		Optional<ContainerMetadataNode> s0Opt = cosemMsNode.getChild("s0", "/");
-		Assert.assertTrue("has s0", s0Opt.isPresent());
-		ContainerMetadataNode s0 = s0Opt.get();
-		Assert.assertTrue("s0 has transform attribute", s0.getAttributes().keySet().contains("transform"));
-	}
-
-	private void printDims(ImagePlus imp) {
-		System.out.println(imp.getNChannels());
-		System.out.println(imp.getNSlices());
-		System.out.println(imp.getNFrames());
-	}
-
 	private CanonicalSpatialDatasetMetadata makeMeta(double[] affine, DatasetAttributes attrs, Axis[] axes) {
 		return new CanonicalSpatialDatasetMetadata("",
 				new SpatialMetadataCanonical("", new AffineSpatialTransform(affine), "mm", axes), 
@@ -192,12 +168,6 @@ public class CanonicalMetadataTests {
 //		System.out.println(gson.toJson(spatial));
 //		System.out.println("");
 //		System.out.println(gson.toJson(affine));
-//
-//	}
-//
-//	public static void main(String[] args) {
-//
-//		oneOffAxisTest();
 //
 //	}
 

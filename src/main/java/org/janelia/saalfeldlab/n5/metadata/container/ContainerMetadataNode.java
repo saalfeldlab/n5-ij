@@ -1,7 +1,9 @@
 package org.janelia.saalfeldlab.n5.metadata.container;
 
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,9 +13,13 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.janelia.saalfeldlab.n5.DataBlock;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GsonAttributesParser;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.N5Writer;
+import org.janelia.saalfeldlab.n5.metadata.translation.JqUtils;
 
 import com.google.common.collect.Streams;
 import com.google.gson.Gson;
@@ -21,20 +27,36 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
+import com.google.gson.reflect.TypeToken;
 
 /**
  * 
  * @author John Bogovic
  */
-public class ContainerMetadataNode {
+public class ContainerMetadataNode implements N5Writer {
 
-	private final HashMap<String, JsonElement> attributes;
-	private final Map<String, ContainerMetadataNode> children;
+	protected HashMap<String, JsonElement> attributes;
+	protected Map<String, ContainerMetadataNode> children;
+	protected final transient Gson gson;
+
+	public ContainerMetadataNode() {
+		gson = JqUtils.buildGson(null);
+		attributes = new HashMap<String, JsonElement>();
+		children = new HashMap<String, ContainerMetadataNode >();
+		addPathsRecursive();
+	}
 
 	public ContainerMetadataNode(final HashMap<String, JsonElement> attributes,
-			final Map<String, ContainerMetadataNode> children) {
+			final Map<String, ContainerMetadataNode> children, final Gson gson) {
 		this.attributes = attributes;
 		this.children = children;
+		this.gson = gson;
+	}
+
+	public ContainerMetadataNode( ContainerMetadataNode other) {
+		gson = other.gson;
+		attributes = other.attributes;
+		children = other.children;
 	}
 
 	public HashMap<String, JsonElement> getAttributes() {
@@ -45,9 +67,48 @@ public class ContainerMetadataNode {
 		return children;
 	}
 
-	public Stream<String> getChildPathsRecursive( String thisPath )
-	{
-		return Streams.concat( Stream.of(thisPath),
+	public Stream<ContainerMetadataNode> getChildrenStream() {
+		return children.entrySet().stream().map( e -> e.getValue() );
+	}
+
+	public Stream<ContainerMetadataNode> flatten() {
+		return Stream.concat(Stream.of(this), getChildrenStream().flatMap( ContainerMetadataNode::flatten ));
+	}
+
+	public void addChild(String relativepath, ContainerMetadataNode child) {
+		children.put(relativepath, child);
+	}
+
+	/**
+	 * 
+	 * @param path full or relative path
+	 * @return
+	 */
+	public Stream<ContainerMetadataNode> pathToChild(final String path) {
+		final String groupSeparator = "/";
+		final String normPath = path.replaceAll("^(" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
+
+		final String thisNodePath = getPath();
+		String relativePath = normPath;
+		if( !thisNodePath.isEmpty() && normPath.startsWith( thisNodePath )) {
+			relativePath = normPath.replaceFirst( thisNodePath, "");
+		}
+
+		return Stream.concat(Stream.of(this), children.get(relativePath).pathToChild(relativePath));
+	}
+
+	/**
+	 * @return the path to this node from the root.
+	 */
+	public String getPath() {
+		if( attributes.containsKey("path"))
+			return attributes.get("path").getAsString();
+		else
+			return "";
+	}
+
+	public Stream<String> getChildPathsRecursive( String thisPath ) {
+		return Streams.concat( Stream.of( thisPath ),
 			this.children.keySet().stream().flatMap( k -> 
 				this.children.get(k).getChildPathsRecursive( thisPath + "/" + k )));
 	}
@@ -68,6 +129,31 @@ public class ContainerMetadataNode {
 		attributes.put("path", new JsonPrimitive( thisPath ));
 		for ( String childPath : children.keySet() )
 			children.get(childPath).addPathsRecursive( thisPath + "/" + childPath );
+	}
+
+	public Optional<ContainerMetadataNode> getNode( final String path ) {
+
+		final String groupSeparator = "/";
+		final String normPath = path.replaceAll("^(" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
+		final String thisNodePath = getPath();
+
+		if( normPath.startsWith( thisNodePath )) {
+			return getChild( normPath.replaceFirst( thisNodePath, ""));
+		}
+
+		return Optional.empty();
+	}
+
+	public Optional<ContainerMetadataNode> getChild(final String relativePath ) {
+		return getChild(relativePath, "/");
+	}
+
+	public ContainerMetadataNode childRelative(final String normRelativePath) {
+		String childName = normRelativePath.substring( 0, normRelativePath.indexOf('/'));
+		if( children.containsKey(childName) )
+			return children.get(childName);
+		else
+			return null;
 	}
 
 	public Optional<ContainerMetadataNode> getChild(final String relativePath, final String groupSeparator) {
@@ -96,8 +182,132 @@ public class ContainerMetadataNode {
 			return Optional.empty();
 		else
 			return c.getChild(relToChild, groupSeparator);
-
 	}
+
+	@Override
+	public <T> T getAttribute( String path, String key, Class<T> clazz ) {
+		return getNode( path ).map( x -> gson.fromJson( x.getAttributes().get(key), clazz))
+			.orElseGet( () -> null );
+	}
+
+//	@Override
+//	public <T> T getAttribute(String pathName, String key, Class<T> clazz) {
+//
+//		Optional<ContainerMetadataNode> nodeOpt = getNode(pathName);
+//		if( nodeOpt.isPresent() ) { 
+//			return gson.fromJson( nodeOpt.get().getAttributes().get(key), clazz );
+//		}
+//		return null;
+//	}
+
+	@Override
+	public <T> T getAttribute(String pathName, String key, Type type) throws IOException {
+		Optional<ContainerMetadataNode> nodeOpt = getNode(pathName);
+		if( nodeOpt.isPresent() ) { 
+			return gson.fromJson( nodeOpt.get().getAttributes().get(key), type );
+		}
+		return null;
+	}
+
+	@Override
+	public DatasetAttributes getDatasetAttributes(String pathName) throws IOException {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public boolean exists(String pathName) {
+		return getNode( pathName ).isPresent();
+	}
+
+	@Override
+	public String[] list(String pathName) throws IOException {
+		return getNode(pathName).map( ContainerMetadataNode::getChildren )
+			.map( m -> m.keySet().toArray( new String[1]))
+			.orElse(new String[] {} );
+	}
+
+	@Override
+	public Map<String, Class<?>> listAttributes(String pathName) throws IOException {
+		return null;
+	}
+
+	@Override
+	public <T> void setAttribute( final String pathName, final String key, final T attribute) {
+		setAttributes(pathName, Collections.singletonMap(key, attribute));
+	}
+
+	@Override
+	public void setAttributes(String pathName, Map<String, ?> attributes) {
+		final Type mapType = new TypeToken<HashMap<String, JsonElement>>(){}.getType();
+		JsonElement json = gson.toJsonTree(attributes);
+		HashMap<String, JsonElement> map = gson.fromJson(json, mapType);
+		getNode( pathName ).ifPresent( x -> x.attributes.putAll(map) );
+	}
+
+	@Override
+	public void createGroup(String pathName) {
+		final String groupSeparator = "/";
+		final String normPath = pathName.replaceAll("^(" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
+		final String thisNodePath = getPath();
+
+		final String relativePath;
+		if( normPath.startsWith( thisNodePath ))
+			relativePath = normPath.replaceFirst( thisNodePath, "" );
+		else
+			relativePath = normPath;
+
+		String[] parts = relativePath.split(groupSeparator);
+		createGroupHelper( this, parts, 0 );
+	}
+
+	private static void createGroupHelper( ContainerMetadataNode node, String[] parts, int i )
+	{
+		if( i >= parts.length )
+			return;
+
+		String childRelpath = parts[i];
+		ContainerMetadataNode child;
+		if( !node.children.containsKey( childRelpath )) {
+			child = new ContainerMetadataNode();
+			node.addChild(childRelpath, child);
+		}
+		else {
+			child = node.children.get(childRelpath);
+		}
+
+		createGroupHelper( child, parts, i+1 )	;
+	}
+
+	@Override
+	public boolean remove(String pathName) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean remove() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public <T> void writeBlock(String pathName, DatasetAttributes datasetAttributes, DataBlock<T> dataBlock)
+			throws IOException {
+	}
+
+	@Override
+	public boolean deleteBlock(String pathName, long... gridPosition) throws IOException {
+		return false;
+	}
+
+	@Override
+	public DataBlock<?> readBlock(String pathName, DatasetAttributes datasetAttributes, long... gridPosition)
+			throws IOException {
+		return null;
+	}
+
+
 
 	@SuppressWarnings("unchecked")
 	public static  <N extends GsonAttributesParser & N5Reader > ContainerMetadataNode build(
@@ -128,8 +338,10 @@ public class ContainerMetadataNode {
 		N5TreeNode root;
 		try {
 			datasets = n5.deepList(dataset, Executors.newSingleThreadExecutor());
-			root = N5TreeNode.fromFlatList("", datasets, "/");
-			return buildHelper(n5, root );
+			root = N5TreeNode.fromFlatList(dataset, datasets, "/");
+			final ContainerMetadataNode containerRoot = buildHelper(n5, root );
+			containerRoot.addPathsRecursive(dataset);
+			return containerRoot;
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -142,8 +354,7 @@ public class ContainerMetadataNode {
 		HashMap<String, JsonElement> attrs = null;
 		try {
 			attrs = n5.getAttributes(baseNode.getPath());
-		} catch (IOException e) {
-		}
+		} catch (IOException e) { }
 
 		final List<N5TreeNode> children = baseNode.childrenList();
 
@@ -152,9 +363,9 @@ public class ContainerMetadataNode {
 			childMap.put(child.getNodeName(), buildHelper(n5, child));
 
 		if ( attrs != null )
-			return new ContainerMetadataNode(attrs, childMap);
+			return new ContainerMetadataNode(attrs, childMap, n5.getGson());
 		else
-			return new ContainerMetadataNode(new HashMap<>(), childMap);
+			return new ContainerMetadataNode(new HashMap<>(), childMap, n5.getGson());
 	}
 
 	public static <T extends N5Reader> ContainerMetadataNode buildN5(final T n5, final String dataset, final Gson gson )
@@ -164,8 +375,10 @@ public class ContainerMetadataNode {
 		try {
 
 			datasets = n5.deepList(dataset, Executors.newSingleThreadExecutor());
-			root = N5TreeNode.fromFlatList("", datasets, "/");
-			return buildHelperN5(n5, root, gson );
+			root = N5TreeNode.fromFlatList(dataset, datasets, "/");
+			final ContainerMetadataNode containerRoot = buildHelperN5(n5, root, gson );
+			containerRoot.addPathsRecursive(dataset);
+			return containerRoot;
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -182,9 +395,9 @@ public class ContainerMetadataNode {
 			childMap.put(child.getNodeName(), buildHelperN5(n5, child, gson));
 
 		if (attrs.isPresent())
-			return new ContainerMetadataNode(attrs.get(), childMap);
+			return new ContainerMetadataNode(attrs.get(), childMap, gson );
 		else
-			return new ContainerMetadataNode(new HashMap<>(), childMap);
+			return new ContainerMetadataNode(new HashMap<>(), childMap, gson);
 	}
 
 	public static Optional<HashMap<String, JsonElement>> getMetadataMapN5(final N5Reader n5, final String dataset,

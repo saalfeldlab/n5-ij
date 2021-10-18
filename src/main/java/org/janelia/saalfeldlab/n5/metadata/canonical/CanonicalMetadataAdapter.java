@@ -47,8 +47,8 @@ public class CanonicalMetadataAdapter implements JsonDeserializer<CanonicalMetad
 				return new CanonicalSpatialDatasetMetadata(path, spatial, attrs.get(), intensityLimits );
 			else 
 				return new CanonicalDatasetMetadata(path, attrs.get(), intensityLimits );
-
-
+		} else if( spatial != null ) {
+			return new CanonicalSpatialMetadata( path, spatial, intensityLimits );
 		} else if (multiscale != null && multiscale.getChildrenMetadata() != null) {
 			return new CanonicalMultiscaleMetadata(path, multiscale );
 		} else if (multichannel != null && multichannel.getPaths() != null) {

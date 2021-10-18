@@ -1,4 +1,4 @@
-package org.janelia.saalfeldlab.n5.metadata.canonical;
+package org.janelia.saalfeldlab.n5.metadata.translation;
 
 import java.util.HashMap;
 import java.util.Optional;
@@ -6,10 +6,9 @@ import java.util.function.Predicate;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.container.ContainerMetadataNode;
-import org.janelia.saalfeldlab.n5.metadata.translation.JqUtils;
-import org.janelia.saalfeldlab.n5.metadata.translation.ImportedTranslations;
-import org.janelia.saalfeldlab.n5.metadata.translation.JqFunction;
 
 import com.google.gson.JsonElement;
 
@@ -22,7 +21,7 @@ public class TranslatedTreeMetadataParser extends CanonicalMetadataParser {
 
 	private ContainerMetadataNode translatedRoot;
 
-	private JqFunction<ContainerMetadataNode,ContainerMetadataNode> translationFun;
+	private ContainerTranslation translationFun;
 
 	public TranslatedTreeMetadataParser(final String translation) {
 		this(translation, x -> true);
@@ -31,27 +30,16 @@ public class TranslatedTreeMetadataParser extends CanonicalMetadataParser {
 	public TranslatedTreeMetadataParser(final String translation,
 			final Predicate<CanonicalMetadata> filter) {
 		super( filter );
-		translationFun = new JqFunction<>( translation,
-				JqUtils.buildGson(null),
-				ContainerMetadataNode.class);
+		translationFun = new ContainerTranslation( translation, JqUtils.buildGson(null));
 	}
 
 	public boolean validTranslation() {
 		return translationFun != null;
 	}
 
-	public static String resolveImports(String query) {
-		if (query.startsWith("include"))
-			return new ImportedTranslations().getTranslation() + query.replaceFirst("^\\s*include\\s+\"n5\"\\s*;", "");
-		else
-			return query;
-	}
-
 	public TranslatedTreeMetadataParser( final N5Reader n5, final String n5Tree, final String translation) {
 		super( null );
-		translationFun = new JqFunction<>( translation,
-				JqUtils.buildGson(n5),
-				ContainerMetadataNode.class);
+		translationFun = new ContainerTranslation( translation, JqUtils.buildGson(n5));
 	}
 
 	protected void setup( final N5Reader n5 ) {
@@ -59,7 +47,6 @@ public class TranslatedTreeMetadataParser extends CanonicalMetadataParser {
 			setGson( buildGson( n5 ));
 
 		root = ContainerMetadataNode.build(n5, gson);
-		root.addPathsRecursive();
 		translatedRoot = translationFun.apply( root );
 		if( translatedRoot != null )
 			translatedRoot.addPathsRecursive();

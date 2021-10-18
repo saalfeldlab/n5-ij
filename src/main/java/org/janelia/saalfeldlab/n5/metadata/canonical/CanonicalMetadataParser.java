@@ -147,6 +147,7 @@ public class CanonicalMetadataParser implements N5MetadataParser<CanonicalMetada
 	}
 
 	public CanonicalMetadata canonicalMetadata(final HashMap<String, JsonElement> attrMap) {
+		CanonicalMetadata m = gson.fromJson(gson.toJson(attrMap), CanonicalMetadata.class);
 		return gson.fromJson(gson.toJson(attrMap), CanonicalMetadata.class);
 	}
 

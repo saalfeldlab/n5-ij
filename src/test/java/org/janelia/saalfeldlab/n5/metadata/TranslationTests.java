@@ -3,16 +3,28 @@ package org.janelia.saalfeldlab.n5.metadata;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.util.Optional;
 
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
+import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata.CosemTransform;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.canonical.TranslatedTreeMetadataWriter;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
+import org.janelia.saalfeldlab.n5.metadata.container.ContainerMetadataNode;
+import org.janelia.saalfeldlab.n5.metadata.container.ContainerMetadataWriter;
 import org.janelia.saalfeldlab.n5.metadata.transforms.ScaleOffsetSpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.transforms.SpatialTransform;
 import org.janelia.saalfeldlab.n5.metadata.translation.JqUtils;
+import org.janelia.saalfeldlab.n5.metadata.translation.TranslatedMetadataWriter;
+import org.janelia.saalfeldlab.n5.metadata.translation.TranslatedTreeMetadataWriter;
+import org.janelia.saalfeldlab.n5.metadata.translation.InvertibleTreeTranslation;
 import org.janelia.saalfeldlab.n5.metadata.translation.JqFunction;
 
 import org.junit.Test;
@@ -26,6 +38,7 @@ import net.imglib2.img.array.ArrayCursor;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.basictypeaccess.array.ByteArray;
+import net.imglib2.realtransform.ScaleAndTranslation;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 public class TranslationTests {
@@ -34,15 +47,23 @@ public class TranslationTests {
 	private N5FSWriter n5;
 	private ArrayImg<UnsignedByteType, ByteArray> img;
 
+	private File containerDirTest;
+	private N5FSWriter n5Test;
+
 	@Before
 	public void before()
 	{
 		URL configUrl = TransformTests.class.getResource( "/plugins.config" );
 		File baseDir = new File( configUrl.getFile() ).getParentFile();
 		containerDir = new File( baseDir, "translations.n5" );
+		
+		final String n5TestRoot = "src/test/resources/test.n5";
+		containerDirTest = new File(n5TestRoot);
 
 		try {
 			n5 = new N5FSWriter( containerDir.getCanonicalPath() );
+
+			n5Test = new N5FSWriter( containerDirTest.getCanonicalPath(), JqUtils.gsonBuilder(null));
 
 			int v = 0;
 			img = ArrayImgs.unsignedBytes( 3, 4, 5);
@@ -55,22 +76,23 @@ public class TranslationTests {
 		}
 	}
 
-	@After
-	public void after() {
-		try {
-			n5.remove();
-		} catch (IOException e) {
-		}
-	}
+//	@After
+//	public void after() {
+//		try {
+//			n5.remove();
+//		} catch (IOException e) {
+//		}
+//	}
 
 	@Test
 	public void testTransformSimple() {
+		String str = "cow";
 		A a = new A();
-		a.a = "cow";
+		a.a = str;
 
 		JqFunction<A, B> tb = new JqFunction<>("{\"b\":.a }", new Gson(), B.class);
 		B b = tb.apply(a);
-		Assert.assertEquals("cow", b.b);
+		Assert.assertEquals(str, b.b);
 
 		final double[] arr = new double[] { 0, 1, 2, 3, 4 };
 		JqFunction<double[], Double> tv = new JqFunction<>(".[2]", new Gson(), Double.class);
@@ -177,6 +199,150 @@ public class TranslationTests {
 		TranslatedTreeMetadataWriter attrWriterAll = new TranslatedTreeMetadataWriter( n5, translationAll );
 		attrWriterAll.writeAllTranslatedAttributes();
 		Assert.assertEquals("/a/attr2", n5.getAttribute("a/attr2", "addedP", String.class));
+	}
+
+	@Test
+	public void testInvertibleTranslation() throws IOException {
+
+		n5.createGroup("someGroup");
+		final Gson gson = JqUtils.buildGson(n5);
+		final ContainerMetadataNode grpNode = ContainerMetadataNode.build(n5Test, "someGroup", n5Test.getGson());
+
+		String hasAttrs = "def hasAttributes: type == \"object\" and has(\"attributes\");";
+		String defConvFwd = "def convFwd: .attributes |= (. + { \"translated\" : .orig? } | del( .orig ));";
+		String defConvInv = "def convInv: .attributes |= (. + { \"orig\" : .translated? } | del( .translated ));";
+		String fwd = hasAttrs + defConvFwd + " walk( if hasAttributes then convFwd else . end )";
+		String inv = hasAttrs + defConvInv + " walk( if hasAttributes then convInv else . end )";
+		InvertibleTreeTranslation translator = new InvertibleTreeTranslation(grpNode, gson, fwd, inv );
+
+		translator.setAttribute("someGroup", "orig", "firstString");
+		Assert.assertEquals("orig 1", "firstString", translator.getOrig().getAttribute("someGroup", "orig", String.class));
+		Assert.assertEquals("translated 1", "firstString", translator.getTranslated().getAttribute("someGroup", "translated", String.class));
+
+		translator.setTranslatedAttribute("someGroup", "translated", "secondString");
+		Assert.assertEquals("translated 2", "secondString", translator.getTranslated().getAttribute("someGroup", "translated", String.class));
+		Assert.assertEquals("orig 2", "secondString", translator.getOrig().getAttribute("someGroup", "orig", String.class));
+	}
+	
+	@Test
+	public void testInvertibleTranslationCosem() throws IOException {
+
+		CosemTransform cosemTransform = new CosemTransform(
+				new String[] { "z", "y", "x"}, 
+				new double[] { 63, 64, 65 }, 
+				new double[] { 5, 6, 7 }, 
+				new String[]{"um", "um", "um"});
+		
+		n5.createGroup("cosem");
+		n5.setAttribute("cosem", "transform", cosemTransform);
+		
+		n5.createGroup("cosem");
+		n5.setAttribute("cosem", "transform", cosemTransform);
+
+		final String hasAttrs = "def hasAttributes: type == \"object\" and has(\"attributes\");";
+		final String defConvFwd = "def convFwd: .attributes |= cosemToTransform;";
+		final String fwd = "include \"n5\"; " + hasAttrs + defConvFwd + " walk( if hasAttributes then convFwd else . end )";
+
+//		final String defConvInv = "def convInv: .attributes |= . + { \"transform\" : scaleOffsetToCosem };";
+//		final String inv = "include \"n5\"; " + hasAttrs +  defConvInv + " walk( if hasAttributes then convInv else . end )";
+
+		final TranslatedTreeMetadataWriter canonicalToCosem = new TranslatedTreeMetadataWriter(n5,"cosem", fwd);
+		canonicalToCosem.setAttribute("cosem", "transform", cosemTransform );
+		canonicalToCosem.writeAllTranslatedAttributes("cosem");
+
+		final CanonicalMetadataParser parser = new CanonicalMetadataParser();
+		Optional<CanonicalMetadata> metaOpt = parser.parseMetadata(n5, "cosem");
+		Assert.assertTrue( "did parse canonical", metaOpt.isPresent());
+		Assert.assertTrue( "is CanonicalSpatialMetadata", metaOpt.get() instanceof CanonicalSpatialMetadata);
+		SpatialMetadataCanonical spatialTransform = ((CanonicalSpatialMetadata)metaOpt.get()).getSpatialTransform();
+		Assert.assertTrue( "is ScaleOffset", spatialTransform.spatialTransform() instanceof ScaleAndTranslation);
+		
+	}
+
+	@Test
+	public void testPathTranslation() {
+		try {
+			n5.createGroup("/pathXlation");
+			n5.createDataset("/pathXlation/src", 
+					new DatasetAttributes( new long[]{16,16}, new int[]{16,16}, DataType.UINT8, new RawCompression()));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		Assert.assertTrue("pathXlation src exists", n5.exists("/pathXlation/src"));
+
+		final Gson gson = n5.getGson();
+//		final ContainerMetadataNode grpNode = ContainerMetadataNode.build(n5, "pathXlation", gson );
+		
+		ContainerMetadataWriter treeWriter = new ContainerMetadataWriter( n5, "" );
+		ContainerMetadataNode grpNode = treeWriter.getMetadataTree();
+		
+		String fwd = "include \"n5\"; moveSubTree( \"/pathXlation/src\"; \"/pathXlation/dst\" )";
+		String inv = "include \"n5\"; moveSubTree( \"/pathXlation/dst\"; \"/pathXlation/src\" )";
+
+		int code = 1010010001;
+		InvertibleTreeTranslation translator = new InvertibleTreeTranslation(grpNode, gson, fwd, inv );
+//		translator.setAttribute("pathXlation/src", "secretCode", new Integer( 1010010001 ));
+		translator.setTranslatedAttribute( "pathXlation/dst", "secretCode", new Integer( code ));
+
+		try {
+			// write src
+			treeWriter.setMetadataTree( translator.getOrig());
+			treeWriter.writeAllAttributes();
+			int parsedCode = n5.getAttribute( "pathXlation/src", "secretCode", Integer.class);
+			Assert.assertEquals("parsed code src", code, parsedCode );
+
+			// write dst
+			treeWriter.setMetadataTree( translator.getTranslated());
+			treeWriter.writeAllAttributes();
+			parsedCode = n5.getAttribute( "pathXlation/dst", "secretCode", Integer.class);
+			Assert.assertEquals("parsed code dst", code, parsedCode );
+
+		} catch (IOException e) {
+//			e.printStackTrace();
+			Assert.fail( e.getMessage() );
+		}
+
+	}
+	
+	@Test
+	public void testMetadataWriting() {
+		try {
+			n5.createGroup("/metaIo");
+			n5.createDataset("/metaIo/writeCosem", 
+					new DatasetAttributes( new long[]{16,16}, new int[]{16,16}, DataType.UINT8, new RawCompression()));
+			n5.createDataset("/metaIo/writeCosemXlated", 
+					new DatasetAttributes( new long[]{16,16}, new int[]{16,16}, DataType.UINT8, new RawCompression()));
+
+			final CosemTransform cosemTransform = new CosemTransform(
+					new String[] { "z", "y", "x"}, 
+					new double[] { 63, 64, 65 }, 
+					new double[] { 5, 6, 7 }, 
+					new String[]{"um", "um", "um"});
+			final N5CosemMetadata cosemMeta = new N5CosemMetadata("", cosemTransform , null);
+
+			N5CosemMetadataParser rawParser = new N5CosemMetadataParser();
+			rawParser.writeMetadata(cosemMeta, n5, "/metaIo/writeCosem");
+
+			final String fwd = "walk( if type == \"object\" and has( \"transform\") then . +  {\"val\": 1234} else . end)";
+
+//			// this writes to all the cosem data in the container
+//			TranslatedMetadataWriter<N5CosemMetadata> xlatedWriter = new TranslatedMetadataWriter<N5CosemMetadata>( n5, fwd, rawParser );
+//			xlatedWriter.writeMetadata(cosemMeta, n5, "metaIo/writeCosemXlated");
+
+			// this writes only to the metaIo/writeCosemXlated dataset
+			final String dataset = "metaIo/writeCosemXlated";
+			final TranslatedMetadataWriter<N5CosemMetadata> xlatedWriter = new TranslatedMetadataWriter<N5CosemMetadata>( n5, dataset, fwd, rawParser );
+			xlatedWriter.writeMetadata(cosemMeta, n5, dataset );
+			
+			Assert.assertNull("check writeCosem dataset not modified", n5.getAttribute("metaIo/writeCosem", "val", Integer.class));
+			int val = n5.getAttribute("metaIo/writeCosemXlated", "val", Integer.class);
+			Assert.assertEquals("check writeCosemXlated dataset modified", 1234, val ); 
+
+		} catch (Exception e) {
+			e.printStackTrace();
+//			Assert.fail( e.getMessage());
+		}
+
 	}
 
 	private static class A {

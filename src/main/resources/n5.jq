@@ -1,4 +1,6 @@
-def isDataset: type == "object" and has("attribute") and (.attributes | has("dimensions") and has("dataType") );
+def isDataset: type == "object" and has("attributes") and (.attributes | has("dimensions") and has("dataType") );
+
+def hasAttributes: type == "object" and has("attributes");
 
 def isAttributes: type == "object" and has("dimensions") and has("dataType");
 
@@ -27,6 +29,11 @@ def setScale3d( $s ): .[0] = $s[0] | .[5] = $s[1] | .[10] = $s[2];
 def setTranslation3d( $t ): .[3] = $t[0] | .[7] = $t[1] | .[11] = $t[2];
 
 def setFlatAffine( $val; $nd; $i; $j ): ($i * ($nd +1)  + $j) as $k | .[$k] = $val;
+
+def permute( $arr; $indexes ):
+   if all( (( $arr | type ) == "array" ); ( ($indexes | type) == "array"  )) then
+       reduce ($indexes | .[]) as $i ( []; . + [ $arr | .[$i]])
+   else null end;
 
 def identityAsFlatAffine( $nd ): 
     reduce range( $nd * ($nd +1)) as $i ([]; . + [0]) |
@@ -275,11 +282,6 @@ def getScales: .multiscales | .[0] | .metadata | .scale;
 
 def arrMultiply( $s1; $s2 ): [$s1, $s2] | transpose | map(.[0] * .[1]) ;
 
-def permute( $arr; $indexes ):
-   if all( (( $arr | type ) == "array" ); ( ($indexes | type) == "array"  )) then
-       reduce ($indexes | .[]) as $i ( []; . + [ $arr | .[$i]])
-   else null end;
-
 def scaleTransform( $scales ): { "type" : "scale", "scale" : $scales };
 
 def isOmeNgffMultiscale:
@@ -307,3 +309,10 @@ def omeNgffAddTransformsToChildren:
         $children;
         .[$p] |= . + ( $transforms | .[$p]) )) as $newChildren |
     .children |= $newChildren;
+
+def n5PathToTreePath: ltrimstr( "/") | split("/") | map_values( ["children", . ] ) | flatten;
+
+def getSubTree( $path ): getpath( $path | n5PathToTreePath );
+
+def moveSubTree( $srcPath; $dstPath ): getSubTree( $srcPath ) as $subTree | setpath( $dstPath | n5PathToTreePath; $subTree ) 
+    | delpaths([$srcPath | n5PathToTreePath]);

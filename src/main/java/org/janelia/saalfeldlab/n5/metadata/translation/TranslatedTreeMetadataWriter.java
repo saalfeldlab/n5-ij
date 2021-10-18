@@ -1,4 +1,4 @@
-package org.janelia.saalfeldlab.n5.metadata.canonical;
+package org.janelia.saalfeldlab.n5.metadata.translation;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -7,41 +7,43 @@ import java.util.Optional;
 
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.metadata.container.ContainerMetadataNode;
-import org.janelia.saalfeldlab.n5.metadata.translation.JqUtils;
-import org.janelia.saalfeldlab.n5.metadata.translation.JqFunction;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 
 
-public class TranslatedTreeMetadataWriter {
+public class TranslatedTreeMetadataWriter extends TreeTranslation{
 
-	private JqFunction<ContainerMetadataNode,ContainerMetadataNode> translationFun;
-	
 	final N5Writer n5;
 
-	private ContainerMetadataNode root;
-
-	private ContainerMetadataNode translated;
+//	private ContainerMetadataNode root;
 
 	public TranslatedTreeMetadataWriter(
 			final N5Writer n5,
+			final String dataset,
 			final String translation) {
-		
-		this.n5 = n5;
-		Gson gson = JqUtils.buildGson(n5);
-		translationFun = new JqFunction<>( translation,
-				gson,
-				ContainerMetadataNode.class);
+		super(	ContainerMetadataNode.build(n5, dataset, JqUtils.buildGson(n5) ), 
+				JqUtils.buildGson(n5), 
+				translation );
 
-		root = ContainerMetadataNode.build(n5, gson);
-		root.addPathsRecursive();
-		translated = translationFun.apply( root );
+		this.n5 = n5;
+//		this.root = super.getOrig();
+
+//		translationFun = new ContainerTranslation( translation, gson);
+//		root = ContainerMetadataNode.build(n5, gson);
+//		treeTranslation = new TreeTranslation(root, gson, translation);
+//		translated = translationFun.apply( root );
 	}
 	
+	public TranslatedTreeMetadataWriter(
+			final N5Writer n5,
+			final String translation) {
+
+		this( n5, "", translation );
+	}
+
 	public void writeAllTranslatedAttributes() throws IOException {
 
-		Iterator<String> it = translated.getChildPathsRecursive("").iterator();
+		Iterator<String> it = getTranslated().getChildPathsRecursive("").iterator();
 		while( it.hasNext() )
 			writeAllTranslatedAttributes( it.next() );
 
@@ -54,9 +56,9 @@ public class TranslatedTreeMetadataWriter {
 //		if( attrs.containsKey(key))
 //			n5.setAttribute(pathName, key, attrs.get(key));
 	}
-	
+
 	/**
-	 * Writes all attributes stored in the tree 
+	 * Writes all attributes stored in the node corresponding to the given pathName.
 	 * 
 	 * @param pathName
 	 * @param node
@@ -67,7 +69,7 @@ public class TranslatedTreeMetadataWriter {
 
 //		System.out.println( pathName );
 
-		Optional<ContainerMetadataNode> nopt = translated.getChild(pathName, "/");
+		Optional<ContainerMetadataNode> nopt = getTranslated().getNode(pathName);
 		if( !nopt.isPresent())
 			return;
 
@@ -81,7 +83,7 @@ public class TranslatedTreeMetadataWriter {
 			final String pathName,
 			final String key) throws IOException {
 
-		Optional<ContainerMetadataNode> nopt = translated.getChild(pathName, "/");
+		Optional<ContainerMetadataNode> nopt = getTranslated().getChild(pathName, "/");
 		if( !nopt.isPresent())
 			return;
 
