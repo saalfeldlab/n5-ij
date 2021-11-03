@@ -67,8 +67,32 @@ walk (
 uses:
 * [`ijToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L172)
 
+## Clear and set metadata
 
-### Tutorial
+Sets metadata for a single dataset (`"my/dataset"`), clearing any non-required.
+`clearAndSetMetadata` creates a canonical metadata object with intensity range, spatial calibration, and color information.
+
+```
+def clearAndSetMetadata: clearDatasetMetadata
+	| . + arrayUnitAxisToTransform( [4,0,0,0, 0,3,0,0, 0,0,2,0]; 
+	     "mm"; 
+	     axesFromLabels(["x","y","z"];"mm"))
+	| . + intensityRange( 42; 1412 ) 
+	| . + { "color" : rgbaColor( 0; 255; 0; 255 )};
+
+addPaths | getSubTree ("my/dataset") |= clearAndSetMetadata
+```
+
+uses [built in functions]((https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq):
+* [`addPaths`]
+* [`arrayUnitAxisToTransform`]
+* [`axesFromLabels`]
+* [`intensityRange`]
+* [`rgbaColor`]
+* [`getSubTree`]
+* [`clearDatasetMetadata`]
+
+## Tutorial
 
 #### N5viewer to canonical
 
