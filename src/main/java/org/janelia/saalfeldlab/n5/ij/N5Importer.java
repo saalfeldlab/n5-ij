@@ -66,6 +66,12 @@ import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5ViewerMultiscaleMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.axes.AxisMetadata;
+import org.janelia.saalfeldlab.n5.metadata.axes.AxisUtils;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.imagej.CanonicalMetadataToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
@@ -108,11 +114,13 @@ public class N5Importer implements PlugIn {
   public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 		  new ImagePlusLegacyMetadataParser(),
 		  new N5CosemMetadataParser(),
+		  new CanonicalMetadataParser(),
 		  new N5SingleScaleMetadataParser()
   };
 
   public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
 			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
+			new CanonicalMetadataParser(),
 			new N5ViewerMultiscaleMetadataParser()
   };
 
@@ -157,6 +165,8 @@ public class N5Importer implements PlugIn {
 	impMetaWriterTypes.put( N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 	impMetaWriterTypes.put( N5CosemMetadata.class, new CosemToImagePlus());
 	impMetaWriterTypes.put( N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
+	impMetaWriterTypes.put( CanonicalDatasetMetadata.class, new CanonicalMetadataToImagePlus());
+	impMetaWriterTypes.put( CanonicalSpatialDatasetMetadata.class, new CanonicalMetadataToImagePlus());
 
 	numDimensionsForCrop = 5;
 	initMaxValuesForCrop = new long[numDimensionsForCrop];
@@ -209,6 +219,11 @@ public class N5Importer implements PlugIn {
 
 	  selectionDialog.setLoaderExecutor( exec );
 	  selectionDialog.setTreeRenderer(new N5DatasetTreeCellRenderer(true));
+
+	  // restrict canonical metadata to those with spatial metadata, but without
+	  // multiscale
+	  selectionDialog.getTranslationPanel().setFilter(
+				x -> ( x instanceof CanonicalDatasetMetadata ));
 
 	  selectionDialog.setContainerPathUpdateCallback(x -> {
 		if (x != null)
@@ -372,14 +387,18 @@ public class N5Importer implements PlugIn {
 	final String d = datasetMeta.getPath();
 	final RandomAccessibleInterval imgRaw = N5Utils.open(n5, d);
 
+	// permute axes if necessary (specified by metadata)
+	final RandomAccessibleInterval imgP;
+	if (datasetMeta != null && datasetMeta instanceof AxisMetadata)
+		imgP = AxisUtils.permuteForImagePlus( imgRaw, (AxisMetadata) datasetMeta );
+	else
+		imgP = imgRaw;
+
 	RandomAccessibleInterval img;
 	if (cropIntervalIn != null) {
-	  img = Views.interval(imgRaw, processCropInterval(imgRaw, cropIntervalIn));
-	  //	  if (datasetMeta instanceof N5ImagePlusMetadata) {
-	  //		((N5ImagePlusMetadata)datasetMeta).crop(cropIntervalIn);
-	  //	  }
+	  img = Views.interval(imgP, processCropInterval(imgP, cropIntervalIn));
 	} else
-	  img = imgRaw;
+	  img = imgP;
 
 	RandomAccessibleInterval<T> convImg;
 	DataType type = datasetMeta.getAttributes().getDataType();
@@ -403,7 +422,7 @@ public class N5Importer implements PlugIn {
 	if (asVirtual) {
 	  imp = ImageJFunctions.wrap(convImg, d);
 	} else {
-	  ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(img);
+	  ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(convImg);
 	  LoopBuilder.setImages( convImg, ipImg )
 			.multiThreaded( new DefaultTaskExecutor( exec ))
 			.forEachPixel( (x,y) -> y.set( x ));
@@ -418,6 +437,7 @@ public class N5Importer implements PlugIn {
 		System.err.println("Failed to convert metadata to Imageplus for " + d);
 	  }
 	}
+
 	return imp;
   }
 
