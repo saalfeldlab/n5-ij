@@ -80,10 +80,10 @@ def clearAndSetMetadata: clearDatasetMetadata
 	| . + intensityRange( 42; 1412 ) 
 	| . + { "color" : rgbaColor( 0; 255; 0; 255 )};
 
-addPaths | getSubTree ("my/dataset") |= clearAndSetMetadata
+addPaths | getSubTree ("my/dataset") |= ( .attributes |= clearAndSetMetadata)
 ```
 
-uses [built in functions]((https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq):
+uses [built in functions](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq):
 * [`addPaths`]
 * [`arrayUnitAxisToTransform`]
 * [`axesFromLabels`]
