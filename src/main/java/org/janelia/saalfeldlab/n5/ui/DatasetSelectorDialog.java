@@ -163,6 +163,8 @@ public class DatasetSelectorDialog {
 
   private N5MetadataTranslationPanel translationPanel;
 
+  private TranslationResultPanel translationResultPanel;
+
   public DatasetSelectorDialog(
 		  final Function<String, N5Reader> n5Fun,
 		  final Function<String, String> pathFun,
@@ -179,6 +181,7 @@ public class DatasetSelectorDialog {
 
 	spatialMetaSpec = new N5SpatialKeySpecDialog();
 	translationPanel = new N5MetadataTranslationPanel();
+	translationResultPanel = new TranslationResultPanel();
 
 	guiScale = Prefs.getGuiScale();
   }
@@ -216,6 +219,10 @@ public class DatasetSelectorDialog {
 
 	public N5MetadataTranslationPanel getTranslationPanel() {
 		return translationPanel;
+	}
+
+	public TranslationResultPanel getTranslationResultPanel() {
+		return translationResultPanel;
 	}
 
   public void setLoaderExecutor(final ExecutorService loaderExecutor) {
@@ -325,6 +332,7 @@ public class DatasetSelectorDialog {
 	tabs.addTab("Main", panel);
 	tabs.addTab("Spatial Metadata", spatialMetaSpec.buildPanel() );
 	tabs.addTab("Metadata Translation", translationPanel.buildPanel());
+	tabs.addTab("Translation Result", translationResultPanel.buildPanel());
 
 	containerPathText = new JTextField();
 	containerPathText.setText(initialContainerPath);
@@ -563,11 +571,12 @@ public class DatasetSelectorDialog {
 //		parserList.add(translatedParser.get());
 //	});
 
+	boolean isTranslated = false;
 	Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
 	if( translatedN5.isPresent() )
 	{
 		n5 = translatedN5.get();
-		System.out.println( "using translated N5");
+		isTranslated = true;
 	}
 
 //	if (translationPanel.isTranslationProvided() && translatedParser.isPresent()) {
@@ -582,9 +591,17 @@ public class DatasetSelectorDialog {
 
 	try {
 	  rootNode = datasetDiscoverer.discoverAndParseRecursive(rootPath);
-
 	} catch (IOException e) {
 	  e.printStackTrace();
+	}
+
+	if( isTranslated ) {
+		System.out.println( "translated - updating results" );
+		TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
+		translationResultPanel.set(
+				xlatedN5.getGson(),
+				xlatedN5.getTranslation().getOrig(),
+				xlatedN5.getTranslation().getTranslated());
 	}
 
 	// set the root node for the JTree
