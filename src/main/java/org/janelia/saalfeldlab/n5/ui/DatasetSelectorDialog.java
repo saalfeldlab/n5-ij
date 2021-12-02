@@ -455,8 +455,18 @@ public class DatasetSelectorDialog {
 	  fileChooser.setCurrentDirectory(new File(lastBrowsePath));
 	else if (initialContainerPath != null && !initialContainerPath.isEmpty())
 	  fileChooser.setCurrentDirectory(new File(initialContainerPath));
-	else if (IJ.getInstance() != null)
-	  fileChooser.setCurrentDirectory(new File(IJ.getDirectory("current")));
+	else if (IJ.getInstance() != null) {
+		File f = null;
+
+		final String currDir = IJ.getDirectory("current");
+		final String homeDir = IJ.getDirectory("home");
+		if( currDir != null )
+			f = new File( currDir );
+		else if( homeDir != null )
+			f = new File( homeDir );
+
+		fileChooser.setCurrentDirectory(f);
+	}
 
 	final int ret = fileChooser.showOpenDialog(dialog);
 	if (ret != JFileChooser.APPROVE_OPTION)
