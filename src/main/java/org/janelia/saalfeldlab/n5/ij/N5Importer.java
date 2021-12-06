@@ -290,7 +290,9 @@ public class N5Importer implements PlugIn {
 		  n5Path = Macro.getValue(options, n5PathKey, "");
 		  String minString = Macro.getValue(options, minKey, "");
 		  String maxString = Macro.getValue(options, maxKey, "");
-		  thisDatasetCropInterval = parseCropParameters(minString, maxString);
+		  if( minString != null && !minString.isEmpty()) {
+			  thisDatasetCropInterval = parseCropParameters(minString, maxString);
+		  }
 		  openAsVirtual = options.contains(" virtual");
 	  }
 
