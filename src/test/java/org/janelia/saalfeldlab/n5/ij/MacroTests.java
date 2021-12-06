@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -28,10 +29,13 @@ public class MacroTests {
 
 	@Test
 	public void testMacro() {
-		IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("n5=%s/%s", n5rootF.getAbsolutePath(), "cosem" ));
+		N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+				String.format("n5=%s/%s hide", n5rootF.getAbsolutePath(), "cosem" ));
 
-		final ImagePlus img = IJ.getImage();
+		List<ImagePlus> res = plugin.getResult();
+		assertEquals(" crop num", 1, res.size());
+		final ImagePlus img = res.get(0);
+
 		assertEquals(" crop w", 256, img.getWidth());
 		assertEquals(" crop h", 256, img.getHeight());
 		assertEquals(" crop d", 129, img.getNSlices() );
@@ -39,10 +43,12 @@ public class MacroTests {
 
 	@Test
 	public void testMacroVirtual() {
-		IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("n5=%s/%s virtual", n5rootF.getAbsolutePath(), "cosem" ));
+		N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+				String.format("n5=%s/%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
 
-		final ImagePlus img = IJ.getImage();
+		List<ImagePlus> res = plugin.getResult();
+		assertEquals(" crop num", 1, res.size());
+		final ImagePlus img = res.get(0);
 		assertTrue( " is virtual", (img.getStack() instanceof ImageJVirtualStack) );
 	}
 
@@ -51,14 +57,17 @@ public class MacroTests {
 		String minString = "100,100,50";
 		String maxString = "250,250,120";	
 
-		IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer", String.format("n5=%s/%s min=%s max=%s", 
+		N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+				String.format("n5=%s/%s hide min=%s max=%s", 
 				n5rootF.getAbsolutePath(), "cosem", minString, maxString ));
 
-		final ImagePlus img = IJ.getImage();
+		List<ImagePlus> res = plugin.getResult();
+		assertEquals(" crop num", 1, res.size());
+
+		final ImagePlus img = res.get(0);
 		assertEquals(" crop w", 151, img.getWidth());
 		assertEquals(" crop h", 151, img.getHeight());
 		assertEquals(" crop d",  71, img.getNSlices() );
-
 	}
 
 }

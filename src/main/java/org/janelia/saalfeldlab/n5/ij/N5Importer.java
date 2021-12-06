@@ -96,6 +96,7 @@ public class N5Importer implements PlugIn {
 
   public static final String n5PathKey = "n5";
   public static final String virtualKey = "virtual";
+  public static final String hideKey = "hide";
   public static final String minKey = "min";
   public static final String maxKey = "max";
   public static final String COMMAND_NAME = "N5";
@@ -149,6 +150,8 @@ public class N5Importer implements PlugIn {
 
   private long[] initMaxValuesForCrop;
 
+  private List<ImagePlus> lastResult;
+
   private static String lastOpenedContainer = "";
 
   public N5Importer() {
@@ -173,6 +176,10 @@ public class N5Importer implements PlugIn {
   public N5Reader getN5() {
 
 	return n5;
+  }
+
+  public List<ImagePlus> getResult() {
+	 return lastResult;
   }
 
   public Map<Class<?>, ImageplusMetadata<?>> getImagePlusMetadataWriterMap() {
@@ -293,7 +300,8 @@ public class N5Importer implements PlugIn {
 		  if( minString != null && !minString.isEmpty()) {
 			  thisDatasetCropInterval = parseCropParameters(minString, maxString);
 		  }
-		  openAsVirtual = options.contains(" virtual");
+		  openAsVirtual = options.contains(" " + virtualKey);
+		  show = !options.contains(" " + hideKey );
 	  }
 
 
@@ -306,8 +314,8 @@ public class N5Importer implements PlugIn {
 	  meta = discoverer.parse( "" ).getMetadata();
 
 	  if( meta instanceof N5DatasetMetadata )
-		  process( n5ForThisDataset, n5Path, exec, Collections.singletonList( (N5DatasetMetadata)meta ), openAsVirtual, thisDatasetCropInterval,
-			  impMetaWriterTypes );
+		  lastResult = process( n5ForThisDataset, n5Path, exec, Collections.singletonList( (N5DatasetMetadata)meta ), openAsVirtual, thisDatasetCropInterval,
+			  show, impMetaWriterTypes );
 	  else
 		  System.err.println( "not a dataset : " + n5Path );
 	}
@@ -345,12 +353,20 @@ public class N5Importer implements PlugIn {
   }
 
   public static String generateAndStoreOptions(final String n5RootAndDataset, final boolean virtual, final Interval cropInterval) {
+	  return generateAndStoreOptions( n5RootAndDataset, virtual, cropInterval, false );
+  }
+
+  public static String generateAndStoreOptions(final String n5RootAndDataset, final boolean virtual, final Interval cropInterval, 
+		  final boolean hide ) {
 
 	Recorder.resetCommandOptions();
 	Recorder.recordOption(n5PathKey, n5RootAndDataset);
 
 	if (virtual)
 	  Recorder.recordOption(virtualKey);
+
+	if( hide )
+	  Recorder.recordOption(hideKey);
 
 	if (cropInterval != null) {
 		String[] cropParams = minMaxStrings( cropInterval ) ;
@@ -526,8 +542,7 @@ public class N5Importer implements PlugIn {
 					  .map(x -> x - 1)
 					  .toArray();
 
-	  //			selectionDialog.setMessage( "Loading\n" + datasetPath );
-	  this.run(generateAndStoreOptions(pathToN5Dataset, asVirtual, null));
+	  this.run(generateAndStoreOptions(pathToN5Dataset, asVirtual, null, !show));
 	}
   }
 
@@ -574,6 +589,7 @@ public class N5Importer implements PlugIn {
 		imgList.add(imp);
 		if (show)
 		  imp.show();
+
 	  } catch (final IOException e) {
 		IJ.error("failed to read n5");
 	  }
