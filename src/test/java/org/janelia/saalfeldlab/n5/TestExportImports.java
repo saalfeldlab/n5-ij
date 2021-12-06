@@ -118,7 +118,7 @@ public class TestExportImports
 		}
 	}
 
-	private static < T extends RealType< T > & NativeType< T > > boolean equal( final ImagePlus a, final ImagePlus b )
+	public static < T extends RealType< T > & NativeType< T > > boolean equal( final ImagePlus a, final ImagePlus b )
 	{
 		try {
 			final Img<T> imgA = ImageJFunctions.wrapRealNative( a );

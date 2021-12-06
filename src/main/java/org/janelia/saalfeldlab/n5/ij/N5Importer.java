@@ -50,6 +50,7 @@ import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Intervals;
 import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.DataType;
@@ -86,6 +87,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public class N5Importer implements PlugIn {
 
@@ -93,6 +95,10 @@ public class N5Importer implements PlugIn {
   private static final String[] axisNames = new String[]{"dim1", "dim2", "dim3", "dim4", "dim5"};
 
   public static final String n5PathKey = "n5";
+  public static final String virtualKey = "virtual";
+  public static final String hideKey = "hide";
+  public static final String minKey = "min";
+  public static final String maxKey = "max";
   public static final String COMMAND_NAME = "N5";
 
   public static final String BDV_OPTION = "BigDataViewer";
@@ -144,6 +150,8 @@ public class N5Importer implements PlugIn {
 
   private long[] initMaxValuesForCrop;
 
+  private List<ImagePlus> lastResult;
+
   private static String lastOpenedContainer = "";
 
   public N5Importer() {
@@ -170,6 +178,10 @@ public class N5Importer implements PlugIn {
 	return n5;
   }
 
+  public List<ImagePlus> getResult() {
+	 return lastResult;
+  }
+
   public Map<Class<?>, ImageplusMetadata<?>> getImagePlusMetadataWriterMap() {
 
 	return impMetaWriterTypes;
@@ -194,9 +206,13 @@ public class N5Importer implements PlugIn {
   @Override
   public void run(final String args) {
 
-	final String options = Macro.getOptions();
+	final String macroOptions = Macro.getOptions();
+	String options = args;
+	if( options == null || options.isEmpty())
+		options = macroOptions;
+
 	final boolean isMacro = (options != null && !options.isEmpty());
-	final boolean isCrop = (args != null && !args.isEmpty());
+	final boolean isCrop = options != null && options.contains("min=") && options.contains("max=");
 
 	if (!isMacro && !isCrop) {
 	  // the fancy selector dialog
@@ -228,51 +244,66 @@ public class N5Importer implements PlugIn {
 	  record = Recorder.record;
 	  Recorder.record = false;
 
-	  String n5Path = Macro.getValue(args, n5PathKey, "");
-	  final boolean dialogAsVirtual = args.contains(" virtual");
-
-	  final GenericDialog gd = new GenericDialog("Import N5");
-	  gd.addStringField("N5 path", n5Path);
-	  gd.addCheckbox("Virtual", dialogAsVirtual);
-
-	  gd.addMessage(" ");
-	  gd.addMessage("Crop parameters.");
-	  gd.addMessage("[0,Infinity] loads the whole volume.");
-	  gd.addMessage("Min:");
-	  for (int i = 0; i < numDimensionsForCrop; i++)
-		gd.addNumericField("min_" + axisNames[i], 0);
-
-	  gd.addMessage("Max:");
-	  for (int i = 0; i < numDimensionsForCrop; i++) {
-		if (initMaxValuesForCrop != null)
-		  gd.addNumericField("max_" + axisNames[i], initMaxValuesForCrop[i]);
-		else
-		  gd.addNumericField("max_" + axisNames[i], Double.POSITIVE_INFINITY);
-	  }
-
-	  gd.showDialog();
-	  if (gd.wasCanceled()) {
-		// set back recorder state if canceled
-		Recorder.record = record;
-		return;
-	  }
-
-	  n5Path = gd.getNextString();
-	  final boolean openAsVirtual = gd.getNextBoolean();
+	  // parameters
+	  String n5Path = "";;
+	  Interval thisDatasetCropInterval = null;
+	  boolean openAsVirtual = false;
 
 	  // we don't always know ahead of time the dimensionality
-	  final long[] cropMin = new long[numDimensionsForCrop];
-	  final long[] cropMax = new long[numDimensionsForCrop];
+	  if( !isMacro )
+	  {
+		  final GenericDialog gd = new GenericDialog("Import N5");
+		  gd.addStringField("N5 path", n5Path);
+		  gd.addCheckbox("Virtual", openAsVirtual);
 
-	  for (int i = 0; i < numDimensionsForCrop; i++)
-		cropMin[i] = Math.max(0, (long)Math.floor(gd.getNextNumber()));
+		  gd.addMessage(" ");
+		  gd.addMessage("Crop parameters.");
+		  gd.addMessage("[0,Infinity] loads the whole volume.");
+		  gd.addMessage("Min:");
+		  for (int i = 0; i < numDimensionsForCrop; i++)
+			gd.addNumericField("min_" + axisNames[i], 0);
 
-	  for (int i = 0; i < numDimensionsForCrop; i++) {
-		final double v = gd.getNextNumber();
-		cropMax[i] = Double.isInfinite(v) ? Long.MAX_VALUE : (long)Math.ceil(v);
+		  gd.addMessage("Max:");
+		  for (int i = 0; i < numDimensionsForCrop; i++) {
+			if (initMaxValuesForCrop != null)
+			  gd.addNumericField("max_" + axisNames[i], initMaxValuesForCrop[i]);
+			else
+			  gd.addNumericField("max_" + axisNames[i], Double.POSITIVE_INFINITY);
+		  }
+
+		  gd.showDialog();
+		  if (gd.wasCanceled()) {
+			// set back recorder state if canceled
+			Recorder.record = record;
+			return;
+		  }
+
+		  n5Path = gd.getNextString();
+		  openAsVirtual = gd.getNextBoolean();
+
+		  final long[] cropMin = new long[numDimensionsForCrop];
+		  final long[] cropMax = new long[numDimensionsForCrop]; 
+
+		  for (int i = 0; i < numDimensionsForCrop; i++)
+			cropMin[i] = Math.max(0, (long)Math.floor(gd.getNextNumber()));
+
+		  for (int i = 0; i < numDimensionsForCrop; i++) {
+			final double v = gd.getNextNumber();
+			cropMax[i] = Double.isInfinite(v) ? Long.MAX_VALUE : (long)Math.ceil(v);
+		  }
+	  }
+	  else
+	  {
+		  n5Path = Macro.getValue(options, n5PathKey, "");
+		  String minString = Macro.getValue(options, minKey, "");
+		  String maxString = Macro.getValue(options, maxKey, "");
+		  if( minString != null && !minString.isEmpty()) {
+			  thisDatasetCropInterval = parseCropParameters(minString, maxString);
+		  }
+		  openAsVirtual = options.contains(" " + virtualKey);
+		  show = !options.contains(" " + hideKey );
 	  }
 
-	  final Interval thisDatasetCropInterval = new FinalInterval(cropMin, cropMax);
 
 	  // set recorder back
 	  Recorder.record = record;
@@ -283,8 +314,8 @@ public class N5Importer implements PlugIn {
 	  meta = discoverer.parse( "" ).getMetadata();
 
 	  if( meta instanceof N5DatasetMetadata )
-		  process( n5ForThisDataset, n5Path, exec, Collections.singletonList( (N5DatasetMetadata)meta ), openAsVirtual, thisDatasetCropInterval,
-			  impMetaWriterTypes );
+		  lastResult = process( n5ForThisDataset, n5Path, exec, Collections.singletonList( (N5DatasetMetadata)meta ), openAsVirtual, thisDatasetCropInterval,
+			  show, impMetaWriterTypes );
 	  else
 		  System.err.println( "not a dataset : " + n5Path );
 	}
@@ -322,20 +353,45 @@ public class N5Importer implements PlugIn {
   }
 
   public static String generateAndStoreOptions(final String n5RootAndDataset, final boolean virtual, final Interval cropInterval) {
+	  return generateAndStoreOptions( n5RootAndDataset, virtual, cropInterval, false );
+  }
+
+  public static String generateAndStoreOptions(final String n5RootAndDataset, final boolean virtual, final Interval cropInterval, 
+		  final boolean hide ) {
 
 	Recorder.resetCommandOptions();
-	Recorder.recordOption("n5", n5RootAndDataset);
+	Recorder.recordOption(n5PathKey, n5RootAndDataset);
 
 	if (virtual)
-	  Recorder.recordOption("virtual");
+	  Recorder.recordOption(virtualKey);
+
+	if( hide )
+	  Recorder.recordOption(hideKey);
 
 	if (cropInterval != null) {
-	  for (int i = 0; i < cropInterval.numDimensions(); i++) {
-		Recorder.recordOption(axisNames[i], Long.toString(cropInterval.min(i)));
-		Recorder.recordOption(axisNames[i] + "_0", Long.toString(cropInterval.max(i)));
-	  }
+		String[] cropParams = minMaxStrings( cropInterval ) ;
+		Recorder.recordOption(minKey, cropParams[0] );
+		Recorder.recordOption(maxKey, cropParams[1] );
 	}
 	return Recorder.getCommandOptions();
+  }
+
+  private static String[] minMaxStrings( final Interval interval ) {
+	  final long[] tmp = new long[ interval.numDimensions()];
+
+	  interval.min(tmp);
+	  String minString = Arrays.stream(tmp).mapToObj(Long::toString).collect(Collectors.joining(","));
+
+	  interval.max(tmp);
+	  String maxString = Arrays.stream(tmp).mapToObj(Long::toString).collect(Collectors.joining(","));
+
+	  return new String[]{ minString, maxString };
+  }
+
+  private static Interval parseCropParameters( final String minParam, final String maxParam ) {
+	  return new FinalInterval(
+		  Arrays.stream(minParam.split(",")).mapToLong( Long::parseLong ).toArray(),
+		  Arrays.stream(maxParam.split(",")).mapToLong( Long::parseLong ).toArray() );
   }
 
   public static void record(final String n5RootAndDataset, final boolean virtual, final Interval cropInterval) {
@@ -486,8 +542,7 @@ public class N5Importer implements PlugIn {
 					  .map(x -> x - 1)
 					  .toArray();
 
-	  //			selectionDialog.setMessage( "Loading\n" + datasetPath );
-	  this.run(generateAndStoreOptions(pathToN5Dataset, asVirtual, null));
+	  this.run(generateAndStoreOptions(pathToN5Dataset, asVirtual, null, !show));
 	}
   }
 
@@ -534,6 +589,7 @@ public class N5Importer implements PlugIn {
 		imgList.add(imp);
 		if (show)
 		  imp.show();
+
 	  } catch (final IOException e) {
 		IJ.error("failed to read n5");
 	  }
