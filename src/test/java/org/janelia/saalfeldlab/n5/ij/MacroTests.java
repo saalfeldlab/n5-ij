@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
 import net.imglib2.img.display.imagej.ImageJVirtualStack;
 
@@ -16,8 +17,11 @@ public class MacroTests {
 
 	private File n5rootF;
 
+	private ImageJ ij;
+
 	@Before
 	public void before() {
+		ij = new ImageJ( ImageJ.NO_SHOW );
 		final String n5Root = "src/test/resources/test.n5";
 		n5rootF = new File(n5Root);
 	}
