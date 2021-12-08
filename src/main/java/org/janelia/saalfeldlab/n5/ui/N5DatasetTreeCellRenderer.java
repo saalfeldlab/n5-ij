@@ -12,6 +12,8 @@ import ij.ImagePlus;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import java.awt.Component;
+import java.text.CharacterIterator;
+import java.text.StringCharacterIterator;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -47,6 +49,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		N5TreeNode node;
 		if ( value instanceof N5TreeNodeWrapper )
 		{
+
 			node = ( ( N5TreeNodeWrapper ) value ).getNode();
 			if ( node.getMetadata() != null )
 			{
@@ -57,13 +60,18 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 				else
 					conversionString = "";
 
+			    final String memStr = memString( node );
+			    final String memSizeString = memStr.isEmpty() ? "" : " (" + memStr + ")";
+
 				setText( String.join( "", new String[]{
 						"<html>",
 						String.format( nameFormat, node.getNodeName() ),
 						" (",
 						getParameterString( node ),
 						conversionString,
-						")</html>"
+						")",
+						memSizeString,
+						"</html>"
 				}));
 			}
 			else
@@ -113,7 +121,54 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 			  Arrays.stream(attributes.getDimensions())
 					  .mapToObj(d -> Long.toString(d))
 					  .collect(Collectors.toList()));
+
 	  return dimString + ", " + attributes.getDataType();
+	}
+
+	private String memString( N5TreeNode node )
+	{
+	    N5Metadata meta = node.getMetadata();
+	    if ( meta == null || !(meta instanceof N5DatasetMetadata ) )
+		  return "";
+
+		final DatasetAttributes attributes = ((N5DatasetMetadata)node.getMetadata()).getAttributes();
+		long nBytes = estimateBytes(attributes);
+		if( nBytes < 0)
+			return "";
+		else
+			return humanReadableByteCountSI(nBytes);
+	}
+
+	/*
+	 * https://programming.guide/java/formatting-byte-size-to-human-readable-format.html
+	 */
+	private static String humanReadableByteCountSI(long bytes) {
+	    if (-1000 < bytes && bytes < 1000) {
+	        return bytes + " B";
+	    }
+	    CharacterIterator ci = new StringCharacterIterator("kMGTPE");
+	    while (bytes <= -999_950 || bytes >= 999_950) {
+	        bytes /= 1000;
+	        ci.next();
+	    }
+	    return String.format("%.1f %cB", bytes / 1000.0, ci.current());
+	}
+
+	private long estimateBytes( DatasetAttributes attrs )
+	{
+		long N = Arrays.stream( attrs.getDimensions() ).reduce( 1, (i,v) -> i*v );
+		String typeString = attrs.getDataType().toString();
+		long nBytes = -1;
+		if( typeString.endsWith( "8" ))
+			nBytes = N;
+		else if( typeString.endsWith( "16" ))
+			nBytes = N*2;
+		else if( typeString.endsWith( "32" ))
+			nBytes = N*4;
+		else if( typeString.endsWith( "64" ))
+			nBytes = N*8;
+
+		return nBytes;
 	}
 
 }
