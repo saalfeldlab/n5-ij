@@ -126,7 +126,7 @@ public class N5Factory implements Serializable {
 		return this;
 	}
 
-	private static boolean isHDF5Writer(final String path) throws FileNotFoundException, IOException {
+	public static boolean isHDF5Writer(final String path) {
 
 		if (path.contains(".h5") || path.contains(".hdf5"))
 			return true;
@@ -134,7 +134,7 @@ public class N5Factory implements Serializable {
 			return false;
 	}
 
-	private static boolean isHDF5Reader(final String path) throws FileNotFoundException, IOException {
+	public static boolean isHDF5Reader(final String path) throws FileNotFoundException, IOException {
 
 		if (Files.isRegularFile(Paths.get(path))) {
 			/* optimistic */
