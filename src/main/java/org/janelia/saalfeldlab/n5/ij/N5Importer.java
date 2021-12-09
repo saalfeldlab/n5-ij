@@ -55,12 +55,14 @@ import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5SingleScaleMetadata;
@@ -114,14 +116,15 @@ public class N5Importer implements PlugIn {
   public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 		  new ImagePlusLegacyMetadataParser(),
 		  new N5CosemMetadataParser(),
+		  new N5SingleScaleMetadataParser(),
 		  new CanonicalMetadataParser(),
-		  new N5SingleScaleMetadataParser()
+		  new N5GenericSingleScaleMetadataParser()
   };
 
   public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
 			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
+			new N5ViewerMultiscaleMetadataParser(),
 			new CanonicalMetadataParser(),
-			new N5ViewerMultiscaleMetadataParser()
   };
 
   private N5Reader n5;
@@ -536,6 +539,7 @@ public class N5Importer implements PlugIn {
 		  final Interval cropInterval,
 		  final boolean show,
 		  final Map<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes) {
+
 
 	final ArrayList<ImagePlus> imgList = new ArrayList<>();
 	for (final N5DatasetMetadata datasetMeta : datasetMetadataList) {
