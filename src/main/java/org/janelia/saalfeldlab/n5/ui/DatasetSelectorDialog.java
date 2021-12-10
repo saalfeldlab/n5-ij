@@ -28,12 +28,20 @@ package org.janelia.saalfeldlab.n5.ui;
 import ij.IJ;
 import ij.Prefs;
 
+import org.janelia.saalfeldlab.n5.AbstractGsonReader;
+import org.janelia.saalfeldlab.n5.Compression;
+import org.janelia.saalfeldlab.n5.CompressionAdapter;
+import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.translation.TranslatedN5Reader;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -153,6 +161,10 @@ public class DatasetSelectorDialog {
 
   private N5SpatialKeySpecDialog spatialMetaSpec;
 
+  private N5MetadataTranslationPanel translationPanel;
+
+  private TranslationResultPanel translationResultPanel;
+
   public DatasetSelectorDialog(
 		  final Function<String, N5Reader> n5Fun,
 		  final Function<String, String> pathFun,
@@ -166,6 +178,10 @@ public class DatasetSelectorDialog {
 
 	this.parsers = parsers;
 	this.groupParsers = groupParsers;
+
+	spatialMetaSpec = new N5SpatialKeySpecDialog();
+	translationPanel = new N5MetadataTranslationPanel();
+	translationResultPanel = new TranslationResultPanel();
 
 	guiScale = Prefs.getGuiScale();
   }
@@ -200,6 +216,14 @@ public class DatasetSelectorDialog {
 	this.groupParsers = groupParsers;
 
   }
+
+	public N5MetadataTranslationPanel getTranslationPanel() {
+		return translationPanel;
+	}
+
+	public TranslationResultPanel getTranslationResultPanel() {
+		return translationResultPanel;
+	}
 
   public void setLoaderExecutor(final ExecutorService loaderExecutor) {
 
@@ -306,9 +330,9 @@ public class DatasetSelectorDialog {
 	final JPanel panel = new JPanel(false);
 	panel.setLayout(new GridBagLayout());
 	tabs.addTab("Main", panel);
-
-	spatialMetaSpec = new N5SpatialKeySpecDialog();
 	tabs.addTab("Spatial Metadata", spatialMetaSpec.buildPanel() );
+	tabs.addTab("Metadata Translation", translationPanel.buildPanel());
+	tabs.addTab("Translation Result", translationResultPanel.buildPanel());
 
 	containerPathText = new JTextField();
 	containerPathText.setText(initialContainerPath);
@@ -438,8 +462,14 @@ public class DatasetSelectorDialog {
 	cbot.insets = new Insets(MID_PAD, BUTTON_PAD, OUTER_PAD, OUTER_PAD);
 	panel.add(cancelBtn, cbot);
 
+	containerTree.addMouseListener( new NodePopupMenu(this).getPopupListener() );
+
 	dialog.pack();
 	return dialog;
+  }
+
+  public JTree getJTree() {
+    return containerTree;
   }
 
   private String openBrowseDialog() {
@@ -532,6 +562,39 @@ public class DatasetSelectorDialog {
 	else
 		parserList.addAll(Arrays.asList(parsers));
 
+	final Gson gson;
+	if( n5 instanceof AbstractGsonReader)
+		gson = ((AbstractGsonReader) n5).getGson();
+	else
+	{
+		GsonBuilder gsonBuilder = new GsonBuilder();
+		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
+		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
+		gsonBuilder.disableHtmlEscaping();
+		gson = gsonBuilder.create();
+	}
+
+//	Optional<SpatialMetadataTemplateParser> translatedParser = translationPanel.getParserOptional( gson );
+//	Optional<TranslatedTreeMetadataParser> translatedParser = translationPanel.getParserOptional();
+//	translatedParser.ifPresent( p -> {
+//		parserList.clear();
+//		parserList.add(translatedParser.get());
+//	});
+
+	boolean isTranslated = false;
+	Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
+	if( translatedN5.isPresent() )
+	{
+		n5 = translatedN5.get();
+		isTranslated = true;
+	}
+
+//	if (translationPanel.isTranslationProvided() && translatedParser.isPresent()) {
+//		parserList.clear();
+//		parserList.add(translatedParser.get());
+//		System.out.println( parserList );
+//	}
+
 	final List<N5MetadataParser<?>> groupParserList = Arrays.asList(groupParsers);
 	datasetDiscoverer = new N5DatasetDiscoverer(n5, loaderExecutor, n5NodeFilter,
 			parserList, groupParserList );
@@ -540,6 +603,15 @@ public class DatasetSelectorDialog {
 	  rootNode = datasetDiscoverer.discoverAndParseRecursive(rootPath);
 	} catch (IOException e) {
 	  e.printStackTrace();
+	}
+
+	if( isTranslated ) {
+		System.out.println( "translated - updating results" );
+		TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
+		translationResultPanel.set(
+				xlatedN5.getGson(),
+				xlatedN5.getTranslation().getOrig(),
+				xlatedN5.getTranslation().getTranslated());
 	}
 
 	// set the root node for the JTree

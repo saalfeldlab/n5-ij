@@ -4,11 +4,13 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.saalfeldlab.n5.ij.N5Exporter;
+import org.janelia.saalfeldlab.n5.ij.N5Factory;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.junit.Assert;
 import org.junit.Before;
@@ -28,6 +30,7 @@ import net.imglib2.view.Views;
 
 public class TestExportImports
 {
+
 	private File baseDir;
 
 	@Before
@@ -40,12 +43,12 @@ public class TestExportImports
 	@Test
 	public void testEmptyMeta()
 	{
-		final ImagePlus imp = NewImage.createImage("test", 8, 6, 1, 16, NewImage.FILL_NOISE);
+		final ImagePlus imp = NewImage.createImage("test", 8, 6, 2, 16, NewImage.FILL_NOISE);
 		String metaType = N5Importer.MetadataDefaultKey;
 
 		final String n5RootPath = baseDir + "/test_none.n5";
 		final String dataset = "/test";
-		final String blockSizeString = "32,32";
+		final String blockSizeString = "32,32,32";
 		final String compressionString = "raw";
 		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metaType, compressionString, false );
 	}
@@ -243,6 +246,13 @@ public class TestExportImports
 			imagesEqual = equal( imp, impRead );
 
 		assertTrue( String.format( "%s data ", dataset ), imagesEqual );
+
+		try {
+			N5Writer n5w = new N5Factory().openWriter(outputPath);
+			n5w.remove();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 
 		impRead.close();
 
