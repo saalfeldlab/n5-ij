@@ -390,18 +390,19 @@ public class N5Importer implements PlugIn {
 	final String d = datasetMeta.getPath();
 	final RandomAccessibleInterval imgRaw = N5Utils.open(n5, d);
 
-	// permute axes if necessary (specified by metadata)
-	final RandomAccessibleInterval imgP;
-	if (datasetMeta != null && datasetMeta instanceof AxisMetadata)
-		imgP = AxisUtils.permuteForImagePlus( imgRaw, (AxisMetadata) datasetMeta );
-	else
-		imgP = imgRaw;
-
-	RandomAccessibleInterval img;
+	// crop if necesssary
+	final RandomAccessibleInterval imgC;
 	if (cropIntervalIn != null) {
-	  img = Views.interval(imgP, processCropInterval(imgP, cropIntervalIn));
+	  imgC = Views.interval(imgRaw, processCropInterval(imgRaw, cropIntervalIn));
 	} else
-	  img = imgP;
+	  imgC = imgRaw;
+
+	// permute axes if necessary (specified by metadata)
+	final RandomAccessibleInterval img;
+	if (datasetMeta != null && datasetMeta instanceof AxisMetadata)
+		img = AxisUtils.permuteForImagePlus( imgC, (AxisMetadata) datasetMeta );
+	else
+		img = imgC;
 
 	RandomAccessibleInterval<T> convImg;
 	DataType type = datasetMeta.getAttributes().getDataType();
