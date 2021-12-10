@@ -81,7 +81,7 @@ public class N5SpatialKeySpecDialog {
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 
 		panel.add(  new JLabel( "Resolution key"));
-		resolutionField = new JTextField("resolution");
+		resolutionField = new JTextField();
 		panel.add( resolutionField );
 
 		panel.add(  new JLabel( "Offset key"));
@@ -94,15 +94,14 @@ public class N5SpatialKeySpecDialog {
 
 		panel.add( new JLabel( "Downsampling factors key"));
 		downsamplingFactorsField = new JTextField();
-		downsamplingFactorsField = new JTextField("downsamplingFactors");
 		panel.add( downsamplingFactorsField );
 
 		panel.add(  new JLabel( "min intensity key"));
-		minIntensityField = new JTextField("");
+		minIntensityField = new JTextField();
 		panel.add( minIntensityField );
 
 		panel.add(  new JLabel( "max intensity key"));
-		maxIntensityField = new JTextField("");
+		maxIntensityField = new JTextField();
 		panel.add( maxIntensityField );
 
         return panel;

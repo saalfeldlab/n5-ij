@@ -20,23 +20,26 @@ public class N5ViewerToImagePlus extends SpatialMetadataToImagePlus<N5SingleScal
 	final String[] units = new String[nd];
 	Arrays.fill(units, imp.getCalibration().getUnit());
 
-	final double[] scale = new double[nd];
-	final double[] translation = new double[nd];
+	final double[] scale = new double[3];
+	final double[] translation = new double[3];
 
 	if (nd == 2) {
-	  scale[0] = imp.getCalibration().pixelHeight;
-	  scale[1] = imp.getCalibration().pixelWidth;
-
-	  translation[0] = imp.getCalibration().yOrigin;
-	  translation[1] = imp.getCalibration().xOrigin;
-	} else if (nd == 3) {
-	  scale[0] = imp.getCalibration().pixelDepth;
+	  scale[0] = imp.getCalibration().pixelWidth;
 	  scale[1] = imp.getCalibration().pixelHeight;
-	  scale[2] = imp.getCalibration().pixelWidth;
+	  scale[2] = 1;
 
-	  translation[2] = imp.getCalibration().zOrigin;
-	  translation[1] = imp.getCalibration().yOrigin;
 	  translation[0] = imp.getCalibration().xOrigin;
+	  translation[1] = imp.getCalibration().yOrigin;
+	  translation[2] = 0;
+
+	} else if (nd == 3) {
+	  scale[0] = imp.getCalibration().pixelWidth;
+	  scale[1] = imp.getCalibration().pixelHeight;
+	  scale[2] = imp.getCalibration().pixelDepth;
+
+	  translation[0] = imp.getCalibration().xOrigin;
+	  translation[1] = imp.getCalibration().yOrigin;
+	  translation[2] = imp.getCalibration().zOrigin;
 	}
 
 	final double[] downsamplingFactors = new double[]{1, 1, 1};
