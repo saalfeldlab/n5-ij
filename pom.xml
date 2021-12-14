@@ -90,9 +90,9 @@
 		<jackson-jq.version>1.0.0-preview.20191208</jackson-jq.version>
 
 		<n5.version>2.5.1</n5.version>
-		<n5-imglib2.version>4.2.1-SNAPSHOT</n5-imglib2.version>
+		<n5-imglib2.version>4.2.1</n5-imglib2.version>
 		<n5-hdf5.version>1.4.1</n5-hdf5.version>
-		<n5-zarr.version>0.0.7-SNAPSHOT</n5-zarr.version>
+		<n5-zarr.version>0.0.7</n5-zarr.version>
 	</properties>
 
 	<dependencies>
