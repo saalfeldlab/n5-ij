@@ -4,8 +4,13 @@ Translations are written in [jq](https://stedolan.github.io/jq). See the [jq man
 
 ## Contents
 1. [Practical examples](#practical-examples)
-2. [Tutorial](#tutorial)
-3. [Built-in functions](#built-in-functions)
+   1. [COSEM to canonical](#cosem-to-canonical)
+   2. [N5Viewer to canonical](#n5viewer-to-canonical)
+   3. [N5Viewer and COSEM to canonical](#n5viewer-and-cosem-to-canonical)
+   4. [ImageJ to canonical](#imagej-to-canonical)
+   5. [Clear and set metadata](#clear-and-set-metadata)
+3. [Tutorial](#tutorial)
+4. [Built-in functions](#built-in-functions)
 
 
 ## Practical examples
