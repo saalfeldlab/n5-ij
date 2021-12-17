@@ -2,7 +2,7 @@
 
 Translations are written in [jq](https://stedolan.github.io/jq). See the [jq manual](https://stedolan.github.io/jq/manual/v1.6/) to learn more.
 
-#G# Contents
+## Contents
 1. [Practical examples](#practical-examples)
    1. [COSEM to canonical](#cosem-to-canonical)
    2. [N5Viewer to canonical](#n5viewer-to-canonical)
@@ -30,10 +30,10 @@ include "n5";
 walk ( if isCosem then cosemToTransform else . end )
 ```
 uses:
-* [`isCosem`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L176)
-* [`cosemToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L212)
-* [`addPaths`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L17)
-* [`addAllMultiscales`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L265)
+* [`isCosem`](#iscosem)
+* [`cosemToTransform`](#cosemtotransform)
+* [`addPaths`](#addPaths)
+* [`addAllMultiscales`](#addAllMultiscales)
 
 ### N5Viewer to canonical
 
@@ -51,8 +51,8 @@ walk ( if isN5V then n5vToTransform else . end )
 ```
 
 uses:
-* [`isN5V`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L71)
-* [`n5vToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L85)
+* [`isN5V`](#isn5v)
+* [`n5vToTransform`](#n5vtotransform)
 
 
 ### N5Viewer and COSEM to canonical
@@ -76,7 +76,7 @@ walk (
 ```
 
 uses:
-* [`ijToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L172)
+* [`ijToTransform`](#ijtotransform)
 
 ### Clear and set metadata
 
@@ -95,13 +95,13 @@ addPaths | getSubTree ("my/dataset") |= ( .attributes |= clearAndSetMetadata)
 ```
 
 uses [built in functions](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq):
-* [`addPaths`]
-* [`arrayUnitAxisToTransform`]
-* [`axesFromLabels`]
-* [`intensityRange`]
-* [`rgbaColor`]
-* [`getSubTree`]
-* [`clearDatasetMetadata`]
+* [`addPaths`](#addpaths)
+* [`arrayUnitAxisToTransform`](#arrayandunitaxistotransform)
+* [`axesFromLabels`](#axisfromlabels)
+* [`intensityRange`](#intensityrange)
+* [`rgbaColor`](#rgbacolor)
+* [`getSubTree`](#getsubtree)
+* [`clearDatasetMetadata`](#cleardatasetmetadata)
 
 ## Tutorial
 
@@ -675,6 +675,51 @@ Output:
 
 </details>
 
+#### [`arrayUnitAxisToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L78)
+
+Creates a canonical `spatialTransform` object from an array representing
+a flat affine transform, an array of axis objects, and spatial unit as a
+string.
+
+<details>
+<summary>Example</summary>
+
+Input:
+```json
+arrayUnitAxisToTransform( [1,2,3, 4,5,6]; "mm"; axesFromLabels( ["x","y"]; "mm"))
+```
+
+Output:
+```json
+{
+  "spatialTransform": {
+    "transform": {
+      "type": "affine",
+      "affine": [ 1, 2, 3, 4, 5, 6 ]
+    },
+    "unit": "mm",
+    "axes": [
+      {
+        "type": "space",
+        "label": "x",
+        "unit": "mm"
+      },
+      {
+        "type": "space",
+        "label": "y",
+        "unit": "mm"
+      }
+    ]
+  }
+}
+
+```
+
+</details>
+
+#### [`ijToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L256)
+
+Returns a canonical transform with axes from the imageJ metadata dialect.
 
 #### [`id2d`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L21)
 
@@ -745,6 +790,12 @@ Output:
 
 </details>
 
+
+### Multiscales
+
+#### [`addAllMultiscales`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L265)
+
+Adds multiscale metadata information to all tree nodes that have multiple children with spatial transform metadata. Requires path variables from `addPaths`.
 
 ### Color and intensity
 
