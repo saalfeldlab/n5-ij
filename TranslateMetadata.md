@@ -19,7 +19,7 @@ include "n5";
 walk ( if isCosem then cosemToTransform else . end )
 ```
 uses:
-* [`isCosem`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jqL176)
+* [`isCosem`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L176)
 * [`cosemToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L212)
 * [`addPaths`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L17)
 * [`addAllMultiscales`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L265)
@@ -40,8 +40,8 @@ walk ( if isN5V then n5vToTransform else . end )
 ```
 
 uses:
-* [`isN5V`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L71)
-* [`n5vToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L85)
+* [`isN5V`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L71)
+* [`n5vToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L85)
 
 
 ## N5Viewer and COSEM to canonical
@@ -65,7 +65,7 @@ walk (
 ```
 
 uses:
-* [`ijToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L172)
+* [`ijToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L172)
 
 ## Clear and set metadata
 
@@ -83,7 +83,7 @@ def clearAndSetMetadata: clearDatasetMetadata
 addPaths | getSubTree ("my/dataset") |= ( .attributes |= clearAndSetMetadata)
 ```
 
-uses [built in functions](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq):
+uses [built in functions](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq):
 * [`addPaths`]
 * [`arrayUnitAxisToTransform`]
 * [`axesFromLabels`]
@@ -249,7 +249,7 @@ to this output:
 
 #### N5Viewer
 
-##### [`isN5v`]
+##### [`isN5V`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L111)
 
 Returns true when called from a tree node that has metadata in n5 viewers metadata dialect.
 
@@ -280,7 +280,7 @@ Output 2:
 
 </details>
 
-##### [`n5vToTransform`]
+##### [`n5vToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L125)
 
 Adds a canonical transform object from n5 viewer metadata dialect.
 
@@ -318,7 +318,7 @@ Output:
 
 #### COSEM
 
-##### `isCosem`
+##### [`isCosem`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L176)
 
 Returns true when called from a tree node that has metadata in the COSEM metadata dialect.
 
@@ -356,7 +356,7 @@ Output 2:
 
 </details>
 
-##### `cosemToTransform`
+##### [`cosemToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L212)
 
 Adds a canonical transform object from the COSEM metadata attributes.
 
@@ -406,7 +406,7 @@ Output:
 See the [Ome-Ngff v0.3 specification](https://ngff.openmicroscopy.org/0.3/).
 
 
-##### [`isOmeNgffMultiscale`] (https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L189)
+##### [`isNgffMultiscale`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L318)
 
 Returns true when called from a tree node that has metadata in the OME-NGFF multiscale metadata.
 
@@ -445,7 +445,7 @@ Output:
 </details>
 
 
-##### [`omeNgffTransformsFromMultiscale`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L196)
+##### [`ngffTransformsFromMultiscale`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L328)
 
 Given a multiscales object, returns a map from dataset names to pixel-to-physical transforms.  Useful because in
 some OME-NGFF specifications, this information is not present in the dataset-level metadata attributes.
@@ -502,7 +502,7 @@ Output:
 </details>
 
 
-##### [`omeNgffAddTransformsToChildren`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L205)
+##### [`ngffAddTransformsToChildren`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L338)
 
 When called from a tree node that has metadata in the OME-NGFF multiscale metadata, adds appropriate
 transformation metadata to its child nodes, where this transformation is inferred from the multiscale metadata
@@ -510,7 +510,7 @@ with `omeNgffTransformsFromMultiscale`.
 
 #### Others
 
-##### [`isDataset`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L1)
+##### [`isDataset`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L1)
 
 Returns true when called from a tree node that represents an n5 dataset.
 
@@ -527,12 +527,12 @@ Input:
     "children" : {}
 }
 ```
-    
+
 Output: 
 `true`
 </details>
 
-##### [`isAttributes`]
+##### [`isAttributes`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L5)
 
 Returns true when called from a tree node that represents the attributes of an n5 group or dataset.
 
@@ -567,7 +567,7 @@ Output 2:
 
 </details
 
-##### [`addPaths`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L15)
+##### [`addPaths`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L17)
 
 Adds `path` variables into attribute objects throughout the tree.  Useful for making local operations
 aware of their global location in the tree.
@@ -625,7 +625,7 @@ Output:
 </details>
 
 
-##### [`arrayAndUnitToTransform`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L35)
+##### [`arrayAndUnitToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L57)
 
 Creates a canonical `spatialTransform` object from a two element array containing a flat affine transform,
 and spatial units.
@@ -655,35 +655,35 @@ Output:
 </details>
 
 
-##### [`id2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L19)
+##### [`id2d`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L21)
 
 Returns the 2D identity matrix (homogeneous coordinates) as a flat array, i.e. `[1,0,0, 0,1,0]`
 
-##### [`id3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L17)
+##### [`id3d`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L19)
 
 Returns the 3D identity matrix (homogeneous coordinates) as a flat array, i.e. `[1,0,0,0, 0,1,0,0, 0,0,1,0]`
 
-##### [`setScale2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L21)
+##### [`setScale2d`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L23)
 
 Returns a 2D matrix (homogeneous coordinates) as a flat array, but replaces the diagonal elements
 with the elements of the argument.
 
-##### [`setTranslation2d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L23)
+##### [`setTranslation2d`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L25)
 
 Returns a 2D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
 with the elements of the argument.
 
-##### [`setScale3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L25)
+##### [`setScale3d`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L27)
 
 Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the diagonal elements
 with the elements of the argument.
 
-##### [`setTranslation3d`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L27)
+##### [`setTranslation3d`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L29)
 
 Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
 with the elements of the argument.
 
-##### [`arrMultiply`](https://github.com/saalfeldlab/n5-ij/blob/translation-metadata/src/main/resources/n5.jq#L185
+##### [`arrMultiply`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L283)
 
 Elementwise array multiplication.
 
