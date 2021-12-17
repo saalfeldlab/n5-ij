@@ -2,7 +2,7 @@
 
 Translations are written in [jq](https://stedolan.github.io/jq). See the [jq manual](https://stedolan.github.io/jq/manual/v1.6/) to learn more.
 
-## Contents
+#G# Contents
 1. [Practical examples](#practical-examples)
    1. [COSEM to canonical](#cosem-to-canonical)
    2. [N5Viewer to canonical](#n5viewer-to-canonical)
@@ -519,7 +519,7 @@ When called from a tree node that has metadata in the OME-NGFF multiscale metada
 transformation metadata to its child nodes, where this transformation is inferred from the multiscale metadata
 with `omeNgffTransformsFromMultiscale`.
 
-### Others
+### Attribute and path
 
 #### [`isDataset`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L1)
 
@@ -578,6 +578,11 @@ Output 2:
 
 </details
 
+#### [`clearDatasetMetadata`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L392)
+
+Removes all keys except those required for datasets: `["dimensions","dataType","blockSize","compression"]`.
+
+
 #### [`addPaths`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L17)
 
 Adds `path` variables into attribute objects throughout the tree.  Useful for making local operations
@@ -635,6 +640,11 @@ Output:
 ```
 </details>
 
+#### [`getSubTree`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#289)
+
+Retuns a new tree with the given path as its root. Paths are forward-slash (`/`) separated.
+
+### Transforms and axes
 
 #### [`arrayAndUnitToTransform`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L57)
 
@@ -694,6 +704,96 @@ with the elements of the argument.
 Returns a 3D matrix (homogeneous coordinates) as a flat array, but replaces the translation elements
 with the elements of the argument.
 
+#### [`axesFromLabels`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L316)
+
+Returns a array of canonical axis objects given an array of axis labels and a
+unit. Uses the same unit for all axes.
+
+<details>
+<summary>Example</summary>
+
+Input:
+```json
+axesFromLabels( ["x", "y", "c", "t"]; "um" )
+```
+
+Output:
+```json
+[
+  {
+    "type": "space",
+    "label": "x",
+    "unit": "um"
+  },
+  {
+    "type": "space",
+    "label": "y",
+    "unit": "um"
+  },
+  {
+    "type": "time",
+    "label": "t",
+    "unit": "um"
+  },
+  {
+    "type": "channel",
+    "label": "c",
+    "unit": "um"
+  }
+]
+```
+
+</details>
+
+
+### Color and intensity
+
+#### [`rgbaColor`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L402)
+
+Given four `number`s, returns an `RGBA` object.
+
+<details>
+<summary>Example</summary>
+
+Input:
+```json
+rgbaColor(0.2, 0.3, 0.4, 1.0) 
+```
+
+Output:
+```json
+{
+    "red": 0.2,
+    "green": 0.3,
+    "blue": 0.4,
+    "alpha": 1.0 
+}
+```
+
+</details>
+
+#### [`intensityRange`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L396)
+
+Given two `number`s, returns an intensity range object.
+
+<details>
+<summary>Example</summary>
+
+Input:
+```json
+intensityRange(10, 247) 
+```
+
+Output:
+```json
+{ "intensityLimits" : {
+    "min": 10,
+    "max": 247 }
+}
+```
+
+### Other
+
 #### [`arrMultiply`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L283)
 
 Elementwise array multiplication.
@@ -709,6 +809,35 @@ Input:
 Output:
 ```json
 [ 4, 10, 18 ]
+```
+
+</details>
+
+#### [`permute`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L33)
+
+Permutes an array by a given array of indexes.
+
+<details>
+<summary>Examples</summary>
+
+Example A:
+```json
+permute( ["a", "b", "c"]; [1, 2, 0])
+```
+
+Output A:
+```json
+[ "b", "c", "a"]
+```
+
+Example B:
+```json
+permute( ["a", "b", "c"]; [1, 2, 0, 0, 0])
+```
+
+Output B:
+```json
+[ "b", "c", "a", a", "a"]
 ```
 
 </details>
