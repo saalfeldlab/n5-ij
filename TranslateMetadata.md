@@ -96,8 +96,8 @@ addPaths | getSubTree ("my/dataset") |= ( .attributes |= clearAndSetMetadata)
 
 uses [built in functions](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq):
 * [`addPaths`](#addpaths)
-* [`arrayUnitAxisToTransform`](#arrayandunitaxistotransform)
-* [`axesFromLabels`](#axisfromlabels)
+* [`arrayUnitAxisToTransform`](#arrayunitaxistotransform)
+* [`axesFromLabels`](#axesfromlabels)
 * [`intensityRange`](#intensityrange)
 * [`rgbaColor`](#rgbacolor)
 * [`getSubTree`](#getsubtree)
@@ -576,12 +576,12 @@ Input 1:
 Output 2:
 `true`
 
-</details
+</details>
+
 
 #### [`clearDatasetMetadata`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L392)
 
 Removes all keys except those required for datasets: `["dimensions","dataType","blockSize","compression"]`.
-
 
 #### [`addPaths`](https://github.com/saalfeldlab/n5-imglib2/blob/cf9afee77cae636b768dbbf6ac3f3d7ee7ebb304/src/main/resources/n5.jq#L17)
 
