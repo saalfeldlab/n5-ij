@@ -55,9 +55,9 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
-import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
@@ -157,7 +157,7 @@ public class DatasetSelectorDialog {
 
   private N5TreeNode rootNode;
 
-  private DefaultMutableTreeNode rootJTreeNode;
+  private N5TreeNodeWrapper rootJTreeNode;
 
   private N5SpatialKeySpecDialog spatialMetaSpec;
 
@@ -574,13 +574,6 @@ public class DatasetSelectorDialog {
 		gson = gsonBuilder.create();
 	}
 
-//	Optional<SpatialMetadataTemplateParser> translatedParser = translationPanel.getParserOptional( gson );
-//	Optional<TranslatedTreeMetadataParser> translatedParser = translationPanel.getParserOptional();
-//	translatedParser.ifPresent( p -> {
-//		parserList.clear();
-//		parserList.add(translatedParser.get());
-//	});
-
 	boolean isTranslated = false;
 	Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
 	if( translatedN5.isPresent() )
@@ -589,24 +582,32 @@ public class DatasetSelectorDialog {
 		isTranslated = true;
 	}
 
-//	if (translationPanel.isTranslationProvided() && translatedParser.isPresent()) {
-//		parserList.clear();
-//		parserList.add(translatedParser.get());
-//		System.out.println( parserList );
-//	}
-
 	final List<N5MetadataParser<?>> groupParserList = Arrays.asList(groupParsers);
 	datasetDiscoverer = new N5DatasetDiscoverer(n5, loaderExecutor, n5NodeFilter,
 			parserList, groupParserList );
 
-	try {
-	  rootNode = datasetDiscoverer.discoverAndParseRecursive(rootPath);
-	} catch (IOException e) {
-	  e.printStackTrace();
-	}
+   rootNode = new N5TreeNode( rootPath.isEmpty() ? "/" : rootPath );
+   rootJTreeNode = new N5TreeNodeWrapper( rootNode );
+   treeModel.setRoot(rootJTreeNode);
+   containerTree.repaint();
+	Executors.newSingleThreadExecutor().submit(() -> {
+		try {
+			System.out.println("discover");
+			rootNode = datasetDiscoverer.discoverAndParseRecursive(rootNode, x -> {
+				System.out.println("callback");
+				SwingUtilities.invokeLater(() -> {
+					System.out.println("repaint");
+					rootJTreeNode.refresh();
+					containerTree.repaint();
+					dialog.repaint();
+				});
+			});
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	});
 
 	if( isTranslated ) {
-		System.out.println( "translated - updating results" );
 		TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
 		translationResultPanel.set(
 				xlatedN5.getGson(),
@@ -615,10 +616,10 @@ public class DatasetSelectorDialog {
 	}
 
 	// set the root node for the JTree
-	rootJTreeNode = new N5TreeNodeWrapper( rootNode );
-	treeModel.setRoot(rootJTreeNode);
 	messageLabel.setText("Done");
 	dialog.repaint();
+	containerTree.setEnabled(isTranslated);
+
 
 	messageLabel.setVisible(false);
 	dialog.repaint();
