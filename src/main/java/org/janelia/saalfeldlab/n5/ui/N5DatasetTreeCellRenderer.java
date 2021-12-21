@@ -79,6 +79,38 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 				setText( node.getNodeName() );
 			}
 		}
+		else if ( value instanceof N5SwingTreeNode )
+		{
+
+			node = ( ( N5SwingTreeNode ) value );
+			if ( node.getMetadata() != null )
+			{
+				final String conversionString;
+				final String convSuffix = conversionSuffix( node );
+				if ( showConversionWarning && !convSuffix.isEmpty() )
+					conversionString = " " + String.format( warningFormat, conversionSuffix( node ) );
+				else
+					conversionString = "";
+
+			    final String memStr = memString( node );
+			    final String memSizeString = memStr.isEmpty() ? "" : " (" + memStr + ")";
+
+				setText( String.join( "", new String[]{
+						"<html>",
+						String.format( nameFormat, node.getNodeName() ),
+						" (",
+						getParameterString( node ),
+						conversionString,
+						")",
+						memSizeString,
+						"</html>"
+				}));
+			}
+			else
+			{
+				setText( node.getNodeName() );
+			}
+		}
 		return this;
     }
 

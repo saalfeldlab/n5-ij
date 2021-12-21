@@ -158,7 +158,7 @@ public class DatasetSelectorDialog {
 
   private N5SwingTreeNode rootNode;
 
-  private N5TreeNodeWrapper rootJTreeNode;
+//  private N5TreeNodeWrapper rootJTreeNode;
 
   private N5SpatialKeySpecDialog spatialMetaSpec;
 
@@ -590,7 +590,7 @@ public class DatasetSelectorDialog {
 	final String[] pathParts = n5Path.split( n5.getGroupSeparator() );
 	final String rootName = pathParts[ pathParts.length - 1 ];
 
-	rootNode = new N5SwingTreeNode( rootName );
+	rootNode = new N5SwingTreeNode( rootPath );
 	treeModel.setRoot(rootNode);
 
 	containerTree.setEnabled(true);
@@ -657,7 +657,7 @@ public class DatasetSelectorDialog {
 	} else {
 	  // datasets were selected by the user
 	  for (final TreePath path : containerTree.getSelectionPaths())
-		selectedMetadata.add(((N5TreeNodeWrapper)path.getLastPathComponent()).getNode().getMetadata());
+		selectedMetadata.add(((N5SwingTreeNode)path.getLastPathComponent()).getMetadata());
 	}
 	okCallback.accept(new DataSelection(n5, selectedMetadata));
 	dialog.setVisible(false);
@@ -738,8 +738,8 @@ public class DatasetSelectorDialog {
 		  continue;
 
 		final Object last = path.getLastPathComponent();
-		if (last instanceof N5TreeNodeWrapper) {
-		  final N5TreeNode node = ((N5TreeNodeWrapper)last).getNode();
+		if (last instanceof N5SwingTreeNode) {
+		  final N5SwingTreeNode node = ((N5SwingTreeNode)last);
 		  if (node.getMetadata() == null) {
 			selectionModel.removeSelectionPath(path);
 		  }
