@@ -75,6 +75,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -155,7 +156,7 @@ public class DatasetSelectorDialog {
 
   private final N5MetadataParser<?>[] parsers;
 
-  private N5TreeNode rootNode;
+  private N5SwingTreeNode rootNode;
 
   private N5TreeNodeWrapper rootJTreeNode;
 
@@ -586,25 +587,33 @@ public class DatasetSelectorDialog {
 	datasetDiscoverer = new N5DatasetDiscoverer(n5, loaderExecutor, n5NodeFilter,
 			parserList, groupParserList );
 
-   rootNode = new N5TreeNode( rootPath.isEmpty() ? "/" : rootPath );
-   rootJTreeNode = new N5TreeNodeWrapper( rootNode );
-   treeModel.setRoot(rootJTreeNode);
-   containerTree.repaint();
+	final String[] pathParts = n5Path.split( n5.getGroupSeparator() );
+	final String rootName = pathParts[ pathParts.length - 1 ];
+
+	rootNode = new N5SwingTreeNode( rootName );
+	treeModel.setRoot(rootNode);
+
+	containerTree.setEnabled(true);
+	containerTree.repaint();
+
+	Consumer<N5TreeNode> callback = (x) -> {
+		SwingUtilities.invokeLater(() -> {
+			treeModel.nodeChanged( (N5SwingTreeNode)x );
+		});
+	};
+
 	Executors.newSingleThreadExecutor().submit(() -> {
 		try {
-			System.out.println("discover");
-			rootNode = datasetDiscoverer.discoverAndParseRecursive(rootNode, x -> {
-				System.out.println("callback");
-				SwingUtilities.invokeLater(() -> {
-					System.out.println("repaint");
-					rootJTreeNode.refresh();
-					containerTree.repaint();
-					dialog.repaint();
-				});
-			});
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+			String[] datasetPaths;
+			try {
+				datasetPaths = n5.deepList(rootPath, loaderExecutor);
+				N5SwingTreeNode.fromFlatList(rootNode, datasetPaths, "/" );
+				datasetDiscoverer.parseMetadataRecursive(rootNode, callback);
+			}
+			catch (InterruptedException e) { }
+			catch (ExecutionException e) { }
+		} catch (IOException e) { }
+
 	});
 
 	if( isTranslated ) {
@@ -617,14 +626,8 @@ public class DatasetSelectorDialog {
 
 	// set the root node for the JTree
 	messageLabel.setText("Done");
-	dialog.repaint();
-	containerTree.setEnabled(isTranslated);
-
-
 	messageLabel.setVisible(false);
 	dialog.repaint();
-
-	containerTree.setEnabled(true);
   }
 
   private void ok() {
