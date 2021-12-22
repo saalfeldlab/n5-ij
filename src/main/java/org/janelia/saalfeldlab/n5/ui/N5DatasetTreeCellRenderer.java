@@ -34,9 +34,15 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 	private final boolean showConversionWarning;
 
+	private String rootName;
+
 	public N5DatasetTreeCellRenderer( final boolean showConversionWarning )
 	{
 		this.showConversionWarning = showConversionWarning;
+	}
+
+	public void setRootName( String rootName ) {
+		this.rootName = rootName;
 	}
 
 	@Override
@@ -46,47 +52,14 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 		super.getTreeCellRendererComponent( tree, value, sel, exp, leaf, row, hasFocus );
 
-		N5TreeNode node;
-		if ( value instanceof N5TreeNodeWrapper )
+		N5SwingTreeNode node;
+		if ( value instanceof N5SwingTreeNode )
 		{
-
-			node = ( ( N5TreeNodeWrapper ) value ).getNode();
-			if ( node.getMetadata() != null )
-			{
-				final String conversionString;
-				final String convSuffix = conversionSuffix( node );
-				if ( showConversionWarning && !convSuffix.isEmpty() )
-					conversionString = " " + String.format( warningFormat, conversionSuffix( node ) );
-				else
-					conversionString = "";
-
-			    final String memStr = memString( node );
-			    final String memSizeString = memStr.isEmpty() ? "" : " (" + memStr + ")";
-
-				setText( String.join( "", new String[]{
-						"<html>",
-						String.format( nameFormat, node.getNodeName() ),
-						" (",
-						getParameterString( node ),
-						conversionString,
-						")",
-						memSizeString,
-						"</html>"
-				}));
-			}
-			else
-			{
-				setText( node.getNodeName() );
-			}
-		}
-		else if ( value instanceof N5SwingTreeNode )
-		{
-
 			node = ( ( N5SwingTreeNode ) value );
 			if ( node.getMetadata() != null )
 			{
-				final String conversionString;
 				final String convSuffix = conversionSuffix( node );
+				final String conversionString;
 				if ( showConversionWarning && !convSuffix.isEmpty() )
 					conversionString = " " + String.format( warningFormat, conversionSuffix( node ) );
 				else
@@ -94,10 +67,11 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 			    final String memStr = memString( node );
 			    final String memSizeString = memStr.isEmpty() ? "" : " (" + memStr + ")";
+			    final String name = node.getParent() == null ? rootName : node.getNodeName();
 
 				setText( String.join( "", new String[]{
 						"<html>",
-						String.format( nameFormat, node.getNodeName() ),
+						String.format( nameFormat, name ),
 						" (",
 						getParameterString( node ),
 						conversionString,
@@ -108,7 +82,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 			}
 			else
 			{
-				setText( node.getNodeName() );
+				setText(node.getParent() == null ? rootName : node.getNodeName());
 			}
 		}
 		return this;
