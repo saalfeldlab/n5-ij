@@ -71,6 +71,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -521,13 +522,15 @@ public class DatasetSelectorDialog {
   private void openContainer(final Function<String, N5Reader> n5Fun, final Supplier<String> opener,
 		  final Function<String, String> pathToRoot) {
 
-	messageLabel.setText("Building reader...");
-	messageLabel.setVisible(true);
-	dialog.repaint();
-	dialog.revalidate();
+	SwingUtilities.invokeLater(() -> {
+		messageLabel.setText("Building reader...");
+		messageLabel.setVisible(true);
+		messageLabel.repaint();
+	});
 
 	final String n5Path = opener.get();
 	containerPathUpdateCallback.accept(n5Path);
+
 	if (n5Path == null) {
 	  messageLabel.setVisible(false);
 	  dialog.repaint();
@@ -542,10 +545,6 @@ public class DatasetSelectorDialog {
 	  dialog.repaint();
 	  return;
 	}
-
-	messageLabel.setText("Discovering datasets...");
-	messageLabel.setVisible(true);
-	dialog.repaint();
 
 	if (loaderExecutor == null) {
 	  loaderExecutor = Executors.newCachedThreadPool();
@@ -588,7 +587,10 @@ public class DatasetSelectorDialog {
 			parserList, groupParserList );
 
 	final String[] pathParts = n5Path.split( n5.getGroupSeparator() );
+
 	final String rootName = pathParts[ pathParts.length - 1 ];
+	if( treeRenderer != null  && treeRenderer instanceof N5DatasetTreeCellRenderer )
+		((N5DatasetTreeCellRenderer)treeRenderer ).setRootName(rootName);
 
 	rootNode = new N5SwingTreeNode( rootPath );
 	treeModel.setRoot(rootNode);
@@ -596,19 +598,58 @@ public class DatasetSelectorDialog {
 	containerTree.setEnabled(true);
 	containerTree.repaint();
 
-	Consumer<N5TreeNode> callback = (x) -> {
+	final Consumer<N5TreeNode> callback = (x) -> {
 		SwingUtilities.invokeLater(() -> {
-			treeModel.nodeChanged( (N5SwingTreeNode)x );
+			treeModel.nodeChanged((N5SwingTreeNode)x);
 		});
+	};
+
+	final Consumer<N5TreeNode> trimCallback = (x) -> {
+		// need to wait because if not,
+		// sort might be called before items are removed,
+		// causing problems
+		try {
+			SwingUtilities.invokeAndWait(() -> {
+				treeModel.removeNodeFromParent((N5SwingTreeNode) x);
+			});
+		}
+		catch (InvocationTargetException e) { }
+		catch (InterruptedException e) { }
 	};
 
 	Executors.newSingleThreadExecutor().submit(() -> {
 		try {
 			String[] datasetPaths;
 			try {
+
+				SwingUtilities.invokeLater(() -> {
+					messageLabel.setText("Listing...");
+					messageLabel.repaint();
+				});
+
 				datasetPaths = n5.deepList(rootPath, loaderExecutor);
 				N5SwingTreeNode.fromFlatList(rootNode, datasetPaths, "/" );
+
+				SwingUtilities.invokeLater(() -> {
+					messageLabel.setText("Parsing...");
+					messageLabel.repaint();
+				});
+
 				datasetDiscoverer.parseMetadataRecursive(rootNode, callback);
+				N5DatasetDiscoverer.trimRm(rootNode, trimCallback );
+				datasetDiscoverer.sort(rootNode, callback );
+
+				SwingUtilities.invokeLater(() -> {
+					messageLabel.setText("Done");
+					messageLabel.repaint();
+				});
+
+				Thread.sleep(1000);
+				SwingUtilities.invokeLater(() -> {
+					messageLabel.setText("");
+					messageLabel.setVisible(false);
+					messageLabel.repaint();
+				});
 			}
 			catch (InterruptedException e) { }
 			catch (ExecutionException e) { }
@@ -623,11 +664,6 @@ public class DatasetSelectorDialog {
 				xlatedN5.getTranslation().getOrig(),
 				xlatedN5.getTranslation().getTranslated());
 	}
-
-	// set the root node for the JTree
-	messageLabel.setText("Done");
-	messageLabel.setVisible(false);
-	dialog.repaint();
   }
 
   private void ok() {
