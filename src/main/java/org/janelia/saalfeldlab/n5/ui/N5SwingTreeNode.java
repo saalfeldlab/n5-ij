@@ -5,11 +5,12 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
 
+import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreeNode;
 
 import org.janelia.saalfeldlab.n5.N5TreeNode;
 
-public class N5SwingTreeNode extends N5TreeNode implements TreeNode {
+public class N5SwingTreeNode extends N5TreeNode implements MutableTreeNode {
 
 	private N5SwingTreeNode parent;
 
@@ -22,6 +23,7 @@ public class N5SwingTreeNode extends N5TreeNode implements TreeNode {
 		this.parent = parent;
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	public Enumeration children() {
 		return Collections.enumeration(childrenList());
@@ -47,6 +49,7 @@ public class N5SwingTreeNode extends N5TreeNode implements TreeNode {
 		return childrenList().size();
 	}
 
+	@SuppressWarnings("unlikely-arg-type")
 	@Override
 	public int getIndex(TreeNode n) {
 		return childrenList().indexOf(n);
@@ -96,6 +99,39 @@ public class N5SwingTreeNode extends N5TreeNode implements TreeNode {
 	private static String normalDatasetName(final String fullPath, final String groupSeparator) {
 
 		return fullPath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
+	}
+
+	@Override
+	public void insert(MutableTreeNode child, int index) {
+		if( child instanceof N5SwingTreeNode )
+			childrenList().add(index, (N5SwingTreeNode)child);
+	}
+
+	@Override
+	public void remove(int index) {
+		childrenList().remove(index);
+	}
+
+	@SuppressWarnings("unlikely-arg-type")
+	@Override
+	public void remove(MutableTreeNode node) {
+		childrenList().remove(node);
+	}
+
+	@Override
+	public void removeFromParent() {
+		parent.childrenList().remove(this);
+	}
+
+	@Override
+	public void setParent(MutableTreeNode newParent) {
+		if( newParent instanceof N5SwingTreeNode )
+			this.parent = (N5SwingTreeNode)newParent;
+	}
+
+	@Override
+	public void setUserObject(Object object) {
+		// does nothing
 	}
 
 }
