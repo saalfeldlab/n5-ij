@@ -27,6 +27,7 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import ij.IJ;
 import ij.Prefs;
+import se.sawano.java.text.AlphanumericComparator;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
 import org.janelia.saalfeldlab.n5.Compression;
@@ -72,8 +73,10 @@ import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -159,13 +162,13 @@ public class DatasetSelectorDialog {
 
   private N5SwingTreeNode rootNode;
 
-//  private N5TreeNodeWrapper rootJTreeNode;
-
   private N5SpatialKeySpecDialog spatialMetaSpec;
 
   private N5MetadataTranslationPanel translationPanel;
 
   private TranslationResultPanel translationResultPanel;
+
+  private ExecutorService parseExec;
 
   public DatasetSelectorDialog(
 		  final Function<String, N5Reader> n5Fun,
@@ -592,32 +595,38 @@ public class DatasetSelectorDialog {
 	if( treeRenderer != null  && treeRenderer instanceof N5DatasetTreeCellRenderer )
 		((N5DatasetTreeCellRenderer)treeRenderer ).setRootName(rootName);
 
-	rootNode = new N5SwingTreeNode( rootPath );
+	N5TreeNode tmpRootNode = new N5TreeNode( rootPath );
+	rootNode = new N5SwingTreeNode( rootPath, treeModel );
 	treeModel.setRoot(rootNode);
 
 	containerTree.setEnabled(true);
 	containerTree.repaint();
 
+	final AlphanumericComparator comp = new AlphanumericComparator(Collator.getInstance());
 	final Consumer<N5TreeNode> callback = (x) -> {
 		SwingUtilities.invokeLater(() -> {
-			treeModel.nodeChanged((N5SwingTreeNode)x);
+			if( x.getMetadata() != null )
+			{
+				final N5SwingTreeNode node = (N5SwingTreeNode) rootNode.getDescendant(x.getPath())
+						.orElse( rootNode.addPath( x.getPath() ));
+				if( node != null )
+				{
+					// set metadata, update ui
+					node.setMetadata( x.getMetadata() );
+					treeModel.nodeChanged(node);
+
+					// sort children, update ui
+					final N5SwingTreeNode parent = (N5SwingTreeNode) node.getParent();
+					final List<N5TreeNode> children = parent.childrenList();
+					children.sort(Comparator.comparing(N5TreeNode::toString, comp));
+					treeModel.nodeStructureChanged(parent);
+				}
+			}
 		});
 	};
 
-	final Consumer<N5TreeNode> trimCallback = (x) -> {
-		// need to wait because if not,
-		// sort might be called before items are removed,
-		// causing problems
-		try {
-			SwingUtilities.invokeAndWait(() -> {
-				treeModel.removeNodeFromParent((N5SwingTreeNode) x);
-			});
-		}
-		catch (InvocationTargetException e) { }
-		catch (InterruptedException e) { }
-	};
-
-	Executors.newSingleThreadExecutor().submit(() -> {
+	parseExec = Executors.newSingleThreadExecutor();
+	parseExec.submit(() -> {
 		try {
 			String[] datasetPaths;
 			try {
@@ -627,17 +636,18 @@ public class DatasetSelectorDialog {
 					messageLabel.repaint();
 				});
 
+				// build a temporary tree
 				datasetPaths = n5.deepList(rootPath, loaderExecutor);
-				N5SwingTreeNode.fromFlatList(rootNode, datasetPaths, "/" );
+				N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/" );
 
 				SwingUtilities.invokeLater(() -> {
 					messageLabel.setText("Parsing...");
 					messageLabel.repaint();
 				});
 
-				datasetDiscoverer.parseMetadataRecursive(rootNode, callback);
-				N5DatasetDiscoverer.trimRm(rootNode, trimCallback );
-				datasetDiscoverer.sort(rootNode, callback );
+				// callback copies values from temporary tree into the ui 
+				// when metadata is parsed
+				datasetDiscoverer.parseMetadataRecursive( tmpRootNode, callback );
 
 				SwingUtilities.invokeLater(() -> {
 					messageLabel.setText("Done");
@@ -668,6 +678,10 @@ public class DatasetSelectorDialog {
 
   private void ok() {
 
+	// stop parsing things
+	if( parseExec != null )
+		parseExec.shutdownNow();
+
 	final ArrayList<N5Metadata> selectedMetadata = new ArrayList<>();
 
 	// check if we can skip explicit dataset detection
@@ -679,7 +693,6 @@ public class DatasetSelectorDialog {
 	  final String dataset = pathFun.apply(n5Path);
 	  N5TreeNode node = null;
 	  try {
-		//				node = datasetDiscoverer.parse( n5, dataset );
 		node = datasetDiscoverer.parse(dataset);
 		if (node.isDataset() && node.getMetadata() != null)
 		  selectedMetadata.add(node.getMetadata());
@@ -701,6 +714,10 @@ public class DatasetSelectorDialog {
   }
 
   private void cancel() {
+
+	// stop parsing things
+	if( parseExec != null )
+		parseExec.shutdownNow();
 
 	dialog.setVisible(false);
 	dialog.dispose();

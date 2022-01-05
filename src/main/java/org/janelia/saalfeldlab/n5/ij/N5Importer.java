@@ -35,6 +35,7 @@ import ij.plugin.frame.Recorder;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.cache.img.CachedCellImg;
 import net.imglib2.converter.Converter;
 import net.imglib2.converter.Converters;
 import net.imglib2.converter.RealFloatConverter;
@@ -181,7 +182,7 @@ public class N5Importer implements PlugIn {
 	initMaxValuesForCrop = new long[numDimensionsForCrop];
 	Arrays.fill(initMaxValuesForCrop, Long.MAX_VALUE);
 
-	exec =  Executors.newFixedThreadPool( Prefs.getThreads() );
+	exec = Executors.newFixedThreadPool( Prefs.getThreads() );
   }
 
   public N5Reader getN5() {
@@ -442,7 +443,7 @@ public class N5Importer implements PlugIn {
 		  final ImageplusMetadata<M> ipMeta) throws IOException {
 
 	final String d = datasetMeta.getPath();
-	final RandomAccessibleInterval imgRaw = N5Utils.open(n5, d);
+	final CachedCellImg imgRaw = N5Utils.open(n5, d);
 
 	// crop if necesssary
 	final RandomAccessibleInterval imgC;
