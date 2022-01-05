@@ -32,6 +32,7 @@ import ij.Prefs;
 import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
+import net.imglib2.Cursor;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -39,6 +40,8 @@ import net.imglib2.cache.img.CachedCellImg;
 import net.imglib2.converter.Converter;
 import net.imglib2.converter.Converters;
 import net.imglib2.converter.RealFloatConverter;
+import net.imglib2.img.cell.CellGrid;
+import net.imglib2.img.cell.LazyCellImg.LazyCells;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
@@ -51,7 +54,9 @@ import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Intervals;
 import net.imglib2.util.Util;
+import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
@@ -91,10 +96,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
+import java.util.stream.Stream;
 
 public class N5Importer implements PlugIn {
 
@@ -476,6 +487,14 @@ public class N5Importer implements PlugIn {
 	  // this covers int8 -> uint8 and int16 -> uint16
 	  convImg = img;
 	}
+	
+//	CellGrid cellGrid = new CellGrid( 
+//			Intervals.dimensionsAsLongArray(convImg),
+//			new int[]{64, 64, 1, 64, 1 });
+
+//	CellGrid cellGrid = new CellGrid( 
+//			Intervals.dimensionsAsLongArray(convImg),
+//			new int[]{64, 64, 1, 1, 1 });
 
 	ImagePlus imp;
 	if (asVirtual) {
@@ -485,6 +504,10 @@ public class N5Importer implements PlugIn {
 	  LoopBuilder.setImages( convImg, ipImg )
 			.multiThreaded( new DefaultTaskExecutor( exec ))
 			.forEachPixel( (x,y) -> y.set( x ));
+	  
+//	  customCopy( ipImg, convImg, imgRaw.getCellGrid(), exec );
+//	  customCopy( ipImg, convImg, cellGrid, exec );
+//	  customCopyInterleave( ipImg, convImg, 4 );
 
 	  imp = ipImg.getImagePlus();
 	}
@@ -498,6 +521,94 @@ public class N5Importer implements PlugIn {
 	}
 
 	return imp;
+  }
+  
+  public static <T extends NumericType<T> & NativeType<T>> void customCopyInterleave(
+		  final ImagePlusImg<T, ?> out,
+		  final RandomAccessibleInterval<T> img, 
+		  int nThreads )
+  {
+	final ExecutorService executor = Executors.newFixedThreadPool(nThreads);
+	ArrayList<Future<?>> futures = new ArrayList<>();
+	for( int i = 0; i < nThreads; i++ ) {
+		final int idx = i;
+		futures.add( executor.submit(() -> {
+
+			final Cursor<T> outC = Views.flatIterable( out ).cursor();
+			final Cursor<T> srcC = Views.flatIterable( img ).cursor();
+			int j = 0;
+			while( j < idx ) {
+				outC.fwd();
+				srcC.fwd();
+				j++;
+			}
+
+			while( outC.hasNext() ) {
+				outC.next().set( srcC.next());
+			}
+
+		}));
+	}
+
+	for( Future f : futures )
+		try {
+			f.get();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+		}
+
+  }
+
+  public static <T extends NumericType<T> & NativeType<T>> void customCopy(
+		  final ImagePlusImg<T, ?> out,
+		  final RandomAccessibleInterval<T> img, 
+		  final CellGrid cellGrid,
+		  final ExecutorService exec )
+  {
+	  final int ndim = out.numDimensions();
+//	  final CellGrid cellGrid = img.getCellGrid();
+	  final long numDownsampledBlocks = Intervals.numElements( cellGrid.getGridDimensions() );
+//	  final List< Long > blockIndexes = LongStream.range( 0, numDownsampledBlocks ).boxed().collect( Collectors.toList() );
+
+	  Stream<Future<?>> futures = LongStream.range( 0, numDownsampledBlocks ).mapToObj( i -> {
+
+		  return exec.submit( () -> {
+
+			final long[] blockGridPosition = new long[ cellGrid.numDimensions() ];
+			cellGrid.getCellGridPositionFlat( i, blockGridPosition );
+
+			final long[] targetMin = new long[ ndim ], targetMax = new long[ ndim ];
+			final int[] cellDimensions = new int[ ndim ];
+			cellGrid.getCellDimensions( blockGridPosition, targetMin, cellDimensions );
+			for ( int d = 0; d < ndim; ++d )
+				targetMax[ d ] = targetMin[ d ] + cellDimensions[ d ] - 1;
+
+			final Interval targetInterval = new FinalInterval( targetMin, targetMax );
+//			System.out.println( "copying for itvl: " + Intervals.toString(targetInterval));
+
+			final Cursor<T> outC = Views.flatIterable(
+					Views.zeroMin(Views.interval(out, targetInterval))).cursor();
+			
+			final Cursor<T> srcC = Views.flatIterable(
+					Views.zeroMin(Views.interval(img, targetInterval))).cursor();
+
+			while( outC.hasNext() )
+				outC.next().set( srcC.next());
+
+		    });
+	  });
+	  
+	futures.forEach( arg0 -> {
+		try {
+			arg0.get();
+		} catch (InterruptedException | ExecutionException e) {
+			e.printStackTrace();
+		}
+	} );
+//	exec.awaitTermination(8, TimeUnit.HOURS);
+	  
   }
 
   public static RandomAccessibleInterval<FloatType> convertDouble(
