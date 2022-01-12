@@ -21,20 +21,20 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 {
 	private static final long serialVersionUID = -4245251506197982653L;
 
-	private static final String thinSpace = "&#x2009;";
+	protected static final String thinSpace = "&#x2009;";
 
 //	private static final String times = "&#x2715;";
-	private static final String times = "&#xd7;";
+	protected static final String times = "&#xd7;";
 
-	private static final String warningFormat = "<font color=\"rgb(179, 58, 58)\">%s</font>";
+	protected static final String warningFormat = "<font color=\"rgb(179, 58, 58)\">%s</font>";
 
-	private static final String nameFormat = "<b>%s</b>";
+	protected static final String nameFormat = "<b>%s</b>";
 
-	private static final String dimDelimeter = thinSpace + times + thinSpace;
+	protected static final String dimDelimeter = thinSpace + times + thinSpace;
 
-	private final boolean showConversionWarning;
+	protected final boolean showConversionWarning;
 
-	private String rootName;
+	protected String rootName;
 
 	public N5DatasetTreeCellRenderer( final boolean showConversionWarning )
 	{
@@ -131,7 +131,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 	  return dimString + ", " + attributes.getDataType();
 	}
 
-	private String memString( N5TreeNode node )
+	protected String memString( N5TreeNode node )
 	{
 	    N5Metadata meta = node.getMetadata();
 	    if ( meta == null || !(meta instanceof N5DatasetMetadata ) )
@@ -148,7 +148,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 	/*
 	 * https://programming.guide/java/formatting-byte-size-to-human-readable-format.html
 	 */
-	private static String humanReadableByteCountSI(long bytes) {
+	protected static String humanReadableByteCountSI(long bytes) {
 	    if (-1000 < bytes && bytes < 1000) {
 	        return bytes + " B";
 	    }
