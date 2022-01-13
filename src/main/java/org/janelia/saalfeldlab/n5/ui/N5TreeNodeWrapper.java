@@ -19,14 +19,19 @@ public class N5TreeNodeWrapper extends DefaultMutableTreeNode {
 
 		super(node.getPath());
 		this.node = node;
-		for (N5TreeNode c : node.childrenList()) {
-			add(new N5TreeNodeWrapper(c));
-		}
+		refresh();
 	}
 
 	public N5TreeNode getNode() {
 
 		return node;
+	}
+
+	public void refresh() {
+		removeAllChildren();
+		for (N5TreeNode c : node.childrenList()) {
+			add(new N5TreeNodeWrapper(c));
+		}
 	}
 
 }

@@ -21,22 +21,28 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 {
 	private static final long serialVersionUID = -4245251506197982653L;
 
-	private static final String thinSpace = "&#x2009;";
+	protected static final String thinSpace = "&#x2009;";
 
 //	private static final String times = "&#x2715;";
-	private static final String times = "&#xd7;";
+	protected static final String times = "&#xd7;";
 
-	private static final String warningFormat = "<font color=\"rgb(179, 58, 58)\">%s</font>";
+	protected static final String warningFormat = "<font color=\"rgb(179, 58, 58)\">%s</font>";
 
-	private static final String nameFormat = "<b>%s</b>";
+	protected static final String nameFormat = "<b>%s</b>";
 
-	private static final String dimDelimeter = thinSpace + times + thinSpace;
+	protected static final String dimDelimeter = thinSpace + times + thinSpace;
 
-	private final boolean showConversionWarning;
+	protected final boolean showConversionWarning;
+
+	protected String rootName;
 
 	public N5DatasetTreeCellRenderer( final boolean showConversionWarning )
 	{
 		this.showConversionWarning = showConversionWarning;
+	}
+
+	public void setRootName( String rootName ) {
+		this.rootName = rootName;
 	}
 
 	@Override
@@ -46,15 +52,14 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 		super.getTreeCellRendererComponent( tree, value, sel, exp, leaf, row, hasFocus );
 
-		N5TreeNode node;
-		if ( value instanceof N5TreeNodeWrapper )
+		N5SwingTreeNode node;
+		if ( value instanceof N5SwingTreeNode )
 		{
-
-			node = ( ( N5TreeNodeWrapper ) value ).getNode();
+			node = ( ( N5SwingTreeNode ) value );
 			if ( node.getMetadata() != null )
 			{
-				final String conversionString;
 				final String convSuffix = conversionSuffix( node );
+				final String conversionString;
 				if ( showConversionWarning && !convSuffix.isEmpty() )
 					conversionString = " " + String.format( warningFormat, conversionSuffix( node ) );
 				else
@@ -62,10 +67,11 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 			    final String memStr = memString( node );
 			    final String memSizeString = memStr.isEmpty() ? "" : " (" + memStr + ")";
+			    final String name = node.getParent() == null ? rootName : node.getNodeName();
 
 				setText( String.join( "", new String[]{
 						"<html>",
-						String.format( nameFormat, node.getNodeName() ),
+						String.format( nameFormat, name ),
 						" (",
 						getParameterString( node ),
 						conversionString,
@@ -76,7 +82,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 			}
 			else
 			{
-				setText( node.getNodeName() );
+				setText(node.getParent() == null ? rootName : node.getNodeName());
 			}
 		}
 		return this;
@@ -125,7 +131,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 	  return dimString + ", " + attributes.getDataType();
 	}
 
-	private String memString( N5TreeNode node )
+	protected String memString( N5TreeNode node )
 	{
 	    N5Metadata meta = node.getMetadata();
 	    if ( meta == null || !(meta instanceof N5DatasetMetadata ) )
@@ -142,7 +148,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 	/*
 	 * https://programming.guide/java/formatting-byte-size-to-human-readable-format.html
 	 */
-	private static String humanReadableByteCountSI(long bytes) {
+	protected static String humanReadableByteCountSI(long bytes) {
 	    if (-1000 < bytes && bytes < 1000) {
 	        return bytes + " B";
 	    }

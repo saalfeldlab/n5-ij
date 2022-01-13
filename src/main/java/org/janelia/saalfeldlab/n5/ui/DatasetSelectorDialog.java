@@ -27,6 +27,7 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import ij.IJ;
 import ij.Prefs;
+import se.sawano.java.text.AlphanumericComparator;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
 import org.janelia.saalfeldlab.n5.Compression;
@@ -55,9 +56,9 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
-import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
@@ -71,10 +72,14 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -155,15 +160,15 @@ public class DatasetSelectorDialog {
 
   private final N5MetadataParser<?>[] parsers;
 
-  private N5TreeNode rootNode;
-
-  private DefaultMutableTreeNode rootJTreeNode;
+  private N5SwingTreeNode rootNode;
 
   private N5SpatialKeySpecDialog spatialMetaSpec;
 
   private N5MetadataTranslationPanel translationPanel;
 
   private TranslationResultPanel translationResultPanel;
+
+  private ExecutorService parseExec;
 
   public DatasetSelectorDialog(
 		  final Function<String, N5Reader> n5Fun,
@@ -520,13 +525,15 @@ public class DatasetSelectorDialog {
   private void openContainer(final Function<String, N5Reader> n5Fun, final Supplier<String> opener,
 		  final Function<String, String> pathToRoot) {
 
-	messageLabel.setText("Building reader...");
-	messageLabel.setVisible(true);
-	dialog.repaint();
-	dialog.revalidate();
+	SwingUtilities.invokeLater(() -> {
+		messageLabel.setText("Building reader...");
+		messageLabel.setVisible(true);
+		messageLabel.repaint();
+	});
 
 	final String n5Path = opener.get();
 	containerPathUpdateCallback.accept(n5Path);
+
 	if (n5Path == null) {
 	  messageLabel.setVisible(false);
 	  dialog.repaint();
@@ -541,10 +548,6 @@ public class DatasetSelectorDialog {
 	  dialog.repaint();
 	  return;
 	}
-
-	messageLabel.setText("Discovering datasets...");
-	messageLabel.setVisible(true);
-	dialog.repaint();
 
 	if (loaderExecutor == null) {
 	  loaderExecutor = Executors.newCachedThreadPool();
@@ -574,13 +577,6 @@ public class DatasetSelectorDialog {
 		gson = gsonBuilder.create();
 	}
 
-//	Optional<SpatialMetadataTemplateParser> translatedParser = translationPanel.getParserOptional( gson );
-//	Optional<TranslatedTreeMetadataParser> translatedParser = translationPanel.getParserOptional();
-//	translatedParser.ifPresent( p -> {
-//		parserList.clear();
-//		parserList.add(translatedParser.get());
-//	});
-
 	boolean isTranslated = false;
 	Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
 	if( translatedN5.isPresent() )
@@ -589,44 +585,102 @@ public class DatasetSelectorDialog {
 		isTranslated = true;
 	}
 
-//	if (translationPanel.isTranslationProvided() && translatedParser.isPresent()) {
-//		parserList.clear();
-//		parserList.add(translatedParser.get());
-//		System.out.println( parserList );
-//	}
-
 	final List<N5MetadataParser<?>> groupParserList = Arrays.asList(groupParsers);
 	datasetDiscoverer = new N5DatasetDiscoverer(n5, loaderExecutor, n5NodeFilter,
 			parserList, groupParserList );
 
-	try {
-	  rootNode = datasetDiscoverer.discoverAndParseRecursive(rootPath);
-	} catch (IOException e) {
-	  e.printStackTrace();
-	}
+	final String[] pathParts = n5Path.split( n5.getGroupSeparator() );
+
+	final String rootName = pathParts[ pathParts.length - 1 ];
+	if( treeRenderer != null  && treeRenderer instanceof N5DatasetTreeCellRenderer )
+		((N5DatasetTreeCellRenderer)treeRenderer ).setRootName(rootName);
+
+	N5TreeNode tmpRootNode = new N5TreeNode( rootPath );
+	rootNode = new N5SwingTreeNode( rootPath, treeModel );
+	treeModel.setRoot(rootNode);
+
+	containerTree.setEnabled(true);
+	containerTree.repaint();
+
+	final AlphanumericComparator comp = new AlphanumericComparator(Collator.getInstance());
+	final Consumer<N5TreeNode> callback = (x) -> {
+		SwingUtilities.invokeLater(() -> {
+			if( x.getMetadata() != null )
+			{
+				final N5SwingTreeNode node = (N5SwingTreeNode) rootNode.getDescendant(x.getPath())
+						.orElse( rootNode.addPath( x.getPath() ));
+				if( node != null )
+				{
+					// set metadata, update ui
+					node.setMetadata( x.getMetadata() );
+					treeModel.nodeChanged(node);
+
+					// sort children, update ui
+					final N5SwingTreeNode parent = (N5SwingTreeNode) node.getParent();
+					final List<N5TreeNode> children = parent.childrenList();
+					children.sort(Comparator.comparing(N5TreeNode::toString, comp));
+					treeModel.nodeStructureChanged(parent);
+				}
+			}
+		});
+	};
+
+	parseExec = Executors.newSingleThreadExecutor();
+	parseExec.submit(() -> {
+		try {
+			String[] datasetPaths;
+			try {
+
+				SwingUtilities.invokeLater(() -> {
+					messageLabel.setText("Listing...");
+					messageLabel.repaint();
+				});
+
+				// build a temporary tree
+				datasetPaths = n5.deepList(rootPath, loaderExecutor);
+				N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/" );
+
+				SwingUtilities.invokeLater(() -> {
+					messageLabel.setText("Parsing...");
+					messageLabel.repaint();
+				});
+
+				// callback copies values from temporary tree into the ui 
+				// when metadata is parsed
+				datasetDiscoverer.parseMetadataRecursive( tmpRootNode, callback );
+
+				SwingUtilities.invokeLater(() -> {
+					messageLabel.setText("Done");
+					messageLabel.repaint();
+				});
+
+				Thread.sleep(1000);
+				SwingUtilities.invokeLater(() -> {
+					messageLabel.setText("");
+					messageLabel.setVisible(false);
+					messageLabel.repaint();
+				});
+			}
+			catch (InterruptedException e) { }
+			catch (ExecutionException e) { }
+		} catch (IOException e) { }
+
+	});
 
 	if( isTranslated ) {
-		System.out.println( "translated - updating results" );
 		TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
 		translationResultPanel.set(
 				xlatedN5.getGson(),
 				xlatedN5.getTranslation().getOrig(),
 				xlatedN5.getTranslation().getTranslated());
 	}
-
-	// set the root node for the JTree
-	rootJTreeNode = new N5TreeNodeWrapper( rootNode );
-	treeModel.setRoot(rootJTreeNode);
-	messageLabel.setText("Done");
-	dialog.repaint();
-
-	messageLabel.setVisible(false);
-	dialog.repaint();
-
-	containerTree.setEnabled(true);
   }
 
   private void ok() {
+
+	// stop parsing things
+	if( parseExec != null )
+		parseExec.shutdownNow();
 
 	final ArrayList<N5Metadata> selectedMetadata = new ArrayList<>();
 
@@ -639,7 +693,6 @@ public class DatasetSelectorDialog {
 	  final String dataset = pathFun.apply(n5Path);
 	  N5TreeNode node = null;
 	  try {
-		//				node = datasetDiscoverer.parse( n5, dataset );
 		node = datasetDiscoverer.parse(dataset);
 		if (node.isDataset() && node.getMetadata() != null)
 		  selectedMetadata.add(node.getMetadata());
@@ -653,7 +706,7 @@ public class DatasetSelectorDialog {
 	} else {
 	  // datasets were selected by the user
 	  for (final TreePath path : containerTree.getSelectionPaths())
-		selectedMetadata.add(((N5TreeNodeWrapper)path.getLastPathComponent()).getNode().getMetadata());
+		selectedMetadata.add(((N5SwingTreeNode)path.getLastPathComponent()).getMetadata());
 	}
 	okCallback.accept(new DataSelection(n5, selectedMetadata));
 	dialog.setVisible(false);
@@ -661,6 +714,10 @@ public class DatasetSelectorDialog {
   }
 
   private void cancel() {
+
+	// stop parsing things
+	if( parseExec != null )
+		parseExec.shutdownNow();
 
 	dialog.setVisible(false);
 	dialog.dispose();
@@ -734,8 +791,8 @@ public class DatasetSelectorDialog {
 		  continue;
 
 		final Object last = path.getLastPathComponent();
-		if (last instanceof N5TreeNodeWrapper) {
-		  final N5TreeNode node = ((N5TreeNodeWrapper)last).getNode();
+		if (last instanceof N5SwingTreeNode) {
+		  final N5SwingTreeNode node = ((N5SwingTreeNode)last);
 		  if (node.getMetadata() == null) {
 			selectionModel.removeSelectionPath(path);
 		  }
