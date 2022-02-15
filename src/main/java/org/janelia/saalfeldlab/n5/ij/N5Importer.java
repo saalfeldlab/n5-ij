@@ -224,7 +224,7 @@ public class N5Importer implements PlugIn {
 		options = macroOptions;
 
 	final boolean isMacro = (options != null && !options.isEmpty());
-	final boolean isCrop = options != null && options.contains("min=") && options.contains("max=");
+	final boolean isCrop = options != null && options.contains("cropDialog");
 
 	if (!isMacro && !isCrop) {
 	  // the fancy selector dialog
@@ -262,12 +262,12 @@ public class N5Importer implements PlugIn {
 	  Recorder.record = false;
 
 	  // parameters
-	  String n5Path = "";;
+	  String n5Path = Macro.getValue(options, n5PathKey, "");
 	  Interval thisDatasetCropInterval = null;
-	  boolean openAsVirtual = false;
+	  boolean openAsVirtual = options.contains(" " + virtualKey);
 
 	  // we don't always know ahead of time the dimensionality
-	  if( !isMacro )
+	  if( isCrop )
 	  {
 		  final GenericDialog gd = new GenericDialog("Import N5");
 		  gd.addStringField("N5 path", n5Path);
@@ -311,16 +311,13 @@ public class N5Importer implements PlugIn {
 	  }
 	  else
 	  {
-		  n5Path = Macro.getValue(options, n5PathKey, "");
 		  String minString = Macro.getValue(options, minKey, "");
 		  String maxString = Macro.getValue(options, maxKey, "");
 		  if( minString != null && !minString.isEmpty()) {
 			  thisDatasetCropInterval = parseCropParameters(minString, maxString);
 		  }
-		  openAsVirtual = options.contains(" " + virtualKey);
 		  show = !options.contains(" " + hideKey );
 	  }
-
 
 	  // set recorder back
 	  Recorder.record = record;
@@ -361,7 +358,7 @@ public class N5Importer implements PlugIn {
 	this.selection = selection;
 	this.n5 = selection.n5;
 	this.asVirtual = selectionDialog.isVirtual();
-	this.cropOption = selectionDialog.getCropOption();
+	this.cropOption = selectionDialog.isCropSelected();
 
 	if (cropOption)
 	  processWithCrops();
@@ -565,7 +562,7 @@ public class N5Importer implements PlugIn {
 					  .map(x -> x - 1)
 					  .toArray();
 
-	  this.run(generateAndStoreOptions(pathToN5Dataset, asVirtual, null, !show));
+	  this.run("cropDialog " + generateAndStoreOptions(pathToN5Dataset, asVirtual, null, !show));
 	}
   }
 

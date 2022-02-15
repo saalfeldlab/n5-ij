@@ -272,12 +272,17 @@ public class DatasetSelectorDialog {
 
   public void setCropOption(final boolean arg) {
 
-	cropOption = arg;
+	  this.cropOption = arg;
   }
 
   public boolean getCropOption() {
 
-	return cropBox.isSelected();
+	return cropOption;
+  }
+
+  public boolean isCropSelected() {
+
+	  return cropOption && cropBox.isSelected();
   }
 
   public boolean isVirtual() {
