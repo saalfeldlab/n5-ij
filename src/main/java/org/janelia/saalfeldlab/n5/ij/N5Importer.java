@@ -154,7 +154,7 @@ public class N5Importer implements PlugIn {
 
   private ExecutorService exec;
 
-  private boolean record;
+  private boolean initialRecorderState;
 
   private int numDimensionsForCrop;
 
@@ -167,7 +167,7 @@ public class N5Importer implements PlugIn {
   public N5Importer() {
 	// store value of record
 	// necessary to skip initial opening of this dialog
-	record = Recorder.record;
+	initialRecorderState = Recorder.record;
 	Recorder.record = false;
 
 	// default image plus metadata parsers
@@ -250,7 +250,7 @@ public class N5Importer implements PlugIn {
 
 	  selectionDialog.setCancelCallback(x -> {
 		// set back recorder state if canceled
-		Recorder.record = record;
+		Recorder.record = initialRecorderState;
 	  });
 
 	  selectionDialog.setVirtualOption(true);
@@ -258,7 +258,7 @@ public class N5Importer implements PlugIn {
 	  selectionDialog.run(this::datasetSelectorCallBack);
 	} else {
 	  // disable recorder
-	  record = Recorder.record;
+	  initialRecorderState = Recorder.record;
 	  Recorder.record = false;
 
 	  // parameters
@@ -291,7 +291,7 @@ public class N5Importer implements PlugIn {
 		  gd.showDialog();
 		  if (gd.wasCanceled()) {
 			// set back recorder state if canceled
-			Recorder.record = record;
+			Recorder.record = initialRecorderState;
 			return;
 		  }
 
@@ -308,6 +308,8 @@ public class N5Importer implements PlugIn {
 			final double v = gd.getNextNumber();
 			cropMax[i] = Double.isInfinite(v) ? Long.MAX_VALUE : (long)Math.ceil(v);
 		  }
+
+		  thisDatasetCropInterval = new FinalInterval( cropMin, cropMax );
 	  }
 	  else
 	  {
@@ -320,7 +322,7 @@ public class N5Importer implements PlugIn {
 	  }
 
 	  // set recorder back
-	  Recorder.record = record;
+	  Recorder.record = initialRecorderState;
 
 	  final N5Reader n5ForThisDataset = new N5ViewerReaderFun().apply(n5Path);
 	  N5Metadata meta;
@@ -353,7 +355,7 @@ public class N5Importer implements PlugIn {
 
   private void datasetSelectorCallBack(final DataSelection selection) {
 	// set the recorder back to its original value
-	Recorder.record = record;
+	Recorder.record = initialRecorderState;
 
 	this.selection = selection;
 	this.n5 = selection.n5;
