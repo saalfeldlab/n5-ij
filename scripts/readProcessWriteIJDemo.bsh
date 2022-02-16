@@ -1,0 +1,54 @@
+import ij.*;
+
+import org.janelia.saalfeldlab.n5.*;
+import org.janelia.saalfeldlab.n5.ij.*;
+import org.janelia.saalfeldlab.n5.imglib2.*;
+import org.janelia.saalfeldlab.n5.metadata.*;
+import org.janelia.saalfeldlab.n5.metadata.imagej.*;
+
+/*
+ * Demonstration on writing and reading n5 programically.
+ * 
+ * This script:
+ * 1) Loads an n5 as an ImagePlus
+ * 2) Processes it with ImageJ
+ * 3) Writes the result to the n5
+ * 4) Opens the result we just wrote
+ * 
+ * Test data used are are available here:
+ * https://figshare.com/s/bb156ad5a4288cdc65a2
+ * 
+ * John Bogovic
+ */
+
+// n5 writers can both read and write
+n5 = new N5FSWriter ( "/groups/saalfeld/home/bogovicj/tmp/jrc2018.n5" );
+
+//  metadata writing + reading is optional
+// (this will become more concise in the future)
+metadataParser = new N5CosemMetadataParser();
+metadata2IJ = new CosemToImagePlus();
+
+// open an ImagePlus with N5IJUtils
+imp = N5IJUtils.load( n5, "jrc2018F_small", metadataParser, metadata2IJ );
+
+// open an n5 as an ImagePlus, ignoring metadata
+//imp = N5IJUtils.load( n5, "jrc2018F_small" );
+
+imp.show();
+
+// process the stack
+IJ.run(imp, "Find Edges", "stack");
+
+// save the ImagePlus to an n5 with N5IJUtils
+blockSize = new int[]{ 64, 64, 64 };
+compression = new GzipCompression();
+N5IJUtils.save( imp, n5, "jrc2018F_small_edges", blockSize, compression, metadataParser, metadata2IJ );
+
+
+// save to an n5 ignoring the metadata
+//N5IJUtils.save( imp, n5, "jrc2018F_small_edges", blockSize, compression );
+
+// open the processed, saved image, to check that it worked
+impEdges = N5IJUtils.load( n5, "jrc2018F_small_edges", metadataParser, metadata2IJ );
+impEdges.show();
