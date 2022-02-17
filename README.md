@@ -137,6 +137,10 @@ N5IJUtils.save( imp,
 	Executors.newFixedThreadPool( 4 ));
 ```
 
+See also scripts demonstrating
+* [how to read and write imglib2 images with the methods in `N5Utils`](https://github.com/saalfeldlab/n5-imglib2/blob/master/scripts/readProcessWriteDemo.bsh)
+* [how to read and write ImageJ images with the methods in `N5IJUtils`](https://github.com/saalfeldlab/n5-ij/blob/master/scripts/readProcessWriteIJDemo.bsh)
+
 ## Details
 
 * This plugin supports images of up to 5 dimensions, and the datatypes supported by Imagej (`uint8`, `uint16`, `float32`) For higher dimensions and other datatypes, we recommend [n5-imglib2](https://github.com/saalfeldlab/n5-imglib2).
