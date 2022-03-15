@@ -622,9 +622,11 @@ public class DatasetSelectorDialog {
 
 					// sort children, update ui
 					final N5SwingTreeNode parent = (N5SwingTreeNode) node.getParent();
-					final List<N5TreeNode> children = parent.childrenList();
-					children.sort(Comparator.comparing(N5TreeNode::toString, comp));
-					treeModel.nodeStructureChanged(parent);
+					if( parent != null ) {
+						final List<N5TreeNode> children = parent.childrenList();
+						children.sort(Comparator.comparing(N5TreeNode::toString, comp));
+						treeModel.nodeStructureChanged(parent);
+					}
 				}
 			}
 		});
@@ -681,7 +683,7 @@ public class DatasetSelectorDialog {
 	}
   }
 
-  private void ok() {
+  public void ok() {
 
 	// stop parsing things
 	if( parseExec != null )
@@ -718,7 +720,7 @@ public class DatasetSelectorDialog {
 	dialog.dispose();
   }
 
-  private void cancel() {
+  public void cancel() {
 
 	// stop parsing things
 	if( parseExec != null )
@@ -736,6 +738,10 @@ public class DatasetSelectorDialog {
 
 	if (cancelCallback != null)
 	  cancelCallback.accept(null);
+  }
+  
+  public void detectDatasets() {
+	  openContainer(n5Fun, () -> getN5RootPath(), pathFun); 
   }
 
   private static final Font DEFAULT_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
