@@ -446,8 +446,10 @@ public class N5Importer implements PlugIn {
 
 	// crop if necesssary
 	final RandomAccessibleInterval imgC;
+	Interval cropInterval = null;
 	if (cropIntervalIn != null) {
-	  imgC = Views.interval(imgRaw, processCropInterval(imgRaw, cropIntervalIn));
+	  cropInterval = processCropInterval(imgRaw, cropIntervalIn);
+	  imgC = Views.interval(imgRaw, cropInterval );
 	} else
 	  imgC = imgRaw;
 
@@ -494,6 +496,14 @@ public class N5Importer implements PlugIn {
 	  } catch (final Exception e) {
 		System.err.println("Failed to convert metadata to Imageplus for " + d);
 	  }
+	}
+
+	if (cropInterval != null) {
+		imp.getCalibration().xOrigin -= cropInterval.min( 0 );
+		imp.getCalibration().yOrigin -= cropInterval.min( 1 );
+
+		if( cropInterval.numDimensions() >= 3 )
+			imp.getCalibration().zOrigin -= cropInterval.min( 2 );
 	}
 
 	return imp;
