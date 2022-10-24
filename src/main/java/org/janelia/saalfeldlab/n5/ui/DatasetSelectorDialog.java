@@ -41,6 +41,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.translation.TranslatedN5Reader;
 
+import com.formdev.flatlaf.util.UIScale;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -322,8 +323,8 @@ public class DatasetSelectorDialog {
 	final int BUTTON_PAD = DEFAULT_BUTTON_PAD;
 	final int MID_PAD = DEFAULT_MID_PAD;
 
-	final int frameSizeX = 600;
-	final int frameSizeY = 400;
+	final int frameSizeX = UIScale.scale( 600 );
+	final int frameSizeY = UIScale.scale( 400 );
 
 	dialog = new JFrame("Open N5");
 	dialog.setPreferredSize(new Dimension(frameSizeX, frameSizeY));
