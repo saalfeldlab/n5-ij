@@ -327,18 +327,12 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 			}
 
 			// Here, either allowing overwrite, or not allowing, but the dataset does not exist
-			if (nThreads > 1)
-			{
-				final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
-				progressMonitor( threadPool );
-				N5IJUtils.save( image, n5, n5Dataset, blockSize, compression, Executors.newFixedThreadPool( nThreads ) );
-			}
-			else
-			{
-				IJ.showProgress( 0.1 );
-				N5IJUtils.save(image, n5, n5Dataset, blockSize, compression);
-				IJ.showProgress( 1.0 );
-			}
+
+			// use threadPool even for single threaded execution for progress monitoring
+			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
+			progressMonitor( threadPool );
+			N5IJUtils.save( image, n5, n5Dataset, blockSize, compression, Executors.newFixedThreadPool( nThreads ) );
+
 			writeMetadata( n5, n5Dataset, writer );
 		}
 	}
@@ -396,18 +390,10 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 				datasetString = n5Dataset;
 			}
 
-			if (nThreads > 1)
-			{
-				final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
-				progressMonitor( threadPool );
-				N5Utils.save( channelImg, n5, datasetString, blkSz, compression, threadPool );
-			}
-			else
-			{
-				IJ.showProgress( 0.1 );
-				N5Utils.save(channelImg, n5, datasetString, blkSz, compression);
-				IJ.showProgress( 1.0 );
-			}
+			// use threadPool even for single threaded execution for progress monitoring
+			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
+			progressMonitor( threadPool );
+			N5Utils.save( channelImg, n5, datasetString, blkSz, compression, threadPool );
 
 			writeMetadata(n5, datasetString, writer);
 		}
