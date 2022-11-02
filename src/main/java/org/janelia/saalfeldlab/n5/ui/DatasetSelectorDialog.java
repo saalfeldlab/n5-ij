@@ -26,7 +26,8 @@
 package org.janelia.saalfeldlab.n5.ui;
 
 import ij.IJ;
-import ij.Prefs;
+import ij.ImageJ;
+import ij.gui.ProgressBar;
 import se.sawano.java.text.AlphanumericComparator;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
@@ -64,16 +65,13 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
-import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -169,6 +167,10 @@ public class DatasetSelectorDialog {
 
   private ExecutorService parseExec;
 
+  private ProgressBar ijProgressBar;
+
+  private final AlphanumericComparator comp = new AlphanumericComparator(Collator.getInstance());
+
   public DatasetSelectorDialog(
 		  final Function<String, N5Reader> n5Fun,
 		  final Function<String, String> pathFun,
@@ -186,6 +188,10 @@ public class DatasetSelectorDialog {
 	spatialMetaSpec = new N5SpatialKeySpecDialog();
 	translationPanel = new N5MetadataTranslationPanel();
 	translationResultPanel = new TranslationResultPanel();
+
+	ImageJ ij = IJ.getInstance();
+	if( ij != null )
+		ijProgressBar = ij.getProgressBar();
   }
 
   public DatasetSelectorDialog(
@@ -217,6 +223,9 @@ public class DatasetSelectorDialog {
 	this.parsers = parsers;
 	this.groupParsers = groupParsers;
 
+	ImageJ ij = IJ.getInstance();
+	if( ij != null )
+		ijProgressBar = ij.getProgressBar();
   }
 
 	public N5MetadataTranslationPanel getTranslationPanel() {
@@ -289,7 +298,7 @@ public class DatasetSelectorDialog {
 
   public String getN5RootPath() {
 
-	return containerPathText.getText();
+	return containerPathText.getText().trim();
   }
 
   public void setLoaderThread(final Thread loaderThread) {
@@ -525,6 +534,9 @@ public class DatasetSelectorDialog {
   private void openContainer(final Function<String, N5Reader> n5Fun, final Supplier<String> opener,
 		  final Function<String, String> pathToRoot) {
 
+	if( ijProgressBar == null )
+		ijProgressBar.show( 0.1 );
+
 	SwingUtilities.invokeLater(() -> {
 		messageLabel.setText("Building reader...");
 		messageLabel.setVisible(true);
@@ -602,25 +614,39 @@ public class DatasetSelectorDialog {
 	containerTree.setEnabled(true);
 	containerTree.repaint();
 
-	final AlphanumericComparator comp = new AlphanumericComparator(Collator.getInstance());
+	if( ijProgressBar == null )
+		ijProgressBar.show( 0.3 );
+
 	final Consumer<N5TreeNode> callback = (x) -> {
 		SwingUtilities.invokeLater(() -> {
 			if( x.getMetadata() != null )
 			{
-				final N5SwingTreeNode node = (N5SwingTreeNode) rootNode.getDescendant(x.getPath())
+				// get the node at the requested path, or add it if not present
+				final N5SwingTreeNode node = (N5SwingTreeNode) rootNode.getDescendants( y -> pathsEqual( y.getPath(), x.getPath() )).findFirst()
 						.orElse( rootNode.addPath( x.getPath() ));
+
+				// update the node's metadata
 				if( node != null )
 				{
 					// set metadata, update ui
 					node.setMetadata( x.getMetadata() );
-					treeModel.nodeChanged(node);
 
 					// sort children, update ui
 					final N5SwingTreeNode parent = (N5SwingTreeNode) node.getParent();
-					if( parent != null ) {
-						final List<N5TreeNode> children = parent.childrenList();
-						children.sort(Comparator.comparing(N5TreeNode::toString, comp));
-						treeModel.nodeStructureChanged(parent);
+					sortRecursive( parent );
+
+					treeModel.nodeChanged(node);
+				}
+			}
+			else
+			{
+				Optional< N5TreeNode > desc = rootNode.getDescendant( x.getNodeName() );
+				if( desc.isPresent() )
+				{
+					N5SwingTreeNode node = (N5SwingTreeNode)desc.get();
+					if( node.getParent() != null  && node.getChildCount() == 0 )
+					{
+						treeModel.removeNodeFromParent( node );
 					}
 				}
 			}
@@ -633,6 +659,9 @@ public class DatasetSelectorDialog {
 			String[] datasetPaths;
 			try {
 
+				if( ijProgressBar == null )
+					ijProgressBar.show( 0.3 );
+
 				SwingUtilities.invokeLater(() -> {
 					messageLabel.setText("Listing...");
 					messageLabel.repaint();
@@ -641,6 +670,14 @@ public class DatasetSelectorDialog {
 				// build a temporary tree
 				datasetPaths = n5.deepList(rootPath, loaderExecutor);
 				N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/" );
+				for( String p : datasetPaths )
+					rootNode.addPath( p );
+
+				sortRecursive( rootNode );
+				containerTree.expandRow( 0 );
+
+				if( ijProgressBar == null )
+					ijProgressBar.show( 0.5 );
 
 				SwingUtilities.invokeLater(() -> {
 					messageLabel.setText("Parsing...");
@@ -651,10 +688,16 @@ public class DatasetSelectorDialog {
 				// when metadata is parsed
 				datasetDiscoverer.parseMetadataRecursive( tmpRootNode, callback );
 
+				if( ijProgressBar == null )
+					ijProgressBar.show( 0.8 );
+
 				SwingUtilities.invokeLater(() -> {
 					messageLabel.setText("Done");
 					messageLabel.repaint();
 				});
+
+				if( ijProgressBar == null )
+					ijProgressBar.show( 1.0 );
 
 				Thread.sleep(1000);
 				SwingUtilities.invokeLater(() -> {
@@ -769,6 +812,30 @@ public class DatasetSelectorDialog {
 		i++;
 	  }
 	}
+  }
+
+  private void sortRecursive( final N5SwingTreeNode node )
+  {
+	if( node != null ) {
+		final List<N5TreeNode> children = node.childrenList();
+		if( !children.isEmpty())
+		{
+		  children.sort(Comparator.comparing(N5TreeNode::toString, comp));
+		}
+		treeModel.nodeStructureChanged(node);
+		for( N5TreeNode child : children )
+			sortRecursive( (N5SwingTreeNode)child );
+	}
+  }
+
+  private static String normalDatasetName(final String fullPath, final String groupSeparator) {
+
+	return fullPath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
+  }
+
+  private static boolean pathsEqual( final String a, final String b )
+  {
+    return normalDatasetName( a, "/" ).equals( normalDatasetName( b, "/" ) );
   }
 
 }
