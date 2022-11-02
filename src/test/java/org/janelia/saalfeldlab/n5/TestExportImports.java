@@ -107,6 +107,7 @@ public class TestExportImports
 		for( int bitDepth : new int[]{ 8, 16, 32 })
 		{
 			final ImagePlus imp = NewImage.createImage("test", 8, 6, 4, bitDepth, NewImage.FILL_NOISE);
+			imp.setDimensions( 1, 4, 1 );
 			for( final String containerType : containerTypes )
 			{
 				for( final String metatype : metadataTypes )
@@ -211,7 +212,7 @@ public class TestExportImports
 		final N5Exporter writer = new N5Exporter();
 		writer.setOptions( imp, outputPath, dataset, blockSizeString, metadataType, compressionType,
 				N5Exporter.OVERWRITE, "");
-		writer.run();
+		writer.run(); // run() closes the n5 writer
 
 		final String readerDataset = metadataType.equals( N5Importer.MetadataN5ViewerKey ) ? dataset + "/c0/s0" : dataset;
 		final String n5PathAndDataset = outputPath + readerDataset;
@@ -271,4 +272,28 @@ public class TestExportImports
 
 		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metaType, compressionString, false );
 	}
+
+	/**
+	 * A test if we ever expand n5-viewer style metadata to be able 
+	 * to describe arrays of more than 3 dimensions.
+	 * 
+	 */
+//	@Test
+//	public void testMultiChannelN5V()
+//	{
+//		final int bitDepth = 8;
+//		final ImagePlus imp = NewImage.createImage("test", 8, 6, 4*3, bitDepth, NewImage.FILL_NOISE);
+//		imp.setDimensions( 3, 4, 1 );
+//		imp.getCalibration().pixelWidth = 0.5;
+//		imp.getCalibration().pixelHeight = 0.6;
+//		imp.getCalibration().pixelDepth = 0.7;
+//
+//		String metatype = N5Importer.MetadataN5ViewerSingleKey;
+//		final String n5RootPath = baseDir + "/test_n5v_mcSingle.n5";
+//		final String dataset = "/n5vs";
+//		final String blockSizeString = "16,16,16,16";
+//		final String compressionString = "raw";
+//
+//		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
+//	}
 }

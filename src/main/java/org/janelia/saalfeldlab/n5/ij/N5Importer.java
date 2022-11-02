@@ -634,8 +634,8 @@ public class N5Importer implements PlugIn {
    * Convenience method to process using the current state of this object.
    * Can not be used directly when this plugin shows the crop dialog.
    */
+  @SuppressWarnings( { "unchecked", "rawtypes" } )
   public void process() {
-
 	process(n5, selectionDialog.getN5RootPath(), exec, (List)selection.metadata, asVirtual, cropInterval, impMetaWriterTypes);
   }
 

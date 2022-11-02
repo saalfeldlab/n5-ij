@@ -372,10 +372,18 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 			img = ImageJFunctions.wrap(image);
 
 		String datasetString = "";
+		int[] blkSz = blockSize;
 		for (int c = 0; c < image.getNChannels(); c++) {
 			RandomAccessibleInterval<T> channelImg;
-			if (img.numDimensions() >= 4) {
+			final int nd = img.numDimensions();
+			// If there is only one channel, img may be 3d, but we don't want to slice
+			// so if we have a 3d image check that the image is multichannel
+			if ( nd >= 4 || (nd == 3 && image.getNChannels() > 1)) {
 				channelImg = Views.hyperSlice(img, 2, c);
+
+				// if we slice the image, appropriately slice the block size also
+				blkSz = sliceBlockSize( 2 );
+
 			} else {
 				channelImg = img;
 			}
@@ -403,6 +411,20 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 			writeMetadata(n5, datasetString, writer);
 		}
+	}
+
+	private int[] sliceBlockSize( int exclude )
+	{
+		int[] out = new int[ blockSize.length - 1 ];
+		int j = 0;
+		for( int i = 0; i < blockSize.length; i++ )
+			if( i != exclude )
+			{
+				out[j] = blockSize[i];
+				j++;
+			}
+
+		return out;
 	}
 
 	private <M extends N5Metadata> void writeMetadata(
