@@ -25,6 +25,7 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
+import ij.IJ;
 import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
@@ -72,6 +73,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>Export N5")
 public class N5Exporter extends ContextCommand implements WindowListener {
@@ -325,16 +329,21 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 			// Here, either allowing overwrite, or not allowing, but the dataset does not exist
 			if (nThreads > 1)
 			{
+				final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
+				progressMonitor( threadPool );
 				N5IJUtils.save( image, n5, n5Dataset, blockSize, compression, Executors.newFixedThreadPool( nThreads ) );
 			}
 			else
 			{
+				IJ.showProgress( 0.1 );
 				N5IJUtils.save(image, n5, n5Dataset, blockSize, compression);
+				IJ.showProgress( 1.0 );
 			}
 			writeMetadata( n5, n5Dataset, writer );
 		}
 	}
 
+	@SuppressWarnings( "unused" )
 	private static long[] getOffsetForSaveSubset3d( final ImagePlus imp )
 	{
 		final int nd = imp.getNDimensions();
@@ -381,11 +390,15 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 			if (nThreads > 1)
 			{
-				N5Utils.save( channelImg, n5, datasetString, blockSize, compression, Executors.newFixedThreadPool( nThreads ) );
+				final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
+				progressMonitor( threadPool );
+				N5Utils.save( channelImg, n5, datasetString, blkSz, compression, threadPool );
 			}
 			else
 			{
-				N5Utils.save(channelImg, n5, datasetString, blockSize, compression);
+				IJ.showProgress( 0.1 );
+				N5Utils.save(channelImg, n5, datasetString, blkSz, compression);
+				IJ.showProgress( 1.0 );
 			}
 
 			writeMetadata(n5, datasetString, writer);
@@ -426,6 +439,33 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	private void progressMonitor( final ThreadPoolExecutor exec )
+	{
+		new Thread()
+		{
+			public void run()
+			{
+				IJ.showProgress( 0.01 );
+				try
+				{
+					Thread.sleep( 333 );
+					boolean done = false;
+					while( !done && !exec.isShutdown() )
+					{
+						final long i = exec.getCompletedTaskCount();
+						final long N = exec.getTaskCount();
+						done = i == N;
+						IJ.showProgress( (double)i / N );
+						Thread.sleep( 333 );
+					}
+				}
+				catch ( InterruptedException e ) { }
+				IJ.showProgress( 1.0 );
+			}
+		}.start();
+		return;
 	}
 
 	private Compression getCompression() {
@@ -480,7 +520,5 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 	@Override
 	public void windowActivated(final WindowEvent e) {}
-
-
 
 }
