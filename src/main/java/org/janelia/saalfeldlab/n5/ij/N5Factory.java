@@ -365,6 +365,8 @@ public class N5Factory implements Serializable {
 			final URI uri = new URI(url);
 			final String scheme = uri.getScheme();
 			if (scheme == null);
+			else if (scheme.equals( "file") )
+				return openFileBasedN5Reader( Paths.get( uri ).toFile().getCanonicalPath() );
 			else if (scheme.equals("s3"))
 				return openAWSS3Reader(url);
 			else if (scheme.equals("gs"))
@@ -375,14 +377,18 @@ public class N5Factory implements Serializable {
 				else if (uri.getHost().matches(".*cloud\\.google\\.com") || uri.getHost().matches(".*storage\\.googleapis\\.com"))
 					return openGoogleCloudReader(url);
 			}
-		} catch (final URISyntaxException e) {}
-		if (isHDF5Reader(url))
-			return openHDF5Reader(url);
-//		else if (url.matches("(?i).*\\.zarr"))
-		else if (url.contains(".zarr"))
-			return openZarrReader(url);
+		} catch (final URISyntaxException ignored ) {}
+		return openFileBasedN5Reader( url );
+	}
+
+	private N5Reader openFileBasedN5Reader( final String url ) throws IOException
+	{
+		if (isHDF5Reader( url ))
+			return openHDF5Reader( url );
+		else if ( url.contains(".zarr"))
+			return openZarrReader( url );
 		else
-			return openFSReader(url);
+			return openFSReader( url );
 	}
 
 	/**
@@ -398,6 +404,8 @@ public class N5Factory implements Serializable {
 			final URI uri = new URI(url);
 			final String scheme = uri.getScheme();
 			if (scheme == null);
+			else if (scheme == "file")
+				return openFileBasedN5Writer( uri.getPath() );
 			else if (scheme.equals("s3"))
 				return openAWSS3Writer(url);
 			else if (scheme.equals("gs"))
@@ -409,6 +417,11 @@ public class N5Factory implements Serializable {
 					return openGoogleCloudWriter(url);
 			}
 		} catch (final URISyntaxException e) {}
+		return openFileBasedN5Writer( url );
+	}
+
+	private N5Writer openFileBasedN5Writer( final String url ) throws IOException
+	{
 		if (isHDF5Writer(url))
 			return openHDF5Writer(url);
 		else if (url.matches("(?i).*\\.zarr"))
