@@ -26,7 +26,8 @@
 package org.janelia.saalfeldlab.n5.ui;
 
 import ij.IJ;
-import ij.Prefs;
+import ij.ImageJ;
+import ij.gui.ProgressBar;
 import se.sawano.java.text.AlphanumericComparator;
 
 import org.janelia.saalfeldlab.n5.AbstractGsonReader;
@@ -41,6 +42,7 @@ import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.translation.TranslatedN5Reader;
 
+import com.formdev.flatlaf.util.UIScale;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -63,16 +65,13 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
-import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -138,8 +137,6 @@ public class DatasetSelectorDialog {
 
   private boolean cropOption = false;
 
-  private double guiScale;
-
   private Thread loaderThread;
 
   private ExecutorService loaderExecutor;
@@ -170,6 +167,10 @@ public class DatasetSelectorDialog {
 
   private ExecutorService parseExec;
 
+  private ProgressBar ijProgressBar;
+
+  private final AlphanumericComparator comp = new AlphanumericComparator(Collator.getInstance());
+
   public DatasetSelectorDialog(
 		  final Function<String, N5Reader> n5Fun,
 		  final Function<String, String> pathFun,
@@ -188,7 +189,9 @@ public class DatasetSelectorDialog {
 	translationPanel = new N5MetadataTranslationPanel();
 	translationResultPanel = new TranslationResultPanel();
 
-	guiScale = Prefs.getGuiScale();
+	ImageJ ij = IJ.getInstance();
+	if( ij != null )
+		ijProgressBar = ij.getProgressBar();
   }
 
   public DatasetSelectorDialog(
@@ -220,6 +223,9 @@ public class DatasetSelectorDialog {
 	this.parsers = parsers;
 	this.groupParsers = groupParsers;
 
+	ImageJ ij = IJ.getInstance();
+	if( ij != null )
+		ijProgressBar = ij.getProgressBar();
   }
 
 	public N5MetadataTranslationPanel getTranslationPanel() {
@@ -292,7 +298,7 @@ public class DatasetSelectorDialog {
 
   public String getN5RootPath() {
 
-	return containerPathText.getText();
+	return containerPathText.getText().trim();
   }
 
   public void setLoaderThread(final Thread loaderThread) {
@@ -322,12 +328,12 @@ public class DatasetSelectorDialog {
 
   private JFrame buildDialog() {
 
-	final int OUTER_PAD = (int)(guiScale * DEFAULT_OUTER_PAD);
-	final int BUTTON_PAD = (int)(guiScale * DEFAULT_BUTTON_PAD);
-	final int MID_PAD = (int)(guiScale * DEFAULT_MID_PAD);
+	final int OUTER_PAD = DEFAULT_OUTER_PAD;
+	final int BUTTON_PAD = DEFAULT_BUTTON_PAD;
+	final int MID_PAD = DEFAULT_MID_PAD;
 
-	final int frameSizeX = (int)(guiScale * 600);
-	final int frameSizeY = (int)(guiScale * 400);
+	final int frameSizeX = UIScale.scale( 600 );
+	final int frameSizeY = UIScale.scale( 400 );
 
 	dialog = new JFrame("Open N5");
 	dialog.setPreferredSize(new Dimension(frameSizeX, frameSizeY));
@@ -348,7 +354,6 @@ public class DatasetSelectorDialog {
 	containerPathText.setText(initialContainerPath);
 	containerPathText.setPreferredSize(new Dimension(frameSizeX / 3, containerPathText.getPreferredSize().height));
 	containerPathText.addActionListener(e -> openContainer(n5Fun, () -> getN5RootPath(), pathFun));
-	scale(containerPathText);
 
 	final GridBagConstraints ctxt = new GridBagConstraints();
 	ctxt.gridx = 0;
@@ -361,7 +366,7 @@ public class DatasetSelectorDialog {
 	ctxt.insets = new Insets(OUTER_PAD, OUTER_PAD, MID_PAD, BUTTON_PAD);
 	panel.add(containerPathText, ctxt);
 
-	browseBtn = scaleFont(new JButton("Browse"));
+	browseBtn = new JButton("Browse");
 	final GridBagConstraints cbrowse = new GridBagConstraints();
 	cbrowse.gridx = 3;
 	cbrowse.gridy = 0;
@@ -373,7 +378,7 @@ public class DatasetSelectorDialog {
 	cbrowse.insets = new Insets(OUTER_PAD, BUTTON_PAD, MID_PAD, BUTTON_PAD);
 	panel.add(browseBtn, cbrowse);
 
-	detectBtn = scaleFont(new JButton("Detect datasets"));
+	detectBtn = new JButton("Detect datasets");
 	final GridBagConstraints cdetect = new GridBagConstraints();
 	cdetect.gridx = 4;
 	cdetect.gridy = 0;
@@ -400,7 +405,6 @@ public class DatasetSelectorDialog {
 	treeModel = new DefaultTreeModel(null);
 	containerTree = new JTree(treeModel);
 	containerTree.setMinimumSize(new Dimension(550, 230));
-	scaleFont(containerTree, (float)guiScale * 1.2f);
 
 	containerTree.getSelectionModel().setSelectionMode(
 			TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION);
@@ -433,7 +437,7 @@ public class DatasetSelectorDialog {
 	if (virtualOption) {
 	  final JPanel virtPanel = new JPanel();
 	  virtualBox = new JCheckBox();
-	  final JLabel virtLabel = scaleFont(new JLabel("Open as virtual"));
+	  final JLabel virtLabel = new JLabel("Open as virtual");
 	  virtPanel.add(virtualBox);
 	  virtPanel.add(virtLabel);
 	  panel.add(virtPanel, cbot);
@@ -442,7 +446,7 @@ public class DatasetSelectorDialog {
 	if (cropOption) {
 	  final JPanel cropPanel = new JPanel();
 	  cropBox = new JCheckBox();
-	  final JLabel cropLabel = scaleFont(new JLabel("Crop"));
+	  final JLabel cropLabel = new JLabel("Crop");
 	  cbot.gridx = 1;
 	  cbot.anchor = GridBagConstraints.WEST;
 	  cropPanel.add(cropBox);
@@ -450,21 +454,21 @@ public class DatasetSelectorDialog {
 	  panel.add(cropPanel, cbot);
 	}
 
-	messageLabel = scaleFont(new JLabel(""));
+	messageLabel = new JLabel("");
 	messageLabel.setVisible(false);
 	cbot.gridx = 2;
 	cbot.anchor = GridBagConstraints.CENTER;
 	panel.add(messageLabel, cbot);
 
-	okBtn = scaleFont(new JButton("OK"));
+	okBtn = new JButton("OK");
 	cbot.gridx = 4;
-	cbot.ipadx = (int)(20 * guiScale);
+	cbot.ipadx = (int)(20);
 	cbot.anchor = GridBagConstraints.EAST;
 	cbot.fill = GridBagConstraints.HORIZONTAL;
 	cbot.insets = new Insets(MID_PAD, OUTER_PAD, OUTER_PAD, BUTTON_PAD);
 	panel.add(okBtn, cbot);
 
-	cancelBtn = scaleFont(new JButton("Cancel"));
+	cancelBtn = new JButton("Cancel");
 	cbot.gridx = 5;
 	cbot.ipadx = 0;
 	cbot.anchor = GridBagConstraints.EAST;
@@ -529,6 +533,9 @@ public class DatasetSelectorDialog {
 
   private void openContainer(final Function<String, N5Reader> n5Fun, final Supplier<String> opener,
 		  final Function<String, String> pathToRoot) {
+
+	if( ijProgressBar == null )
+		ijProgressBar.show( 0.1 );
 
 	SwingUtilities.invokeLater(() -> {
 		messageLabel.setText("Building reader...");
@@ -607,25 +614,39 @@ public class DatasetSelectorDialog {
 	containerTree.setEnabled(true);
 	containerTree.repaint();
 
-	final AlphanumericComparator comp = new AlphanumericComparator(Collator.getInstance());
+	if( ijProgressBar == null )
+		ijProgressBar.show( 0.3 );
+
 	final Consumer<N5TreeNode> callback = (x) -> {
 		SwingUtilities.invokeLater(() -> {
 			if( x.getMetadata() != null )
 			{
-				final N5SwingTreeNode node = (N5SwingTreeNode) rootNode.getDescendant(x.getPath())
+				// get the node at the requested path, or add it if not present
+				final N5SwingTreeNode node = (N5SwingTreeNode) rootNode.getDescendants( y -> pathsEqual( y.getPath(), x.getPath() )).findFirst()
 						.orElse( rootNode.addPath( x.getPath() ));
+
+				// update the node's metadata
 				if( node != null )
 				{
 					// set metadata, update ui
 					node.setMetadata( x.getMetadata() );
-					treeModel.nodeChanged(node);
 
 					// sort children, update ui
 					final N5SwingTreeNode parent = (N5SwingTreeNode) node.getParent();
-					if( parent != null ) {
-						final List<N5TreeNode> children = parent.childrenList();
-						children.sort(Comparator.comparing(N5TreeNode::toString, comp));
-						treeModel.nodeStructureChanged(parent);
+					sortRecursive( parent );
+
+					treeModel.nodeChanged(node);
+				}
+			}
+			else
+			{
+				Optional< N5TreeNode > desc = rootNode.getDescendant( x.getNodeName() );
+				if( desc.isPresent() )
+				{
+					N5SwingTreeNode node = (N5SwingTreeNode)desc.get();
+					if( node.getParent() != null  && node.getChildCount() == 0 )
+					{
+						treeModel.removeNodeFromParent( node );
 					}
 				}
 			}
@@ -638,6 +659,9 @@ public class DatasetSelectorDialog {
 			String[] datasetPaths;
 			try {
 
+				if( ijProgressBar == null )
+					ijProgressBar.show( 0.3 );
+
 				SwingUtilities.invokeLater(() -> {
 					messageLabel.setText("Listing...");
 					messageLabel.repaint();
@@ -646,6 +670,14 @@ public class DatasetSelectorDialog {
 				// build a temporary tree
 				datasetPaths = n5.deepList(rootPath, loaderExecutor);
 				N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/" );
+				for( String p : datasetPaths )
+					rootNode.addPath( p );
+
+				sortRecursive( rootNode );
+				containerTree.expandRow( 0 );
+
+				if( ijProgressBar == null )
+					ijProgressBar.show( 0.5 );
 
 				SwingUtilities.invokeLater(() -> {
 					messageLabel.setText("Parsing...");
@@ -656,10 +688,16 @@ public class DatasetSelectorDialog {
 				// when metadata is parsed
 				datasetDiscoverer.parseMetadataRecursive( tmpRootNode, callback );
 
+				if( ijProgressBar == null )
+					ijProgressBar.show( 0.8 );
+
 				SwingUtilities.invokeLater(() -> {
 					messageLabel.setText("Done");
 					messageLabel.repaint();
 				});
+
+				if( ijProgressBar == null )
+					ijProgressBar.show( 1.0 );
 
 				Thread.sleep(1000);
 				SwingUtilities.invokeLater(() -> {
@@ -744,43 +782,6 @@ public class DatasetSelectorDialog {
 	  openContainer(n5Fun, () -> getN5RootPath(), pathFun); 
   }
 
-  private static final Font DEFAULT_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
-
-  private <T extends Component> T scaleFont(final T c) {
-
-	Font font = c.getFont();
-	if (font == null)
-	  font = DEFAULT_FONT;
-	font = font.deriveFont((float)guiScale * 1.2f * font.getSize());
-	c.setFont(font);
-	return c;
-  }
-
-  private static <T extends Component> T scaleFont(final T c, final float scale) {
-
-	Font font = c.getFont();
-	if (font == null)
-	  font = DEFAULT_FONT;
-	font = font.deriveFont(scale * 1.2f * font.getSize());
-	c.setFont(font);
-	return c;
-  }
-
-  private <T extends Component> T scaleSize(final T c) {
-
-	final Dimension prefSz = c.getPreferredSize();
-	c.setPreferredSize(
-			new Dimension(
-					(int)(guiScale * prefSz.width),
-					(int)(guiScale * prefSz.height)));
-	return c;
-  }
-
-  private <T extends Component> T scale(final T c) {
-
-	return scaleSize(scaleFont(c));
-  }
-
   /**
    * Removes selected nodes that do not have metadata, and are therefore not openable.
    */
@@ -811,6 +812,30 @@ public class DatasetSelectorDialog {
 		i++;
 	  }
 	}
+  }
+
+  private void sortRecursive( final N5SwingTreeNode node )
+  {
+	if( node != null ) {
+		final List<N5TreeNode> children = node.childrenList();
+		if( !children.isEmpty())
+		{
+		  children.sort(Comparator.comparing(N5TreeNode::toString, comp));
+		}
+		treeModel.nodeStructureChanged(node);
+		for( N5TreeNode child : children )
+			sortRecursive( (N5SwingTreeNode)child );
+	}
+  }
+
+  private static String normalDatasetName(final String fullPath, final String groupSeparator) {
+
+	return fullPath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
+  }
+
+  private static boolean pathsEqual( final String a, final String b )
+  {
+    return normalDatasetName( a, "/" ).equals( normalDatasetName( b, "/" ) );
   }
 
 }

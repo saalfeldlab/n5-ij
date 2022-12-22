@@ -30,6 +30,7 @@ import ij.ImagePlus;
 import ij.Macro;
 import ij.Prefs;
 import ij.gui.GenericDialog;
+import ij.io.FileInfo;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
 import net.imglib2.FinalInterval;
@@ -618,6 +619,14 @@ public class N5Importer implements PlugIn {
 	  ImagePlus imp;
 	  try {
 		imp = N5Importer.read(n5, exec, datasetMeta, cropInterval, asVirtual, impMeta);
+
+		FileInfo fileInfo = imp.getOriginalFileInfo();
+		if( fileInfo == null )
+			fileInfo = new FileInfo();
+
+		fileInfo.url = rootPath + "?" + datasetMeta.getPath();
+		imp.setFileInfo( fileInfo );
+
 		record(pathToN5Dataset, asVirtual, cropInterval);
 		imgList.add(imp);
 		if (show)
@@ -634,8 +643,8 @@ public class N5Importer implements PlugIn {
    * Convenience method to process using the current state of this object.
    * Can not be used directly when this plugin shows the crop dialog.
    */
+  @SuppressWarnings( { "unchecked", "rawtypes" } )
   public void process() {
-
 	process(n5, selectionDialog.getN5RootPath(), exec, (List)selection.metadata, asVirtual, cropInterval, impMetaWriterTypes);
   }
 

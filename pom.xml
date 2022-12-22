@@ -5,13 +5,13 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>31.1.0</version>
+		<version>33.2.0</version>
 		<relativePath />
 	</parent>
 
 	<groupId>org.janelia.saalfeldlab</groupId>
 	<artifactId>n5-ij</artifactId>
-	<version>3.2.3-SNAPSHOT</version>
+	<version>3.2.4-SNAPSHOT</version>
 
 	<name>N5 ImageJ Bindings</name>
 	<description>ImageJ convenience layer for N5</description>
@@ -202,6 +202,10 @@
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.formdev</groupId>
+			<artifactId>flatlaf</artifactId>
 		</dependency>
 	</dependencies>
 
