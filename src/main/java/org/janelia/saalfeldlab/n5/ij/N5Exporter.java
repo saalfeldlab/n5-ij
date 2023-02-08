@@ -77,7 +77,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-@Plugin(type = Command.class, menuPath = "File>Save As>Export N5")
+@Plugin(type = Command.class, menuPath = "File>Save As>Export HDF5/N5/Zarr")
 public class N5Exporter extends ContextCommand implements WindowListener {
 
   public static final String GZIP_COMPRESSION = "gzip";
@@ -95,7 +95,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
   public static enum OVERWRITE_OPTIONS {NO_OVERWRITE, OVERWRITE, WRITE_SUBSET}
 
   @Parameter(visibility = ItemVisibility.MESSAGE, required = false)
-  private String message = "Export an ImagePlus to an N5 container.";
+  private String message = "Export an ImagePlus to an HDF5, N5, or Zarr container.";
 
   @Parameter
   private LogService log;
