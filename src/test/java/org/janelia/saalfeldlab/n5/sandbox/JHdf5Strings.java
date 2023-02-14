@@ -51,22 +51,22 @@ public class JHdf5Strings
 	 > h5dump -d data2d strings.h5 
 	 HDF5 "strings.h5" {
 	 DATASET "data2d" {
-	    DATATYPE  H5T_STRING {
-	 	  STRSIZE 5;
-	 	  STRPAD H5T_STR_NULLPAD;
-	 	  CSET H5T_CSET_ASCII;
-	 	  CTYPE H5T_C_S1;
-	    }
-	    DATASPACE  SIMPLE { ( 16 ) / ( H5S_UNLIMITED ) }
-	    DATA {
-	    (0): "(0,0)", "(0,1)", "(0,2)", "(0,3)", "(1,0)", "(1,1)", "(1,2)",
-	    (7): "(1,3)", "(2,0)", "(2,1)", "(2,2)", "(2,3)", "(3,0)", "(3,1)",
-	    (14): "(3,2)", "(3,3)"
-	    }
-	 }
-	 }
+   		DATATYPE  H5T_STRING {
+      		STRSIZE 5;
+      		STRPAD H5T_STR_NULLPAD;
+      		CSET H5T_CSET_ASCII;
+      		CTYPE H5T_C_S1;
+   		}
+   		DATASPACE  SIMPLE { ( 4, 4 ) / ( H5S_UNLIMITED, H5S_UNLIMITED ) }
+   		DATA {
+   		(0,0): "(0,0)", "(0,1)", "(0,2)", "(0,3)",
+   		(1,0): "(1,0)", "(1,1)", "(1,2)", "(1,3)",
+   		(2,0): "(2,0)", "(2,1)", "(2,2)", "(2,3)",
+   		(3,0): "(3,0)", "(3,1)", "(3,2)", "(3,3)"
+   		}
+	}
+	}
 	*
-	* That the dataset is listed as 1d with length 16 and not 2d is a bit disturbing.
 	*/
 	public static void string2d()
 	{
@@ -80,7 +80,7 @@ public class JHdf5Strings
 			for ( int j = 0; j < ny; j++ )
 				flatData[ k++ ] = String.format( "(%d,%d)", i, j );
 
-		final MDArray< String > data = new MDArray<>( flatData, new int[]{ nx * ny } );
+		final MDArray< String > data = new MDArray<>( flatData, new int[]{ nx , ny } );
 		writer.string().writeMDArray( "data2d", data );
 
 		writer.close();
