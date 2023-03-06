@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>33.2.0</version>
+		<version>34.0.0</version>
 		<relativePath />
 	</parent>
 
@@ -85,14 +85,7 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
-		<aws-java-sdk-core.version>1.11.796</aws-java-sdk-core.version>
-		<gax.version>1.56.0</gax.version>
 		<jackson-jq.version>1.0.0-preview.20191208</jackson-jq.version>
-
-		<n5.version>2.5.1</n5.version>
-		<n5-imglib2.version>4.3.0</n5-imglib2.version>
-		<n5-hdf5.version>1.4.1</n5-hdf5.version>
-		<n5-zarr.version>0.0.7</n5-zarr.version>
 	</properties>
 
 	<dependencies>
@@ -180,12 +173,10 @@
 		<dependency>
 			<groupId>com.amazonaws</groupId>
 			<artifactId>aws-java-sdk-core</artifactId>
-			<version>${aws-java-sdk-core.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>com.google.api</groupId>
 			<artifactId>gax</artifactId>
-			<version>${gax.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>net.thisptr</groupId>
