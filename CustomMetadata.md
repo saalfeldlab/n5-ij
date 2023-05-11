@@ -29,6 +29,7 @@ See also the examples below.
 * `axis2` - label of axis 2
 * `axis3` - label of axis 3
 * `axis4` - label of axis 4
+* `otherMetadata` - the contents of [`getProperties`](https://imagej.nih.gov/ij/developer/api/ij/ij/ImagePlus.html#getProperties())
 
 ### Examples
 
