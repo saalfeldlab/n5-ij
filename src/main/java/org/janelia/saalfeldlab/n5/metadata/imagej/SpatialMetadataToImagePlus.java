@@ -3,8 +3,8 @@ package org.janelia.saalfeldlab.n5.metadata.imagej;
 import ij.ImagePlus;
 import ij.measure.Calibration;
 import net.imglib2.realtransform.AffineTransform3D;
-import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
 
 import java.io.IOException;
 

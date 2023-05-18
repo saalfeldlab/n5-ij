@@ -31,9 +31,9 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.metadata.AbstractN5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.AbstractN5Metadata;
-import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.AbstractN5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.AbstractN5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
 
 import ij.ImagePlus;
 import net.imglib2.realtransform.AffineGet;

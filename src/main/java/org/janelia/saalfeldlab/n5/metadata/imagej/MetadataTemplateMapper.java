@@ -50,7 +50,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 
 public class MetadataTemplateMapper implements N5MetadataWriter<ImagePlusMetadataTemplate> {
 

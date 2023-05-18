@@ -29,7 +29,7 @@ import ij.ImagePlus;
 
 import java.io.IOException;
 
-import org.janelia.saalfeldlab.n5.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 
 /**
  * A interface for reading and writing metadata to an {@link ImagePlus}.

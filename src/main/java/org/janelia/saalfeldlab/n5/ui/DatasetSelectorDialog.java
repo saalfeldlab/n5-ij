@@ -30,17 +30,17 @@ import ij.ImageJ;
 import ij.gui.ProgressBar;
 import se.sawano.java.text.AlphanumericComparator;
 
-import org.janelia.saalfeldlab.n5.AbstractGsonReader;
+import org.janelia.saalfeldlab.n5.CachedGsonKeyValueReader;
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.CompressionAdapter;
 import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
-import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.translation.TranslatedN5Reader;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
 
 import com.formdev.flatlaf.util.UIScale;
 import com.google.gson.Gson;
@@ -534,7 +534,7 @@ public class DatasetSelectorDialog {
   private void openContainer(final Function<String, N5Reader> n5Fun, final Supplier<String> opener,
 		  final Function<String, String> pathToRoot) {
 
-	if( ijProgressBar == null )
+	if( ijProgressBar != null )
 		ijProgressBar.show( 0.1 );
 
 	SwingUtilities.invokeLater(() -> {
@@ -578,8 +578,8 @@ public class DatasetSelectorDialog {
 		parserList.addAll(Arrays.asList(parsers));
 
 	final Gson gson;
-	if( n5 instanceof AbstractGsonReader)
-		gson = ((AbstractGsonReader) n5).getGson();
+	if( n5 instanceof CachedGsonKeyValueReader )
+		gson = ((CachedGsonKeyValueReader) n5).getGson();
 	else
 	{
 		GsonBuilder gsonBuilder = new GsonBuilder();
