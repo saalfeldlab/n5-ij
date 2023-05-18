@@ -10,8 +10,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.saalfeldlab.n5.ij.N5Exporter;
-import org.janelia.saalfeldlab.n5.ij.N5Factory;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

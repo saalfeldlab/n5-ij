@@ -12,6 +12,7 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RunImportExportTest;
 import org.janelia.saalfeldlab.n5.TestExportImports;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;

@@ -3,9 +3,9 @@ package org.janelia.saalfeldlab.n5.metadata;
 import java.io.IOException;
 import java.util.Map;
 
-import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata.CosemTransform;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
 import org.janelia.saalfeldlab.n5.metadata.imagej.MetadataTemplateMapper;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata.CosemTransform;
 import org.junit.Assert;
 import org.junit.Test;
 

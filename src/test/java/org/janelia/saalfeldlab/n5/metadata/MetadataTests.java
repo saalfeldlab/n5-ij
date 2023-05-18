@@ -1,9 +1,16 @@
 package org.janelia.saalfeldlab.n5.metadata;
 
 import net.imglib2.realtransform.AffineTransform3D;
-import org.janelia.saalfeldlab.n5.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5FSReader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

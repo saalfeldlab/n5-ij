@@ -1,8 +1,10 @@
 package org.janelia.saalfeldlab.n5;
 
-import org.janelia.saalfeldlab.n5.ij.N5Factory;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
-import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 
 import java.io.IOException;
 import java.util.Arrays;
