@@ -18,21 +18,21 @@ A Fiji plugin for loading and saving image data to N5 containers. Supports [HDF5
 Open N5 datasets from Fiji with `File > Import > N5`. 
 
 Quickly open a dataset by pasting the full path to the dataset and press `OK`.
-For example, try `gs://example_multi-n5_bucket/mitosis.n5/raw` to open the sample mitosis image from google
+For example, try `gs://example_multi-n5_bucket/mitosis.n5/raw` to open the sample mitosis image from Google
 cloud storage.
 
 Click the `Browse` button to select a folder on your filesystem.
 
 <img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/OpenN5DialogWithBrowse.png width="600">
 
-The detected datasets will be displayed in the dialog. Selected (highlight) the datasets you would like to open
+The detected datasets will be displayed in the dialog. Select (highlight) the datasets you would like to open
 and press `OK`. In the example below, we will open the datasets `/blobs`, and `/t1-head/c0/s0`.
 
 <img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/OpenN5DialogWithTree.png width="600">
 
 ### Virtual 
 
-Check the `Open as virtual` box to open the n5 dataset as a [virtual stacks in imagej](https://imagej.nih.gov/ij/docs/guide/146-8.html#toc-Section-8). 
+Check the `Open as virtual` box to open the n5 dataset as a [virtual stack in ImageJ](https://imagej.nih.gov/ij/docs/guide/146-8.html#toc-Section-8). 
 This enable the opening and viewing of image data that do not fit in RAM. Image slices are loaded on-the-fly, so
 navigation will be slow when parts of the images are loaded.
 
@@ -43,13 +43,13 @@ A separate dialog will appear for each selected dataset as shown below.
 
 <img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/OpenN5DialogWithCrop.png width="700">
 
-Give the min and max values for the field-of-view to open **in pixel / voxel units** to open a particular
-subset. The opened interval includes buth min and max values, so the image will be of size `max - min + 1` along
+Give the min and max values for the field-of-view to open **in pixel / voxel units** a particular
+subset. The opened interval includes both min and max values, so the image will be of size `max - min + 1` along
 each dimension.  In the example shown above, the resulting image will be of size `101 x 111 x 2 x 51`.
 
 ## Export N5
 
-Save images open in Fiji as N5 datasets with `File > Save As > Export N5`.
+Save images opened in Fiji as N5 datasets with `File > Save As > Export N5`.
 
 <img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/SaveN5Dialog.png width="280">
 
@@ -103,7 +103,7 @@ Build into your Fiji installation:
 mvn -Dscijava.app.directory=/home/saalfelds/packages/Fiji.app -Ddelete.other.versions=true clean install
 ```
 
-Then, in Fiji's Scriptin Interpreter (Plugins > Scripts > Scripting Interpreter), load an N5 dataset into an `ImagePlus`:
+Then, in Fiji's Script Interpreter (Plugins > Scripting > Script Interpreter), load an N5 dataset into an `ImagePlus`:
 ```java
 import org.janelia.saalfeldlab.n5.*;
 import org.janelia.saalfeldlab.n5.ij.*;
@@ -143,13 +143,13 @@ See also scripts demonstrating
 
 ## Details
 
-* This plugin supports images of up to 5 dimensions, and the datatypes supported by Imagej (`uint8`, `uint16`, `float32`) For higher dimensions and other datatypes, we recommend [n5-imglib2](https://github.com/saalfeldlab/n5-imglib2).
+* This plugin supports images of up to 5 dimensions, and the datatypes supported by ImageJ (`uint8`, `uint16`, `float32`) For higher dimensions and other datatypes, we recommend [n5-imglib2](https://github.com/saalfeldlab/n5-imglib2).
 
-* This plugin supports only the datatypes supported by ImageJ, namely uint8, uint16, and float32. For other datatypes[n5-imglib2](https://github.com/saalfeldlab/n5-imglib2).
+* This plugin supports only the datatypes supported by ImageJ, namely uint8, uint16, and float32. For other datatypes, use [n5-imglib2](https://github.com/saalfeldlab/n5-imglib2).
 
 ### Cloud writing benchmarks
 
-Below are a benchmarks for writing images of various sizes, block sizes, with 
+Below are benchmarks for writing images of various sizes, block sizes, and with 
 increasing amount of parallelism.  
 
 #### Amazon S3
