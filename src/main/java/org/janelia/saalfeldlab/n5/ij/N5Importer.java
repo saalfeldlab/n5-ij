@@ -55,6 +55,7 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -709,7 +710,7 @@ public class N5Importer implements PlugIn {
 			N5Factory factory = new N5Factory();
 			try {
 				n5 = factory.openReader(rootPath);
-			} catch (IOException e) {
+			} catch (N5Exception e) {
 				IJ.handleException(e);
 				return null;
 			}

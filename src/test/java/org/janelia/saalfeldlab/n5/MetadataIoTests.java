@@ -39,7 +39,6 @@ import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MultiScaleMetadata;
@@ -131,7 +130,7 @@ public class MetadataIoTests
 			Assert.assertArrayEquals( "metamapper resolution",
 					new double[]{ 3.3, 2.2, 1.1 }, res, 1e-6 );
 		}
-		catch ( final IOException e )
+		catch ( final N5Exception e )
 		{
 			Assert.fail( "Metamapper - could not read metadata");
 		}
@@ -146,7 +145,7 @@ public class MetadataIoTests
 		{
 			n5 = new N5FSReader( f.getAbsolutePath() );
 		}
-		catch ( final IOException e )
+		catch ( final N5Exception e )
 		{
 			Assert.fail("N5V meta - could not read n5");
 		}
@@ -204,7 +203,7 @@ public class MetadataIoTests
 		{
 			n5 = new N5FSReader( f.getAbsolutePath() );
 		}
-		catch ( final IOException e )
+		catch ( final N5Exception e )
 		{
 			Assert.fail("Cosem meta - could not read n5");
 		}
@@ -238,15 +237,8 @@ public class MetadataIoTests
 	@Test
 	public void testH5()
 	{
-		try
-		{
-			final N5HDF5Writer n5 = new N5HDF5Writer( testDirPath + ".h5", 32, 32, 32, 32, 32 );
-			testAllMetadataTypes( n5 );
-		}
-		catch ( final IOException e )
-		{
-			Assert.fail("could not build n5 writer");
-		}
+		final N5HDF5Writer n5 = new N5HDF5Writer( testDirPath + ".h5", 32, 32, 32, 32, 32 );
+		testAllMetadataTypes( n5 );
 	}
 
 	@Test
@@ -268,7 +260,7 @@ public class MetadataIoTests
 			n5.remove(  testBaseDatasetName + "/imp4d" );
 			n5.remove(  testBaseDatasetName + "/imp5d" );
 		}
-		catch ( final IOException e )
+		catch ( final N5Exception e )
 		{
 			Assert.fail("could not build n5 writer");
 		}
@@ -295,7 +287,7 @@ public class MetadataIoTests
 			n5.remove(  testBaseDatasetName + "/imp4d" );
 			n5.remove(  testBaseDatasetName + "/imp5d" );
 		}
-		catch ( final IOException e )
+		catch ( final N5Exception e )
 		{
 			Assert.fail("could not build n5 writer");
 		}

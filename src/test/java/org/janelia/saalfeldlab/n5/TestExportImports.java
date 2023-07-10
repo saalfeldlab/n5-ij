@@ -251,7 +251,7 @@ public class TestExportImports
 		try {
 			N5Writer n5w = new N5Factory().openWriter(outputPath);
 			n5w.remove();
-		} catch (IOException e) {
+		} catch (N5Exception e) {
 			e.printStackTrace();
 		}
 

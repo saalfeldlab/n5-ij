@@ -34,6 +34,7 @@ import org.janelia.saalfeldlab.n5.CachedGsonKeyValueReader;
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.CompressionAdapter;
 import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
@@ -71,7 +72,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
-import java.io.IOException;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -708,7 +708,7 @@ public class DatasetSelectorDialog {
 			}
 			catch (InterruptedException e) { }
 			catch (ExecutionException e) { }
-		} catch (IOException e) { }
+		} catch (N5Exception e) { }
 
 	});
 
