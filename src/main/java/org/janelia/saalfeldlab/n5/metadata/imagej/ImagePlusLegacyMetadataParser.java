@@ -7,11 +7,12 @@ import java.util.Optional;
 import java.util.Properties;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.N5MetadataWriter;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 
 import ij.ImagePlus;
 import ij.measure.Calibration;
@@ -178,7 +179,7 @@ public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePl
 
 			return Optional.of(meta);
 
-		} catch (IOException e) {
+		} catch (N5Exception e) {
 		}
 		
 		return Optional.empty();

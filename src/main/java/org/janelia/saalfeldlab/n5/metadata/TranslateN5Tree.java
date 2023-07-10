@@ -6,9 +6,9 @@ import java.nio.file.Paths;
 import java.util.concurrent.Callable;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.ij.N5Factory;
-import org.janelia.saalfeldlab.n5.translation.JqUtils;
-import org.janelia.saalfeldlab.n5.translation.TranslatedN5Reader;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.translation.JqUtils;
+import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
 
 import com.google.gson.Gson;
 

@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>34.0.0</version>
+		<version>35.1.1</version>
 		<relativePath />
 	</parent>
 
@@ -86,6 +86,16 @@
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
 		<jackson-jq.version>1.0.0-preview.20191208</jackson-jq.version>
+		<imglib2.version>6.1.0</imglib2.version>
+		<imglib2-realtransform.version>4.0.0</imglib2-realtransform.version>
+		<imglib2-cache.version>1.0.0-beta-17</imglib2-cache.version>
+
+		<n5.version>3.0.0-SNAPSHOT</n5.version>
+		<n5-hdf5.version>1.4.3-SNAPSHOT</n5-hdf5.version>
+		<n5-google-cloud.version>3.3.3-SNAPSHOT</n5-google-cloud.version>
+		<n5-zarr.version>0.0.9-SNAPSHOT</n5-zarr.version>
+		<n5-imglib2.version>5.0.1-SNAPSHOT</n5-imglib2.version>
+		<n5-universe.version>0.1.1-SNAPSHOT</n5-universe.version>
 	</properties>
 
 	<dependencies>
@@ -93,10 +103,6 @@
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.janelia.saalfeldlab</groupId>
-			<artifactId>n5-aws-s3</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
@@ -122,15 +128,7 @@
 		<!-- ImgLib2 dependencies -->
 		<dependency>
 			<groupId>net.imglib2</groupId>
-			<artifactId>imglib2</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>net.imglib2</groupId>
 			<artifactId>imglib2-ij</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>net.imglib2</groupId>
-			<artifactId>imglib2-realtransform</artifactId>
 		</dependency>
 
 		<!-- ImageJ dependencies -->
@@ -146,10 +144,6 @@
 		</dependency>
 
 		<!-- Third-party dependencies -->
-		<dependency>
-			<groupId>com.amazonaws</groupId>
-			<artifactId>aws-java-sdk-s3</artifactId>
-		</dependency>
 		<dependency>
 			<groupId>com.fasterxml.jackson.core</groupId>
 			<artifactId>jackson-databind</artifactId>
@@ -169,10 +163,6 @@
 		<dependency>
 			<groupId>commons-lang</groupId>
 			<artifactId>commons-lang</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>com.amazonaws</groupId>
-			<artifactId>aws-java-sdk-core</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>com.google.api</groupId>
@@ -197,6 +187,11 @@
 		<dependency>
 			<groupId>com.formdev</groupId>
 			<artifactId>flatlaf</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5-universe</artifactId>
+			<version>0.1.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
 

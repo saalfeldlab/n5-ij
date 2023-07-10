@@ -32,7 +32,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
-import org.janelia.saalfeldlab.n5.metadata.N5GenericSingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 
 public class N5SpatialKeySpecDialog {
 

@@ -2,7 +2,7 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import javax.swing.tree.DefaultMutableTreeNode;
 
-import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 
 /**
  * Wraps an {@link N5TreeNode} as a swing {@link DefaultMutableTreeNode}.

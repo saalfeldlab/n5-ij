@@ -7,8 +7,8 @@ import net.imglib2.realtransform.AffineTransform3D;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
-import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata;
-import org.janelia.saalfeldlab.n5.metadata.N5CosemMetadata.CosemTransform;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata.CosemTransform;
 
 import java.io.IOException;
 import java.util.Arrays;

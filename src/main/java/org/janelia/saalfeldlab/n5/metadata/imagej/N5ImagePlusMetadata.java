@@ -28,8 +28,8 @@ package org.janelia.saalfeldlab.n5.metadata.imagej;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.ScaleAndTranslation;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.metadata.AbstractN5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.SpatialMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.AbstractN5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
 
 import java.util.Map;
 import java.util.Objects;

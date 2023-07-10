@@ -8,10 +8,12 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 
+import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RunImportExportTest;
 import org.janelia.saalfeldlab.n5.TestExportImports;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,10 +60,8 @@ public class MacroTests {
 
 	@After
 	public void after() {
-		try {
-			N5Writer n5 = new N5Factory().openWriter( containerDir.getAbsolutePath());
-			n5.remove();
-		} catch (IOException e) { }
+		final N5Writer n5 = new N5Factory().openWriter( containerDir.getAbsolutePath());
+		n5.remove();
 	}
 
 	@Test

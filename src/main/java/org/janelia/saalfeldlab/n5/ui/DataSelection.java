@@ -29,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 
 public class DataSelection
 {

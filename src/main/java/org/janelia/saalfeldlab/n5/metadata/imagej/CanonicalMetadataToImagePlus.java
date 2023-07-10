@@ -10,11 +10,11 @@ import net.imglib2.type.numeric.ARGBType;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
-import org.janelia.saalfeldlab.n5.metadata.axes.Axis;
-import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalDatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalSpatialDatasetMetadata;
-import org.janelia.saalfeldlab.n5.metadata.canonical.SpatialMetadataCanonical;
-import org.janelia.saalfeldlab.n5.metadata.transforms.AffineSpatialTransform;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
+import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.canonical.SpatialMetadataCanonical;
+import org.janelia.saalfeldlab.n5.universe.metadata.transforms.AffineSpatialTransform;
 
 import java.awt.Color;
 import java.io.IOException;

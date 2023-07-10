@@ -4,8 +4,10 @@ import static org.junit.Assert.fail;
 
 import java.io.IOException;
 
+import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5FSReader;
-import org.janelia.saalfeldlab.n5.metadata.NgffMultiScaleGroupAttributes.MultiscaleDataset;
+import org.janelia.saalfeldlab.n5.universe.metadata.NgffMultiScaleGroupAttributes;
+import org.janelia.saalfeldlab.n5.universe.metadata.NgffMultiScaleGroupAttributes.MultiscaleDataset;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -42,7 +44,7 @@ public class NgffTests {
 				scale *= 2;
 			}
 
-		} catch (IOException e) {
+		} catch (N5Exception e) {
 			fail("Ngff parsing failed");
 			e.printStackTrace();
 		}

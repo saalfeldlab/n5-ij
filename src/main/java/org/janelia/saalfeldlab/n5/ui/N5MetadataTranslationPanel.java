@@ -35,10 +35,9 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
-import org.janelia.saalfeldlab.n5.AbstractGsonReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.metadata.canonical.CanonicalMetadata;
-import org.janelia.saalfeldlab.n5.translation.TranslatedN5Reader;
+import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadata;
+import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
 
 import com.google.gson.Gson;
 

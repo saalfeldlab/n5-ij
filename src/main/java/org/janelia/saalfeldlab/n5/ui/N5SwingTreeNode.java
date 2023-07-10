@@ -11,7 +11,7 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.MutableTreeNode;
 import javax.swing.tree.TreeNode;
 
-import org.janelia.saalfeldlab.n5.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 
 public class N5SwingTreeNode extends N5TreeNode implements MutableTreeNode {
 
