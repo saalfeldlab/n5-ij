@@ -30,7 +30,7 @@ import ij.ImageJ;
 import ij.gui.ProgressBar;
 import se.sawano.java.text.AlphanumericComparator;
 
-import org.janelia.saalfeldlab.n5.CachedGsonKeyValueReader;
+import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.CompressionAdapter;
 import org.janelia.saalfeldlab.n5.DataType;
@@ -578,8 +578,8 @@ public class DatasetSelectorDialog {
 		parserList.addAll(Arrays.asList(parsers));
 
 	final Gson gson;
-	if( n5 instanceof CachedGsonKeyValueReader )
-		gson = ((CachedGsonKeyValueReader) n5).getGson();
+	if( n5 instanceof CachedGsonKeyValueN5Reader )
+		gson = ((CachedGsonKeyValueN5Reader) n5).getGson();
 	else
 	{
 		GsonBuilder gsonBuilder = new GsonBuilder();
