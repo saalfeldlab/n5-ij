@@ -1,7 +1,6 @@
 package org.janelia.saalfeldlab.n5;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
@@ -23,14 +22,14 @@ public class TestTryWith
 	 * Run to observe errors.
 	 * Comment in the try( n5 ) blocks and observe this runs error-free.
 	 */
-	public static <T extends RealType<T> & NativeType<T>> void main( String[] args )
+	public static <T extends RealType<T> & NativeType<T>> void main( final String[] args )
 	{
-		URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
-		File baseDir = new File( configUrl.getFile()).getParentFile();
-		String path = baseDir.getAbsolutePath() + File.separator + "breaking.h5";
-	
+		final URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
+		final File baseDir = new File( configUrl.getFile()).getParentFile();
+		final String path = baseDir.getAbsolutePath() + File.separator + "breaking.h5";
+
 		final ImagePlus imp = NewImage.createImage( "test", 32, 32, 32, 8, NewImage.FILL_NOISE );
-		RandomAccessibleInterval<T> img = ImageJFunctions.wrap( imp );
+		final RandomAccessibleInterval<T> img = ImageJFunctions.wrap( imp );
 
 		N5HDF5Writer n5w;
 		try
@@ -42,23 +41,23 @@ public class TestTryWith
 				System.out.println( "writing 1 done");
 //			}
 		}
-		catch ( IOException e )
+		catch ( final N5Exception e )
 		{
 			e.printStackTrace();
 		}
 
-		
+
 		N5HDF5Reader n5r;
 		try
 		{
 			n5r = new N5HDF5Reader( path, 8, 8, 8 );
 //			try( n5r )
 //			{
-				Img<?> imgr1 = N5Utils.open( n5r, "/first" );
+				final Img<?> imgr1 = N5Utils.open( n5r, "/first" );
 				System.out.println( "read: " + imgr1 );
 //			}
 		}
-		catch ( IOException e )
+		catch ( final N5Exception e )
 		{
 			e.printStackTrace();
 		}
@@ -73,12 +72,12 @@ public class TestTryWith
 				System.out.println( "writing 2 done");
 //			}
 		}
-		catch ( IOException e )
+		catch ( final N5Exception e )
 		{
 			e.printStackTrace();
 		}
 
 	}
-	 
+
 
 }
