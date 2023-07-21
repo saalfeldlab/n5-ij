@@ -88,6 +88,7 @@
 		<jackson-jq.version>1.0.0-preview.20191208</jackson-jq.version>
 
 		<n5.version>3.0.0</n5.version>
+		<n5-aws-s3.version>4.0.0</n5-aws-s3.version>
 		<n5-hdf5.version>2.0.0</n5-hdf5.version>
 		<n5-google-cloud.version>4.0.0</n5-google-cloud.version>
 		<n5-zarr.version>1.0.0</n5-zarr.version>
