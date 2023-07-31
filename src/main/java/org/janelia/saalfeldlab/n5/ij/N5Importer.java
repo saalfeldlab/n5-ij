@@ -464,28 +464,39 @@ public class N5Importer implements PlugIn {
 		img = imgC;
 
 	RandomAccessibleInterval<T> convImg;
-	DataType type = datasetMeta.getAttributes().getDataType();
+	final DataType type = datasetMeta.getAttributes().getDataType();
 
 	final boolean isRGB = (datasetMeta instanceof N5ImagePlusMetadata) && ((N5ImagePlusMetadata)datasetMeta).getType() == ImagePlus.COLOR_RGB;
 
-	// Compute LUT after crop
-	if (type == DataType.FLOAT64) {
-	  convImg = convertDouble(img);
-	} else if (isRGB && type == DataType.UINT32) {
-	  convImg = convertToRGB(img);
-	} else if (type == DataType.INT32 || type == DataType.UINT32 ||
-			type == DataType.INT64 || type == DataType.UINT64) {
-	  convImg = convertToUShortLUT(img);
-	} else {
-	  // this covers int8 -> uint8 and int16 -> uint16
-	  convImg = img;
+	// convert label multisets to ulong, then converts to ushort with LUT
+	if (N5LabelMultisets.isLabelMultisetType(n5, datasetMeta.getPath())) {
+		convImg = convertToUShortLUT(
+				Converters.convert2(
+						img,
+						new LabelMultisetLongConverter(),
+						UnsignedLongType::new));
+	}
+	else{
+
+		// Compute LUT after crop
+		if (type == DataType.FLOAT64) {
+		  convImg = convertDouble(img);
+		} else if (isRGB && type == DataType.UINT32) {
+		  convImg = convertToRGB(img);
+		} else if (type == DataType.INT32 || type == DataType.UINT32 ||
+				type == DataType.INT64 || type == DataType.UINT64) {
+		  convImg = convertToUShortLUT(img);
+		} else {
+		  // this covers int8 -> uint8 and int16 -> uint16
+		  convImg = img;
+		}
 	}
 
 	ImagePlus imp;
 	if (asVirtual) {
 	  imp = ImageJFunctions.wrap(convImg, d);
 	} else {
-	  ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(convImg);
+	  final ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(convImg);
 	  LoopBuilder.setImages( convImg, ipImg )
 			.multiThreaded( new DefaultTaskExecutor( exec ))
 			.forEachPixel( (x,y) -> y.set( x ));
@@ -538,6 +549,14 @@ public class N5Importer implements PlugIn {
 			img,
 			new UnsignedShortLUTConverter(Views.flatIterable(img)),
 			new UnsignedShortType());
+  }
+
+  private static class LabelMultisetLongConverter implements Converter<LabelMultisetType,UnsignedLongType>  {
+
+	@Override
+	public void convert(final LabelMultisetType input, final UnsignedLongType output) {
+		output.set(input.argMax());
+	}
   }
 
   private static Interval processCropInterval(final RandomAccessibleInterval<?> img, final Interval cropInterval) {
