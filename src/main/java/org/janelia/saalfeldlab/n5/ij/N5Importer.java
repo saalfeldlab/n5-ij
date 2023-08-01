@@ -488,7 +488,9 @@ public class N5Importer implements PlugIn {
 
 		// convert label multisets to ulong, then converts to ushort with LUT
 		if (N5LabelMultisets.isLabelMultisetType(n5, datasetMeta.getPath())) {
-			convImg = convertToUShortLUT(
+
+			// why is this cast necessary?
+			convImg = (RandomAccessibleInterval<T>)convertToUShortLUT(
 					Converters.convert2(
 							img,
 							new LabelMultisetLongConverter(),
@@ -500,8 +502,8 @@ public class N5Importer implements PlugIn {
 				convImg = convertDouble(img);
 			} else if (isRGB && type == DataType.UINT32) {
 				convImg = convertToRGB(img);
-			} else if (type == DataType.INT32 || type == DataType.UINT32 ||
-					type == DataType.INT64 || type == DataType.UINT64) {
+			} else if ( type == DataType.INT32 || type == DataType.UINT32 ||
+					    type == DataType.INT64 || type == DataType.UINT64) {
 				convImg = convertToUShortLUT(img);
 			} else {
 				// this covers int8 -> uint8 and int16 -> uint16
