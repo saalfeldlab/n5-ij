@@ -72,11 +72,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>Export HDF5/N5/Zarr")
 public class N5Exporter extends ContextCommand implements WindowListener {
@@ -312,8 +308,13 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 			final IntervalView< T > rai = Views.translate( ipImg, offset );
 			if (nThreads > 1)
 				N5Utils.saveRegion( rai, n5, n5Dataset );
-			else
-				N5Utils.saveRegion( rai, n5, n5Dataset,  Executors.newFixedThreadPool( nThreads ));
+			else {
+				final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
+				progressMonitor( threadPool );
+				N5Utils.saveRegion( rai, n5, n5Dataset, threadPool);
+				threadPool.shutdown();
+			}
+
 		}
 		else
 		{
@@ -332,7 +333,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 			// use threadPool even for single threaded execution for progress monitoring
 			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
 			progressMonitor( threadPool );
-			N5IJUtils.save( image, n5, n5Dataset, blockSize, compression, Executors.newFixedThreadPool( nThreads ) );
+			N5IJUtils.save( image, n5, n5Dataset, blockSize, compression, threadPool);
+			threadPool.shutdown();
 
 			writeMetadata( n5, n5Dataset, writer );
 		}
@@ -395,6 +397,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
 			progressMonitor( threadPool );
 			N5Utils.save( channelImg, n5, datasetString, blkSz, compression, threadPool );
+			threadPool.shutdown();
 
 			writeMetadata(n5, datasetString, writer);
 		}
