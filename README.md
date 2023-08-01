@@ -129,12 +129,14 @@ N5IJUtils.save(
 Save an image stored locally to cloud storage (using four threads):
 ```java
 final ImagePlus imp = IJ.openImage( "/path/to/some.tif" );
+final ExecutorService exec = Executors.newFixedThreadPool( 4 );
 N5IJUtils.save( imp, 
     new N5Factory().openWriter( "s3://myBucket/myContainer.n5" ), 
     "/myDataset", 
 	new int[]{64, 64, 64},
 	new GzipCompression(), 
-	Executors.newFixedThreadPool( 4 ));
+	exec );
+exec.shutdown();
 ```
 
 See also scripts demonstrating
