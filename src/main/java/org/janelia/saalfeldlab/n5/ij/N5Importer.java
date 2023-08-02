@@ -70,6 +70,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -135,6 +136,7 @@ public class N5Importer implements PlugIn {
 	};
 
 	public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
+			new OmeNgffMetadataParser(),
 			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
 			new N5ViewerMultiscaleMetadataParser(),
 			new CanonicalMetadataParser(),
@@ -243,7 +245,7 @@ public class N5Importer implements PlugIn {
 					new N5ViewerReaderFun(),
 					new N5BasePathFun(),
 					lastOpenedContainer,
-					new N5MetadataParser[]{}, // no group parsers
+					new N5MetadataParser[]{ new OmeNgffMetadataParser() }, // need the ngff parser because it's where the metadata are
 					PARSERS);
 
 			selectionDialog.setLoaderExecutor(exec);
