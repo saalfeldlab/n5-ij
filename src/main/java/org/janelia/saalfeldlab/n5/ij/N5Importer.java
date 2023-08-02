@@ -515,7 +515,7 @@ public class N5Importer implements PlugIn {
 
 		ImagePlus imp;
 		if (asVirtual) {
-			imp = ImageJFunctions.wrap(convImg, d);
+			imp = ImageJFunctions.wrap(convImg, d, exec);
 		} else {
 			final ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(convImg);
 			LoopBuilder.setImages(convImg, ipImg)
