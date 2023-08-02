@@ -25,47 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.ui;
 
-import ij.IJ;
-import ij.ImageJ;
-import ij.gui.ProgressBar;
-import se.sawano.java.text.AlphanumericComparator;
-
-import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
-import org.janelia.saalfeldlab.n5.Compression;
-import org.janelia.saalfeldlab.n5.CompressionAdapter;
-import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.N5Exception;
-import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
-
-import com.formdev.flatlaf.util.UIScale;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-
-import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JFileChooser;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.JTree;
-import javax.swing.ScrollPaneConstants;
-import javax.swing.SwingUtilities;
-import javax.swing.event.TreeSelectionEvent;
-import javax.swing.event.TreeSelectionListener;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreeCellRenderer;
-import javax.swing.tree.TreePath;
-import javax.swing.tree.TreeSelectionModel;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -86,6 +45,48 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+import javax.swing.JTree;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeCellRenderer;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
+
+import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
+import org.janelia.saalfeldlab.n5.Compression;
+import org.janelia.saalfeldlab.n5.CompressionAdapter;
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.N5Exception;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
+
+import com.formdev.flatlaf.util.UIScale;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import ij.IJ;
+import ij.ImageJ;
+import ij.gui.ProgressBar;
+import se.sawano.java.text.AlphanumericComparator;
 
 public class DatasetSelectorDialog {
 
@@ -129,7 +130,7 @@ public class DatasetSelectorDialog {
 
   private Function<String, N5Reader> n5Fun;
 
-  private Function<String, String> pathFun;
+  private final Function<String, String> pathFun;
 
   private N5Reader n5;
 
@@ -189,7 +190,7 @@ public class DatasetSelectorDialog {
 	translationPanel = new N5MetadataTranslationPanel();
 	translationResultPanel = new TranslationResultPanel();
 
-	ImageJ ij = IJ.getInstance();
+	final ImageJ ij = IJ.getInstance();
 	if( ij != null )
 		ijProgressBar = ij.getProgressBar();
   }
@@ -223,7 +224,7 @@ public class DatasetSelectorDialog {
 	this.parsers = parsers;
 	this.groupParsers = groupParsers;
 
-	ImageJ ij = IJ.getInstance();
+	final ImageJ ij = IJ.getInstance();
 	if( ij != null )
 		ijProgressBar = ij.getProgressBar();
   }
@@ -462,7 +463,7 @@ public class DatasetSelectorDialog {
 
 	okBtn = new JButton("OK");
 	cbot.gridx = 4;
-	cbot.ipadx = (int)(20);
+	cbot.ipadx = 20;
 	cbot.anchor = GridBagConstraints.EAST;
 	cbot.fill = GridBagConstraints.HORIZONTAL;
 	cbot.insets = new Insets(MID_PAD, OUTER_PAD, OUTER_PAD, BUTTON_PAD);
@@ -569,7 +570,7 @@ public class DatasetSelectorDialog {
 	final ArrayList<N5MetadataParser<?>> parserList = new ArrayList<>();
 
 	// add custom metadata parser into the first position in the list if it exists
-	Optional<N5GenericSingleScaleMetadataParser> parserOptional = spatialMetaSpec.getParserOptional();
+	final Optional<N5GenericSingleScaleMetadataParser> parserOptional = spatialMetaSpec.getParserOptional();
 	if( parserOptional.isPresent() ) {
 		parserList.add(parserOptional.get());
 		parserList.addAll(Arrays.asList(parsers));
@@ -582,7 +583,7 @@ public class DatasetSelectorDialog {
 		gson = ((CachedGsonKeyValueN5Reader) n5).getGson();
 	else
 	{
-		GsonBuilder gsonBuilder = new GsonBuilder();
+		final GsonBuilder gsonBuilder = new GsonBuilder();
 		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
 		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
 		gsonBuilder.disableHtmlEscaping();
@@ -590,7 +591,7 @@ public class DatasetSelectorDialog {
 	}
 
 	boolean isTranslated = false;
-	Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
+	final Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
 	if( translatedN5.isPresent() )
 	{
 		n5 = translatedN5.get();
@@ -607,14 +608,14 @@ public class DatasetSelectorDialog {
 	if( treeRenderer != null  && treeRenderer instanceof N5DatasetTreeCellRenderer )
 		((N5DatasetTreeCellRenderer)treeRenderer ).setRootName(rootName);
 
-	N5TreeNode tmpRootNode = new N5TreeNode( rootPath );
+	final N5TreeNode tmpRootNode = new N5TreeNode( rootPath );
 	rootNode = new N5SwingTreeNode( rootPath, treeModel );
 	treeModel.setRoot(rootNode);
 
 	containerTree.setEnabled(true);
 	containerTree.repaint();
 
-	if( ijProgressBar == null )
+	if( ijProgressBar != null )
 		ijProgressBar.show( 0.3 );
 
 	final Consumer<N5TreeNode> callback = (x) -> {
@@ -640,10 +641,10 @@ public class DatasetSelectorDialog {
 			}
 			else
 			{
-				Optional< N5TreeNode > desc = rootNode.getDescendant( x.getNodeName() );
+				final Optional< N5TreeNode > desc = rootNode.getDescendant( x.getNodeName() );
 				if( desc.isPresent() )
 				{
-					N5SwingTreeNode node = (N5SwingTreeNode)desc.get();
+					final N5SwingTreeNode node = (N5SwingTreeNode)desc.get();
 					if( node.getParent() != null  && node.getChildCount() == 0 )
 					{
 						treeModel.removeNodeFromParent( node );
@@ -659,7 +660,7 @@ public class DatasetSelectorDialog {
 			String[] datasetPaths;
 			try {
 
-				if( ijProgressBar == null )
+				if( ijProgressBar != null )
 					ijProgressBar.show( 0.3 );
 
 				SwingUtilities.invokeLater(() -> {
@@ -670,13 +671,13 @@ public class DatasetSelectorDialog {
 				// build a temporary tree
 				datasetPaths = n5.deepList(rootPath, loaderExecutor);
 				N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/" );
-				for( String p : datasetPaths )
+				for( final String p : datasetPaths )
 					rootNode.addPath( p );
 
 				sortRecursive( rootNode );
 				containerTree.expandRow( 0 );
 
-				if( ijProgressBar == null )
+				if( ijProgressBar != null )
 					ijProgressBar.show( 0.5 );
 
 				SwingUtilities.invokeLater(() -> {
@@ -684,11 +685,11 @@ public class DatasetSelectorDialog {
 					messageLabel.repaint();
 				});
 
-				// callback copies values from temporary tree into the ui 
+				// callback copies values from temporary tree into the ui
 				// when metadata is parsed
 				datasetDiscoverer.parseMetadataRecursive( tmpRootNode, callback );
 
-				if( ijProgressBar == null )
+				if( ijProgressBar != null )
 					ijProgressBar.show( 0.8 );
 
 				SwingUtilities.invokeLater(() -> {
@@ -696,7 +697,7 @@ public class DatasetSelectorDialog {
 					messageLabel.repaint();
 				});
 
-				if( ijProgressBar == null )
+				if( ijProgressBar != null )
 					ijProgressBar.show( 1.0 );
 
 				Thread.sleep(1000);
@@ -706,14 +707,14 @@ public class DatasetSelectorDialog {
 					messageLabel.repaint();
 				});
 			}
-			catch (InterruptedException e) { }
-			catch (ExecutionException e) { }
-		} catch (N5Exception e) { }
+			catch (final InterruptedException e) { }
+			catch (final ExecutionException e) { }
+		} catch (final N5Exception e) { }
 
 	});
 
 	if( isTranslated ) {
-		TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
+		final TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
 		translationResultPanel.set(
 				xlatedN5.getGson(),
 				xlatedN5.getTranslation().getOrig(),
@@ -777,9 +778,9 @@ public class DatasetSelectorDialog {
 	if (cancelCallback != null)
 	  cancelCallback.accept(null);
   }
-  
+
   public void detectDatasets() {
-	  openContainer(n5Fun, () -> getN5RootPath(), pathFun); 
+	  openContainer(n5Fun, () -> getN5RootPath(), pathFun);
   }
 
   /**
@@ -787,7 +788,7 @@ public class DatasetSelectorDialog {
    */
   public static class N5IjTreeSelectionListener implements TreeSelectionListener {
 
-	private TreeSelectionModel selectionModel;
+	private final TreeSelectionModel selectionModel;
 
 	public N5IjTreeSelectionListener(final TreeSelectionModel selectionModel) {
 
@@ -823,7 +824,7 @@ public class DatasetSelectorDialog {
 		  children.sort(Comparator.comparing(N5TreeNode::toString, comp));
 		}
 		treeModel.nodeStructureChanged(node);
-		for( N5TreeNode child : children )
+		for( final N5TreeNode child : children )
 			sortRecursive( (N5SwingTreeNode)child );
 	}
   }
