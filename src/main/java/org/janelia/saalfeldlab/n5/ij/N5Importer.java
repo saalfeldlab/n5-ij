@@ -746,6 +746,8 @@ public class N5Importer implements PlugIn {
 			final String rootPath;
 			if (n5PathIn.contains(".h5") || n5PathIn.contains(".hdf5"))
 				rootPath = h5DatasetPath(n5PathIn, true);
+			else if (lastExtension(n5PathIn).startsWith(".zarr"))
+				rootPath = upToLastExtension(n5PathIn);
 			else
 				rootPath = n5PathIn;
 
@@ -760,6 +762,41 @@ public class N5Importer implements PlugIn {
 		}
 	}
 
+	private static String upToLastExtension(final String path) {
+
+		final int i = path.lastIndexOf('.');
+		if (i >= 0) {
+			final int j = path.substring(i).indexOf('/');
+			if (j >= 0)
+				return path.substring(0, i + j);
+			else
+				return path;
+		} else
+			return path;
+	}
+
+	private static String afterLastExtension(final String path) {
+
+		final int i = path.lastIndexOf('.');
+		if (i >= 0) {
+			final int j = path.substring(i).indexOf('/');
+			if (j >= 0)
+				return path.substring(i + j);
+			else
+				return path;
+		} else
+			return path;
+	}
+
+	private static String lastExtension(final String path) {
+
+		final int i = path.lastIndexOf('.');
+		if (i >= 0)
+			return path.substring(i);
+		else
+			return "";
+	}
+
 	public static class N5BasePathFun implements Function<String, String> {
 
 		public String message;
@@ -769,6 +806,8 @@ public class N5Importer implements PlugIn {
 
 			if (n5Path.contains(".h5") || n5Path.contains(".hdf5"))
 				return h5DatasetPath(n5Path);
+			else if (lastExtension(n5Path).startsWith(".zarr"))
+				return afterLastExtension(n5Path);
 			else
 				return "";
 		}
