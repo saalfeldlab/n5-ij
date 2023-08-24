@@ -50,6 +50,7 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
@@ -70,6 +71,8 @@ import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -136,6 +139,7 @@ public class N5Importer implements PlugIn {
 
 	public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
 			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
+			new OmeNgffMetadataParser(),
 			new N5ViewerMultiscaleMetadataParser(),
 			new CanonicalMetadataParser(),
 	};
@@ -180,18 +184,24 @@ public class N5Importer implements PlugIn {
 		Recorder.record = false;
 
 		// default image plus metadata parsers
-		impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
-		impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
-		impMetaWriterTypes.put(N5CosemMetadata.class, new CosemToImagePlus());
-		impMetaWriterTypes.put(N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
-		impMetaWriterTypes.put(CanonicalDatasetMetadata.class, new CanonicalMetadataToImagePlus());
-		impMetaWriterTypes.put(CanonicalSpatialDatasetMetadata.class, new CanonicalMetadataToImagePlus());
-
+		impMetaWriterTypes = defaultImagePlusMetadataWriters();
 		numDimensionsForCrop = 5;
 		initMaxValuesForCrop = new long[numDimensionsForCrop];
 		Arrays.fill(initMaxValuesForCrop, Long.MAX_VALUE);
 
 		exec = Executors.newFixedThreadPool(Prefs.getThreads());
+	}
+
+	private static HashMap<Class<?>, ImageplusMetadata<?>> defaultImagePlusMetadataWriters()
+	{
+		final HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes = new HashMap<>();
+		impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
+		impMetaWriterTypes.put(NgffSingleScaleAxesMetadata.class, new NgffToImagePlus());
+		impMetaWriterTypes.put(N5CosemMetadata.class, new CosemToImagePlus());
+		impMetaWriterTypes.put(N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
+		impMetaWriterTypes.put(CanonicalDatasetMetadata.class, new CanonicalMetadataToImagePlus());
+		impMetaWriterTypes.put(CanonicalSpatialDatasetMetadata.class, new CanonicalMetadataToImagePlus());
+		return impMetaWriterTypes;
 	}
 
 	public N5Reader getN5() {
@@ -628,6 +638,20 @@ public class N5Importer implements PlugIn {
 			final ExecutorService exec,
 			final List<N5DatasetMetadata> datasetMetadataList,
 			final boolean asVirtual,
+			final Interval cropInterval) {
+
+		return process(n5, rootPath, exec, datasetMetadataList, asVirtual, cropInterval, true,
+				defaultImagePlusMetadataWriters());
+	}
+
+	/*
+	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
+	 */
+	public static List<ImagePlus> process(final N5Reader n5,
+			final String rootPath,
+			final ExecutorService exec,
+			final List<N5DatasetMetadata> datasetMetadataList,
+			final boolean asVirtual,
 			final Interval cropInterval,
 			final Map<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes) {
 
@@ -702,7 +726,8 @@ public class N5Importer implements PlugIn {
 		N5DatasetMetadata metadata;
 		try {
 			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5,
-					N5DatasetDiscoverer.fromParsers(PARSERS), null);
+					N5DatasetDiscoverer.fromParsers(PARSERS),
+					Collections.singletonList(new OmeNgffMetadataParser()));
 			metadata = (N5DatasetMetadata)discoverer.parse(dataset).getMetadata();
 		} catch (final Exception e) {
 			System.err.println("Could not parse metadata.");
