@@ -33,9 +33,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.janelia.saalfeldlab.n5.DataType;
@@ -56,6 +58,7 @@ import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
@@ -123,6 +126,7 @@ public class N5Importer implements PlugIn {
 	public static final String IP_OPTION = "ImagePlus";
 
 	public static final String MetadataAutoKey = "Auto-detect";
+	public static final String MetadataOmeZarrKey = "OME-Zarr";
 	public static final String MetadataImageJKey = "ImageJ";
 	public static final String MetadataN5CosemKey = "Cosem";
 	public static final String MetadataN5ViewerKey = "N5Viewer";
@@ -143,6 +147,8 @@ public class N5Importer implements PlugIn {
 			new N5ViewerMultiscaleMetadataParser(),
 			new CanonicalMetadataParser(),
 	};
+
+	private static final Predicate<N5Metadata> ALL_PASS = x -> { return true; };
 
 	private N5Reader n5;
 
@@ -253,7 +259,7 @@ public class N5Importer implements PlugIn {
 					new N5ViewerReaderFun(),
 					new N5BasePathFun(),
 					lastOpenedContainer,
-					new N5MetadataParser[]{}, // no group parsers
+					new N5MetadataParser[]{ new OmeNgffMetadataParser()}, // only ome-zarr group parser
 					PARSERS);
 
 			selectionDialog.setLoaderExecutor(exec);
@@ -345,7 +351,8 @@ public class N5Importer implements PlugIn {
 
 			final N5Reader n5ForThisDataset = new N5ViewerReaderFun().apply(n5Path);
 			N5Metadata meta;
-			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5ForThisDataset, N5DatasetDiscoverer.fromParsers(PARSERS), null);
+			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5ForThisDataset, N5DatasetDiscoverer.fromParsers(PARSERS),
+					Collections.singletonList(new OmeNgffMetadataParser()));
 			meta = discoverer.parse("").getMetadata();
 
 			if (meta instanceof N5DatasetMetadata)
@@ -628,6 +635,56 @@ public class N5Importer implements PlugIn {
 
 			this.run("cropDialog " + generateAndStoreOptions(pathToN5Dataset, asVirtual, null, !show));
 		}
+	}
+
+	public static ImagePlus open(final String uri) {
+
+		return open(uri, ALL_PASS);
+	}
+
+	public static ImagePlus open(final String uri, final String dataset) {
+
+		return open(uri, x -> {
+			return norm(x.getPath()).equals(norm(dataset));
+		});
+	}
+
+	public static ImagePlus open(final String uri, final Predicate<N5Metadata> filter ) {
+
+		final N5Reader n5 = new N5Factory().openReader(uri);
+		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
+
+		final Predicate<N5Metadata> datasetFilter = x -> { return x instanceof N5DatasetMetadata; };
+		final Predicate<N5Metadata> totalFilter = filter == null || filter == ALL_PASS
+				? datasetFilter : datasetFilter.and(filter);
+
+		final Optional<N5DatasetMetadata> meta = N5TreeNode.flattenN5Tree(node)
+			.filter( x -> totalFilter.test(x.getMetadata()) )
+			.map( x-> { return (N5DatasetMetadata)x.getMetadata(); })
+			.findFirst();
+
+		if (meta.isPresent()) {
+			return open( n5, uri, meta.get());
+		} else {
+			System.err.println("No arrays matching criteria found in container at: " + uri);
+			return null;
+		}
+	}
+
+	public static ImagePlus open(final N5Reader n5, final String uri, final N5DatasetMetadata metadata) {
+
+		final ExecutorService exec = Executors.newFixedThreadPool(
+				Runtime.getRuntime().availableProcessors() / 2);
+
+		return N5Importer.process(n5, uri,
+				exec,
+				Collections.singletonList(metadata),
+				false, null).get(0);
+	}
+
+	private static String norm(final String groupPath) {
+
+		return groupPath.equals("/") ? groupPath : groupPath.replaceAll("^/", "");
 	}
 
 	/*
