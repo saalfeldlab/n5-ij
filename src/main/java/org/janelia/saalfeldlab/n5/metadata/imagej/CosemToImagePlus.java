@@ -14,16 +14,16 @@ import java.io.IOException;
 import java.util.Arrays;
 
 public class CosemToImagePlus extends SpatialMetadataToImagePlus<N5CosemMetadata> {
-	
+
 	@Override
 	public void writeMetadata(final N5CosemMetadata t, final ImagePlus ip) throws IOException {
 
 		ip.setTitle(t.getPath());
 		final Calibration cal = ip.getCalibration();
-		
+
 		final int nd = t.getAttributes().getNumDimensions();
 		final long[] dims = t.getAttributes().getDimensions();
-		
+
 		final CosemTransform transform = t.getCosemTransform();
 		if( nd == 2 )
 		{
@@ -68,11 +68,10 @@ public class CosemToImagePlus extends SpatialMetadataToImagePlus<N5CosemMetadata
 	  nd++;
 	}
 
-	final String[] axes = new String[3];
+	final String[] axes = new String[nd];
 	if (nd == 2) {
 	  axes[0] = "y";
 	  axes[1] = "x";
-	  axes[2] = "";
 	} else if (nd == 3) {
 	  axes[0] = "z";
 	  axes[1] = "y";
@@ -103,7 +102,7 @@ public class CosemToImagePlus extends SpatialMetadataToImagePlus<N5CosemMetadata
 	  translation[1] = imp.getCalibration().yOrigin;
 	  translation[0] = imp.getCalibration().xOrigin;
 	}
-	
+
 	//TODO what to do about DatasetAttributes?
 	return new N5CosemMetadata("",
 			new CosemTransform(axes, scale, translation, units),
