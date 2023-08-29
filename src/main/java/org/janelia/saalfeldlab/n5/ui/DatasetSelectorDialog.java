@@ -38,6 +38,7 @@ import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
@@ -569,7 +570,7 @@ public class DatasetSelectorDialog {
 	final ArrayList<N5MetadataParser<?>> parserList = new ArrayList<>();
 
 	// add custom metadata parser into the first position in the list if it exists
-	Optional<N5GenericSingleScaleMetadataParser> parserOptional = spatialMetaSpec.getParserOptional();
+	final Optional<N5GenericSingleScaleMetadataParser> parserOptional = spatialMetaSpec.getParserOptional();
 	if( parserOptional.isPresent() ) {
 		parserList.add(parserOptional.get());
 		parserList.addAll(Arrays.asList(parsers));
@@ -582,7 +583,7 @@ public class DatasetSelectorDialog {
 		gson = ((CachedGsonKeyValueN5Reader) n5).getGson();
 	else
 	{
-		GsonBuilder gsonBuilder = new GsonBuilder();
+		final GsonBuilder gsonBuilder = new GsonBuilder();
 		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
 		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
 		gsonBuilder.disableHtmlEscaping();
@@ -590,7 +591,7 @@ public class DatasetSelectorDialog {
 	}
 
 	boolean isTranslated = false;
-	Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
+	final Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
 	if( translatedN5.isPresent() )
 	{
 		n5 = translatedN5.get();
@@ -607,7 +608,7 @@ public class DatasetSelectorDialog {
 	if( treeRenderer != null  && treeRenderer instanceof N5DatasetTreeCellRenderer )
 		((N5DatasetTreeCellRenderer)treeRenderer ).setRootName(rootName);
 
-	N5TreeNode tmpRootNode = new N5TreeNode( rootPath );
+	final N5TreeNode tmpRootNode = new N5TreeNode( rootPath );
 	rootNode = new N5SwingTreeNode( rootPath, treeModel );
 	treeModel.setRoot(rootNode);
 
@@ -640,10 +641,10 @@ public class DatasetSelectorDialog {
 			}
 			else
 			{
-				Optional< N5TreeNode > desc = rootNode.getDescendant( x.getNodeName() );
+				final Optional< N5TreeNode > desc = rootNode.getDescendant( x.getNodeName() );
 				if( desc.isPresent() )
 				{
-					N5SwingTreeNode node = (N5SwingTreeNode)desc.get();
+					final N5SwingTreeNode node = (N5SwingTreeNode)desc.get();
 					if( node.getParent() != null  && node.getChildCount() == 0 )
 					{
 						treeModel.removeNodeFromParent( node );
@@ -777,9 +778,9 @@ public class DatasetSelectorDialog {
 	if (cancelCallback != null)
 	  cancelCallback.accept(null);
   }
-  
+
   public void detectDatasets() {
-	  openContainer(n5Fun, () -> getN5RootPath(), pathFun); 
+	  openContainer(n5Fun, () -> getN5RootPath(), pathFun);
   }
 
   /**
@@ -805,7 +806,7 @@ public class DatasetSelectorDialog {
 		final Object last = path.getLastPathComponent();
 		if (last instanceof N5SwingTreeNode) {
 		  final N5SwingTreeNode node = ((N5SwingTreeNode)last);
-		  if (node.getMetadata() == null) {
+		  if (node.getMetadata() == null || !(node.getMetadata() instanceof N5DatasetMetadata)) {
 			selectionModel.removeSelectionPath(path);
 		  }
 		}
@@ -823,7 +824,7 @@ public class DatasetSelectorDialog {
 		  children.sort(Comparator.comparing(N5TreeNode::toString, comp));
 		}
 		treeModel.nodeStructureChanged(node);
-		for( N5TreeNode child : children )
+		for( final N5TreeNode child : children )
 			sortRecursive( (N5SwingTreeNode)child );
 	}
   }

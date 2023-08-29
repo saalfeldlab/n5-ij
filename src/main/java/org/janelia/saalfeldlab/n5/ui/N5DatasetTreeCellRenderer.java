@@ -56,8 +56,8 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		if ( value instanceof N5SwingTreeNode )
 		{
 			node = ( ( N5SwingTreeNode ) value );
-			if ( node.getMetadata() != null )
-			{
+			if ( node.getMetadata() != null && node.getMetadata() instanceof N5DatasetMetadata ) {
+
 				final String convSuffix = conversionSuffix( node );
 				final String conversionString;
 				if ( showConversionWarning && !convSuffix.isEmpty() )
@@ -91,14 +91,14 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 	public static String conversionSuffix( final N5TreeNode node ) {
 
 	  DataType type;
-	  N5Metadata meta = node.getMetadata();
+	  final N5Metadata meta = node.getMetadata();
 	  if ( meta != null && meta instanceof N5DatasetMetadata )
 		type = ((N5DatasetMetadata)node.getMetadata()).getAttributes().getDataType();
 	  else
 		return "";
 
 	  if ( node.getMetadata() instanceof N5ImagePlusMetadata ) {
-		  N5ImagePlusMetadata ijMeta = (N5ImagePlusMetadata)node.getMetadata();
+		  final N5ImagePlusMetadata ijMeta = (N5ImagePlusMetadata)node.getMetadata();
 		  if( ijMeta.getType() == ImagePlus.COLOR_RGB && type == DataType.UINT32 )
 			  return "(RGB)";
 	  }
@@ -118,7 +118,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 	public String getParameterString( final N5TreeNode node ) {
 
-	  N5Metadata meta = node.getMetadata();
+	  final N5Metadata meta = node.getMetadata();
 	  if ( meta == null || !(meta instanceof N5DatasetMetadata ) )
 		return "";
 
@@ -133,12 +133,12 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 	protected String memString( N5TreeNode node )
 	{
-	    N5Metadata meta = node.getMetadata();
+	    final N5Metadata meta = node.getMetadata();
 	    if ( meta == null || !(meta instanceof N5DatasetMetadata ) )
 		  return "";
 
 		final DatasetAttributes attributes = ((N5DatasetMetadata)node.getMetadata()).getAttributes();
-		long nBytes = estimateBytes(attributes);
+		final long nBytes = estimateBytes(attributes);
 		if( nBytes < 0)
 			return "";
 		else
@@ -152,7 +152,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 	    if (-1000 < bytes && bytes < 1000) {
 	        return bytes + " B";
 	    }
-	    CharacterIterator ci = new StringCharacterIterator("kMGTPE");
+	    final CharacterIterator ci = new StringCharacterIterator("kMGTPE");
 	    while (bytes <= -999_950 || bytes >= 999_950) {
 	        bytes /= 1000;
 	        ci.next();
@@ -162,8 +162,8 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 	private long estimateBytes( DatasetAttributes attrs )
 	{
-		long N = Arrays.stream( attrs.getDimensions() ).reduce( 1, (i,v) -> i*v );
-		String typeString = attrs.getDataType().toString();
+		final long N = Arrays.stream( attrs.getDimensions() ).reduce( 1, (i,v) -> i*v );
+		final String typeString = attrs.getDataType().toString();
 		long nBytes = -1;
 		if( typeString.endsWith( "8" ))
 			nBytes = N;
