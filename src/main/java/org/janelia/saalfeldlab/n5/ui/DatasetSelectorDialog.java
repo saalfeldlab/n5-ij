@@ -189,7 +189,7 @@ public class DatasetSelectorDialog {
 	translationPanel = new N5MetadataTranslationPanel();
 	translationResultPanel = new TranslationResultPanel();
 
-	ImageJ ij = IJ.getInstance();
+	final ImageJ ij = IJ.getInstance();
 	if( ij != null )
 		ijProgressBar = ij.getProgressBar();
   }
@@ -223,7 +223,7 @@ public class DatasetSelectorDialog {
 	this.parsers = parsers;
 	this.groupParsers = groupParsers;
 
-	ImageJ ij = IJ.getInstance();
+	final ImageJ ij = IJ.getInstance();
 	if( ij != null )
 		ijProgressBar = ij.getProgressBar();
   }
@@ -614,7 +614,7 @@ public class DatasetSelectorDialog {
 	containerTree.setEnabled(true);
 	containerTree.repaint();
 
-	if( ijProgressBar == null )
+	if( ijProgressBar != null )
 		ijProgressBar.show( 0.3 );
 
 	final Consumer<N5TreeNode> callback = (x) -> {
@@ -659,7 +659,7 @@ public class DatasetSelectorDialog {
 			String[] datasetPaths;
 			try {
 
-				if( ijProgressBar == null )
+				if( ijProgressBar != null )
 					ijProgressBar.show( 0.3 );
 
 				SwingUtilities.invokeLater(() -> {
@@ -670,13 +670,13 @@ public class DatasetSelectorDialog {
 				// build a temporary tree
 				datasetPaths = n5.deepList(rootPath, loaderExecutor);
 				N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/" );
-				for( String p : datasetPaths )
+				for( final String p : datasetPaths )
 					rootNode.addPath( p );
 
 				sortRecursive( rootNode );
 				containerTree.expandRow( 0 );
 
-				if( ijProgressBar == null )
+				if( ijProgressBar != null )
 					ijProgressBar.show( 0.5 );
 
 				SwingUtilities.invokeLater(() -> {
@@ -684,11 +684,11 @@ public class DatasetSelectorDialog {
 					messageLabel.repaint();
 				});
 
-				// callback copies values from temporary tree into the ui 
+				// callback copies values from temporary tree into the ui
 				// when metadata is parsed
 				datasetDiscoverer.parseMetadataRecursive( tmpRootNode, callback );
 
-				if( ijProgressBar == null )
+				if( ijProgressBar != null )
 					ijProgressBar.show( 0.8 );
 
 				SwingUtilities.invokeLater(() -> {
@@ -696,8 +696,8 @@ public class DatasetSelectorDialog {
 					messageLabel.repaint();
 				});
 
-				if( ijProgressBar == null )
-					ijProgressBar.show( 1.0 );
+				if( ijProgressBar != null )
+					ijProgressBar.show( 1.1 );
 
 				Thread.sleep(1000);
 				SwingUtilities.invokeLater(() -> {
@@ -706,14 +706,14 @@ public class DatasetSelectorDialog {
 					messageLabel.repaint();
 				});
 			}
-			catch (InterruptedException e) { }
-			catch (ExecutionException e) { }
-		} catch (N5Exception e) { }
+			catch (final InterruptedException e) { }
+			catch (final ExecutionException e) { }
+		} catch (final N5Exception e) { }
 
 	});
 
 	if( isTranslated ) {
-		TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
+		final TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
 		translationResultPanel.set(
 				xlatedN5.getGson(),
 				xlatedN5.getTranslation().getOrig(),
