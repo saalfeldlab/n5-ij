@@ -55,7 +55,7 @@ public class N5SpatialKeySpecDialog {
 
 	/**
 	 * Returns an optional containing the parser if any fields are non empty.
-	 * 
+	 *
 	 * @return the parser optional
 	 */
 	public Optional<N5GenericSingleScaleMetadataParser> getParserOptional() {
@@ -68,11 +68,11 @@ public class N5SpatialKeySpecDialog {
 
 	public boolean anyNonEmptyFields() {
 
-		return !resolutionField.getText().isEmpty() ||
-				!offsetField.getText().isEmpty() ||
-				!downsamplingFactorsField.getText().isEmpty() ||
-				!minIntensityField.getText().isEmpty() ||
-				!maxIntensityField.getText().isEmpty();
+		return  (resolutionField != null && !resolutionField.getText().isEmpty() ) ||
+				(offsetField != null && !offsetField.getText().isEmpty()) ||
+				(downsamplingFactorsField != null && !downsamplingFactorsField.getText().isEmpty()) ||
+				(minIntensityField != null && !minIntensityField.getText().isEmpty()) ||
+				(maxIntensityField != null && !maxIntensityField.getText().isEmpty());
 	}
 
 	public JPanel buildPanel()

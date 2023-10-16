@@ -336,12 +336,14 @@ public class N5Importer implements PlugIn {
 			Recorder.record = initialRecorderState;
 
 			final N5Reader n5ForThisDataset = new N5ViewerReaderFun().apply(n5Path);
+			final String root = n5ForThisDataset.getURI().toString();
+			final String dset = new N5BasePathFun().apply(n5Path);
 			N5Metadata meta;
 			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5ForThisDataset, N5DatasetDiscoverer.fromParsers(PARSERS), null);
-			meta = discoverer.parse("").getMetadata();
+			meta = discoverer.parse(dset).getMetadata();
 
 			if (meta instanceof N5DatasetMetadata)
-				lastResult = process(n5ForThisDataset, n5Path, exec, Collections.singletonList((N5DatasetMetadata)meta), openAsVirtual, thisDatasetCropInterval,
+				lastResult = process(n5ForThisDataset, root, exec, Collections.singletonList((N5DatasetMetadata)meta), openAsVirtual, thisDatasetCropInterval,
 						show, impMetaWriterTypes);
 			else
 				System.err.println("not a dataset : " + n5Path);
@@ -743,14 +745,7 @@ public class N5Importer implements PlugIn {
 			if (n5PathIn == null || n5PathIn.isEmpty())
 				return null;
 
-			final String rootPath;
-			if (n5PathIn.contains(".h5") || n5PathIn.contains(".hdf5"))
-				rootPath = h5DatasetPath(n5PathIn, true);
-			else if (lastExtension(n5PathIn).startsWith(".zarr"))
-				rootPath = upToLastExtension(n5PathIn);
-			else
-				rootPath = n5PathIn;
-
+			final String rootPath = upToLastExtension(n5PathIn);
 			final N5Factory factory = new N5Factory().cacheAttributes(true).s3RetryWithCredentials();
 			try {
 				n5 = factory.openReader(rootPath);
@@ -783,9 +778,9 @@ public class N5Importer implements PlugIn {
 			if (j >= 0)
 				return path.substring(i + j);
 			else
-				return path;
+				return "";
 		} else
-			return path;
+			return "";
 	}
 
 	private static String lastExtension(final String path) {
@@ -804,12 +799,10 @@ public class N5Importer implements PlugIn {
 		@Override
 		public String apply(final String n5Path) {
 
-			if (n5Path.contains(".h5") || n5Path.contains(".hdf5"))
+			if (n5Path.contains(".h5") || n5Path.contains(".hdf5") || n5Path.contains(".hdf"))
 				return h5DatasetPath(n5Path);
-			else if (lastExtension(n5Path).startsWith(".zarr"))
-				return afterLastExtension(n5Path);
 			else
-				return "";
+				return afterLastExtension(n5Path);
 		}
 	}
 

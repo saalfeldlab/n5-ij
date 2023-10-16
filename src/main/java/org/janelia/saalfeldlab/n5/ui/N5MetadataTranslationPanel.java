@@ -86,8 +86,11 @@ public class N5MetadataTranslationPanel {
 
 	public boolean isTranslationProvided() {
 
+		if( textArea == null )
+			return false;
+
 		final String txt = textArea.getText();
-		boolean textSet = !( txt.isEmpty() || txt.equals(DEFAULT_TEXT));
+		final boolean textSet = !( txt.isEmpty() || txt.equals(DEFAULT_TEXT));
 		return textSet;
 //		if( textSet ) {
 //			return TranslatedTreeMetadataParser.testTranslation( txt );
