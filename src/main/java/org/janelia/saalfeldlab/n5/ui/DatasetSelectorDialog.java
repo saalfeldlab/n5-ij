@@ -615,14 +615,12 @@ public class DatasetSelectorDialog {
 
 		n5 = n5Fun.apply(n5Path);
 		final String rootPath = pathToRoot.apply(n5Path);
-		System.out.println("rootPath: " + rootPath);
 
 		if (n5 == null) {
 			messageLabel.setVisible(false);
 			dialog.repaint();
 			return;
 		}
-
 
 		// copy list
 		final ArrayList<N5MetadataParser<?>> parserList = new ArrayList<>();
@@ -680,10 +678,14 @@ public class DatasetSelectorDialog {
 		final Consumer<N5TreeNode> callback = (x) -> {
 			SwingUtilities.invokeLater(() -> {
 				if (x.getMetadata() != null) {
-					// get the node at the requested path, or add it if not
-					// present
+					// get the node at the requested path, or add it if not present
 					final N5SwingTreeNode node = (N5SwingTreeNode)rootNode.getDescendants(y -> pathsEqual(y.getPath(), x.getPath())).findFirst()
-							.orElse(rootNode.addPath(x.getPath()));
+							.orElseGet( () -> {
+								if (rootNode.getPath().equals(x.getPath()))
+									return null;
+								else
+									return rootNode.addPath(x.getPath());
+							});
 
 					// update the node's metadata
 					if (node != null) {
