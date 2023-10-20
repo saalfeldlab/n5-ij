@@ -13,7 +13,7 @@ public abstract class SpatialMetadataToImagePlus<T extends SpatialMetadata & N5D
   @Override
   public void writeMetadata(final T t, final ImagePlus ip) throws IOException {
 
-	AffineTransform3D xfm = t.spatialTransform3d();
+	final AffineTransform3D xfm = t.spatialTransform3d();
 
 	ip.setTitle( t.getPath() );
 	final Calibration cal = ip.getCalibration();
@@ -32,9 +32,9 @@ public abstract class SpatialMetadataToImagePlus<T extends SpatialMetadata & N5D
 	if (nd == 3)
 	  ip.setDimensions(1, (int)dims[2], 1);
 	else if (nd == 4)
-	  ip.setDimensions((int)dims[3], (int)dims[2], 1);
+	  ip.setDimensions(1, (int)dims[2], (int)dims[3]);
   }
-	
+
 	@Override
 	public abstract T readMetadata(final ImagePlus ip) throws IOException;
 

@@ -25,7 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.metadata.imagej;
 
-import net.imagej.axis.Axes;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.ScaleAndTranslation;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;

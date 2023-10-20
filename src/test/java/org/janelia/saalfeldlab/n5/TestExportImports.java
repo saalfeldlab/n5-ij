@@ -4,7 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
@@ -36,7 +35,7 @@ public class TestExportImports
 	@Before
 	public void before()
 	{
-		URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
+		final URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
 		baseDir = new File( configUrl.getFile()).getParentFile();
 	}
 
@@ -44,7 +43,7 @@ public class TestExportImports
 	public void testEmptyMeta()
 	{
 		final ImagePlus imp = NewImage.createImage("test", 8, 6, 2, 16, NewImage.FILL_NOISE);
-		String metaType = N5Importer.MetadataDefaultKey;
+		final String metaType = N5Importer.MetadataDefaultKey;
 
 		final String n5RootPath = baseDir + "/test_none.n5";
 		final String dataset = "/test";
@@ -79,13 +78,13 @@ public class TestExportImports
 				Assert.assertTrue("n5v channel equals", equalChannel(imp, i, impList.get(0)));
 			}
 		}
-		catch(Exception e)
+		catch(final Exception e)
 		{
 			e.printStackTrace();
 			Assert.fail();
 		}
 	}
-	
+
 	@Test
 	public void testReadWriteParse()
 	{
@@ -96,7 +95,7 @@ public class TestExportImports
 
 		final String blockSizeString = "16,16,16";
 		final String compressionString = "gzip";
-		String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
+		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
 
 		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataImageJKey,
@@ -104,7 +103,7 @@ public class TestExportImports
 				N5Importer.MetadataN5ViewerKey
 		};
 
-		for( int bitDepth : new int[]{ 8, 16, 32 })
+		for( final int bitDepth : new int[]{ 8, 16, 32 })
 		{
 			final ImagePlus imp = NewImage.createImage("test", 8, 6, 4, bitDepth, NewImage.FILL_NOISE);
 			imp.setDimensions( 1, 4, 1 );
@@ -158,7 +157,7 @@ public class TestExportImports
 			final Img<T> imgAll = ImageJFunctions.wrapRealNative( all  );
 			final Img<T> imgC = ImageJFunctions.wrapRealNative( cimg );
 
-			IntervalView<T> channelGtImg = Views.hyperSlice( imgAll, 2, i);
+			final IntervalView<T> channelGtImg = Views.hyperSlice( imgAll, 2, i);
 			final Cursor< T > c = channelGtImg.cursor();
 			final RandomAccess< T > r = imgC.randomAccess();
 			while( c.hasNext() )
@@ -209,12 +208,32 @@ public class TestExportImports
 			final String compressionType,
 			boolean testMeta )
 	{
+		singleReadWriteParseTest( imp, outputPath, dataset, blockSizeString, metadataType, compressionType, testMeta, true);
+	}
+
+	public void singleReadWriteParseTest(
+			final ImagePlus imp,
+			final String outputPath,
+			final String dataset,
+			final String blockSizeString,
+			final String metadataType,
+			final String compressionType,
+			boolean testMeta,
+			boolean testData )
+	{
 		final N5Exporter writer = new N5Exporter();
 		writer.setOptions( imp, outputPath, dataset, blockSizeString, metadataType, compressionType,
 				N5Exporter.OVERWRITE, "");
 		writer.run(); // run() closes the n5 writer
 
-		final String readerDataset = metadataType.equals( N5Importer.MetadataN5ViewerKey ) ? dataset + "/c0/s0" : dataset;
+		final String readerDataset;
+		if( metadataType.equals( N5Importer.MetadataN5ViewerKey ))
+			readerDataset = dataset + "/c0/s0";
+		else if( metadataType.equals( N5Importer.MetadataN5CosemKey ) && imp.getNChannels() > 1 )
+			readerDataset = dataset + "/c0";
+		else
+			readerDataset = dataset;
+
 		final String n5PathAndDataset = outputPath + readerDataset;
 
 		final N5Importer reader = new N5Importer();
@@ -227,31 +246,34 @@ public class TestExportImports
 
 		if( testMeta )
 		{
-			boolean resEqual = impRead.getCalibration().pixelWidth == imp.getCalibration().pixelWidth && 
+			final boolean resEqual = impRead.getCalibration().pixelWidth == imp.getCalibration().pixelWidth &&
 					impRead.getCalibration().pixelHeight == imp.getCalibration().pixelHeight
 					&& impRead.getCalibration().pixelDepth == imp.getCalibration().pixelDepth;
 
 			assertTrue( String.format( "%s resolutions ", dataset ), resEqual );
 
-			boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() );
+			final boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() );
 			assertTrue( String.format( "%s units ", dataset ), unitsEqual );
 		}
 
-		boolean imagesEqual;
-		if( imp.getType() == ImagePlus.COLOR_RGB )
+		if( testData )
 		{
-			imagesEqual = equalRGB( imp, impRead );
-			assertEquals( String.format( "%s as rgb ", dataset ), ImagePlus.COLOR_RGB, impRead.getType() );
-		}
-		else
-			imagesEqual = equal( imp, impRead );
+			boolean imagesEqual;
+			if( imp.getType() == ImagePlus.COLOR_RGB )
+			{
+				imagesEqual = equalRGB( imp, impRead );
+				assertEquals( String.format( "%s as rgb ", dataset ), ImagePlus.COLOR_RGB, impRead.getType() );
+			}
+			else
+				imagesEqual = equal( imp, impRead );
 
-		assertTrue( String.format( "%s data ", dataset ), imagesEqual );
+			assertTrue( String.format( "%s data ", dataset ), imagesEqual );
+		}
 
 		try {
-			N5Writer n5w = new N5Factory().openWriter(outputPath);
+			final N5Writer n5w = new N5Factory().openWriter(outputPath);
 			n5w.remove();
-		} catch (N5Exception e) {
+		} catch (final N5Exception e) {
 			e.printStackTrace();
 		}
 
@@ -263,7 +285,7 @@ public class TestExportImports
 	public void testRgb()
 	{
 		final ImagePlus imp = NewImage.createRGBImage("test", 8, 6, 4, NewImage.FILL_NOISE);
-		String metaType = N5Importer.MetadataImageJKey;
+		final String metaType = N5Importer.MetadataImageJKey;
 
 		final String n5RootPath = baseDir + "/test_rgb.n5";
 		final String dataset = "/ij";
@@ -274,26 +296,49 @@ public class TestExportImports
 	}
 
 	/**
-	 * A test if we ever expand n5-viewer style metadata to be able 
+	 * A test if we ever expand n5-viewer style metadata to be able
 	 * to describe arrays of more than 3 dimensions.
-	 * 
+	 *
 	 */
-//	@Test
-//	public void testMultiChannelN5V()
-//	{
-//		final int bitDepth = 8;
-//		final ImagePlus imp = NewImage.createImage("test", 8, 6, 4*3, bitDepth, NewImage.FILL_NOISE);
-//		imp.setDimensions( 3, 4, 1 );
-//		imp.getCalibration().pixelWidth = 0.5;
-//		imp.getCalibration().pixelHeight = 0.6;
-//		imp.getCalibration().pixelDepth = 0.7;
-//
-//		String metatype = N5Importer.MetadataN5ViewerSingleKey;
-//		final String n5RootPath = baseDir + "/test_n5v_mcSingle.n5";
-//		final String dataset = "/n5vs";
-//		final String blockSizeString = "16,16,16,16";
-//		final String compressionString = "raw";
-//
-//		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
-//	}
+	@Test
+	public void testMultiChannel()
+	{
+		testMultiChannelHelper(N5Importer.MetadataN5ViewerKey);
+		testMultiChannelHelper(N5Importer.MetadataN5CosemKey);
+	}
+
+	public void testMultiChannelHelper( final String metatype )
+	{
+		final int bitDepth = 8;
+
+		final String n5RootPath = baseDir + "/test_"+ metatype+"_dimCombos.n5";
+		final String blockSizeString = "16";
+		final String compressionString = "raw";
+
+		int nc = 1;
+		int nz = 1;
+		int nt = 5;
+
+		for( nc = 1; nc <= 3; nc += 2)
+		{
+			for( nz = 1; nz <= 4; nz += 3)
+			{
+				for( nt = 1; nt <= 5; nt += 4)
+				{
+					final int N = nc * nz * nt;
+					final ImagePlus imp = NewImage.createImage("test", 8, 6, N, bitDepth, NewImage.FILL_NOISE);
+					imp.setDimensions( nc, nz, nt );
+					imp.getCalibration().pixelWidth = 0.5;
+					imp.getCalibration().pixelHeight = 0.6;
+
+					if( nz > 1 )
+						imp.getCalibration().pixelDepth = 0.7;
+
+					final String dataset = String.format("/c%dz%dt%d", nc, nz, nt);
+					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
+				}
+			}
+
+		}
+	}
 }
