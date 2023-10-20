@@ -170,7 +170,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	impMetaWriterTypes.put(ImagePlusLegacyMetadataParser.class, new ImagePlusLegacyMetadataParser());
 	impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
 	impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
-	
+
   }
 
   public void setOptions(
@@ -210,14 +210,14 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	public void parseBlockSize() {
 
 		final int nd = image.getNDimensions();
-		String[] blockArgList = blockSizeArg.split(",");
+		final String[] blockArgList = blockSizeArg.split(",");
 		blockSize = new int[nd];
 		int i = 0;
 		while (i < blockArgList.length && i < nd) {
 			blockSize[i] = Integer.parseInt(blockArgList[i]);
 			i++;
 		}
-		int N = blockArgList.length - 1;
+		final int N = blockArgList.length - 1;
 
 		while (i < nd) {
 			blockSize[i] = blockSize[N];
@@ -274,7 +274,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		Arrays.fill(dimensions, 1);
 
 		// find data type
-		int type = image.getType();
+		final int type = image.getType();
 		DataType n5type;
 
 		switch (type) {
@@ -344,7 +344,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	private static long[] getOffsetForSaveSubset3d( final ImagePlus imp )
 	{
 		final int nd = imp.getNDimensions();
-		long[] offset = new long[ nd ];
+		final long[] offset = new long[ nd ];
 
 		offset[ 0 ] = (int)imp.getCalibration().xOrigin;
 		offset[ 1 ] = (int)imp.getCalibration().yOrigin;
@@ -372,15 +372,14 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		int[] blkSz = blockSize;
 		for (int c = 0; c < image.getNChannels(); c++) {
 			RandomAccessibleInterval<T> channelImg;
-			final int nd = img.numDimensions();
 			// If there is only one channel, img may be 3d, but we don't want to slice
 			// so if we have a 3d image check that the image is multichannel
-			if ( nd >= 4 || (nd == 3 && image.getNChannels() > 1)) {
+			if( image.getNChannels() > 1 )
+			{
 				channelImg = Views.hyperSlice(img, 2, c);
 
 				// if we slice the image, appropriately slice the block size also
 				blkSz = sliceBlockSize( 2 );
-
 			} else {
 				channelImg = img;
 			}
@@ -391,6 +390,14 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 				datasetString = String.format("%s/c%d", n5Dataset, c);
 			} else {
 				datasetString = n5Dataset;
+			}
+
+			if( image.getNFrames() > 1 && image.getNSlices() == 1 )
+			{
+				// make a 4d image in order XYZT
+				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
+				// expand block size
+				blkSz = new int[] { blkSz[0], blkSz[1], 1, blkSz[2] };
 			}
 
 			// use threadPool even for single threaded execution for progress monitoring
@@ -405,7 +412,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 	private int[] sliceBlockSize( int exclude )
 	{
-		int[] out = new int[ blockSize.length - 1 ];
+		final int[] out = new int[ blockSize.length - 1 ];
 		int j = 0;
 		for( int i = 0; i < blockSize.length; i++ )
 			if( i != exclude )
@@ -457,6 +464,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	{
 		new Thread()
 		{
+			@Override
 			public void run()
 			{
 				IJ.showProgress( 0.01 );
@@ -473,7 +481,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 						Thread.sleep( 333 );
 					}
 				}
-				catch ( InterruptedException e ) { }
+				catch ( final InterruptedException e ) { }
 				IJ.showProgress( 1.0 );
 			}
 		}.start();
