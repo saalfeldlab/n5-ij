@@ -43,15 +43,15 @@ public class MacroTests {
 		final String n5Root = "src/test/resources/test.n5";
 		n5rootF = new File(n5Root);
 
-		URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
-		File baseDir = new File( configUrl.getFile() ).getParentFile();
+		final URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
+		final File baseDir = new File( configUrl.getFile() ).getParentFile();
 		containerDir = new File( baseDir, "macrotest.n5" );
 		System.out.println( containerDir.getAbsolutePath() );
 
 		imp = NewImage.createImage("test", 8, 7, 9, 16, NewImage.FILL_NOISE);
 
 		final N5Exporter writer = new N5Exporter();
-		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", "16,16,16", 
+		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", "16,16,16",
 				N5Exporter.NONE,
 				N5Exporter.RAW_COMPRESSION,
 				N5Exporter.OVERWRITE, "");
@@ -66,24 +66,24 @@ public class MacroTests {
 
 	@Test
 	public void testMacroContent() {
-		N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
 				String.format("n5=%s/%s hide", containerDir.getAbsolutePath(), "dataset" ));
 
-		List<ImagePlus> res = plugin.getResult();
+		final List<ImagePlus> res = plugin.getResult();
 		final ImagePlus imgImported = res.get(0);
 		assertTrue( "equal content", TestExportImports.equal(imp, imgImported));
 
-		N5Importer pluginCrop = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+		final N5Importer pluginCrop = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
 				String.format("n5=%s/%s hide min=0,1,2 max=5,5,5",
 						containerDir.getAbsolutePath(), "dataset" ));
-		List<ImagePlus> resCrop = pluginCrop.getResult();
+		final List<ImagePlus> resCrop = pluginCrop.getResult();
 		final ImagePlus imgImportedCrop = resCrop.get(0);
 
-		IntervalView<UnsignedShortType> imgCrop = Views.zeroMin( Views.interval( 
+		final IntervalView<UnsignedShortType> imgCrop = Views.zeroMin( Views.interval(
 				ImageJFunctions.wrapShort(imp),
 				Intervals.createMinMax( 0, 1, 2, 5, 5, 5 )));
 
-		ImagePlus impCrop = ImageJFunctions.wrap(imgCrop, "imgCrop");
+		final ImagePlus impCrop = ImageJFunctions.wrap(imgCrop, "imgCrop");
 		impCrop.setDimensions(1, 4, 1);
 
 		assertEquals( "  cont crop w", impCrop.getWidth(), imgImportedCrop.getWidth());
@@ -94,10 +94,11 @@ public class MacroTests {
 
 	@Test
 	public void testMacro() {
-		N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+
+		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
 				String.format("n5=%s/%s hide", n5rootF.getAbsolutePath(), "cosem" ));
 
-		List<ImagePlus> res = plugin.getResult();
+		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
 		final ImagePlus img = res.get(0);
 
@@ -108,10 +109,10 @@ public class MacroTests {
 
 	@Test
 	public void testMacroVirtual() {
-		N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
 				String.format("n5=%s/%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
 
-		List<ImagePlus> res = plugin.getResult();
+		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
 		final ImagePlus img = res.get(0);
 		assertTrue( " is virtual", (img.getStack() instanceof ImageJVirtualStack) );
@@ -119,14 +120,14 @@ public class MacroTests {
 
 	@Test
 	public void testMacroCrop() {
-		String minString = "100,100,50";
-		String maxString = "250,250,120";	
+		final String minString = "100,100,50";
+		final String maxString = "250,250,120";
 
-		N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("n5=%s/%s hide min=%s max=%s", 
+		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+				String.format("n5=%s/%s hide min=%s max=%s",
 				n5rootF.getAbsolutePath(), "cosem", minString, maxString ));
 
-		List<ImagePlus> res = plugin.getResult();
+		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
 
 		final ImagePlus img = res.get(0);

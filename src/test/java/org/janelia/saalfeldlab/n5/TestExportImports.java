@@ -96,7 +96,6 @@ public class TestExportImports
 		final String blockSizeString = "16,16,16";
 		final String compressionString = "gzip";
 		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
-
 		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataImageJKey,
 				N5Importer.MetadataN5CosemKey,
@@ -206,7 +205,7 @@ public class TestExportImports
 			final String blockSizeString,
 			final String metadataType,
 			final String compressionType,
-			boolean testMeta )
+			final boolean testMeta )
 	{
 		singleReadWriteParseTest( imp, outputPath, dataset, blockSizeString, metadataType, compressionType, testMeta, true);
 	}
