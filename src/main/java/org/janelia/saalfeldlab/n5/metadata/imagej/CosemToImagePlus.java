@@ -14,6 +14,12 @@ import java.util.Arrays;
 
 public class CosemToImagePlus extends SpatialMetadataToImagePlus<N5CosemMetadata> {
 
+	private boolean includeChannelAxis = false;
+
+	public void includeChannelAxis( boolean includeChannelAxis ) {
+		this.includeChannelAxis = includeChannelAxis;
+	}
+
 	@Override
 	public void writeMetadata(final N5CosemMetadata t, final ImagePlus ip) throws IOException {
 
@@ -45,7 +51,7 @@ public class CosemToImagePlus extends SpatialMetadataToImagePlus<N5CosemMetadata
   public N5CosemMetadata readMetadata(final ImagePlus imp) throws IOException {
 
 	int nd = 2;
-	if (imp.getNChannels() > 1) {
+	if (includeChannelAxis && imp.getNChannels() > 1) {
 	  nd++;
 	}
 	if (imp.getNSlices() > 1) {
@@ -70,7 +76,7 @@ public class CosemToImagePlus extends SpatialMetadataToImagePlus<N5CosemMetadata
 	translation[k] = imp.getCalibration().yOrigin;
 	axes[k--]="y";
 
-	if (imp.getNChannels() > 1) {
+	if (includeChannelAxis && imp.getNChannels() > 1) {
 	  axes[k--]="c";
 	}
 	if (imp.getNSlices() > 1) {

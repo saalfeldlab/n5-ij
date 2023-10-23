@@ -392,7 +392,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 				datasetString = n5Dataset;
 			}
 
-			if( image.getNFrames() > 1 && image.getNSlices() == 1 )
+			if( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) && image.getNFrames() > 1 && image.getNSlices() == 1 )
 			{
 				// make a 4d image in order XYZT
 				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
