@@ -27,6 +27,8 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import ij.IJ;
 import ij.ImagePlus;
+import net.imagej.Dataset;
+import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
@@ -130,8 +132,14 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		  description = "This argument is ignored if the N5ViewerMetadata style is selected")
   private String n5Dataset;
 
-  @Parameter(label = "Block size")
+  @Parameter(
+		  label = "Block size",
+		  description = "The size of blocks")
   private String blockSizeArg;
+
+  @Parameter(
+		  label = "Number of scales")
+  private Integer numScales = 1;
 
   @Parameter(
 		  label = "Compression",
@@ -191,6 +199,47 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	impMetaWriterTypes.put(NgffSingleScaleAxesMetadata.class, new NgffToImagePlus());
   }
 
+	public static void main(String[] args) {
+
+
+		final ImageJ ij = new ImageJ();
+//		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
+		final ImagePlus imp = IJ.openImage("/home/john/tmp/mri-stack.tif");
+
+		final String root = "/home/john/tmp/mri-test.n5";
+		final int nScales = 2;
+
+//		final String metaType = N5Importer.MetadataN5ViewerKey;
+//		final String metaType = N5Importer.MetadataN5CosemKey;
+		final String metaType = N5Importer.MetadataImageJKey;
+//		final String metaType = N5Importer.MetadataOmeZarrKey;
+
+		final String dset = String.format("%s_%d", metaType, nScales);
+
+		final N5Exporter exp = new N5Exporter();
+		exp.setOptions(imp, root, dset, "64,64,64", metaType,
+				"gzip", nScales, NO_OVERWRITE, null);
+		exp.run();
+
+//		final ImageJ ij = new ImageJ();
+//		ij.ui().showUI();
+//
+//		final Dataset dataset;
+////		try {
+//
+////			dataset = ij.scifio().datasetIO().open(
+////			ij.ui().show(dataset);
+//
+//			final ImagePlus imp = IJ.openImage( "/home/john/tmp/mri-stack.tif");
+//			ij.ui().show(imp);
+//
+//			ij.command().run(N5Exporter.class, true);
+//
+////		} catch (final IOException e) {
+////			e.printStackTrace();
+////		}
+	}
+
   public void setOptions(
 		  final ImagePlus image,
 		  final String n5RootLocation,
@@ -198,6 +247,21 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		  final String blockSizeArg,
 		  final String metadataStyle,
 		  final String compression,
+		  final String overwriteOption,
+		  final String subsetOffset) {
+
+	  setOptions( image, n5RootLocation, n5Dataset, blockSizeArg, metadataStyle,
+			  compression, 1, overwriteOption, subsetOffset);
+  }
+
+  public void setOptions(
+		  final ImagePlus image,
+		  final String n5RootLocation,
+		  final String n5Dataset,
+		  final String blockSizeArg,
+		  final String metadataStyle,
+		  final String compression,
+		  final int nScales,
 		  final String overwriteOption,
 		  final String subsetOffset) {
 
@@ -209,6 +273,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	this.blockSizeArg = blockSizeArg;
 	this.metadataStyle = metadataStyle;
 	this.compressionArg = compression;
+	this.numScales = nScales;
 
 	this.overwriteChoices = overwriteOption;
 	this.subsetOffset = subsetOffset;
@@ -251,14 +316,18 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
   @SuppressWarnings("unchecked")
   public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, InterruptedException, ExecutionException {
+	if ( metadataStyle.equals(N5Importer.MetadataImageJKey) && numScales > 1 )
+	{
+		ui.showDialog("Can not write ImageJ metadata with multiple (" + numScales + ") scale levels.");
+		return;
+	}
 
 	if ( metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
 	{
 	  impMeta = new NgffToImagePlus();
-	  writeOmeZarr(1);
+	  writeOmeZarr(numScales);
 	  return;
 	}
-
 
 	final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
 	final Compression compression = getCompression();
