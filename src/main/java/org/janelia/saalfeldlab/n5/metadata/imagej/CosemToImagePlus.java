@@ -92,10 +92,9 @@ public class CosemToImagePlus extends SpatialMetadataToImagePlus<N5CosemMetadata
 	final String[] units = new String[nd];
 	Arrays.fill(units, imp.getCalibration().getUnit());
 
-	//TODO what to do about DatasetAttributes?
 	return new N5CosemMetadata("",
 			new CosemTransform(axes, scale, translation, units),
-			new DatasetAttributes(new long[]{}, imp.getDimensions(), DataType.FLOAT32, new GzipCompression()));
+			ImageplusMetadata.datasetAttributes(imp));
   }
 
   private int[] spatialIndexes( final String[] axes ) {

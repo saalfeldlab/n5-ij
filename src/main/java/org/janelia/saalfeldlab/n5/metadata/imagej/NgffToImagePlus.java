@@ -150,9 +150,9 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 
 		final boolean noOffset = Arrays.stream(offset).allMatch( x -> x == 0.0 );
 		if( noOffset )
-			return new NgffSingleScaleAxesMetadata("", scale, null, axes, null);
+			return new NgffSingleScaleAxesMetadata("", scale, null, axes, ImageplusMetadata.datasetAttributes(ip));
 		else
-			return new NgffSingleScaleAxesMetadata("", scale, offset, axes, null);
+			return new NgffSingleScaleAxesMetadata("", scale, offset, axes, ImageplusMetadata.datasetAttributes(ip));
 	}
 
 	public static OmeNgffMultiScaleMetadata buildMetadata(final ImagePlus image, final String path, final DatasetAttributes[] dsetAttrs,

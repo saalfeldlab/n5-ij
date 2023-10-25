@@ -54,6 +54,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
@@ -81,7 +82,9 @@ import org.scijava.ui.UIService;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +93,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
+import java.util.stream.LongStream;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>Export HDF5/N5/Zarr")
 public class N5Exporter extends ContextCommand implements WindowListener {
@@ -112,7 +117,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
   public static enum OVERWRITE_OPTIONS {NO_OVERWRITE, OVERWRITE, WRITE_SUBSET}
 
   @Parameter(visibility = ItemVisibility.MESSAGE, required = false)
-  private final String message = "Export an ImagePlus to an HDF5, N5, or Zarr container.";
+  private final String message = "Export an ImagePlus to an HDF5, N5, or Zarr container."
+  		+ "Read the documentation";
 
   @Parameter
   private LogService log;
@@ -140,14 +146,10 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		  description = "The size of blocks")
   private String blockSizeArg;
 
-  @Parameter(
-		  label = "Number of scales")
-  private Integer numScales = 1;
-
-  @Parameter(
-		  label = "Downsampling method",
-		  choices = {DOWN_SAMPLE, DOWN_AVG})
-  private String downsampleMethod = DOWN_SAMPLE;
+//  @Parameter(
+//		  label = "Downsampling method",
+//		  choices = {DOWN_SAMPLE, DOWN_AVG})
+//  private String downsampleMethod = DOWN_SAMPLE;
 
   @Parameter(
 		  label = "Compression",
@@ -183,6 +185,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
   private int[] blockSize;
 
+  private int[] currentBlockSize;
+
   private final Map<String, N5MetadataWriter<?>> styles;
 
   private ImageplusMetadata<?> impMeta;
@@ -216,21 +220,25 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 		final ImageJ ij = new ImageJ();
 //		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
-		final ImagePlus imp = IJ.openImage("/home/john/tmp/mri-stack.tif");
 
-		final String root = "/home/john/tmp/mri-test.n5";
+//		final ImagePlus imp = IJ.openImage("/home/john/tmp/mri-stack.tif");
+//		final String root = "/home/john/tmp/mri-test.n5";
+
+		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
+		final String root = "/home/john/tmp/mitosis-test.n5";
+
 		final int nScales = 2;
 
-//		final String metaType = N5Importer.MetadataN5ViewerKey;
+		final String metaType = N5Importer.MetadataN5ViewerKey;
 //		final String metaType = N5Importer.MetadataN5CosemKey;
-		final String metaType = N5Importer.MetadataImageJKey;
+//		final String metaType = N5Importer.MetadataImageJKey;
 //		final String metaType = N5Importer.MetadataOmeZarrKey;
 
 		final String dset = String.format("%s_%d", metaType, nScales);
 
 		final N5Exporter exp = new N5Exporter();
 		exp.setOptions(imp, root, dset, "64,64,64", metaType,
-				"gzip", nScales, NO_OVERWRITE, null);
+				"gzip", NO_OVERWRITE, null);
 		exp.run();
 
 //		final ImageJ ij = new ImageJ();
@@ -252,6 +260,20 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 ////		}
 	}
 
+//  public void setOptions(
+//		  final ImagePlus image,
+//		  final String n5RootLocation,
+//		  final String n5Dataset,
+//		  final String blockSizeArg,
+//		  final String metadataStyle,
+//		  final String compression,
+//		  final String overwriteOption,
+//		  final String subsetOffset) {
+//
+//	  setOptions( image, n5RootLocation, n5Dataset, blockSizeArg, metadataStyle,
+//			  compression, overwriteOption, subsetOffset);
+//  }
+
   public void setOptions(
 		  final ImagePlus image,
 		  final String n5RootLocation,
@@ -259,21 +281,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		  final String blockSizeArg,
 		  final String metadataStyle,
 		  final String compression,
-		  final String overwriteOption,
-		  final String subsetOffset) {
-
-	  setOptions( image, n5RootLocation, n5Dataset, blockSizeArg, metadataStyle,
-			  compression, 1, overwriteOption, subsetOffset);
-  }
-
-  public void setOptions(
-		  final ImagePlus image,
-		  final String n5RootLocation,
-		  final String n5Dataset,
-		  final String blockSizeArg,
-		  final String metadataStyle,
-		  final String compression,
-		  final int nScales,
 		  final String overwriteOption,
 		  final String subsetOffset) {
 
@@ -285,7 +292,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	this.blockSizeArg = blockSizeArg;
 	this.metadataStyle = metadataStyle;
 	this.compressionArg = compression;
-	this.numScales = nScales;
+//	this.computePyramid = computePyramid;
 
 	this.overwriteChoices = overwriteOption;
 	this.subsetOffset = subsetOffset;
@@ -326,126 +333,204 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void processMultiscale() {
-
-		if (metadataStyle.equals(N5Importer.MetadataImageJKey) && numScales > 1) {
-			ui.showDialog("Can not write ImageJ metadata with multiple (" + numScales + ") scale levels.");
-			return;
-		}
-
-		N5MetadataWriter<M> writer = null;
-		if (!metadataStyle.equals(NONE)) {
-			writer = (N5MetadataWriter<M>)styles.get(metadataStyle);
-			if (writer != null) {
-				impMeta = impMetaWriterTypes.get(writer.getClass());
-			}
-		}
-
-		// get the image to save
-		final RandomAccessibleInterval<T> baseImg = getBaseImage();
-
-		long[] downsamplingFactors = initDownsampleFactors();
-
-		// get the metadata
-		N5DatasetMetadata baseMetadata = null;
-		N5Metadata currentMetadata;
-		try {
-			baseMetadata = impMeta.readMetadata(image);
-		} catch (final IOException e) { }
-
-		currentMetadata = baseMetadata;
-
-		// loop over scale levels
-		final RandomAccessibleInterval<T> currentImg = baseImg;
-		for( int s = 0; s < numScales; s++ )
-		{
-
-
-			if( s > 0 )
-			{
-
-			}
-
-			downsamplingFactors = updateDownsampleFactors( currentMetadata, downsamplingFactors );
-		}
-
-	}
-
-	protected <M extends N5Metadata> String getDatasetName( final M metadata, final int channelIndex, final int scale ) {
-
-		// TODO consider something like the below
-//		if ( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
-//			 metadataStyle.equals(N5Importer.MetadataN5CosemKey )) {
+//	@SuppressWarnings("unchecked")
+//	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void processMultiscale() throws IOException, InterruptedException, ExecutionException {
 //
-//			return String.format("c%d/s%d", channelIndex, scale );
+//		System.out.println("process multiscale");
+//
+//		if (metadataStyle.equals(N5Importer.MetadataImageJKey) && numScales > 1) {
+//			if (ui != null)
+//				ui.showDialog("Can not write ImageJ metadata with multiple (" + numScales + ") scale levels.");
+//			else
+//				System.err.println("Can not write ImageJ metadata with multiple (" + numScales + ") scale levels.");
+//
+//			return;
 //		}
+//
+//		final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
+//		final Compression compression = getCompression();
+//
+//		// initialize block size
+//		parseBlockSize();
+//		currentBlockSize = new int[ blockSize.length ];
+//		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
+//
+//		N5MetadataWriter<M> metadataWriter = null;
+//		if (!metadataStyle.equals(NONE)) {
+//			metadataWriter = (N5MetadataWriter<M>)styles.get(metadataStyle);
+//			if (metadataWriter != null) {
+//				impMeta = impMetaWriterTypes.get(metadataWriter.getClass());
+//			}
+//		}
+//
+//		// get the image to save
+//		final RandomAccessibleInterval<T> baseImg = getBaseImage();
+//
+//		long[] downsamplingFactors = initDownsampleFactors();
+//
+//		// get the metadata
+//		final M baseMetadata = (M)impMeta.readMetadata(image);
+//		M currentMetadata;
+//
+//		currentMetadata = baseMetadata;
+//
+//		// loop over scale levels
+//		final RandomAccessibleInterval<T> currentImg = baseImg;
+//		for( int s = 0; s < numScales; s++ ) {
+//
+//			currentBlockSize = new int[ blockSize.length ];
+//			System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
+//
+//			// channel splitting may update block size
+//			final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(currentMetadata, currentImg);
+//
+//			// for each channel (if present)
+//			for( int c = 0; c < channelImgs.size(); c++ )
+//			{
+//
+//				RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
+//				// downsample
+//				if( s > 0 ) {
+//					currentChannelImg = downsampleMethod( currentChannelImg, downsamplingFactors );
+//				}
+//
+//				// write to the appropriate dataset
+//				final String dset = getDatasetName( currentMetadata, c, s );
+//				write( currentChannelImg, n5, dset, compression, currentMetadata, metadataWriter );
+//			}
+//
+//			if( ( currentMetadata instanceof SpatialMetadata ))
+//				downsamplingFactors = updateDownsampleFactors( (SpatialMetadata)currentMetadata, downsamplingFactors );
+//			else
+//				System.err.println("warn");
+//		}
+//
+//		System.out.println("finished process multiscale");
+//	}
 
-		if( channelIndex >= 0 )
-			return String.format("c%d/s%d", channelIndex, scale );
-		else
-			return String.format("s%d", scale );
-	}
+//	/**
+//	 * Calculates the number of scales such that the largest axis in physical dimension
+//	 * is small than or equal to the size of a block.
+//	 *
+//	 * @return the number of scales
+//	 */
+//	protected int generateNumberOfScales()
+//	{
+//		// TODO implement me
+//		return -1;
+//	}
 
-	protected long[] initDownsampleFactors() {
-
-		// TODO implement me
-		return null;
-	}
-
-	protected <M extends N5Metadata> long[] updateDownsampleFactors(final M metadata, final long[] downsampleFactors)	{
-
-		// TODO implement me
-		// TODO maybe these should work in place?
-		return null;
-	}
-
-	// TODO put logic checking for virtual image special cases here
-	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> getBaseImage()
-	{
-		// get the image
-		final Img<T> baseImg;
-		if( image.getType() == ImagePlus.COLOR_RGB )
-			baseImg = (( Img< T > ) N5IJUtils.wrapRgbAsInt( image ));
-		else
-			baseImg = ImageJFunctions.wrap(image);
-
-		return baseImg;
-	}
-
-	/**
-	 * If relevant, according to the passed {@link N5DatasetMetadata} metadata instance,
-	 * return a list containing
-	 */
-	protected <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> List<RandomAccessibleInterval<T>> splitChannels( M metadata )
-	{
-		// TODO implement me
-		if (metadataStyle.equals(NONE) ||
-				metadataStyle.equals(N5Importer.MetadataImageJKey) ||
-				metadataStyle.equals(N5Importer.MetadataCustomKey)) {
-
-		}
-		else {
-
-		}
-		return null;
-	}
+//	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> downsampleMethod( RandomAccessibleInterval<T> img, long[] factors )
+//	{
+//		// TODO handle this case
+////		if( downsampleMethod.equals(DOWN_AVG))
+//
+//		return downsample(img, factors);
+//
+//	}
+//
+//	protected <M extends N5Metadata> String getDatasetName(final M metadata, final int channelIndex, final int scale) {
+//
+//		// TODO consider something like the below
+//		if (image.getNChannels() > 1 &&
+//				(metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
+//				 metadataStyle.equals(N5Importer.MetadataN5CosemKey))) {
+//
+//			return n5Dataset + String.format("/c%d/s%d", channelIndex, scale);
+//		} else if (numScales > 1)
+//			return n5Dataset + String.format("/s%d", scale);
+//		else
+//			return n5Dataset;
+//	}
+//
+//	protected long[] initDownsampleFactors() {
+//
+//		// TODO implement me
+//		return new long[] { 1, 1, 1, 1 };
+//	}
+//
+//	protected <M extends SpatialMetadata> long[] updateDownsampleFactors(final M metadata, final long[] downsampleFactors)	{
+//
+//		// TODO implement me
+//		// TODO maybe these should modify the input factors instead?
+//		return new long[]{2 * downsampleFactors[0], 2 * downsampleFactors[0], 2 * downsampleFactors[0], 1};
+//	}
+//
+//	// TODO put logic checking for virtual image special cases here
+//	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> getBaseImage()
+//	{
+//		// get the image
+//		final Img<T> baseImg;
+//		if( image.getType() == ImagePlus.COLOR_RGB )
+//			baseImg = (( Img< T > ) N5IJUtils.wrapRgbAsInt( image ));
+//		else
+//			baseImg = ImageJFunctions.wrap(image);
+//
+//		return baseImg;
+//	}
+//
+//	/**
+//	 * If relevant, according to the passed {@link N5DatasetMetadata} metadata instance,
+//	 * return a list containing
+//	 */
+//	protected <T extends RealType<T> & NativeType<T>, M extends N5Metadata> List<RandomAccessibleInterval<T>> splitChannels( M metadata, RandomAccessibleInterval<T> img )
+//	{
+//		// some metadata styles never split channels, return input image in that case
+//		if (metadataStyle.equals(NONE) ||
+//			metadataStyle.equals(N5Importer.MetadataImageJKey) ||
+//			metadataStyle.equals(N5Importer.MetadataCustomKey)) {
+//
+//			return Collections.singletonList(img);
+//		}
+//
+//		// otherwise, split channels
+//		final ArrayList<RandomAccessibleInterval<T>> channels = new ArrayList<>();
+//		for (int c = 0; c < image.getNChannels(); c++) {
+//			RandomAccessibleInterval<T> channelImg;
+//			// If there is only one channel, img may be 3d, but we don't want to slice
+//			// so if we have a 3d image check that the image is multichannel
+//			if( image.getNChannels() > 1 )
+//			{
+//				channelImg = Views.hyperSlice(img, 2, c);
+//
+//				// if we slice the image, appropriately slice the block size also
+//				currentBlockSize = sliceBlockSize( 2 );
+//			} else {
+//				channelImg = img;
+//			}
+//
+////			if (metadataStyle.equals(N5Importer.MetadataN5ViewerKey)) {
+////				datasetString = String.format("%s/c%d/s0", n5Dataset, c);
+////			} else if (image.getNChannels() > 1) {
+////				datasetString = String.format("%s/c%d", n5Dataset, c);
+////			} else {
+////				datasetString = n5Dataset;
+////			}
+//
+//			// make the image 4d and update the block size, if needed
+//			if( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) && image.getNFrames() > 1 && image.getNSlices() == 1 ) {
+//
+//				// make a 4d image in order XYZT
+//				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
+//				// expand block size
+//				currentBlockSize = new int[] { currentBlockSize[0], currentBlockSize[1], 1, currentBlockSize[2] };
+//			}
+//
+//			channels.add(channelImg);
+//		}
+//		return channels;
+//	}
 
 
   @SuppressWarnings("unchecked")
   public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, InterruptedException, ExecutionException {
-	if ( metadataStyle.equals(N5Importer.MetadataImageJKey) && numScales > 1 )
-	{
-		ui.showDialog("Can not write ImageJ metadata with multiple (" + numScales + ") scale levels.");
-		return;
-	}
 
-	if ( metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
-	{
-	  impMeta = new NgffToImagePlus();
-	  writeOmeZarr(numScales);
-	  return;
-	}
+//	if ( metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
+//	{
+//	  impMeta = new NgffToImagePlus();
+//	  writeOmeZarr(numScales);
+//	  return;
+//	}
 
 	final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
 	final Compression compression = getCompression();
@@ -517,7 +602,11 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 				final DatasetAttributes attributes = new DatasetAttributes(dimensions, blockSize, n5type, compression);
 				n5.createDataset(n5Dataset, attributes);
-				writeMetadata(n5, n5Dataset, writer);
+
+				try {
+					writer.writeMetadata(metadata, n5, n5Dataset);
+				} catch (final Exception e) { }
+//				writeMetadata(n5, n5Dataset, writer);
 			}
 
 			final Img<T> ipImg;
@@ -652,7 +741,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private <T extends RealType & NativeType, M extends N5DatasetMetadata> void write(
+	private <T extends RealType & NativeType, M extends N5Metadata> void write(
 			final RandomAccessibleInterval<T> image,
 			final N5Writer n5,
 			final String dataset,
@@ -673,7 +762,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
-		N5Utils.save(image, n5, dataset, blockSize, compression, Executors.newFixedThreadPool(nThreads));
+		N5Utils.save(image, n5, dataset, currentBlockSize, compression, Executors.newFixedThreadPool(nThreads));
 
 		if( metadata != null )
 			try {
@@ -683,10 +772,10 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 //		writeMetadata(n5, dataset, writer);
 	}
 
-	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsampleSimple(
-			final RandomAccessibleInterval<T> img, final int downsampleFactor) {
-		return Views.subsample(img, downsampleFactor);
-	}
+//	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsampleSimple(
+//			final RandomAccessibleInterval<T> img, final int downsampleFactor) {
+//		return Views.subsample(img, downsampleFactor);
+//	}
 
 	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsample(
 			final RandomAccessibleInterval<T> img, final long[] downsampleFactors) {
@@ -781,21 +870,21 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		return out;
 	}
 
-	private <M extends N5Metadata> void writeMetadata(
-			final N5Writer n5,
-			final String datasetString,
-			final N5MetadataWriter<M> writer) {
-
-		if (writer != null) {
-			try {
-				@SuppressWarnings("unchecked")
-				final M meta = (M)impMeta.readMetadata(image);
-				writer.writeMetadata(meta, n5, datasetString);
-			} catch (final Exception e) {
-				e.printStackTrace();
-			}
-		}
-	}
+//	private <M extends N5Metadata> void writeMetadata(
+//			final N5Writer n5,
+//			final String datasetString,
+//			final N5MetadataWriter<M> writer) {
+//
+//		if (writer != null) {
+//			try {
+//				@SuppressWarnings("unchecked")
+//				final M meta = (M)impMeta.readMetadata(image);
+//				writer.writeMetadata(meta, n5, datasetString);
+//			} catch (final Exception e) {
+//				e.printStackTrace();
+//			}
+//		}
+//	}
 
 	@Override
 	public void run() {
@@ -807,6 +896,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		} else {
 			try {
 				process();
+//				processMultiscale();
+
 			} catch (final IOException e) {
 				e.printStackTrace();
 			} catch (final InterruptedException e) {

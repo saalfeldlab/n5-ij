@@ -26,9 +26,18 @@
 package org.janelia.saalfeldlab.n5.metadata.imagej;
 
 import ij.ImagePlus;
+import net.imglib2.img.Img;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.type.NativeType;
+import net.imglib2.util.Util;
 
 import java.io.IOException;
+import java.util.Arrays;
 
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.RawCompression;
+import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 
 /**
@@ -55,7 +64,7 @@ public interface ImageplusMetadata<T extends N5DatasetMetadata> {
 
 	/**
 	 * Create and return a new metadata object from the given {@link ImagePlus}.
-	 * 
+	 *
 	 * @param ip
 	 *            the ImagePlus
 	 * @return
@@ -63,4 +72,18 @@ public interface ImageplusMetadata<T extends N5DatasetMetadata> {
 	 *             the io exception
 	 */
 	public T readMetadata(ImagePlus ip) throws IOException;
+
+	public static <T extends NativeType<T>> DatasetAttributes datasetAttributes( final ImagePlus imp )
+	{
+		@SuppressWarnings("unchecked")
+		final Img<T> img = (Img<T>)ImageJFunctions.wrap(imp);
+		final DataType dtype = N5Utils.dataType(Util.getTypeFromInterval(img));
+		final long[] dims = img.dimensionsAsLongArray();
+
+		return new DatasetAttributes(
+				dims,
+				Arrays.stream(dims).mapToInt(x -> (int)x).toArray(),
+				dtype,
+				new RawCompression());
+	}
 }
