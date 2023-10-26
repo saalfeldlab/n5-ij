@@ -50,6 +50,7 @@ import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
@@ -65,6 +66,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScale
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataSingleScaleParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
@@ -93,6 +95,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -177,7 +180,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   // the translation introduced by the downsampling method at the current scale level
   private double[] currentTranslation;
 
-  private final Map<String, N5MetadataWriter<?>> styles;
 
   private ImageplusMetadata<?> impMeta;
 
@@ -185,8 +187,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
   private final HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes;
 
+  private final Map<String, N5MetadataWriter<?>> styles;
+
+  private final HashMap<Class<?>, N5MetadataWriter<?>> metadataWriters;
+
   // consider something like this eventually
-//  private BiFunction<RandomAccessibleInterval<? extends NumericType<?>>,long[],RandomAccessibleInterval<?>> downsampler;
+  //  private BiFunction<RandomAccessibleInterval<? extends NumericType<?>>,long[],RandomAccessibleInterval<?>> downsampler;
 
   public N5ScalePyramidExporter() {
 
@@ -194,6 +200,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	styles.put(N5Importer.MetadataOmeZarrKey, new OmeNgffMetadataParser());
 	styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadataParser());
 	styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadataParser());
+
+	metadataWriters = new HashMap<Class<?>, N5MetadataWriter<?>>();
+	metadataWriters.put(OmeNgffMetadata.class, new OmeNgffMetadataParser());
+	metadataWriters.put(N5SingleScaleMetadata.class, new N5SingleScaleMetadataParser());
+	metadataWriters.put(N5CosemMetadata.class, new N5CosemMetadataParser());
+	metadataWriters.put(NgffSingleScaleAxesMetadata.class, new OmeNgffMetadataSingleScaleParser());
 
 	// default image plus metadata writers
 	impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
@@ -353,7 +365,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// write to the appropriate dataset
 				final String dset = getDatasetName( currentMetadata, c, s );
-				write( currentChannelImg, n5, dset, compression, currentMetadata, metadataWriter );
+				write( currentChannelImg, n5, dset, compression, currentMetadata );
 				allMetadata.add(currentMetadata);
 
 				// every channel shuld really be the same size, but
@@ -389,18 +401,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return baseMetadata;
 	}
 
-//	/**
-//	 * Calculates the number of scales such that the largest axis in physical dimension
-//	 * is small than or equal to the size of a block.
-//	 *
-//	 * @return the number of scales
-//	 */
-//	protected int generateNumberOfScales()
-//	{
-//		// TODO implement me
-//		return -1;
-//	}
-
 	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> downsampleMethod(RandomAccessibleInterval<T> img, long[] factors) {
 
 		// TODO handle this case
@@ -411,9 +411,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	protected <M extends N5Metadata> String getDatasetName(final M metadata, final int channelIndex, final int scale) {
 
-		if (image.getNChannels() > 1 &&
-				(metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
-				 metadataStyle.equals(N5Importer.MetadataN5CosemKey))) {
+		if ( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
+				( image.getNChannels() > 1 && metadataStyle.equals(N5Importer.MetadataN5CosemKey))) {
 
 			return n5Dataset + String.format("/c%d/s%d", channelIndex, scale);
 		} else
@@ -557,7 +556,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// + "may lead to unexpected behavior.");
 
 		final Img<T> img = ImageJFunctions.wrap(image);
-		write(img, n5, n5Dataset + "/s0", compression, null, null);
+		write(img, n5, n5Dataset + "/s0", compression, null );
 
 		final DatasetAttributes[] dsetAttrs = new DatasetAttributes[numScales];
 		final OmeNgffDataset[] msDatasets = new OmeNgffDataset[numScales];
@@ -589,7 +588,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			relativePath = String.format("s%d", i);
 			dset = String.format("%s/%s", n5Dataset, relativePath);
 
-			write(imgDown, n5, dset, compression, null, null);
+			write(imgDown, n5, dset, compression, null );
 
 			dsetAttrs[i] = n5.getDatasetAttributes(dset);
 			final NgffSingleScaleAxesMetadata siMeta = new NgffSingleScaleAxesMetadata( dset,
@@ -625,7 +624,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final RandomAccessibleInterval<T> image,
 			final N5Writer n5,
 			final String dataset,
-			final Compression compression, final M metadata, final N5MetadataWriter<M> writer)
+			final Compression compression, final M metadata )
 			throws IOException, InterruptedException, ExecutionException {
 
 		if ( n5.datasetExists(dataset)) {
@@ -645,11 +644,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		N5Utils.save(image, n5, dataset, currentBlockSize, compression, Executors.newFixedThreadPool(nThreads));
 
 		if( metadata != null )
-			try {
-				writer.writeMetadata(metadata, n5, dataset);
-			} catch (final Exception e) {
-			e.printStackTrace();
-			}
+			Optional.ofNullable(metadataWriters.get(metadata.getClass())).ifPresent(writer -> {
+				try {
+					((N5MetadataWriter<M>)writer).writeMetadata(metadata, n5, dataset);
+				} catch (final Exception e) {
+					e.printStackTrace();
+				}
+			});
 
 //		writeMetadata(n5, dataset, writer);
 	}
