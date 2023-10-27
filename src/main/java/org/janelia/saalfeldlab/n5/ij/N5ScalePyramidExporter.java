@@ -575,92 +575,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return channels;
 	}
 
-	private  <T extends RealType<T> & NativeType<T> > void writeOmeZarr(
-			final int numScales ) throws IOException, InterruptedException, ExecutionException {
-
-		final N5Writer n5 = new N5Factory()
-				.gsonBuilder(OmeNgffMetadataParser.gsonBuilder())
-				.openWriter(n5RootLocation);
-
-		final Compression compression = getCompression();
-		parseBlockSize();
-
-		final N5MetadataWriter<NgffSingleScaleAxesMetadata> writer = new NgffSingleScaleMetadataParser();
-
-		final NgffToImagePlus metaIo = new NgffToImagePlus();
-		final NgffSingleScaleAxesMetadata baseMeta = metaIo.readMetadata(image);
-
-		// check and warn re: RGB image if relevant
-		// if (image.getType() == ImagePlus.COLOR_RGB && !(writer instanceof
-		// N5ImagePlusMetadata))
-		// log.warn("RGB images are best saved using ImageJ metatadata. Other
-		// choices "
-		// + "may lead to unexpected behavior.");
-
-		final Img<T> img = ImageJFunctions.wrap(image);
-		write(img, n5, n5Dataset + "/s0", compression, null );
-
-		final DatasetAttributes[] dsetAttrs = new DatasetAttributes[numScales];
-		final OmeNgffDataset[] msDatasets = new OmeNgffDataset[numScales];
-
-		String relativePath = String.format("s%d", 0);
-		String dset = String.format("%s/%s", n5Dataset, relativePath);
-		dsetAttrs[0] = n5.getDatasetAttributes(dset);
-		final boolean cOrder = OmeNgffMultiScaleMetadata.cOrder(dsetAttrs[0]);
-
-		final double[] scale = OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], baseMeta.getScale());
-		final double[] translation = OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], baseMeta.getTranslation());
-		final Axis[] axes = OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], baseMeta.getAxes() );
-		final NgffSingleScaleAxesMetadata s0Meta = new NgffSingleScaleAxesMetadata( dset, scale, translation, axes, dsetAttrs[0]);
-
-		msDatasets[0] = new OmeNgffDataset();
-		msDatasets[0].path = relativePath;
-		msDatasets[0].coordinateTransformations = s0Meta.getCoordinateTransformations();
-
-		try {
-			writer.writeMetadata(s0Meta, n5, dset );
-		} catch (final Exception e1) { }
-
-		final long[] downsamplingFactors = new long[img.numDimensions()];
-		Arrays.fill( downsamplingFactors, 1 );
-		for (int i = 1; i < numScales; i++) {
-
-			final long[] factors = MetadataUtils.updateDownsamplingFactors(2, downsamplingFactors, Intervals.dimensionsAsLongArray(img), baseMeta.getAxisTypes());
-			final RandomAccessibleInterval<T> imgDown = downsample(img, factors);
-			relativePath = String.format("s%d", i);
-			dset = String.format("%s/%s", n5Dataset, relativePath);
-
-			write(imgDown, n5, dset, compression, null );
-
-			dsetAttrs[i] = n5.getDatasetAttributes(dset);
-			final NgffSingleScaleAxesMetadata siMeta = new NgffSingleScaleAxesMetadata( dset,
-					OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], MetadataUtils.mul(baseMeta.getScale(), downsamplingFactors)),
-					OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], baseMeta.getTranslation()),
-					axes,
-					dsetAttrs[i]);
-
-			try {
-				writer.writeMetadata(siMeta, n5, dset );
-			} catch (final Exception e1) { }
-
-			msDatasets[i] = new OmeNgffDataset();
-			msDatasets[i].path = relativePath;
-			msDatasets[i].coordinateTransformations = siMeta.getCoordinateTransformations();
-		}
-
-		final OmeNgffMultiScaleMetadata ms = NgffToImagePlus.buildMetadata( s0Meta, image.getTitle(), n5Dataset, dsetAttrs, msDatasets);
-		final OmeNgffMultiScaleMetadata[] msList = new OmeNgffMultiScaleMetadata[]{ms};
-
-		final OmeNgffMetadata meta = new OmeNgffMetadata(n5Dataset, msList);
-		try {
-			new OmeNgffMetadataParser(cOrder).writeMetadata(meta, n5, n5Dataset);
-		} catch (final Exception e) {
-			e.printStackTrace();
-		}
-
-		n5.close();
-	}
-
 	protected <M extends N5Metadata> void writeMetadata(final M metadata, final N5Writer n5, final String dataset) {
 
 		if (metadata != null)
@@ -700,73 +614,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		writeMetadata( metadata, n5, dataset );
 	}
 
-//	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsampleSimple(
-//			final RandomAccessibleInterval<T> img, final int downsampleFactor) {
-//		return Views.subsample(img, downsampleFactor);
-//	}
-
 	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsample(
 			final RandomAccessibleInterval<T> img, final long[] downsampleFactors) {
 		return Views.subsample(img, downsampleFactors);
 	}
-
-//	@SuppressWarnings({"rawtypes", "unchecked"})
-//	private <T extends RealType & NativeType, M extends N5Metadata> void writeSplitChannels(
-//			final N5Writer n5,
-//			final Compression compression,
-//			final M metadata,
-//			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException
-//	{
-//		final Img<T> img;
-//		if( image.getType() == ImagePlus.COLOR_RGB )
-//			img = (( Img< T > ) N5IJUtils.wrapRgbAsInt( image ));
-//		else
-//			img = ImageJFunctions.wrap(image);
-//
-//		String datasetString = "";
-//		int[] blkSz = blockSize;
-//		for (int c = 0; c < image.getNChannels(); c++) {
-//			RandomAccessibleInterval<T> channelImg;
-//			// If there is only one channel, img may be 3d, but we don't want to slice
-//			// so if we have a 3d image check that the image is multichannel
-//			if( image.getNChannels() > 1 )
-//			{
-//				channelImg = Views.hyperSlice(img, 2, c);
-//
-//				// if we slice the image, appropriately slice the block size also
-//				blkSz = sliceBlockSize( 2 );
-//			} else {
-//				channelImg = img;
-//			}
-//
-//			if (metadataStyle.equals(N5Importer.MetadataN5ViewerKey)) {
-//				datasetString = String.format("%s/c%d/s0", n5Dataset, c);
-//			} else if (image.getNChannels() > 1) {
-//				datasetString = String.format("%s/c%d", n5Dataset, c);
-//			} else {
-//				datasetString = n5Dataset;
-//			}
-//
-//			if( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) && image.getNFrames() > 1 && image.getNSlices() == 1 )
-//			{
-//				// make a 4d image in order XYZT
-//				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
-//				// expand block size
-//				blkSz = new int[] { blkSz[0], blkSz[1], 1, blkSz[2] };
-//			}
-//
-//			// use threadPool even for single threaded execution for progress monitoring
-//			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
-//			progressMonitor( threadPool );
-//			N5Utils.save( channelImg, n5, datasetString, blkSz, compression, threadPool );
-//			threadPool.shutdown();
-//
-////			writeMetadata(n5, datasetString, writer);
-//			try {
-//				writer.writeMetadata(metadata, n5, datasetString);
-//			} catch (final Exception e) { }
-//		}
-//	}
 
 	private int[] sliceBlockSize( final int exclude )
 	{
