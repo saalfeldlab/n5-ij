@@ -28,10 +28,15 @@ package org.janelia.saalfeldlab.n5.ij;
 import ij.IJ;
 import ij.ImagePlus;
 import net.imagej.ImageJ;
+import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.realtransform.RealViews;
+import net.imglib2.realtransform.ScaleAndTranslation;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
@@ -184,6 +189,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   // the translation introduced by the downsampling method at the current scale level
   private double[] currentTranslation;
 
+  private RandomAccessibleInterval<?> previousScaleImg;
 
   private ImageplusMetadata<?> impMeta;
 
@@ -223,7 +229,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public static void main(String[] args) {
 
 
-		final ImageJ ij = new ImageJ();
+
+//		final ImageJ ij = new ImageJ();
 //		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
 
 		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mri-stack_mm.tif" );
@@ -234,16 +241,26 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 //		final String metaType = N5Importer.MetadataN5ViewerKey;
 //		final String metaType = N5Importer.MetadataN5CosemKey;
-//		final String metaType = N5Importer.MetadataImageJKey;
 		final String metaType = N5Importer.MetadataOmeZarrKey;
 
+//		final String dsMethod = DOWN_SAMPLE;
+		final String dsMethod = DOWN_AVG;
+
 //		final String dset = String.format("%s_%d", metaType, nScales);
-		final String dset = metaType;
+		final String dset = String.format("%s_%s", metaType, dsMethod);
+//		final String dset = metaType;
 
 		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
-		exp.setOptions(imp, root, dset, "64,64,16", metaType, "gzip" );
+		exp.setOptions(imp, root, dset, "64,64,1,2,16", dsMethod, metaType, "gzip" ); //mitosis
+//		exp.setOptions(imp, root, dset, "64,64,16", dsMethod, metaType, "gzip" ); // mri
 		exp.run();
 
+//		final N5CosemMetadata cosem = new N5CosemMetadata("", new N5CosemMetadata.CosemTransform(
+//				new String[] {"x"}, new double[]{1}, new double[]{0}, new String[]{"mm"}),
+//				null);
+//		System.out.println( exp.metadataWriters.get(cosem.getClass()).getClass() );
+
+		System.exit(0);
 	}
 
   public void setOptions(
@@ -251,6 +268,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		  final String n5RootLocation,
 		  final String n5Dataset,
 		  final String blockSizeArg,
+		  final String downsampleMethod,
 		  final String metadataStyle,
 		  final String compression) {
 
@@ -260,6 +278,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	this.n5Dataset = n5Dataset;
 
 	this.blockSizeArg = blockSizeArg;
+	this.downsampleMethod = downsampleMethod;
 	this.metadataStyle = metadataStyle;
 	this.compressionArg = compression;
   }
@@ -330,7 +349,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// initial block size, downsampliong factors, translation (offset)
 		currentBlockSize = new int[ blockSize.length ];
 		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
-		long[] downsamplingFactors = initDownsampleFactors(baseImg.numDimensions());
+		final long[] downsamplingFactors = initDownsampleFactors(baseImg.numDimensions());
 		currentTranslation = new double[ downsamplingFactors.length];
 
 		// get the metadata
@@ -356,7 +375,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				System.out.println("writing scale: " + s);
 
 				final String dset = getScaleDatasetName(c, s);
-				downsamplingFactors = getDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
+//				newDownsamplingFactors = getDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
+				final long[] relativeFactors = getRelativeDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
+
+				// update absolute downsampling factors
+				for( int i = 0; i < downsamplingFactors.length; i++ )
+					downsamplingFactors[i] *= relativeFactors[i];
 
 				System.out.println("factors: " + Arrays.toString(downsamplingFactors));
 
@@ -364,16 +388,16 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				currentMetadata = metadataForThisScale( dset, channelMetadata, downsamplingFactors);
 
 				// downsample when relevant
-				if( s > 0 )
-					currentChannelImg = downsampleMethod( currentChannelImg, downsamplingFactors );
+				if( s > 0 ) {
+					currentChannelImg = downsampleMethod((RandomAccessibleInterval<T>)getPreviousScaleImage(c, s), relativeFactors);
+				}
 
 				// write to the appropriate dataset
 				write( currentChannelImg, n5, dset, compression, currentMetadata );
+				storeScaleReference( c, s, currentChannelImg );
 
 				updateMultiscaleMetadata( multiscaleMetadata, currentMetadata );
 
-				// every channel shuld really be the same size, but
-				// break this loop if any channel is small enough
 				if (lastScale(currentBlockSize, currentChannelImg))
 					break;
 			}
@@ -384,7 +408,18 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		System.out.println("finished process multiscale");
 	}
 
-	public <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata( M baseMetadata ) {
+	protected void storeScaleReference(final int channel, final int scale, final RandomAccessibleInterval<?> img) {
+
+		previousScaleImg = img;
+	}
+
+	@SuppressWarnings("unchecked")
+	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> getPreviousScaleImage(final int channel, final int scale) {
+
+		return (RandomAccessibleInterval<T>)previousScaleImg;
+	}
+
+	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata( M baseMetadata ) {
 
 		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
 			return null;
@@ -392,7 +427,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return ((N)new OmeNgffMultiScaleMetadataMutable());
 	}
 
-	public <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> void updateMultiscaleMetadata( N multiscaleMetadata, M scaleMetadata ) {
+	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> void updateMultiscaleMetadata( N multiscaleMetadata, M scaleMetadata ) {
 
 		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
 			return;
@@ -405,7 +440,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 	}
 
-	public < N extends SpatialMetadataGroup<?>> N finalizeMultiscaleMetadata( final String path, N multiscaleMetadata ) {
+	protected < N extends SpatialMetadataGroup<?>> N finalizeMultiscaleMetadata( final String path, N multiscaleMetadata ) {
 
 		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
 			return multiscaleMetadata;
@@ -447,12 +482,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return baseMetadata;
 	}
 
-	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> downsampleMethod(RandomAccessibleInterval<T> img, long[] factors) {
+	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> downsampleMethod(final RandomAccessibleInterval<T> img,
+			final long[] factors) {
 
-		// TODO handle this case
-		// if( downsampleMethod.equals(DOWN_AVG))
-
-		return downsample(img, factors);
+		if (downsampleMethod.equals(DOWN_AVG))
+			return downsampleAvgBy2(img, factors);
+		else
+			return downsample(img, factors);
 	}
 
 	protected <M extends N5Metadata> String getChannelDatasetName(final int channelIndex ) {
@@ -492,13 +528,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	protected <M extends N5Metadata> long[] getDownsampleFactors(final M metadata, final int nd, final int scale,
 			final long[] downsampleFactors) {
 
-		Axis[] axes;
-		if( metadata instanceof AxisMetadata )
-			axes = ((AxisMetadata)metadata).getAxes();
-		else if( metadata instanceof N5SingleScaleMetadata )
-			axes = AxisUtils.defaultN5ViewerAxes( (N5SingleScaleMetadata)metadata ).getAxes();
-		else
-			axes = AxisUtils.defaultAxes(nd);
+		final Axis[] axes = getAxes(metadata, nd);
 
 		// under what condisions is nd != axes.length
 		final long[] factors = new long[axes.length];
@@ -512,6 +542,35 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 
 		return factors;
+	}
+
+	protected <M extends N5Metadata> long[] getRelativeDownsampleFactors(final M metadata, final int nd, final int scale,
+			final long[] downsampleFactors) {
+
+		final Axis[] axes = getAxes(metadata, nd);
+
+		// under what condisions is nd != axes.length
+		final long[] factors = new long[axes.length];
+		for( int i = 0; i < nd; i++ ) {
+
+			// only downsample spatial dimensions
+			if( axes[i].getType().equals(Axis.SPACE))
+				factors[i] = 2;
+			else
+				factors[i] = 1;
+		}
+
+		return factors;
+	}
+
+	protected <M extends N5Metadata> Axis[] getAxes(final M metadata, final int nd)
+	{
+		if( metadata instanceof AxisMetadata )
+			return ((AxisMetadata)metadata).getAxes();
+		else if( metadata instanceof N5SingleScaleMetadata )
+			return AxisUtils.defaultN5ViewerAxes( (N5SingleScaleMetadata)metadata ).getAxes();
+		else
+			return AxisUtils.defaultAxes(nd);
 	}
 
 	// also extending NativeType causes build failures using maven, unclear why
@@ -617,6 +676,48 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsample(
 			final RandomAccessibleInterval<T> img, final long[] downsampleFactors) {
 		return Views.subsample(img, downsampleFactors);
+	}
+
+	/**
+	 * Downsamples an image by factors of 2 using averaging.
+	 * <p>
+	 * Not the most efficient when some dimensions are not downsampled.
+	 *
+	 * @param <T> the image data type
+	 * @param img the image
+	 * @param downsampleFactors the factors
+	 * @return a downsampled image
+	 */
+	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsampleAvgBy2(
+			final RandomAccessibleInterval<T> img, final long[] downsampleFactors) {
+
+		// ensure downsampleFactors contains only 1's and 2's
+		assert Arrays.stream(downsampleFactors).filter(x -> (x == 1) || (x == 2)).count() == downsampleFactors.length;
+
+		final int nd = downsampleFactors.length;
+		final double[] scale = new double[ nd ];
+		final double[] translation = new double[ nd ];
+
+		final long[] dims = new long[ nd ];
+
+		for (int i = 0; i < nd; i++) {
+
+			if (downsampleFactors[i] == 2) {
+				scale[i] = 0.5;
+				translation[i] = -0.25;
+				dims[i] = (long)Math.ceil( img.dimension(i) / 2 );
+			} else {
+				scale[i] = 1.0;
+				translation[i] = 0.0;
+				dims[i] = img.dimension(i);
+			}
+		}
+
+		// TODO clamping NLinearInterpFactory when relevant
+		// TODO record offset in metadata as (s-0.5)
+		final RealRandomAccessible<T> imgE = Views.interpolate(Views.extendBorder(img), new NLinearInterpolatorFactory());
+		return Views.interval(RealViews.transform(imgE, new ScaleAndTranslation(scale, translation)),
+				new FinalInterval(dims));
 	}
 
 	private int[] sliceBlockSize( final int exclude )
