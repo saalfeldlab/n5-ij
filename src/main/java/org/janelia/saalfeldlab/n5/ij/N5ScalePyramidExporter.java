@@ -55,10 +55,13 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadataGroup;
 import org.janelia.saalfeldlab.n5.universe.metadata.SpatialModifiable;
+import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMultiscaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
@@ -68,6 +71,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataSingleScaleParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
@@ -296,7 +300,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void processMultiscale() throws IOException, InterruptedException, ExecutionException {
+	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>>
+		void processMultiscale() throws IOException, InterruptedException, ExecutionException {
 
 		System.out.println("process multiscale");
 
@@ -322,62 +327,102 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// get the image to save
 		final RandomAccessibleInterval<T> baseImg = getBaseImage();
 
+		// initial block size, downsampliong factors, translation (offset)
+		currentBlockSize = new int[ blockSize.length ];
+		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
 		long[] downsamplingFactors = initDownsampleFactors(baseImg.numDimensions());
 		currentTranslation = new double[ downsamplingFactors.length];
 
 		// get the metadata
 		final M baseMetadata = (M)impMeta.readMetadata(image);
+		final M channelMetadata = baseMetadata;
 		M currentMetadata;
 
-		final ArrayList<M> allMetadata = new ArrayList<>();
+		// channel splitting may modify currentBlockSize
+		final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(channelMetadata, baseImg);
+		for (int c = 0; c < channelImgs.size(); c++) {
 
-		// loop over scale levels
-		final RandomAccessibleInterval<T> currentImg = baseImg;
+			final String channelDataset = getChannelDatasetName(c);
+			RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
 
-		final int maxNumScales = 31;  // we will stop early though
-		for( int s = 0; s < maxNumScales; s++ ) {
+			System.out.println("channel image sz: " + Intervals.toString(currentChannelImg));
 
-			System.out.println("writing scale: " + s);
+			final N multiscaleMetadata = initializeMultiscaleMetadata(channelMetadata);
 
-			currentBlockSize = new int[ blockSize.length ];
-			System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
+			// write scale levels
+			final int maxNumScales = 31;  // we will stop early though
+			for( int s = 0; s < maxNumScales; s++ ) {
 
-			// channel splitting may modify currentBlockSize
-			final M channelMetadata = baseMetadata;
-			final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(channelMetadata, currentImg);
+				System.out.println("writing scale: " + s);
 
-			boolean lastScale = false;
-			// for each channel (if present)
-			for (int c = 0; c < channelImgs.size(); c++) {
-
-				RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
+				final String dset = getScaleDatasetName(c, s);
 				downsamplingFactors = getDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
 
-				// update metadata to reflect this scale level
-				currentMetadata = metadataForThisScale(channelMetadata, downsamplingFactors);
+				System.out.println("factors: " + Arrays.toString(downsamplingFactors));
+
+				// update metadata to reflect this scale level, returns new metadata instance
+				currentMetadata = metadataForThisScale( dset, channelMetadata, downsamplingFactors);
 
 				// downsample when relevant
 				if( s > 0 )
 					currentChannelImg = downsampleMethod( currentChannelImg, downsamplingFactors );
 
-				System.out.println("current block size : " + Arrays.toString(currentBlockSize));
-				System.out.println("current channel img: " + Intervals.toString(currentChannelImg));
-
 				// write to the appropriate dataset
-				final String dset = getDatasetName( currentMetadata, c, s );
 				write( currentChannelImg, n5, dset, compression, currentMetadata );
-				allMetadata.add(currentMetadata);
+
+				updateMultiscaleMetadata( multiscaleMetadata, currentMetadata );
 
 				// every channel shuld really be the same size, but
 				// break this loop if any channel is small enough
-				lastScale = lastScale || lastScale( currentBlockSize, currentChannelImg );
+				if (lastScale(currentBlockSize, currentChannelImg))
+					break;
 			}
 
-			if( lastScale )
-				break;
+			writeMetadata( finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata), n5, channelDataset );
 		}
 
 		System.out.println("finished process multiscale");
+	}
+
+	public <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata( M baseMetadata ) {
+
+		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
+			return null;
+
+		return ((N)new OmeNgffMultiScaleMetadataMutable());
+	}
+
+	public <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> void updateMultiscaleMetadata( N multiscaleMetadata, M scaleMetadata ) {
+
+		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
+			return;
+
+		if( multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable &&
+			scaleMetadata instanceof NgffSingleScaleAxesMetadata) {
+
+			final OmeNgffMultiScaleMetadataMutable ngffMs = (OmeNgffMultiScaleMetadataMutable)multiscaleMetadata;
+			ngffMs.addChild( (NgffSingleScaleAxesMetadata)scaleMetadata );
+		}
+	}
+
+	public < N extends SpatialMetadataGroup<?>> N finalizeMultiscaleMetadata( final String path, N multiscaleMetadata ) {
+
+		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
+			return multiscaleMetadata;
+
+		if( multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable)
+		{
+			final OmeNgffMultiScaleMetadataMutable ms = (OmeNgffMultiScaleMetadataMutable)multiscaleMetadata;
+
+			final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata( ms.getAxes().length,
+					path, path, downsampleMethod, "0.4",
+					ms.getAxes(), ms.getDatasets(), null,
+					ms.coordinateTransformations, ms.metadata);
+
+			return ((N)new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[] { meta }));
+		}
+
+		return multiscaleMetadata;
 	}
 
 	protected boolean lastScale(final int[] blockSize, final Interval imageDimensions) {
@@ -390,10 +435,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <M extends N5DatasetMetadata> M metadataForThisScale(final M baseMetadata, final long[] downsamplingFactors) {
+	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath, final M baseMetadata, final long[] downsamplingFactors) {
 
 		if (baseMetadata instanceof SpatialModifiable) {
 			return (M)(((SpatialModifiable)baseMetadata).modifySpatialTransform(
+					newPath,
 					Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(), currentTranslation));
 		}
 
@@ -409,14 +455,25 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return downsample(img, factors);
 	}
 
-	protected <M extends N5Metadata> String getDatasetName(final M metadata, final int channelIndex, final int scale) {
+	protected <M extends N5Metadata> String getChannelDatasetName(final int channelIndex ) {
 
 		if ( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
 				( image.getNChannels() > 1 && metadataStyle.equals(N5Importer.MetadataN5CosemKey))) {
 
-			return n5Dataset + String.format("/c%d/s%d", channelIndex, scale);
+			return n5Dataset + String.format("/c%d", channelIndex );
 		} else
-			return n5Dataset + String.format("/s%d", scale);
+			return n5Dataset;
+	}
+
+	protected <M extends N5Metadata> String getScaleDatasetName(final int channelIndex, final int scale) {
+
+		return getChannelDatasetName(channelIndex ) +  String.format("/s%d", scale);
+//		if ( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
+//				( image.getNChannels() > 1 && metadataStyle.equals(N5Importer.MetadataN5CosemKey))) {
+//
+//			return n5Dataset + String.format("/c%d/s%d", channelIndex, scale);
+//		} else
+//			return n5Dataset + String.format("/s%d", scale);
 	}
 
 	/**
@@ -457,7 +514,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return factors;
 	}
 
-	protected <M extends SpatialMetadata> long[] updateDownsampleFactors(final M metadata,
+	protected <M extends SpatialMetadata> long[] updateDownsampleFactors(final M metadata, final int nd,
 			final long[] downsampleFactors) {
 
 		if (metadataStyle.equals(NONE) ||
@@ -619,6 +676,18 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		n5.close();
 	}
 
+	protected <M extends N5Metadata> void writeMetadata(final M metadata, final N5Writer n5, final String dataset) {
+
+		if (metadata != null)
+			Optional.ofNullable(metadataWriters.get(metadata.getClass())).ifPresent(writer -> {
+				try {
+					((N5MetadataWriter<M>)writer).writeMetadata(metadata, n5, dataset);
+				} catch (final Exception e) {
+					e.printStackTrace();
+				}
+			});
+	}
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private <T extends RealType & NativeType, M extends N5Metadata> void write(
 			final RandomAccessibleInterval<T> image,
@@ -643,16 +712,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		progressMonitor(threadPool);
 		N5Utils.save(image, n5, dataset, currentBlockSize, compression, Executors.newFixedThreadPool(nThreads));
 
-		if( metadata != null )
-			Optional.ofNullable(metadataWriters.get(metadata.getClass())).ifPresent(writer -> {
-				try {
-					((N5MetadataWriter<M>)writer).writeMetadata(metadata, n5, dataset);
-				} catch (final Exception e) {
-					e.printStackTrace();
-				}
-			});
-
-//		writeMetadata(n5, dataset, writer);
+		writeMetadata( metadata, n5, dataset );
 	}
 
 //	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsampleSimple(
