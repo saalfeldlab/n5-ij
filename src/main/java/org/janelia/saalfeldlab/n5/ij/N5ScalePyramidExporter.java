@@ -514,23 +514,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return factors;
 	}
 
-	protected <M extends SpatialMetadata> long[] updateDownsampleFactors(final M metadata, final int nd,
-			final long[] downsampleFactors) {
-
-		if (metadataStyle.equals(NONE) ||
-				metadataStyle.equals(N5Importer.MetadataCustomKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ) {
-
-		}
-
-		// TODO implement me
-		// TODO maybe these should modify the input factors instead?
-		return new long[]{2 * downsampleFactors[0], 2 * downsampleFactors[1], 2 * downsampleFactors[2], 1};
-	}
-
 	// also extending NativeType causes build failures using maven, unclear why
 //	protected <T extends NumericType<T> & NativeType<T>> RandomAccessibleInterval<T> getBaseImage() {
-
 	@SuppressWarnings("unchecked")
 	protected <T extends NumericType<T>> RandomAccessibleInterval<T> getBaseImage() {
 		// TODO put logic checking for virtual image special cases here
