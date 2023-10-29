@@ -322,15 +322,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>>
 		void processMultiscale() throws IOException, InterruptedException, ExecutionException {
 
-		System.out.println("process multiscale");
-
 		final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
 		final Compression compression = getCompression();
 
 		// TODO should have better behavior for block size parsing when splitting channels
 		// initialize block size
 		parseBlockSize();
-		System.out.println("init block size: " + Arrays.toString(blockSize));
 
 		currentBlockSize = new int[ blockSize.length ];
 		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
@@ -364,33 +361,36 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String channelDataset = getChannelDatasetName(c);
 			RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
 
-			System.out.println("channel image sz: " + Intervals.toString(currentChannelImg));
-
 			final N multiscaleMetadata = initializeMultiscaleMetadata(channelMetadata);
 
 			// write scale levels
 			final int maxNumScales = 31;  // we will stop early though
 			for( int s = 0; s < maxNumScales; s++ ) {
 
-				System.out.println("writing scale: " + s);
-
 				final String dset = getScaleDatasetName(c, s);
 //				newDownsamplingFactors = getDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
-				final long[] relativeFactors = getRelativeDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
-
-				// update absolute downsampling factors
-				for( int i = 0; i < downsamplingFactors.length; i++ )
-					downsamplingFactors[i] *= relativeFactors[i];
-
-				System.out.println("factors: " + Arrays.toString(downsamplingFactors));
-
-				// update metadata to reflect this scale level, returns new metadata instance
-				currentMetadata = metadataForThisScale( dset, channelMetadata, downsamplingFactors);
 
 				// downsample when relevant
 				if( s > 0 ) {
+					final long[] relativeFactors = getRelativeDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
+
+					// update absolute downsampling factors
+					for( int i = 0; i < downsamplingFactors.length; i++ )
+						downsamplingFactors[i] *= relativeFactors[i];
+
 					currentChannelImg = downsampleMethod((RandomAccessibleInterval<T>)getPreviousScaleImage(c, s), relativeFactors);
+
+					if (downsampleMethod.equals(DOWN_AVG))
+						Arrays.setAll(currentTranslation, i -> {
+							if( downsamplingFactors[i] > 1 )
+								return 0.5 * downsamplingFactors[i] - 0.5;
+							else
+								return 0.0;
+						});
 				}
+
+				// update metadata to reflect this scale level, returns new metadata instance
+				currentMetadata = metadataForThisScale( dset, channelMetadata, downsamplingFactors, currentTranslation );
 
 				// write to the appropriate dataset
 				write( currentChannelImg, n5, dset, compression, currentMetadata );
@@ -405,7 +405,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			writeMetadata( finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata), n5, channelDataset );
 		}
 
-		System.out.println("finished process multiscale");
+		System.out.println("finished multiscale export");
 	}
 
 	protected void storeScaleReference(final int channel, final int scale, final RandomAccessibleInterval<?> img) {
@@ -470,12 +470,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath, final M baseMetadata, final long[] downsamplingFactors) {
+	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath, final M baseMetadata, final long[] downsamplingFactors,
+			final double[] translation ) {
 
 		if (baseMetadata instanceof SpatialModifiable) {
 			return (M)(((SpatialModifiable)baseMetadata).modifySpatialTransform(
 					newPath,
-					Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(), currentTranslation));
+					Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(), translation ));
 		}
 
 		System.err.println("WARNING: metadata not spatial modifiable");
