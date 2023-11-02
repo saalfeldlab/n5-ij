@@ -782,6 +782,11 @@ public class N5Importer implements PlugIn {
 	}
 
 	public List<ImagePlus> process(final String n5FullPath, final boolean asVirtual, final Interval cropInterval) {
+		return process( n5FullPath, asVirtual, cropInterval, true );
+	}
+
+	public List<ImagePlus> process(final String n5FullPath, final boolean asVirtual, final Interval cropInterval,
+			final boolean parseAllMetadata) {
 
 		n5 = new N5ViewerReaderFun().apply(n5FullPath);
 		final String dataset = new N5BasePathFun().apply(n5FullPath);
@@ -790,13 +795,36 @@ public class N5Importer implements PlugIn {
 			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5,
 					N5DatasetDiscoverer.fromParsers(PARSERS),
 					Collections.singletonList(new OmeNgffMetadataParser()));
-			metadata = (N5DatasetMetadata)discoverer.parse(dataset).getMetadata();
+			if( parseAllMetadata )
+			{
+				final N5TreeNode root = discoverer.discoverAndParseRecursive("");
+				metadata = (N5DatasetMetadata)root.getDescendant(dataset).get().getMetadata();
+			}
+			else {
+				metadata = (N5DatasetMetadata)discoverer.parse(dataset).getMetadata();
+			}
 		} catch (final Exception e) {
 			System.err.println("Could not parse metadata.");
 			return null;
 		}
 
 		final List<ImagePlus> result = process(n5, dataset, exec, Collections.singletonList(metadata),
+				asVirtual, cropInterval, show, getImagePlusMetadataWriterMap());
+
+		n5.close();
+
+		return result;
+	}
+
+	public List<ImagePlus> process( final String n5FullPath, final List<N5DatasetMetadata> metadataList, final boolean asVirtual, final Interval cropInterval) {
+
+		n5 = new N5ViewerReaderFun().apply(n5FullPath);
+		final String dataset = new N5BasePathFun().apply(n5FullPath);
+
+		if( metadataList == null || metadataList.size() < 1 )
+			return null;
+
+		final List<ImagePlus> result = process(n5, dataset, exec, metadataList,
 				asVirtual, cropInterval, show, getImagePlusMetadataWriterMap());
 
 		n5.close();
