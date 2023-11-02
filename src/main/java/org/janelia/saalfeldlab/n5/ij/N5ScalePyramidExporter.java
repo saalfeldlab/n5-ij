@@ -186,8 +186,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
   private int[] currentBlockSize;
 
+  private long[] currentAbsoluteDownsampling;
+
   // the translation introduced by the downsampling method at the current scale level
   private double[] currentTranslation;
+
+  private N5DatasetMetadata currentChannelMetadata;
 
   private RandomAccessibleInterval<?> previousScaleImg;
 
@@ -229,19 +233,18 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public static void main(String[] args) {
 
 
-
 //		final ImageJ ij = new ImageJ();
 //		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
 
-		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mri-stack_mm.tif" );
-		final String root = "/home/john/tmp/mri-test.n5";
+//		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mri-stack_mm.tif" );
+//		final String root = "/home/john/tmp/mri-test.n5";
 
-//		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
-//		final String root = "/home/john/tmp/mitosis-test.n5";
+		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
+		final String root = "/home/john/tmp/mitosis-test.n5";
 
-//		final String metaType = N5Importer.MetadataN5ViewerKey;
+		final String metaType = N5Importer.MetadataN5ViewerKey;
 //		final String metaType = N5Importer.MetadataN5CosemKey;
-		final String metaType = N5Importer.MetadataOmeZarrKey;
+//		final String metaType = N5Importer.MetadataOmeZarrKey;
 
 //		final String dsMethod = DOWN_SAMPLE;
 		final String dsMethod = DOWN_AVG;
@@ -346,22 +349,24 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// initial block size, downsampliong factors, translation (offset)
 		currentBlockSize = new int[ blockSize.length ];
 		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
-		final long[] downsamplingFactors = initDownsampleFactors(baseImg.numDimensions());
-		currentTranslation = new double[ downsamplingFactors.length];
+		final int baseNumDimensions = baseImg.numDimensions();
+		currentAbsoluteDownsampling = initDownsampleFactors( baseNumDimensions );
 
 		// get the metadata
 		final M baseMetadata = (M)impMeta.readMetadata(image);
-		final M channelMetadata = baseMetadata;
+		currentChannelMetadata = baseMetadata;
 		M currentMetadata;
 
-		// channel splitting may modify currentBlockSize
-		final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(channelMetadata, baseImg);
+		// channel splitting may modify currentBlockSize, currentAbsoluteDownsampling, and channelMetadata
+		final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(currentChannelMetadata, baseImg);
 		for (int c = 0; c < channelImgs.size(); c++) {
 
 			final String channelDataset = getChannelDatasetName(c);
 			RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
 
-			final N multiscaleMetadata = initializeMultiscaleMetadata(channelMetadata);
+			final int nd = currentChannelImg.numDimensions();
+			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentChannelMetadata);
+			currentTranslation = new double[ nd ];
 
 			// write scale levels
 			final int maxNumScales = 31;  // we will stop early though
@@ -372,25 +377,25 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// downsample when relevant
 				if( s > 0 ) {
-					final long[] relativeFactors = getRelativeDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
+					final long[] relativeFactors = getRelativeDownsampleFactors(currentChannelMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
 
 					// update absolute downsampling factors
-					for( int i = 0; i < downsamplingFactors.length; i++ )
-						downsamplingFactors[i] *= relativeFactors[i];
+					for( int i = 0; i < nd; i++ )
+						currentAbsoluteDownsampling[i] *= relativeFactors[i];
 
 					currentChannelImg = downsampleMethod((RandomAccessibleInterval<T>)getPreviousScaleImage(c, s), relativeFactors);
 
 					if (downsampleMethod.equals(DOWN_AVG))
 						Arrays.setAll(currentTranslation, i -> {
-							if( downsamplingFactors[i] > 1 )
-								return 0.5 * downsamplingFactors[i] - 0.5;
+							if( currentAbsoluteDownsampling[i] > 1 )
+								return 0.5 * currentAbsoluteDownsampling[i] - 0.5;
 							else
 								return 0.0;
 						});
 				}
 
 				// update metadata to reflect this scale level, returns new metadata instance
-				currentMetadata = metadataForThisScale( dset, channelMetadata, downsamplingFactors, currentTranslation );
+				currentMetadata = (M)metadataForThisScale( dset, currentChannelMetadata, currentAbsoluteDownsampling, currentTranslation );
 
 				// write to the appropriate dataset
 				write( currentChannelImg, n5, dset, compression, currentMetadata );
@@ -476,7 +481,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (baseMetadata instanceof SpatialModifiable) {
 			return (M)(((SpatialModifiable)baseMetadata).modifySpatialTransform(
 					newPath,
-					Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(), translation ));
+					Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(),
+					translation ));
 		}
 
 		System.err.println("WARNING: metadata not spatial modifiable");
@@ -594,7 +600,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 * If relevant, according to the passed {@link N5DatasetMetadata} metadata instance,
 	 * return a list containing
 	 */
-	protected <T extends RealType<T> & NativeType<T>, M extends N5Metadata> List<RandomAccessibleInterval<T>> splitChannels(M metadata,
+	protected <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> List<RandomAccessibleInterval<T>> splitChannels(M metadata,
 			RandomAccessibleInterval<T> img) {
 
 		// TODO perhaps should return new metadata that is not
@@ -607,6 +613,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		// otherwise, split channels
 		final ArrayList<RandomAccessibleInterval<T>> channels = new ArrayList<>();
+		boolean slicedChannels = false;
 		for (int c = 0; c < image.getNChannels(); c++) {
 
 			RandomAccessibleInterval<T> channelImg;
@@ -614,9 +621,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			// so if we have a 3d image check that the image is multichannel
 			if (image.getNChannels() > 1) {
 				channelImg = Views.hyperSlice(img, 2, c);
-
-				// if we slice the image, appropriately slice the block size also
-				currentBlockSize = sliceBlockSize(2);
+				slicedChannels = true;
 			} else {
 				channelImg = img;
 			}
@@ -626,13 +631,64 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// make a 4d image in order XYZT
 				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
+
 				// expand block size
 				currentBlockSize = new int[]{currentBlockSize[0], currentBlockSize[1], 1, currentBlockSize[2]};
+				currentAbsoluteDownsampling = new long[]{currentAbsoluteDownsampling[0], currentAbsoluteDownsampling[1],
+						1, currentAbsoluteDownsampling[2]};
 			}
 
 			channels.add(channelImg);
 		}
+
+		if( slicedChannels )
+		{
+			// if we slice the image, appropriately slice the block size also
+			currentBlockSize = sliceBlockSize(2);
+			currentAbsoluteDownsampling = sliceDownsamplingFactors(2);
+			currentChannelMetadata = sliceMetadata( metadata, 2 );
+		}
+
 		return channels;
+	}
+
+	@SuppressWarnings("unchecked")
+	protected <M extends N5DatasetMetadata> M sliceMetadata(M metadata, final int i)
+	{
+		// Needs to be implemented for metadata types that split channels
+		if( metadata instanceof N5CosemMetadata )
+		{
+			return ((M)new N5CosemMetadata(metadata.getPath(), ((N5CosemMetadata)metadata).getCosemTransform(),
+					removeDimension(metadata.getAttributes(), i)));
+		}
+		else if( metadata instanceof N5SingleScaleMetadata )
+		{
+			final N5SingleScaleMetadata ssm = (N5SingleScaleMetadata)metadata;
+			return ((M)new N5SingleScaleMetadata( ssm.getPath(),
+					ssm.spatialTransform3d(), ssm.getDownsamplingFactors(),
+					ssm.getPixelResolution(), ssm.getOffset(), ssm.unit(),
+					removeDimension(metadata.getAttributes(), i),
+					ssm.minIntensity(),
+					ssm.maxIntensity(),
+					ssm.isLabelMultiset()));
+		}
+		else if( metadata instanceof NgffSingleScaleAxesMetadata )
+		{
+			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata)metadata;
+			return (M)new NgffSingleScaleAxesMetadata( ngffMeta.getPath(),
+					ngffMeta.getScale(), ngffMeta.getTranslation(),
+					removeDimension(ngffMeta.getAttributes(), i));
+		}
+		return metadata;
+	}
+
+	protected DatasetAttributes removeDimension( final DatasetAttributes attributes, final int i )
+	{
+		return new DatasetAttributes(
+				removeElement( attributes.getDimensions(), i),
+				removeElement( attributes.getBlockSize(), i),
+				attributes.getDataType(),
+				attributes.getCompression());
 	}
 
 	protected <M extends N5Metadata> void writeMetadata(final M metadata, final N5Writer n5, final String dataset) {
@@ -721,14 +777,36 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				new FinalInterval(dims));
 	}
 
-	private int[] sliceBlockSize( final int exclude )
-	{
-		final int[] out = new int[ blockSize.length - 1 ];
+	private int[] sliceBlockSize(final int exclude) {
+
+		return removeElement(blockSize, exclude);
+	}
+
+	private long[] sliceDownsamplingFactors(final int exclude) {
+
+		return removeElement(currentAbsoluteDownsampling, exclude);
+	}
+
+	private static int[] removeElement(final int[] arr, final int excludeIndex) {
+
+		final int[] out = new int[arr.length - 1];
 		int j = 0;
-		for( int i = 0; i < blockSize.length; i++ )
-			if( i != exclude )
-			{
-				out[j] = blockSize[i];
+		for (int i = 0; i < arr.length; i++)
+			if (i != excludeIndex) {
+				out[j] = arr[i];
+				j++;
+			}
+
+		return out;
+	}
+
+	private static long[] removeElement(final long[] arr, final int excludeIndex) {
+
+		final long[] out = new long[arr.length - 1];
+		int j = 0;
+		for (int i = 0; i < arr.length; i++)
+			if (i != excludeIndex) {
+				out[j] = arr[i];
 				j++;
 			}
 

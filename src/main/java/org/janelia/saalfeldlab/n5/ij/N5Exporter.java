@@ -31,8 +31,8 @@ import net.imagej.ImageJ;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.realtransform.AffineTransform;
 import net.imglib2.type.NativeType;
-import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
@@ -42,26 +42,23 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
 import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
@@ -82,19 +79,14 @@ import org.scijava.ui.UIService;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
-import java.util.stream.LongStream;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>Export HDF5/N5/Zarr")
 public class N5Exporter extends ContextCommand implements WindowListener {
@@ -112,13 +104,13 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
   public static final String NO_OVERWRITE = "No overwrite";
   public static final String OVERWRITE = "Overwrite";
+  public static final String DELETE_OVERWRITE = "Delete and overwrite";
   public static final String WRITE_SUBSET = "Overwrite subset";
 
   public static enum OVERWRITE_OPTIONS {NO_OVERWRITE, OVERWRITE, WRITE_SUBSET}
 
   @Parameter(visibility = ItemVisibility.MESSAGE, required = false)
-  private final String message = "Export an ImagePlus to an HDF5, N5, or Zarr container."
-  		+ "Read the documentation";
+  private final String message = "Export an ImagePlus to an HDF5, N5, or Zarr container.";
 
   @Parameter
   private LogService log;
@@ -146,10 +138,10 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		  description = "The size of blocks")
   private String blockSizeArg;
 
-//  @Parameter(
-//		  label = "Downsampling method",
-//		  choices = {DOWN_SAMPLE, DOWN_AVG})
-//  private String downsampleMethod = DOWN_SAMPLE;
+  @Parameter(
+		  label = "Downsampling method",
+		  choices = {DOWN_SAMPLE, DOWN_AVG})
+  private String downsampleMethod = DOWN_SAMPLE;
 
   @Parameter(
 		  label = "Compression",
@@ -174,7 +166,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
   @Parameter(
 		  label = "Overwrite options", required = true,
-		  choices = {NO_OVERWRITE, OVERWRITE, WRITE_SUBSET},
+		  choices = {NO_OVERWRITE, OVERWRITE, DELETE_OVERWRITE, WRITE_SUBSET},
 		  description = "Determines whether overwriting datasets allows, and how overwriting occurs."
 				  + "If selected will overwrite values in an existing dataset if they exist.")
   private String overwriteChoices = NO_OVERWRITE;
@@ -185,8 +177,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
   private int[] blockSize;
 
-  private int[] currentBlockSize;
-
   private final Map<String, N5MetadataWriter<?>> styles;
 
   private ImageplusMetadata<?> impMeta;
@@ -194,6 +184,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
   private N5MetadataSpecDialog metaSpecDialog;
 
   private final HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes;
+
+  private String omeZarrMetadataPath;
 
   // consider something like this eventually
 //  private BiFunction<RandomAccessibleInterval<? extends NumericType<?>>,long[],RandomAccessibleInterval<?>> downsampler;
@@ -212,11 +204,10 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
 	impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
 	impMetaWriterTypes.put(NgffSingleScaleAxesMetadata.class, new NgffToImagePlus());
-
+	impMetaWriterTypes.put(OmeNgffMetadataParser.class, new NgffToImagePlus());
   }
 
 	public static void main(String[] args) {
-
 
 		final ImageJ ij = new ImageJ();
 //		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
@@ -227,19 +218,30 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
 		final String root = "/home/john/tmp/mitosis-test.n5";
 
-		final int nScales = 2;
 
-		final String metaType = N5Importer.MetadataN5ViewerKey;
+//		final String metaType = N5Importer.MetadataN5ViewerKey;
 //		final String metaType = N5Importer.MetadataN5CosemKey;
 //		final String metaType = N5Importer.MetadataImageJKey;
-//		final String metaType = N5Importer.MetadataOmeZarrKey;
+		final String metaType = N5Importer.MetadataOmeZarrKey;
 
-		final String dset = String.format("%s_%d", metaType, nScales);
+//		final String dset = String.format("%s_%d", metaType, nScales);
+		final String dset = String.format("%s", metaType);
 
 		final N5Exporter exp = new N5Exporter();
 		exp.setOptions(imp, root, dset, "64,64,64", metaType,
 				"gzip", NO_OVERWRITE, null);
 		exp.run();
+
+//		final String p = "/a";
+//		final Path path = Paths.get("", p.split("/"));
+//		System.out.println( "path:" );
+//		System.out.println( path );
+//		System.out.println( path.getNameCount() );
+//		System.out.println( path.subpath(0, path.getNameCount() - 1) );
+
+//		System.out.println( "normal path: " );
+//		System.out.println( N5URI.normalizeGroupPath("/a"));
+//		System.out.println( "##" );
 
 //		final ImageJ ij = new ImageJ();
 //		ij.ui().showUI();
@@ -333,195 +335,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		}
 	}
 
-//	@SuppressWarnings("unchecked")
-//	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void processMultiscale() throws IOException, InterruptedException, ExecutionException {
-//
-//		System.out.println("process multiscale");
-//
-//		if (metadataStyle.equals(N5Importer.MetadataImageJKey) && numScales > 1) {
-//			if (ui != null)
-//				ui.showDialog("Can not write ImageJ metadata with multiple (" + numScales + ") scale levels.");
-//			else
-//				System.err.println("Can not write ImageJ metadata with multiple (" + numScales + ") scale levels.");
-//
-//			return;
-//		}
-//
-//		final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
-//		final Compression compression = getCompression();
-//
-//		// initialize block size
-//		parseBlockSize();
-//		currentBlockSize = new int[ blockSize.length ];
-//		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
-//
-//		N5MetadataWriter<M> metadataWriter = null;
-//		if (!metadataStyle.equals(NONE)) {
-//			metadataWriter = (N5MetadataWriter<M>)styles.get(metadataStyle);
-//			if (metadataWriter != null) {
-//				impMeta = impMetaWriterTypes.get(metadataWriter.getClass());
-//			}
-//		}
-//
-//		// get the image to save
-//		final RandomAccessibleInterval<T> baseImg = getBaseImage();
-//
-//		long[] downsamplingFactors = initDownsampleFactors();
-//
-//		// get the metadata
-//		final M baseMetadata = (M)impMeta.readMetadata(image);
-//		M currentMetadata;
-//
-//		currentMetadata = baseMetadata;
-//
-//		// loop over scale levels
-//		final RandomAccessibleInterval<T> currentImg = baseImg;
-//		for( int s = 0; s < numScales; s++ ) {
-//
-//			currentBlockSize = new int[ blockSize.length ];
-//			System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
-//
-//			// channel splitting may update block size
-//			final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(currentMetadata, currentImg);
-//
-//			// for each channel (if present)
-//			for( int c = 0; c < channelImgs.size(); c++ )
-//			{
-//
-//				RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
-//				// downsample
-//				if( s > 0 ) {
-//					currentChannelImg = downsampleMethod( currentChannelImg, downsamplingFactors );
-//				}
-//
-//				// write to the appropriate dataset
-//				final String dset = getDatasetName( currentMetadata, c, s );
-//				write( currentChannelImg, n5, dset, compression, currentMetadata, metadataWriter );
-//			}
-//
-//			if( ( currentMetadata instanceof SpatialMetadata ))
-//				downsamplingFactors = updateDownsampleFactors( (SpatialMetadata)currentMetadata, downsamplingFactors );
-//			else
-//				System.err.println("warn");
-//		}
-//
-//		System.out.println("finished process multiscale");
-//	}
-
-//	/**
-//	 * Calculates the number of scales such that the largest axis in physical dimension
-//	 * is small than or equal to the size of a block.
-//	 *
-//	 * @return the number of scales
-//	 */
-//	protected int generateNumberOfScales()
-//	{
-//		// TODO implement me
-//		return -1;
-//	}
-
-//	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> downsampleMethod( RandomAccessibleInterval<T> img, long[] factors )
-//	{
-//		// TODO handle this case
-////		if( downsampleMethod.equals(DOWN_AVG))
-//
-//		return downsample(img, factors);
-//
-//	}
-//
-//	protected <M extends N5Metadata> String getDatasetName(final M metadata, final int channelIndex, final int scale) {
-//
-//		// TODO consider something like the below
-//		if (image.getNChannels() > 1 &&
-//				(metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
-//				 metadataStyle.equals(N5Importer.MetadataN5CosemKey))) {
-//
-//			return n5Dataset + String.format("/c%d/s%d", channelIndex, scale);
-//		} else if (numScales > 1)
-//			return n5Dataset + String.format("/s%d", scale);
-//		else
-//			return n5Dataset;
-//	}
-//
-//	protected long[] initDownsampleFactors() {
-//
-//		// TODO implement me
-//		return new long[] { 1, 1, 1, 1 };
-//	}
-//
-//	protected <M extends SpatialMetadata> long[] updateDownsampleFactors(final M metadata, final long[] downsampleFactors)	{
-//
-//		// TODO implement me
-//		// TODO maybe these should modify the input factors instead?
-//		return new long[]{2 * downsampleFactors[0], 2 * downsampleFactors[0], 2 * downsampleFactors[0], 1};
-//	}
-//
-//	// TODO put logic checking for virtual image special cases here
-//	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> getBaseImage()
-//	{
-//		// get the image
-//		final Img<T> baseImg;
-//		if( image.getType() == ImagePlus.COLOR_RGB )
-//			baseImg = (( Img< T > ) N5IJUtils.wrapRgbAsInt( image ));
-//		else
-//			baseImg = ImageJFunctions.wrap(image);
-//
-//		return baseImg;
-//	}
-//
-//	/**
-//	 * If relevant, according to the passed {@link N5DatasetMetadata} metadata instance,
-//	 * return a list containing
-//	 */
-//	protected <T extends RealType<T> & NativeType<T>, M extends N5Metadata> List<RandomAccessibleInterval<T>> splitChannels( M metadata, RandomAccessibleInterval<T> img )
-//	{
-//		// some metadata styles never split channels, return input image in that case
-//		if (metadataStyle.equals(NONE) ||
-//			metadataStyle.equals(N5Importer.MetadataImageJKey) ||
-//			metadataStyle.equals(N5Importer.MetadataCustomKey)) {
-//
-//			return Collections.singletonList(img);
-//		}
-//
-//		// otherwise, split channels
-//		final ArrayList<RandomAccessibleInterval<T>> channels = new ArrayList<>();
-//		for (int c = 0; c < image.getNChannels(); c++) {
-//			RandomAccessibleInterval<T> channelImg;
-//			// If there is only one channel, img may be 3d, but we don't want to slice
-//			// so if we have a 3d image check that the image is multichannel
-//			if( image.getNChannels() > 1 )
-//			{
-//				channelImg = Views.hyperSlice(img, 2, c);
-//
-//				// if we slice the image, appropriately slice the block size also
-//				currentBlockSize = sliceBlockSize( 2 );
-//			} else {
-//				channelImg = img;
-//			}
-//
-////			if (metadataStyle.equals(N5Importer.MetadataN5ViewerKey)) {
-////				datasetString = String.format("%s/c%d/s0", n5Dataset, c);
-////			} else if (image.getNChannels() > 1) {
-////				datasetString = String.format("%s/c%d", n5Dataset, c);
-////			} else {
-////				datasetString = n5Dataset;
-////			}
-//
-//			// make the image 4d and update the block size, if needed
-//			if( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) && image.getNFrames() > 1 && image.getNSlices() == 1 ) {
-//
-//				// make a 4d image in order XYZT
-//				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
-//				// expand block size
-//				currentBlockSize = new int[] { currentBlockSize[0], currentBlockSize[1], 1, currentBlockSize[2] };
-//			}
-//
-//			channels.add(channelImg);
-//		}
-//		return channels;
-//	}
-
-
   @SuppressWarnings("unchecked")
   public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, InterruptedException, ExecutionException {
 
@@ -555,6 +368,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
 	if (metadataStyle.equals(NONE) ||
 			metadataStyle.equals(N5Importer.MetadataImageJKey) ||
+			metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
 			metadataStyle.equals(N5Importer.MetadataCustomKey)) {
 	  write(n5, compression, metadata, writer);
 	} else {
@@ -563,12 +377,65 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	n5.close();
   }
 
+  	/*
+  	 * If using Ome-Ngff metadata, this method
+  	 * ensures that the n5Dataset parameter is not the root directory.
+  	 * If so, it sets the parameter to a child "s0" of the root.
+  	 *
+  	 * It returns false if the parent of the n5Dataset parameter
+  	 * already contains Ome-Ngff metadata, so that any existing
+  	 * metadata are not written.
+  	 */
+
+  	/*
+  	 * If using Ome-Ngff metadata, this method
+  	 * sets the n5Dataset parameter (where the array will be written)
+  	 * to a folder called "s0" that is a child of the passed
+  	 * n5Dataset parameter.
+  	 */
+	private boolean enforceOmeArrayNotInRoot(final N5Reader n5) {
+		// final String normalPath = N5URI.normalizeGroupPath(n5Dataset);
+		// if( normalPath.isEmpty() || normalPath.equals("/"))
+		// {
+		// n5Dataset = "s0";
+		// omeZarrMetadataPath = "";
+		// }
+		// else
+		// {
+		// final Path path = Paths.get("", n5Dataset.split("/"));
+		// System.out.println( path );
+		// omeZarrMetadataPath = path.getNameCount() == 1 ? "/" :
+		// path.subpath(0, path.getNameCount() - 1).toString();
+		// }
+
+		omeZarrMetadataPath = n5Dataset;
+		n5Dataset = omeZarrMetadataPath + "/s0";
+
+		final Optional<OmeNgffMetadata> meta = new OmeNgffMetadataParser().parseMetadata(n5, omeZarrMetadataPath);
+		if (meta.isPresent()) {
+			System.err.println("Ome Zarr metadata already exists at: " + omeZarrMetadataPath);
+			return false;
+		}
+
+		return true;
+	}
+
 	@SuppressWarnings({"unchecked", "rawtypes"})
 	private <T extends RealType & NativeType, M extends N5DatasetMetadata> void write(
 			final N5Writer n5,
 			final Compression compression,
 			final M metadata,
 			final N5MetadataWriter<M> writer) throws IOException, InterruptedException, ExecutionException {
+
+		/*
+		 * ensure that the array is not stored in the root, because
+		 * metadata must be in parent of the array for ngff v0.4
+		 */
+		if( !enforceOmeArrayNotInRoot( n5 ) )
+		{
+			// something went wrong
+			return;
+		}
 
 		if (overwriteChoices.equals(WRITE_SUBSET)) {
 			final long[] offset = Arrays.stream(subsetOffset.split(","))
@@ -637,149 +504,76 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 				return;
 			}
 
+			if( overwriteChoices.equals( DELETE_OVERWRITE ) && n5.datasetExists( n5Dataset ))
+			{
+
+				n5.remove(n5Dataset);
+			}
+
 			// Here, either allowing overwrite, or not allowing, but the dataset
 			// does not exist
 
 			// use threadPool even for single threaded execution for progress monitoring
+			final int nd = blockSize.length;
 			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>()	);
 			progressMonitor( threadPool );
 			N5IJUtils.save( image, n5, n5Dataset, blockSize, compression, threadPool);
 			threadPool.shutdown();
 
 			if( metadata != null )
-				try {
-					writer.writeMetadata(metadata, n5, n5Dataset);
-				} catch (final Exception e) { }
+			{
+				if (metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
+				{
+					// Ome-Zarr metadata goes in the parent folder
+					if( !(metadata instanceof NgffSingleScaleAxesMetadata ))
+						System.err.println("Unexpected metadata type");
+					else if( omeZarrMetadataPath == null )
+					{
+						if( !enforceOmeArrayNotInRoot(n5) )
+							return; // something went wrong
+					}
+					else
+					{
+						NgffSingleScaleAxesMetadata ngffSingle = ( (NgffSingleScaleAxesMetadata)metadata );
+						ngffSingle = ngffSingle.modifySpatialTransform(n5Dataset, new AffineTransform( nd ));
+						final OmeNgffMultiScaleMetadataMutable tmp = new OmeNgffMultiScaleMetadataMutable();
 
+						tmp.addChild( ngffSingle );
+						final OmeNgffMetadata msMeta = finalizeMultiscaleMetadata("", tmp);
+						if( msMeta != null )
+							try {
+								new OmeNgffMetadataParser().writeMetadata(msMeta, n5, omeZarrMetadataPath );
+							} catch (final Exception e) {
+								e.printStackTrace();
+							}
+					}
+				}
+				else {
+					try {
+						writer.writeMetadata(metadata, n5, n5Dataset);
+					} catch (final Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
 //			writeMetadata(n5, n5Dataset, writer);
 		}
 	}
 
-	private  <T extends RealType<T> & NativeType<T> > void writeOmeZarr(
-			final int numScales ) throws IOException, InterruptedException, ExecutionException {
+	protected OmeNgffMetadata finalizeMultiscaleMetadata( final String path, OmeNgffMultiScaleMetadataMutable multiscaleMetadata ) {
 
-		final N5Writer n5 = new N5Factory()
-				.gsonBuilder(OmeNgffMetadataParser.gsonBuilder())
-				.openWriter(n5RootLocation);
+		if( multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable)
+		{
+			final OmeNgffMultiScaleMetadataMutable ms = (OmeNgffMultiScaleMetadataMutable)multiscaleMetadata;
+			final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata( ms.getAxes().length,
+					path, path, "sampling", "0.4",
+					ms.getAxes(), ms.getDatasets(), null,
+					ms.coordinateTransformations, ms.metadata);
 
-		final Compression compression = getCompression();
-		parseBlockSize();
-
-		final N5MetadataWriter<NgffSingleScaleAxesMetadata> writer = new NgffSingleScaleMetadataParser();
-
-		final NgffToImagePlus metaIo = new NgffToImagePlus();
-		final NgffSingleScaleAxesMetadata baseMeta = metaIo.readMetadata(image);
-
-		// check and warn re: RGB image if relevant
-		// if (image.getType() == ImagePlus.COLOR_RGB && !(writer instanceof
-		// N5ImagePlusMetadata))
-		// log.warn("RGB images are best saved using ImageJ metatadata. Other
-		// choices "
-		// + "may lead to unexpected behavior.");
-		final Img<T> img = ImageJFunctions.wrap(image);
-		write(img, n5, n5Dataset + "/s0", compression, null, null);
-
-		final DatasetAttributes[] dsetAttrs = new DatasetAttributes[numScales];
-		final OmeNgffDataset[] msDatasets = new OmeNgffDataset[numScales];
-
-		String relativePath = String.format("s%d", 0);
-		String dset = String.format("%s/%s", n5Dataset, relativePath);
-		dsetAttrs[0] = n5.getDatasetAttributes(dset);
-		final boolean cOrder = OmeNgffMultiScaleMetadata.cOrder(dsetAttrs[0]);
-
-		final double[] scale = OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], baseMeta.getScale());
-		final double[] translation = OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], baseMeta.getTranslation());
-		final Axis[] axes = OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], baseMeta.getAxes() );
-		final NgffSingleScaleAxesMetadata s0Meta = new NgffSingleScaleAxesMetadata( dset, scale, translation, axes, dsetAttrs[0]);
-
-		msDatasets[0] = new OmeNgffDataset();
-		msDatasets[0].path = relativePath;
-		msDatasets[0].coordinateTransformations = s0Meta.getCoordinateTransformations();
-
-		try {
-			writer.writeMetadata(s0Meta, n5, dset );
-		} catch (final Exception e1) { }
-
-		final long[] downsamplingFactors = new long[img.numDimensions()];
-		Arrays.fill( downsamplingFactors, 1 );
-		for (int i = 1; i < numScales; i++) {
-
-			final long[] factors = MetadataUtils.updateDownsamplingFactors(2, downsamplingFactors, Intervals.dimensionsAsLongArray(img), baseMeta.getAxisTypes());
-			final RandomAccessibleInterval<T> imgDown = downsample(img, factors);
-			relativePath = String.format("s%d", i);
-			dset = String.format("%s/%s", n5Dataset, relativePath);
-
-			write(imgDown, n5, dset, compression, null, null);
-
-			dsetAttrs[i] = n5.getDatasetAttributes(dset);
-			final NgffSingleScaleAxesMetadata siMeta = new NgffSingleScaleAxesMetadata( dset,
-					OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], MetadataUtils.mul(baseMeta.getScale(), downsamplingFactors)),
-					OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], baseMeta.getTranslation()),
-					axes,
-					dsetAttrs[i]);
-
-			try {
-				writer.writeMetadata(siMeta, n5, dset );
-			} catch (final Exception e1) { }
-
-			msDatasets[i] = new OmeNgffDataset();
-			msDatasets[i].path = relativePath;
-			msDatasets[i].coordinateTransformations = siMeta.getCoordinateTransformations();
+			return (new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[] { meta }));
 		}
 
-		final OmeNgffMultiScaleMetadata ms = NgffToImagePlus.buildMetadata( s0Meta, image.getTitle(), n5Dataset, dsetAttrs, msDatasets);
-		final OmeNgffMultiScaleMetadata[] msList = new OmeNgffMultiScaleMetadata[]{ms};
-
-		final OmeNgffMetadata meta = new OmeNgffMetadata(n5Dataset, msList);
-		try {
-			new OmeNgffMetadataParser(cOrder).writeMetadata(meta, n5, n5Dataset);
-		} catch (final Exception e) {
-			e.printStackTrace();
-		}
-
-		n5.close();
-	}
-
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private <T extends RealType & NativeType, M extends N5Metadata> void write(
-			final RandomAccessibleInterval<T> image,
-			final N5Writer n5,
-			final String dataset,
-			final Compression compression, final M metadata, final N5MetadataWriter<M> writer)
-			throws IOException, InterruptedException, ExecutionException {
-
-		if (overwriteChoices.equals(NO_OVERWRITE) && n5.datasetExists(dataset)) {
-			if (ui != null)
-				ui.showDialog(String.format("Dataset (%s) already exists, not writing.", dataset));
-			else
-				System.out.println(String.format("Dataset (%s) already exists, not writing.", dataset));
-
-			return;
-		}
-
-		// Here, either allowing overwrite, or not allowing, but the dataset does not exist.
-		// use threadPool even for single threaded execution for progress monitoring
-		final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
-				new LinkedBlockingQueue<Runnable>());
-		progressMonitor(threadPool);
-		N5Utils.save(image, n5, dataset, currentBlockSize, compression, Executors.newFixedThreadPool(nThreads));
-
-		if( metadata != null )
-			try {
-				writer.writeMetadata(metadata, n5, dataset);
-			} catch (final Exception e) { }
-
-//		writeMetadata(n5, dataset, writer);
-	}
-
-//	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsampleSimple(
-//			final RandomAccessibleInterval<T> img, final int downsampleFactor) {
-//		return Views.subsample(img, downsampleFactor);
-//	}
-
-	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsample(
-			final RandomAccessibleInterval<T> img, final long[] downsampleFactors) {
-		return Views.subsample(img, downsampleFactors);
+		return null;
 	}
 
 	@SuppressWarnings( "unused" )
@@ -896,8 +690,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		} else {
 			try {
 				process();
-//				processMultiscale();
-
 			} catch (final IOException e) {
 				e.printStackTrace();
 			} catch (final InterruptedException e) {
