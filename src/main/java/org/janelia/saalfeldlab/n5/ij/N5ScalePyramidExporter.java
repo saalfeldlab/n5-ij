@@ -350,22 +350,28 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		currentBlockSize = new int[ blockSize.length ];
 		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
 		final int baseNumDimensions = baseImg.numDimensions();
-		currentAbsoluteDownsampling = initDownsampleFactors( baseNumDimensions );
+//		currentAbsoluteDownsampling = initDownsampleFactors( baseNumDimensions );
 
 		// get the metadata
 		final M baseMetadata = (M)impMeta.readMetadata(image);
-		currentChannelMetadata = baseMetadata;
+		currentChannelMetadata = copyMetadata(baseMetadata);
 		M currentMetadata;
 
 		// channel splitting may modify currentBlockSize, currentAbsoluteDownsampling, and channelMetadata
 		final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(currentChannelMetadata, baseImg);
 		for (int c = 0; c < channelImgs.size(); c++) {
 
+			currentMetadata = copyMetadata((M)currentChannelMetadata);
 			final String channelDataset = getChannelDatasetName(c);
 			RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
-
 			final int nd = currentChannelImg.numDimensions();
-			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentChannelMetadata);
+
+			// every channel starts at the original scale level
+			// reset downsampling factors to 1
+			currentAbsoluteDownsampling = new long[nd];
+			Arrays.fill(currentAbsoluteDownsampling, 1);
+
+			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata);
 			currentTranslation = new double[ nd ];
 
 			// write scale levels
@@ -377,7 +383,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// downsample when relevant
 				if( s > 0 ) {
-					final long[] relativeFactors = getRelativeDownsampleFactors(currentChannelMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
+					final long[] relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
 
 					// update absolute downsampling factors
 					for( int i = 0; i < nd; i++ )
@@ -395,7 +401,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				}
 
 				// update metadata to reflect this scale level, returns new metadata instance
-				currentMetadata = (M)metadataForThisScale( dset, currentChannelMetadata, currentAbsoluteDownsampling, currentTranslation );
+				currentMetadata = (M)metadataForThisScale( dset, currentMetadata, currentAbsoluteDownsampling, currentTranslation );
 
 				// write to the appropriate dataset
 				write( currentChannelImg, n5, dset, compression, currentMetadata );
@@ -405,6 +411,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				if (lastScale(currentBlockSize, currentChannelImg))
 					break;
+
 			}
 
 			writeMetadata( finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata), n5, channelDataset );
@@ -634,10 +641,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// expand block size
 				currentBlockSize = new int[]{currentBlockSize[0], currentBlockSize[1], 1, currentBlockSize[2]};
-				currentAbsoluteDownsampling = new long[]{currentAbsoluteDownsampling[0], currentAbsoluteDownsampling[1],
-						1, currentAbsoluteDownsampling[2]};
+//				currentAbsoluteDownsampling = new long[]{currentAbsoluteDownsampling[0], currentAbsoluteDownsampling[1],
+//						1, currentAbsoluteDownsampling[2]};
 			}
-
 			channels.add(channelImg);
 		}
 
@@ -645,11 +651,44 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		{
 			// if we slice the image, appropriately slice the block size also
 			currentBlockSize = sliceBlockSize(2);
-			currentAbsoluteDownsampling = sliceDownsamplingFactors(2);
+//			currentAbsoluteDownsampling = sliceDownsamplingFactors(2);
 			currentChannelMetadata = sliceMetadata( metadata, 2 );
 		}
 
 		return channels;
+	}
+
+	@SuppressWarnings("unchecked")
+	protected <M extends N5DatasetMetadata> M copyMetadata(M metadata)
+	{
+		// Needs to be implemented for metadata types that split channels
+		if( metadata instanceof N5CosemMetadata )
+		{
+			return ((M)new N5CosemMetadata(metadata.getPath(), ((N5CosemMetadata)metadata).getCosemTransform(),
+					metadata.getAttributes()));
+		}
+		else if( metadata instanceof N5SingleScaleMetadata )
+		{
+			final N5SingleScaleMetadata ssm = (N5SingleScaleMetadata)metadata;
+			return ((M)new N5SingleScaleMetadata( ssm.getPath(),
+					ssm.spatialTransform3d(), ssm.getDownsamplingFactors(),
+					ssm.getPixelResolution(), ssm.getOffset(), ssm.unit(),
+					metadata.getAttributes(),
+					ssm.minIntensity(),
+					ssm.maxIntensity(),
+					ssm.isLabelMultiset()));
+		}
+		else if( metadata instanceof NgffSingleScaleAxesMetadata )
+		{
+			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata)metadata;
+			return (M)new NgffSingleScaleAxesMetadata( ngffMeta.getPath(),
+					ngffMeta.getScale(), ngffMeta.getTranslation(),
+					ngffMeta.getAttributes());
+		}
+		else
+			System.err.println("uh oh");
+
+		return metadata;
 	}
 
 	@SuppressWarnings("unchecked")
