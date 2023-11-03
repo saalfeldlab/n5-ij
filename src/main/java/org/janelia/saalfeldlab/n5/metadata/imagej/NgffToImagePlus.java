@@ -99,7 +99,6 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		final int nc = ip.getNChannels();
 		final int nz = ip.getNSlices();
 		final int nt = ip.getNFrames();
-		final String unit = ip.getCalibration().getUnit();
 
 		int N = 2;
 		if (nz > 1)
@@ -115,11 +114,13 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		final double[] scale = new double[N];
 		final double[] offset = new double[N];
 
-		axes[0] = new Axis(Axis.SPACE, "x", unit);
+		final String spaceUnit = ip.getCalibration().getUnit();
+
+		axes[0] = new Axis(Axis.SPACE, "x", spaceUnit);
 		scale[0] = ip.getCalibration().pixelWidth;
 		offset[0] = ip.getCalibration().xOrigin;
 
-		axes[1] = new Axis(Axis.SPACE, "y", unit);
+		axes[1] = new Axis(Axis.SPACE, "y", spaceUnit);
 		scale[1] = ip.getCalibration().pixelHeight;
 		offset[1] = ip.getCalibration().yOrigin;
 
@@ -134,7 +135,7 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 
 		// space z
 		if (nz > 1) {
-			axes[k] = new Axis(Axis.SPACE, "z", unit);
+			axes[k] = new Axis(Axis.SPACE, "z", spaceUnit);
 			scale[k] = ip.getCalibration().pixelDepth;
 			offset[k] = ip.getCalibration().zOrigin;
 			k++;

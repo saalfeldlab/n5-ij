@@ -329,6 +329,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		final Compression compression = getCompression();
 
 		// TODO should have better behavior for block size parsing when splitting channels
+		// this might be done
+
 		// initialize block size
 		parseBlockSize();
 
@@ -349,8 +351,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// initial block size, downsampliong factors, translation (offset)
 		currentBlockSize = new int[ blockSize.length ];
 		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
-		final int baseNumDimensions = baseImg.numDimensions();
-//		currentAbsoluteDownsampling = initDownsampleFactors( baseNumDimensions );
 
 		// get the metadata
 		final M baseMetadata = (M)impMeta.readMetadata(image);
@@ -371,7 +371,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			currentAbsoluteDownsampling = new long[nd];
 			Arrays.fill(currentAbsoluteDownsampling, 1);
 
-			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata);
+			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset );
 			currentTranslation = new double[ nd ];
 
 			// write scale levels
@@ -379,8 +379,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			for( int s = 0; s < maxNumScales; s++ ) {
 
 				final String dset = getScaleDatasetName(c, s);
-//				newDownsamplingFactors = getDownsampleFactors(channelMetadata, currentChannelImg.numDimensions(), s, downsamplingFactors);
-
 				// downsample when relevant
 				if( s > 0 ) {
 					final long[] relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
@@ -431,12 +429,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return (RandomAccessibleInterval<T>)previousScaleImg;
 	}
 
-	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata( M baseMetadata ) {
+	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata( M baseMetadata, final String path ) {
 
 		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
 			return null;
 
-		return ((N)new OmeNgffMultiScaleMetadataMutable());
+		return ((N)new OmeNgffMultiScaleMetadataMutable(path));
 	}
 
 	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> void updateMultiscaleMetadata( N multiscaleMetadata, M scaleMetadata ) {
@@ -683,6 +681,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata)metadata;
 			return (M)new NgffSingleScaleAxesMetadata( ngffMeta.getPath(),
 					ngffMeta.getScale(), ngffMeta.getTranslation(),
+					ngffMeta.getAxes(),
 					ngffMeta.getAttributes());
 		}
 		else
