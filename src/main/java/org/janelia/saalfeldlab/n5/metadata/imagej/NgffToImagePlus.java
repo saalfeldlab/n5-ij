@@ -7,6 +7,7 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
@@ -216,7 +217,7 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		return new OmeNgffMultiScaleMetadata(
 			N, path, name, type, version, axesToWrite,
 			datasets, dsetAttrs,
-			null, null ); // no global coordinate transforms of downsampling metadata
+			null, null, N5Metadata.ArrayOrder.UKNOWN ); // no global coordinate transforms of downsampling metadata
 	}
 
 	public static OmeNgffMultiScaleMetadata buildMetadata(final NgffSingleScaleAxesMetadata meta, final String name, final String path, final DatasetAttributes[] dsetAttrs,
@@ -231,7 +232,7 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		return new OmeNgffMultiScaleMetadata(
 			N, path, name, type, version, meta.getAxes(),
 			datasets, dsetAttrs,
-			null, null ); // no global coordinate transforms of downsampling metadata
+			null, null, N5Metadata.ArrayOrder.UKNOWN ); // no global coordinate transforms of downsampling metadata
 	}
 
 }

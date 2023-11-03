@@ -52,6 +52,7 @@ import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata.ArrayOrder;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
@@ -59,6 +60,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
+import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueWriter;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
@@ -539,7 +541,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 						final OmeNgffMultiScaleMetadataMutable tmp = new OmeNgffMultiScaleMetadataMutable();
 
 						tmp.addChild( ngffSingle );
-						final OmeNgffMetadata msMeta = finalizeMultiscaleMetadata("", tmp);
+						final ArrayOrder byteOrder = n5 instanceof ZarrKeyValueWriter ? ArrayOrder.C : ArrayOrder.F;
+						final OmeNgffMetadata msMeta = finalizeMultiscaleMetadata("", tmp, byteOrder );
 						if( msMeta != null )
 							try {
 								new OmeNgffMetadataParser().writeMetadata(msMeta, n5, omeZarrMetadataPath );
@@ -560,7 +563,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		}
 	}
 
-	protected OmeNgffMetadata finalizeMultiscaleMetadata( final String path, OmeNgffMultiScaleMetadataMutable multiscaleMetadata ) {
+	protected OmeNgffMetadata finalizeMultiscaleMetadata( final String path, OmeNgffMultiScaleMetadataMutable multiscaleMetadata, final N5Metadata.ArrayOrder byteOrder ) {
 
 		if( multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable)
 		{
@@ -568,7 +571,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 			final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata( ms.getAxes().length,
 					path, path, "sampling", "0.4",
 					ms.getAxes(), ms.getDatasets(), null,
-					ms.coordinateTransformations, ms.metadata);
+					ms.coordinateTransformations, ms.metadata, byteOrder );
 
 			return (new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[] { meta }));
 		}

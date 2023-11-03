@@ -27,12 +27,10 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import ij.IJ;
 import ij.ImagePlus;
-import net.imagej.ImageJ;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.realtransform.RealViews;
@@ -41,10 +39,9 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.util.Intervals;
-import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
+
 import org.janelia.saalfeldlab.n5.Compression;
-import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
@@ -54,30 +51,26 @@ import org.janelia.saalfeldlab.n5.XzCompression;
 import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata.ArrayOrder;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5MultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadataGroup;
 import org.janelia.saalfeldlab.n5.universe.metadata.SpatialModifiable;
-import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMultiscaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataSingleScaleParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
+import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueWriter;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
@@ -110,8 +103,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
-import java.util.stream.LongStream;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>Export HDF5/N5/Zarr scale pyramid")
 public class N5ScalePyramidExporter extends ContextCommand implements WindowListener {
@@ -157,6 +148,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		  description = "The size of blocks")
   private String blockSizeArg;
 
+
+  @Parameter(label = "Create Pyramid (if possible)",
+		  	 description = "Writes multiple resolutions if allowed by the choice of metadata (ImageJ and None do not).")
+  private boolean createPyramidIfPossible = true;
+
   @Parameter(
 		  label = "Downsampling method",
 		  choices = {DOWN_SAMPLE, DOWN_AVG})
@@ -173,6 +169,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		  description = "The style for metadata to be stored in the exported N5.",
 		  choices = {
 				  N5Importer.MetadataOmeZarrKey,
+				  N5Importer.MetadataImageJKey,
 				  N5Importer.MetadataN5ViewerKey,
 				  N5Importer.MetadataN5CosemKey,
 				  N5Importer.MetadataCustomKey,
@@ -266,25 +263,27 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		System.exit(0);
 	}
 
-  public void setOptions(
-		  final ImagePlus image,
-		  final String n5RootLocation,
-		  final String n5Dataset,
-		  final String blockSizeArg,
-		  final String downsampleMethod,
-		  final String metadataStyle,
-		  final String compression) {
+	public void setOptions(
+			final ImagePlus image,
+			final String n5RootLocation,
+			final String n5Dataset,
+			final String blockSizeArg,
+			final boolean pyramidIfPossible,
+			final String downsampleMethod,
+			final String metadataStyle,
+			final String compression) {
 
-	this.image = image;
-	this.n5RootLocation = n5RootLocation;
+		this.image = image;
+		this.n5RootLocation = n5RootLocation;
 
-	this.n5Dataset = n5Dataset;
+		this.n5Dataset = n5Dataset;
+		this.blockSizeArg = blockSizeArg;
 
-	this.blockSizeArg = blockSizeArg;
-	this.downsampleMethod = downsampleMethod;
-	this.metadataStyle = metadataStyle;
-	this.compressionArg = compression;
-  }
+		this.createPyramidIfPossible = pyramidIfPossible;
+		this.downsampleMethod = downsampleMethod;
+		this.metadataStyle = metadataStyle;
+		this.compressionArg = compression;
+	}
 
 	/**
 	 * Set the custom metadata mapper to use programmically.
@@ -321,6 +320,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 	}
 
+	protected boolean metadataSupportsScales() {
+
+		return metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
+				metadataStyle.equals(N5Importer.MetadataN5CosemKey) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrKey);
+	}
+
 	@SuppressWarnings("unchecked")
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>>
 		void processMultiscale() throws IOException, InterruptedException, ExecutionException {
@@ -328,11 +334,15 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
 		final Compression compression = getCompression();
 
+		// TODO fix this if we ever expose this option for zarr
+		final ArrayOrder byteOrder = n5 instanceof ZarrKeyValueWriter ? ArrayOrder.C : ArrayOrder.F;
+
 		// TODO should have better behavior for block size parsing when splitting channels
 		// this might be done
 
 		// initialize block size
 		parseBlockSize();
+		final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
 
 		currentBlockSize = new int[ blockSize.length ];
 		System.arraycopy(blockSize, 0, currentBlockSize, 0, blockSize.length);
@@ -371,11 +381,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			currentAbsoluteDownsampling = new long[nd];
 			Arrays.fill(currentAbsoluteDownsampling, 1);
 
-			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset );
+			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset, byteOrder );
 			currentTranslation = new double[ nd ];
 
 			// write scale levels
-			final int maxNumScales = 31;  // we will stop early though
+			// we will stop early even when maxNumScales != 1
+			final int maxNumScales = computeScales ? 99 : 1;
 			for( int s = 0; s < maxNumScales; s++ ) {
 
 				final String dset = getScaleDatasetName(c, s);
@@ -412,7 +423,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 			}
 
-			writeMetadata( finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata), n5, channelDataset );
+			writeMetadata(
+					finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata, byteOrder),
+					n5,
+					channelDataset);
 		}
 
 		System.out.println("finished multiscale export");
@@ -429,12 +443,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return (RandomAccessibleInterval<T>)previousScaleImg;
 	}
 
-	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata( M baseMetadata, final String path ) {
+	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata( M baseMetadata, final String path, final N5Metadata.ArrayOrder byteOrder ) {
 
 		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
 			return null;
 
-		return ((N)new OmeNgffMultiScaleMetadataMutable(path));
+		return ((N)new OmeNgffMultiScaleMetadataMutable(path, byteOrder));
 	}
 
 	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> void updateMultiscaleMetadata( N multiscaleMetadata, M scaleMetadata ) {
@@ -450,7 +464,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 	}
 
-	protected < N extends SpatialMetadataGroup<?>> N finalizeMultiscaleMetadata( final String path, N multiscaleMetadata ) {
+	protected < N extends SpatialMetadataGroup<?>> N finalizeMultiscaleMetadata( final String path, N multiscaleMetadata, final N5Metadata.ArrayOrder byteOrder ) {
 
 		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
 			return multiscaleMetadata;
@@ -461,8 +475,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 			final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata( ms.getAxes().length,
 					path, path, downsampleMethod, "0.4",
-					ms.getAxes(), ms.getDatasets(), null,
-					ms.coordinateTransformations, ms.metadata);
+					ms.getAxes(),
+					ms.getDatasets(), null,
+					ms.coordinateTransformations, ms.metadata, byteOrder );
 
 			return ((N)new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[] { meta }));
 		}
@@ -515,13 +530,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	protected <M extends N5Metadata> String getScaleDatasetName(final int channelIndex, final int scale) {
 
-		return getChannelDatasetName(channelIndex ) +  String.format("/s%d", scale);
-//		if ( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
-//				( image.getNChannels() > 1 && metadataStyle.equals(N5Importer.MetadataN5CosemKey))) {
-//
-//			return n5Dataset + String.format("/c%d/s%d", channelIndex, scale);
-//		} else
-//			return n5Dataset + String.format("/s%d", scale);
+		if (metadataSupportsScales())
+			return getChannelDatasetName(channelIndex) + String.format("/s%d", scale);
+		else
+			return getChannelDatasetName(channelIndex);
 	}
 
 	/**
@@ -639,8 +651,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// expand block size
 				currentBlockSize = new int[]{currentBlockSize[0], currentBlockSize[1], 1, currentBlockSize[2]};
-//				currentAbsoluteDownsampling = new long[]{currentAbsoluteDownsampling[0], currentAbsoluteDownsampling[1],
-//						1, currentAbsoluteDownsampling[2]};
 			}
 			channels.add(channelImg);
 		}
@@ -649,7 +659,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		{
 			// if we slice the image, appropriately slice the block size also
 			currentBlockSize = sliceBlockSize(2);
-//			currentAbsoluteDownsampling = sliceDownsamplingFactors(2);
 			currentChannelMetadata = sliceMetadata( metadata, 2 );
 		}
 
