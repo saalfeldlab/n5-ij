@@ -355,7 +355,7 @@ public class TestExportImports
 			boolean testData )
 	{
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, outputPath, dataset, blockSizeString, downsampleMethod, metadataType, compressionType);
+		writer.setOptions( imp, outputPath, dataset, blockSizeString, true, downsampleMethod, metadataType, compressionType);
 		writer.run(); // run() closes the n5 writer
 
 		final String readerDataset;

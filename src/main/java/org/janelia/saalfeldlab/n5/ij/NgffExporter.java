@@ -57,7 +57,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata.ArrayOrder;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
@@ -342,7 +341,7 @@ public class NgffExporter extends ContextCommand implements WindowListener {
 		return new OmeNgffMultiScaleMetadata(
 			N, path, name, type, version, axesToWrite,
 			datasets, dsetAttrs,
-			null, null, ArrayOrder.UKNOWN ); // no global coordinate transforms of downsampling metadata
+			null, null); // no global coordinate transforms of downsampling metadata
 	}
 
 
