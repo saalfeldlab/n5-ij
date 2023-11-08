@@ -140,6 +140,9 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		if (nt > 1) {
 			axes[k] = new Axis(Axis.TIME, "t", ip.getCalibration().getTimeUnit());
 			scale[k] = ip.getCalibration().frameInterval;
+			if( scale[k] == 0.0 )
+				scale[k] = 1.0;
+
 			offset[k] = 0;
 			k++;
 		}
