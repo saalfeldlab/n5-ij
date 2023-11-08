@@ -25,58 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
-import ij.IJ;
-import ij.ImagePlus;
-import net.imagej.ImageJ;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.Img;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.realtransform.AffineTransform;
-import net.imglib2.type.NativeType;
-import net.imglib2.type.numeric.RealType;
-import net.imglib2.util.Intervals;
-import net.imglib2.view.IntervalView;
-import net.imglib2.view.Views;
-import org.janelia.saalfeldlab.n5.Compression;
-import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.GzipCompression;
-import org.janelia.saalfeldlab.n5.Lz4Compression;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.RawCompression;
-import org.janelia.saalfeldlab.n5.XzCompression;
-import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
-import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
-import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueWriter;
-import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
-import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
-import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
-import org.janelia.saalfeldlab.n5.metadata.imagej.MetadataTemplateMapper;
-import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
-import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
-import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
-import org.scijava.ItemVisibility;
-import org.scijava.app.StatusService;
-import org.scijava.command.Command;
-import org.scijava.command.ContextCommand;
-import org.scijava.log.LogService;
-import org.scijava.plugin.Parameter;
-import org.scijava.plugin.Plugin;
-import org.scijava.ui.UIService;
-
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
@@ -88,6 +36,59 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import org.janelia.saalfeldlab.n5.Compression;
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.GzipCompression;
+import org.janelia.saalfeldlab.n5.Lz4Compression;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5Writer;
+import org.janelia.saalfeldlab.n5.RawCompression;
+import org.janelia.saalfeldlab.n5.XzCompression;
+import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
+import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.imagej.MetadataTemplateMapper;
+import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
+import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
+import org.scijava.ItemVisibility;
+import org.scijava.app.StatusService;
+import org.scijava.command.Command;
+import org.scijava.command.ContextCommand;
+import org.scijava.log.LogService;
+import org.scijava.plugin.Parameter;
+import org.scijava.plugin.Plugin;
+import org.scijava.ui.UIService;
+
+import ij.IJ;
+import ij.ImageJ;
+import ij.ImagePlus;
+//import net.imagej.ImageJ;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.Img;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.realtransform.AffineTransform;
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
+import net.imglib2.util.Intervals;
+import net.imglib2.view.IntervalView;
+import net.imglib2.view.Views;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>Export HDF5/N5/Zarr")
 public class N5Exporter extends ContextCommand implements WindowListener {
@@ -208,7 +209,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 	impMetaWriterTypes.put(OmeNgffMetadataParser.class, new NgffToImagePlus());
   }
 
-	public static void main(String[] args) {
+	public static void main(final String[] args) {
 
 		final ImageJ ij = new ImageJ();
 //		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
@@ -561,7 +562,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		}
 	}
 
-	protected OmeNgffMetadata finalizeMultiscaleMetadata( final String path, OmeNgffMultiScaleMetadataMutable multiscaleMetadata) {
+	protected OmeNgffMetadata finalizeMultiscaleMetadata( final String path, final OmeNgffMultiScaleMetadataMutable multiscaleMetadata) {
 
 		if( multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable)
 		{
