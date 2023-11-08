@@ -78,6 +78,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScale
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 
 import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
 import ij.Macro;
 import ij.Prefs;
@@ -745,6 +746,8 @@ public class N5Importer implements PlugIn {
 			final ImageplusMetadata<?> impMeta = impMetaWriterTypes.get(datasetMeta.getClass());
 			ImagePlus imp;
 			try {
+
+				// datasetMeta must have absolute path
 				imp = N5Importer.read(n5, exec, datasetMeta, cropInterval, asVirtual, impMeta);
 
 				FileInfo fileInfo = imp.getOriginalFileInfo();
@@ -791,13 +794,14 @@ public class N5Importer implements PlugIn {
 		n5 = new N5ViewerReaderFun().apply(n5FullPath);
 		final String dataset = new N5BasePathFun().apply(n5FullPath);
 		N5DatasetMetadata metadata;
+		N5TreeNode root;
 		try {
 			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5,
 					N5DatasetDiscoverer.fromParsers(PARSERS),
 					Collections.singletonList(new OmeNgffMetadataParser()));
 			if( parseAllMetadata )
 			{
-				final N5TreeNode root = discoverer.discoverAndParseRecursive("");
+				root = discoverer.discoverAndParseRecursive("");
 				metadata = (N5DatasetMetadata)root.getDescendant(dataset).get().getMetadata();
 			}
 			else {
