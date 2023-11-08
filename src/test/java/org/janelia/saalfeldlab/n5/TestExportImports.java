@@ -62,11 +62,16 @@ public class TestExportImports
 		imp.setDimensions( nChannels, nSlices, 1 ); // 3 channels, 5 slices
 
 		final String n5RootPath = baseDir + "/test.n5" ;
-		final String dataset = "/n5v_4d";
+		final String dataset = "n5v_4d";
 
-		final N5Exporter writer = new N5Exporter();
-		writer.setOptions( imp, n5RootPath, dataset, "32", N5Importer.MetadataN5ViewerKey, "gzip", N5Exporter.OVERWRITE, "");
-		writer.run();
+//		final N5Exporter writer = new N5Exporter();
+//		writer.setOptions( imp, n5RootPath, dataset, "32", N5Importer.MetadataN5ViewerKey, "gzip", N5Exporter.OVERWRITE, "");
+//		writer.run();
+
+		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+		writer.setOptions( imp, n5RootPath, dataset, "32", false,
+				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataN5ViewerKey, N5ScalePyramidExporter.GZIP_COMPRESSION);
+		writer.run(); // run() closes the n5 writer
 
 		try {
 			final N5Importer reader = new N5Importer();
@@ -221,17 +226,19 @@ public class TestExportImports
 			boolean testMeta,
 			boolean testData )
 	{
-		System.out.println("outputPath: " + outputPath );
-		final N5Exporter writer = new N5Exporter();
-		writer.setOptions( imp, outputPath, dataset, blockSizeString, metadataType, compressionType,
-				N5Exporter.OVERWRITE, "");
+		System.out.println("outputPath: " + outputPath + "  " + dataset);
+
+		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+		writer.setOptions( imp, outputPath, dataset, blockSizeString, false,
+				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
 		writer.run(); // run() closes the n5 writer
 
+
 		final String readerDataset;
-		if( metadataType.equals( N5Importer.MetadataN5ViewerKey ))
+		if (metadataType.equals(N5Importer.MetadataN5ViewerKey) || (metadataType.equals(N5Importer.MetadataN5CosemKey) && imp.getNChannels() > 1))
 			readerDataset = dataset + "/c0/s0";
-		else if( metadataType.equals( N5Importer.MetadataN5CosemKey ) && imp.getNChannels() > 1 )
-			readerDataset = dataset + "/c0";
+		else if (metadataType.equals(N5Importer.MetadataOmeZarrKey) || metadataType.equals(N5Importer.MetadataN5CosemKey))
+			readerDataset = dataset + "/s0";
 		else
 			readerDataset = dataset;
 
@@ -316,9 +323,10 @@ public class TestExportImports
 		final String blockSizeString = "16";
 		final String compressionString = "raw";
 
-		int nc = 1;
-		int nz = 1;
-		int nt = 5;
+		// add zero to avoid eclipse making these variables final
+		int nc = 3; nc += 0;
+		int nz = 1; nz += 0;
+		int nt = 1; nt += 0;
 
 		for( nc = 1; nc <= 3; nc += 2)
 		{
@@ -388,26 +396,26 @@ public class TestExportImports
 			assertTrue( String.format( "%s units ", dataset ), unitsEqual );
 		}
 
-//		if( testData )
-//		{
-//			boolean imagesEqual;
-//			if( imp.getType() == ImagePlus.COLOR_RGB )
-//			{
-//				imagesEqual = equalRGB( imp, impRead );
-//				assertEquals( String.format( "%s as rgb ", dataset ), ImagePlus.COLOR_RGB, impRead.getType() );
-//			}
-//			else
-//				imagesEqual = equal( imp, impRead );
-//
-//			assertTrue( String.format( "%s data ", dataset ), imagesEqual );
-//		}
-//
-//		try {
-//			final N5Writer n5w = new N5Factory().openWriter(outputPath);
-//			n5w.remove();
-//		} catch (final N5Exception e) {
-//			e.printStackTrace();
-//		}
+		if( testData )
+		{
+			boolean imagesEqual;
+			if( imp.getType() == ImagePlus.COLOR_RGB )
+			{
+				imagesEqual = equalRGB( imp, impRead );
+				assertEquals( String.format( "%s as rgb ", dataset ), ImagePlus.COLOR_RGB, impRead.getType() );
+			}
+			else
+				imagesEqual = equal( imp, impRead );
+
+			assertTrue( String.format( "%s data ", dataset ), imagesEqual );
+		}
+
+		try {
+			final N5Writer n5w = new N5Factory().openWriter(outputPath);
+			n5w.remove();
+		} catch (final N5Exception e) {
+			e.printStackTrace();
+		}
 
 		impRead.close();
 	}
@@ -447,14 +455,6 @@ public class TestExportImports
 			}
 
 		}
-	}
-
-	@Test
-	public void testPyramid()
-	{
-//		testPyramidHelper(N5Importer.MetadataN5ViewerKey);
-//		testPyramidHelper(N5Importer.MetadataN5ViewerKey);
-		testPyramidHelper(N5Importer.MetadataOmeZarrKey);
 	}
 
 }

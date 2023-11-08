@@ -17,6 +17,7 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.TestExportImports;
 import org.janelia.saalfeldlab.n5.ij.N5Exporter;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
+import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
 import org.janelia.saalfeldlab.n5.ij.NgffExporter;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
@@ -170,14 +171,18 @@ public class WriteAxesTests {
 		final String rootLocation = tempPathName() + File.separator + containerName;
 		final String dataset = "/";
 		final String blockSizeArg = "32,32,32";
-		final String compression = "gzip";
-		final int nScales = 1;
+		final String compression = N5ScalePyramidExporter.GZIP_COMPRESSION;
 
-		final NgffExporter exporter = new NgffExporter();
-		exporter.setOptions(imp, rootLocation, dataset, blockSizeArg, compression, nScales,
-				N5Exporter.OVERWRITE_OPTIONS.NO_OVERWRITE.toString(), "");
+//		final NgffExporter exporter = new NgffExporter();
+//		exporter.setOptions(imp, rootLocation, dataset, blockSizeArg, compression, nScales,
+//				N5Exporter.OVERWRITE_OPTIONS.NO_OVERWRITE.toString(), "");
+//		exporter.process();
 
-		exporter.process();
+		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+		writer.setOptions( imp, rootLocation, dataset, blockSizeArg, false,
+				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrKey, compression);
+		writer.run(); // run() closes the n5 writer
+
 		return rootLocation;
 	}
 
