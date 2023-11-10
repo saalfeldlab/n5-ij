@@ -8,26 +8,37 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.TestExportImports;
-import org.janelia.saalfeldlab.n5.ij.N5Exporter;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
-import org.janelia.saalfeldlab.n5.ij.NgffExporter;
+import org.janelia.saalfeldlab.n5.metadata.imagej.CanonicalMetadataToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
+import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
+import org.junit.Before;
 import org.junit.Test;
 
 import ij.ImagePlus;
@@ -40,6 +51,8 @@ public class WriteAxesTests {
 	final int nx = 10;
 	final int ny = 8;
 
+	private HashMap<Class<?>, ImageplusMetadata<?>> impWriters;
+
 	private static String tempPathName() {
 
 		try {
@@ -49,6 +62,26 @@ public class WriteAxesTests {
 		} catch (final Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private static HashMap<Class<?>, ImageplusMetadata<?>> defaultImagePlusMetadataWriters()
+	{
+		final HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes = new HashMap<>();
+		impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
+		impMetaWriterTypes.put(NgffSingleScaleAxesMetadata.class, new NgffToImagePlus());
+		impMetaWriterTypes.put(N5CosemMetadata.class, new CosemToImagePlus());
+		impMetaWriterTypes.put(N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
+		impMetaWriterTypes.put(CanonicalDatasetMetadata.class, new CanonicalMetadataToImagePlus());
+		impMetaWriterTypes.put(CanonicalSpatialDatasetMetadata.class, new CanonicalMetadataToImagePlus());
+		return impMetaWriterTypes;
+	}
+
+	@Before
+	public void before() {
+
+		/* To explicitly test headless */
+//		 System.setProperty("java.awt.headless", "true");
+		impWriters = defaultImagePlusMetadataWriters();
 	}
 
 	@Test
@@ -173,11 +206,6 @@ public class WriteAxesTests {
 		final String blockSizeArg = "32,32,32";
 		final String compression = N5ScalePyramidExporter.GZIP_COMPRESSION;
 
-//		final NgffExporter exporter = new NgffExporter();
-//		exporter.setOptions(imp, rootLocation, dataset, blockSizeArg, compression, nScales,
-//				N5Exporter.OVERWRITE_OPTIONS.NO_OVERWRITE.toString(), "");
-//		exporter.process();
-
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, rootLocation, dataset, blockSizeArg, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrKey, compression);
@@ -189,8 +217,6 @@ public class WriteAxesTests {
 	private OmeNgffMetadata readMetadata(final String rootLocation ) {
 
 		final N5Reader zarr = new N5Factory().openReader(rootLocation);
-//		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr, Collections.singletonList(new DatasetMetadataParser()),
-//				Collections.singletonList(new OmeNgffMetadataParser()));
 		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr, Collections.singletonList(new N5GenericSingleScaleMetadataParser()),
 				Collections.singletonList(new OmeNgffMetadataParser()));
 
@@ -213,7 +239,7 @@ public class WriteAxesTests {
 
 			final N5DatasetMetadata dsetmeta = (N5DatasetMetadata)meta;
 			final List<N5DatasetMetadata> metaList = Collections.singletonList( dsetmeta );
-			final List<ImagePlus> impList = N5Importer.process(zarr, rootLocation, Executors.newFixedThreadPool(1), metaList, false, null);
+			final List<ImagePlus> impList = N5Importer.process(zarr, rootLocation, Executors.newFixedThreadPool(1), metaList, false, null, false, impWriters);
 			return impList.size() == 0 ? null : impList.get(0);
 		}
 		return null;
