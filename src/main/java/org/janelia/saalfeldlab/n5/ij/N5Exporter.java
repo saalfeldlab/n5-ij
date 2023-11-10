@@ -99,9 +99,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
   public static final String XZ_COMPRESSION = "xz";
   public static final String BLOSC_COMPRESSION = "blosc";
 
-  public static final String DOWN_SAMPLE = "Sample";
-  public static final String DOWN_AVG = "Average";
-
   public static final String NONE = "None";
 
   public static final String NO_OVERWRITE = "No overwrite";
@@ -139,11 +136,6 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 		  label = "Block size",
 		  description = "The size of blocks")
   private String blockSizeArg;
-
-  @Parameter(
-		  label = "Downsampling method",
-		  choices = {DOWN_SAMPLE, DOWN_AVG})
-  private String downsampleMethod = DOWN_SAMPLE;
 
   @Parameter(
 		  label = "Compression",
