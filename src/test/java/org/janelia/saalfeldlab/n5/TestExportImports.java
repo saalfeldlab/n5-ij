@@ -64,10 +64,6 @@ public class TestExportImports
 		final String n5RootPath = baseDir + "/test.n5" ;
 		final String dataset = "n5v_4d";
 
-//		final N5Exporter writer = new N5Exporter();
-//		writer.setOptions( imp, n5RootPath, dataset, "32", N5Importer.MetadataN5ViewerKey, "gzip", N5Exporter.OVERWRITE, "");
-//		writer.run();
-
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, n5RootPath, dataset, "32", false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataN5ViewerKey, N5ScalePyramidExporter.GZIP_COMPRESSION);
@@ -226,13 +222,11 @@ public class TestExportImports
 			boolean testMeta,
 			boolean testData )
 	{
-		System.out.println("outputPath: " + outputPath + "  " + dataset);
-
+//		System.out.println("outputPath: " + outputPath + "  " + dataset);
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
 		writer.run(); // run() closes the n5 writer
-
 
 		final String readerDataset;
 		if (metadataType.equals(N5Importer.MetadataN5ViewerKey) || (metadataType.equals(N5Importer.MetadataN5CosemKey) && imp.getNChannels() > 1))
@@ -310,16 +304,20 @@ public class TestExportImports
 	@Test
 	public void testMultiChannel()
 	{
-		testMultiChannelHelper(N5Importer.MetadataN5ViewerKey);
-		testMultiChannelHelper(N5Importer.MetadataN5CosemKey);
-		testMultiChannelHelper(N5Importer.MetadataOmeZarrKey);
+		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
+		{
+			testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
+			testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
+			testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
+			testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
+		}
 	}
 
-	public void testMultiChannelHelper( final String metatype )
+	public void testMultiChannelHelper( final String metatype, final String suffix )
 	{
 		final int bitDepth = 8;
 
-		final String n5RootPath = baseDir + "/test_"+ metatype+"_dimCombos.n5";
+		final String n5RootPath = baseDir + "/test_"+ metatype+"_dimCombos" + suffix;
 		final String blockSizeString = "16";
 		final String compressionString = "raw";
 
@@ -420,11 +418,11 @@ public class TestExportImports
 		impRead.close();
 	}
 
-	public void testPyramidHelper( final String metatype )
+	public void testPyramidHelper( final String metatype, final String suffix )
 	{
 		final int bitDepth = 8;
 
-		final String n5RootPath = baseDir + "/test_"+ metatype+"_dimCombos.n5";
+		final String n5RootPath = baseDir + "/test_"+ metatype+"_dimCombos" + suffix;
 		final String blockSizeString = "3";
 		final String compressionString = "raw";
 		final String downsamplingType = N5ScalePyramidExporter.DOWN_SAMPLE;
