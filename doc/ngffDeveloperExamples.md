@@ -59,7 +59,7 @@ public static ImagePlus makeDemoImagePlus( long[] dimensions, double... resoluti
 </details>
 
 
-### write: low-level, single scale
+### write: low-level, single-scale
 
 ```java
 // parameters
@@ -106,6 +106,71 @@ public static ArrayImg<IntType, IntArray> makeDemoImage( long[] dimensions )
     return ArrayImgs.ints(
             IntStream.range(0, N).toArray(),
             dimensions);
+}
+```
+
+</details>
+
+### write: low-level, multi-scale
+
+```java
+// parameters
+final String n5Root = "/home/john/tmp/ngff-test.zarr";
+final String baseDataset = "";
+final long[] imageDimensions = new long[] { 64, 32, 16 };
+final int[] blockSize = new int[] { 64, 32, 16 };
+
+// make a demo array and scale levels
+List<RandomAccessibleInterval<IntType>> scaleLevels = makeDemoImageMultiscales( 3, imageDimensions, new long[]{2, 2, 2} );
+
+// make demo metadata
+
+// make the resolutions, 3 scale levels, base resolution[2,3,4], downsampled by [2,2,2]
+final double[][] resolutions = MetadataUtils.scalesAndTranslations(new double[]{2.0, 3.0, 4.0}, new double[]{2.0, 2.0, 2.0}, 3);
+// this will be:
+/*
+ *  [[2,  3,  4]
+ *   [4,  6,  8]
+ *   [8, 12, 16]]
+ */
+final OmeNgffMetadata meta = OmeNgffMetadata.buildForWriting( 3,
+        "name",
+        AxisUtils.defaultAxes("x", "y", "z"), 	// a helper method to create axes
+        new String[] {"s0", "s1", "s2"},		// location of the scale arrays in the hierarchy
+        resolutions,							// resolutions
+        null);									// translation / offset (if null, interpreted as zero)
+
+// make the n5 writer
+final N5Writer n5 = new N5Factory().openWriter(n5Root);
+
+// write the array
+int s = 0;
+for( RandomAccessibleInterval<IntType> img : scaleLevels )
+    N5Utils.save(img, n5, String.format("%s/s%d", baseDataset, s++), blockSize, new GzipCompression());
+
+// write the metadata
+try {
+    new OmeNgffMetadataParser().writeMetadata(meta, n5, baseDataset);
+} catch (Exception e) { }
+```
+
+<details>
+
+<summary>where `makeDemoImageMultiscales`</summary>
+
+```java
+public static List<RandomAccessibleInterval<IntType>> makeDemoImageMultiscales( int numScales, long[] baseDimensions, long[] factors )
+{
+    int N = 1;
+    for (int i = 0; i < baseDimensions.length; i++)
+        N *= baseDimensions[i];
+
+    ArrayList<RandomAccessibleInterval<IntType>> scaleList = new ArrayList<>();
+    scaleList.add( ArrayImgs.ints( IntStream.range(0, N).toArray(), baseDimensions));
+    for( int i = 1; i < numScales; i++ )
+        scaleList.add(Views.subsample( scaleList.get(0), factors ));
+
+    return scaleList;
 }
 ```
 
