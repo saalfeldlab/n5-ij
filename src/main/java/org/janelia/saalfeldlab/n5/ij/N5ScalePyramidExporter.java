@@ -114,6 +114,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   public static final String XZ_COMPRESSION = "xz";
   public static final String BLOSC_COMPRESSION = "blosc";
 
+  public static enum DOWNSAMPLE_METHOD { Sample, Average };
   public static final String DOWN_SAMPLE = "Sample";
   public static final String DOWN_AVG = "Average";
 
@@ -182,8 +183,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
   private int[] blockSize;
 
-//  private int[] currentBlockSize;
-
   private long[] currentAbsoluteDownsampling;
 
   // the translation introduced by the downsampling method at the current scale level
@@ -206,29 +205,55 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   // consider something like this eventually
   //  private BiFunction<RandomAccessibleInterval<? extends NumericType<?>>,long[],RandomAccessibleInterval<?>> downsampler;
 
-  public N5ScalePyramidExporter() {
+	public N5ScalePyramidExporter() {
 
-	styles = new HashMap<String, N5MetadataWriter<?>>();
-	styles.put(N5Importer.MetadataOmeZarrKey, new OmeNgffMetadataParser());
-	styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadataParser());
-	styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadataParser());
-	styles.put(N5Importer.MetadataImageJKey, new ImagePlusLegacyMetadataParser());
+		styles = new HashMap<String, N5MetadataWriter<?>>();
+		styles.put(N5Importer.MetadataOmeZarrKey, new OmeNgffMetadataParser());
+		styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadataParser());
+		styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadataParser());
+		styles.put(N5Importer.MetadataImageJKey, new ImagePlusLegacyMetadataParser());
 
-	metadataWriters = new HashMap<Class<?>, N5MetadataWriter<?>>();
-	metadataWriters.put(OmeNgffMetadata.class, new OmeNgffMetadataParser());
-	metadataWriters.put(N5SingleScaleMetadata.class, new N5SingleScaleMetadataParser());
-	metadataWriters.put(N5CosemMetadata.class, new N5CosemMetadataParser());
-	metadataWriters.put(NgffSingleScaleAxesMetadata.class, new OmeNgffMetadataSingleScaleParser());
-	metadataWriters.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
+		metadataWriters = new HashMap<Class<?>, N5MetadataWriter<?>>();
+		metadataWriters.put(OmeNgffMetadata.class, new OmeNgffMetadataParser());
+		metadataWriters.put(N5SingleScaleMetadata.class, new N5SingleScaleMetadataParser());
+		metadataWriters.put(N5CosemMetadata.class, new N5CosemMetadataParser());
+		metadataWriters.put(NgffSingleScaleAxesMetadata.class, new OmeNgffMetadataSingleScaleParser());
+		metadataWriters.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 
-	// default image plus metadata writers
-	impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
-	impMetaWriterTypes.put(ImagePlusLegacyMetadataParser.class, new ImagePlusLegacyMetadataParser());
-	impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
-	impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
-	impMetaWriterTypes.put(OmeNgffMetadataParser.class, new NgffToImagePlus());
+		// default image plus metadata writers
+		impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
+		impMetaWriterTypes.put(ImagePlusLegacyMetadataParser.class, new ImagePlusLegacyMetadataParser());
+		impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
+		impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
+		impMetaWriterTypes.put(OmeNgffMetadataParser.class, new NgffToImagePlus());
 
-  }
+	}
+
+	public N5ScalePyramidExporter(final ImagePlus image,
+			final String n5RootLocation,
+			final String n5Dataset,
+			final String blockSizeArg,
+			final boolean pyramidIfPossible,
+			final String downsampleMethod,
+			final String metadataStyle,
+			final String compression) {
+
+		this();
+		setOptions(image, n5RootLocation, n5Dataset, blockSizeArg, pyramidIfPossible, downsampleMethod, metadataStyle, compression);
+	}
+
+	public N5ScalePyramidExporter(final ImagePlus image,
+			final String n5RootLocation,
+			final String n5Dataset,
+			final String blockSizeArg,
+			final boolean pyramidIfPossible,
+			final DOWNSAMPLE_METHOD downsampleMethod,
+			final String metadataStyle,
+			final String compression) {
+
+		this();
+		setOptions(image, n5RootLocation, n5Dataset, blockSizeArg, pyramidIfPossible, downsampleMethod.name(), metadataStyle, compression);
+	}
 
 	public static void main(String[] args) {
 
@@ -708,7 +733,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					ijmeta.type, ijmeta.properties);
 		}
 		else
-			System.err.println("uh oh");
+			System.err.println("Encountered metadata of unexpected type.");
 
 		return metadata;
 	}

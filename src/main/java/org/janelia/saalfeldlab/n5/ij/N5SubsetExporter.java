@@ -107,6 +107,16 @@ public class N5SubsetExporter extends ContextCommand {
 
 	private long[] offset;
 
+	public void N5SubsetExporter(final ImagePlus image, final String n5RootLocation, final String n5Dataset, final String subsetOffset) {
+
+		setOptions(image, n5RootLocation, n5Dataset, subsetOffset);
+	}
+
+	public void N5SubsetExporter(final ImagePlus image, final String n5RootLocation, final String n5Dataset, final long[] subsetOffset) {
+
+		setOptions(image, n5RootLocation, n5Dataset, subsetOffset);
+	}
+
 	public static void main(final String[] args) {
 
 //		final ImageJ ij = new ImageJ();
@@ -135,6 +145,19 @@ public class N5SubsetExporter extends ContextCommand {
 		this.subsetOffset = subsetOffset;
 	}
 
+	public void setOptions( final ImagePlus image, final String n5RootLocation, final String n5Dataset, final long[] subsetOffset) {
+
+		this.image = image;
+		this.n5RootLocation = n5RootLocation;
+		this.n5Dataset = n5Dataset;
+		this.offset = subsetOffset;
+	}
+
+	public void setOffset(final long[] offset) {
+
+		this.offset = offset;
+	}
+
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, InterruptedException, ExecutionException {
 
 		final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
@@ -143,6 +166,9 @@ public class N5SubsetExporter extends ContextCommand {
 	}
 
 	public void parseOffset() {
+
+		if (this.offset != null)
+			return;
 
 		final int nd = image.getNDimensions();
 		final String[] blockArgList = subsetOffset.split(",");
