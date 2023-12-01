@@ -75,9 +75,9 @@ final ArrayImg<IntType, IntArray> img = makeDemoImage( imageDimensions );
 final OmeNgffMetadata meta = OmeNgffMetadata.buildForWriting( 3,
         "name",
         AxisUtils.defaultAxes("x", "y", "z"), 	// a helper method to create axes
-        new String[] {"s0"}, 					// location of the array in the hierarchy
-        new double[][]{{ 2.0, 3.0, 4.0 }},		// resolution
-        null);									// translation / offset (if null, interpreted as zero)
+        new String[] {"s0"}, 			// location of the array in the hierarchy
+        new double[][]{{ 2.0, 3.0, 4.0 }},      // resolution
+        null);					// translation / offset (if null, interpreted as zero)
 
 
 // make the n5 writer
@@ -136,9 +136,9 @@ final double[][] resolutions = MetadataUtils.scalesAndTranslations(new double[]{
 final OmeNgffMetadata meta = OmeNgffMetadata.buildForWriting( 3,
         "name",
         AxisUtils.defaultAxes("x", "y", "z"), 	// a helper method to create axes
-        new String[] {"s0", "s1", "s2"},		// location of the scale arrays in the hierarchy
-        resolutions,							// resolutions
-        null);									// translation / offset (if null, interpreted as zero)
+        new String[] {"s0", "s1", "s2"},	// location of the scale arrays in the hierarchy
+        resolutions,				// resolutions
+        null);				        // translation / offset (if null, interpreted as zero)
 
 // make the n5 writer
 final N5Writer n5 = new N5Factory().openWriter(n5Root);
