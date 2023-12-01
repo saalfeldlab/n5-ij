@@ -8,7 +8,7 @@ The example below deal with [ngff version 0.4](https://ngff.openmicroscopy.org/0
 
 ### write: N5ScalePyramidExporter
 
-```
+```java
 // parameters
 final String n5Root = "/home/john/tmp/ngff-test.zarr";
 final String metaType = N5Importer.MetadataOmeZarrKey;
@@ -34,7 +34,7 @@ exp.run();
 
 <summary>where `makeDemoImagePlus`</summary>
 
-```
+```java
 public static ImagePlus makeDemoImagePlus( long[] dimensions, double... resolution )
 {
     final IntImagePlus<IntType> img = ImagePlusImgs.ints(dimensions);
@@ -61,7 +61,7 @@ public static ImagePlus makeDemoImagePlus( long[] dimensions, double... resoluti
 
 ### write: low-level, single scale
 
-```
+```java
 // parameters
 final String n5Root = "/home/john/tmp/ngff-test.zarr";
 final String baseDataset = "";
@@ -96,7 +96,7 @@ try {
 
 <summary>where `makeDemoImage`</summary>
 
-```
+```java
 public static ArrayImg<IntType, IntArray> makeDemoImage( long[] dimensions )
 {
     int N = 1;
