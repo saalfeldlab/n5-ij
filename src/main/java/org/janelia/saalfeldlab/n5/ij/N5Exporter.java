@@ -50,6 +50,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
+import org.janelia.scicomp.n5.zstandard.ZstandardCompression;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
@@ -82,6 +83,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
   public static final String LZ4_COMPRESSION = "lz4";
   public static final String XZ_COMPRESSION = "xz";
   public static final String BLOSC_COMPRESSION = "blosc";
+  public static final String ZSTD_COMPRESSION = "zstd";
 
   public static final String NONE = "None";
 
@@ -120,7 +122,7 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 
   @Parameter(
 		  label = "Compression",
-		  choices = {GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION},
+		  choices = {GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION, ZSTD_COMPRESSION},
 		  style = "listBox")
   private String compressionArg = GZIP_COMPRESSION;
 
@@ -493,6 +495,8 @@ public class N5Exporter extends ContextCommand implements WindowListener {
 			return new RawCompression();
 		case BLOSC_COMPRESSION:
 			return new BloscCompression();
+		case ZSTD_COMPRESSION:
+			return new ZstandardCompression();
 		default:
 			return new RawCompression();
 		}

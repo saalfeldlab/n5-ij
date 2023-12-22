@@ -88,6 +88,7 @@
 		<jackson-jq.version>1.0.0-preview.20191208</jackson-jq.version>
 
 		<n5-universe.version>1.2.0</n5-universe.version>
+		<n5-zstandard.version>1.0.2</n5-zstandard.version>
 	</properties>
 
 	<dependencies>
@@ -115,6 +116,11 @@
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-zarr</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia</groupId>
+			<artifactId>n5-zstandard</artifactId>
+			<version>${n5-zstandard.version}</version>
 		</dependency>
 
 		<!-- ImgLib2 dependencies -->
