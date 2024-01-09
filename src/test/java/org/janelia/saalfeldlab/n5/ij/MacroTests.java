@@ -50,16 +50,9 @@ public class MacroTests {
 
 		imp = NewImage.createImage("test", 8, 7, 9, 16, NewImage.FILL_NOISE);
 
-//		final N5Exporter writer = new N5Exporter();
-//		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", "16,16,16",
-//				N5Exporter.NONE,
-//				N5Exporter.RAW_COMPRESSION,
-//				N5Exporter.OVERWRITE, "");
-//		writer.run();
-
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", "16,16,16", false,
-				N5Exporter.NONE, N5ScalePyramidExporter.DOWN_SAMPLE, N5Exporter.RAW_COMPRESSION);
+				N5ScalePyramidExporter.NONE, N5ScalePyramidExporter.DOWN_SAMPLE, N5ScalePyramidExporter.RAW_COMPRESSION);
 		writer.run(); // run() closes the n5 writer
 	}
 

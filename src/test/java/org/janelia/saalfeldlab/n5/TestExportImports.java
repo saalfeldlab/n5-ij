@@ -8,7 +8,6 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 
-import org.janelia.saalfeldlab.n5.ij.N5Exporter;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
@@ -49,7 +48,7 @@ public class TestExportImports
 		final String n5RootPath = baseDir + "/test_none.n5";
 		final String dataset = "/test";
 		final String blockSizeString = "32,32,32";
-		final String compressionString = "raw";
+		final String compressionString = N5ScalePyramidExporter.RAW_COMPRESSION;
 		singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metaType, compressionString, false );
 	}
 
@@ -96,7 +95,7 @@ public class TestExportImports
 		typeToExtension.put( "HDF5", "h5" );
 
 		final String blockSizeString = "16,16,16";
-		final String compressionString = "gzip";
+		final String compressionString = N5ScalePyramidExporter.GZIP_COMPRESSION;
 		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
 		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataImageJKey,
