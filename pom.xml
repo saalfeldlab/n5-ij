@@ -180,7 +180,6 @@
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-universe</artifactId>
-			<version>${n5-universe.version}</version>
 		</dependency>
 	</dependencies>
 
