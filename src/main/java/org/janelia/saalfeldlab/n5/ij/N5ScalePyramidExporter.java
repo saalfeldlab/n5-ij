@@ -72,6 +72,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataSingleScaleParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
+import org.janelia.scicomp.n5.zstandard.ZstandardCompression;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
@@ -970,8 +971,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			return new RawCompression();
 		case BLOSC_COMPRESSION:
 			return new BloscCompression();
-//		case ZSTD_COMPRESSION:
-//			return new ZstandardCompression();
+		case ZSTD_COMPRESSION:
+			return new ZstandardCompression();
 		default:
 			return new RawCompression();
 		}
