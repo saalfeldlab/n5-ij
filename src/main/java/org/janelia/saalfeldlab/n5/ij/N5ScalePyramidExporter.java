@@ -27,6 +27,7 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import ij.IJ;
 import ij.ImagePlus;
+import net.imagej.Dataset;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -114,16 +115,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   public static final String LZ4_COMPRESSION = "lz4";
   public static final String XZ_COMPRESSION = "xz";
   public static final String BLOSC_COMPRESSION = "blosc";
+  public static final String ZSTD_COMPRESSION = "zstd";
 
   public static enum DOWNSAMPLE_METHOD { Sample, Average };
   public static final String DOWN_SAMPLE = "Sample";
   public static final String DOWN_AVG = "Average";
 
   public static final String NONE = "None";
-
-  @Parameter(visibility = ItemVisibility.MESSAGE, required = false)
-  private final String message = "Export an ImagePlus to an HDF5, N5, or Zarr container."
-  		+ "Read the documentation";
 
   @Parameter
   private LogService log;
@@ -137,7 +135,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   @Parameter(label = "Image")
   private ImagePlus image; // or use Dataset? - maybe later
 
-  @Parameter(label = "N5 root url")
+  @Parameter(label = "Root url", description = "The type of hierarchy is inferred from the extension of the url. " +
+		  " Use \".h5\", \".n5\", or \".zarr\"")
   private String n5RootLocation;
 
   @Parameter(
@@ -147,9 +146,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   private String n5Dataset;
 
   @Parameter(
-		  label = "Block size",
-		  description = "The size of blocks")
-  private String blockSizeArg;
+		  label = "Chunk size",
+		  description = "The size of chunks. Comma separated, for example: \"64,32,16\".\n " +
+		  "You may provide fewer values than the data dimension. In that case, the size will "
+		  + "be expanded to necessary size with the last value, for example \"64\", will expand " +
+		  "to \"64,64,64\" for 3D data.")
+  private String chunkSizeArg;
 
 
   @Parameter(label = "Create Pyramid (if possible)",
@@ -158,17 +160,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
   @Parameter(
 		  label = "Downsampling method",
+		  style = "listBox",
 		  choices = {DOWN_SAMPLE, DOWN_AVG})
   private String downsampleMethod = DOWN_SAMPLE;
 
   @Parameter(
 		  label = "Compression",
-		  choices = {GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION},
-		  style = "listBox")
+		  style = "listBox",
+		  choices = {GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION, ZSTD_COMPRESSION})
   private String compressionArg = GZIP_COMPRESSION;
 
   @Parameter(
 		  label = "metadata type",
+		  style = "listBox",
 		  description = "The style for metadata to be stored in the exported N5.",
 		  choices = {
 				  N5Importer.MetadataOmeZarrKey,
@@ -182,7 +186,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   @Parameter(label = "Thread count", required = true, min = "1", max = "999")
   private int nThreads = 1;
 
-  private int[] blockSize;
+  private int[] chunkSize;
 
   private long[] currentAbsoluteDownsampling;
 
@@ -233,27 +237,27 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public N5ScalePyramidExporter(final ImagePlus image,
 			final String n5RootLocation,
 			final String n5Dataset,
-			final String blockSizeArg,
+			final String chunkSizeArg,
 			final boolean pyramidIfPossible,
 			final String downsampleMethod,
 			final String metadataStyle,
 			final String compression) {
 
 		this();
-		setOptions(image, n5RootLocation, n5Dataset, blockSizeArg, pyramidIfPossible, downsampleMethod, metadataStyle, compression);
+		setOptions(image, n5RootLocation, n5Dataset, chunkSizeArg, pyramidIfPossible, downsampleMethod, metadataStyle, compression);
 	}
 
 	public N5ScalePyramidExporter(final ImagePlus image,
 			final String n5RootLocation,
 			final String n5Dataset,
-			final String blockSizeArg,
+			final String chunkSizeArg,
 			final boolean pyramidIfPossible,
 			final DOWNSAMPLE_METHOD downsampleMethod,
 			final String metadataStyle,
 			final String compression) {
 
 		this();
-		setOptions(image, n5RootLocation, n5Dataset, blockSizeArg, pyramidIfPossible, downsampleMethod.name(), metadataStyle, compression);
+		setOptions(image, n5RootLocation, n5Dataset, chunkSizeArg, pyramidIfPossible, downsampleMethod.name(), metadataStyle, compression);
 	}
 
 	public static void main(String[] args) {
@@ -262,11 +266,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 //		final ImageJ ij = new ImageJ();
 //		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
 
-//		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mri-stack_mm.tif" );
+		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mri-stack_mm.tif" );
 //		final String root = "/home/john/tmp/mri-test.n5";
+		final String root = "/home/john/tmp/mri-test.zarr";
 
-		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
-		final String root = "/home/john/tmp/mitosis-test.zarr";
+//		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
+//		final String root = "/home/john/tmp/mitosis-test.zarr";
 //		final String root = "/home/john/tmp/mitosis-test.n5";
 
 //		final String metaType = N5Importer.MetadataN5ViewerKey;
@@ -275,14 +280,17 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 //		final String dsMethod = DOWN_SAMPLE;
 		final String dsMethod = DOWN_AVG;
+		
+//		final String compression = "gzip";
+		final String compression = "zstd";
 
 //		final String dset = String.format("%s_%d", metaType, nScales);
-		final String dset = String.format("%s_%s", metaType, dsMethod);
+		final String dset = String.format("%s_%s_%s", metaType, dsMethod, compression);
 //		final String dset = metaType;
 
 		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
-		exp.setOptions(imp, root, dset, "64,64,1,2,16", true, dsMethod, metaType, "gzip" ); //mitosis
-//		exp.setOptions(imp, root, dset, "64,64,16", true, dsMethod, metaType, "gzip" ); // mri
+//		exp.setOptions(imp, root, dset, "64,64,1,2,16", true, dsMethod, metaType, compression ); //mitosis
+		exp.setOptions(imp, root, dset, "64,64,16", true, dsMethod, metaType, compression ); // mri
 		exp.run();
 
 //		final N5CosemMetadata cosem = new N5CosemMetadata("", new N5CosemMetadata.CosemTransform(
@@ -297,7 +305,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final ImagePlus image,
 			final String n5RootLocation,
 			final String n5Dataset,
-			final String blockSizeArg,
+			final String chunkSizeArg,
 			final boolean pyramidIfPossible,
 			final String downsampleMethod,
 			final String metadataStyle,
@@ -307,7 +315,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		this.n5RootLocation = n5RootLocation;
 
 		this.n5Dataset = MetadataUtils.normalizeGroupPath(n5Dataset);
-		this.blockSizeArg = blockSizeArg;
+		this.chunkSizeArg = chunkSizeArg;
 
 		this.createPyramidIfPossible = pyramidIfPossible;
 		this.downsampleMethod = downsampleMethod;
@@ -329,20 +337,20 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public void parseBlockSize( final long[] dims ) {
 
 		final int nd = dims.length;
-		final String[] blockArgList = blockSizeArg.split(",");
-		blockSize = new int[nd];
+		final String[] chunkArgList = chunkSizeArg.split(",");
+		chunkSize = new int[nd];
 		int i = 0;
-		while (i < blockArgList.length && i < nd) {
-			blockSize[i] = Integer.parseInt(blockArgList[i]);
+		while (i < chunkArgList.length && i < nd) {
+			chunkSize[i] = Integer.parseInt(chunkArgList[i]);
 			i++;
 		}
-		final int N = blockArgList.length - 1;
+		final int N = chunkArgList.length - 1;
 
 		while (i < nd) {
-			if( blockSize[N] > dims[i] )
-				blockSize[i] = (int)dims[i];
+			if( chunkSize[N] > dims[i] )
+				chunkSize[i] = (int)dims[i];
 			else
-				blockSize[i] = blockSize[N];
+				chunkSize[i] = chunkSize[N];
 
 			i++;
 		}
@@ -367,7 +375,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
 		final Compression compression = getCompression();
 
-		// TODO should have better behavior for block size parsing when splitting channels
+		// TODO should have better behavior for chunk size parsing when splitting channels
 		// this might be done
 
 		final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
@@ -443,8 +451,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				updateMultiscaleMetadata( multiscaleMetadata, currentMetadata );
 
-				// blockSize variable is updated by the write method
-				if (lastScale(blockSize, currentChannelImg))
+				// chunkSize variable is updated by the write method
+				if (lastScale(chunkSize, currentChannelImg))
 					break;
 
 			}
@@ -515,10 +523,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return multiscaleMetadata;
 	}
 
-	protected boolean lastScale(final int[] blockSize, final Interval imageDimensions) {
+	protected boolean lastScale(final int[] chunkSize, final Interval imageDimensions) {
 
 		for (int i = 0; i < imageDimensions.numDimensions(); i++) {
-			if (imageDimensions.dimension(i) <= blockSize[i])
+			if (imageDimensions.dimension(i) <= chunkSize[i])
 				return true;
 		}
 		return false;
@@ -674,7 +682,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				channelImg = img;
 			}
 
-			// make the image 4d and update the block size, if needed
+			// make the image 4d and update the chunk size, if needed
 			if (metadataStyle.equals(N5Importer.MetadataN5ViewerKey) && image.getNFrames() > 1 && image.getNSlices() == 1) {
 
 				// make a 4d image in order XYZT
@@ -685,7 +693,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		if( slicedChannels )
 		{
-			// if we slice the image, appropriately slice the block size also
+			// if we slice the image, appropriately slice the chunk size also
 			currentChannelMetadata = sliceMetadata( metadata, 2 );
 		}
 
@@ -813,7 +821,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
 		N5Utils.save( image,
-				n5, dataset, blockSize, compression,
+				n5, dataset, chunkSize, compression,
 				Executors.newFixedThreadPool(nThreads));
 
 		writeMetadata( metadata, n5, dataset );
@@ -868,7 +876,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	private int[] sliceBlockSize(final int exclude) {
 
-		return removeElement(blockSize, exclude);
+		return removeElement(chunkSize, exclude);
 	}
 
 	private long[] sliceDownsamplingFactors(final int exclude) {
@@ -962,6 +970,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			return new RawCompression();
 		case BLOSC_COMPRESSION:
 			return new BloscCompression();
+//		case ZSTD_COMPRESSION:
+//			return new ZstandardCompression();
 		default:
 			return new RawCompression();
 		}

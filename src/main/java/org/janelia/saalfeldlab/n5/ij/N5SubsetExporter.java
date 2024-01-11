@@ -55,11 +55,10 @@ import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
-@Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (region)(subset)(patch)",
-	description = "Insert the current image into an existing dataset at a user-defined offset. New datasets can be created, and existing "
+@Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (patch)",
+	description = "Insert the current image as a patch into an existing dataset at a user-defined offset. New datasets can be created and existing "
 			+ "datsets can be extended.")
 public class N5SubsetExporter extends ContextCommand {
-
 
 	public static final String GZIP_COMPRESSION = "gzip";
 	public static final String RAW_COMPRESSION = "raw";
@@ -81,9 +80,9 @@ public class N5SubsetExporter extends ContextCommand {
 		NO_OVERWRITE, OVERWRITE, WRITE_SUBSET
 	}
 
-	@Parameter(visibility = ItemVisibility.MESSAGE, required = false)
-	private final String message = "Insert the current image into an existing dataset at a user-defined offset. New datasets can be created, and existing"
-			+ "datsets can be extended.";
+//	@Parameter(visibility = ItemVisibility.MESSAGE, required = false)
+//	private final String message = "Insert the current image into an existing dataset at a user-defined offset. New datasets can be created, and existing"
+//			+ "datsets can be extended.";
 
 	@Parameter
 	private LogService log;
