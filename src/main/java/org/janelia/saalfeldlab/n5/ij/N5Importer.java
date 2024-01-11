@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.converters.LabelMultisetLongConverter;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.imglib2.N5LabelMultisets;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
@@ -590,15 +591,6 @@ public class N5Importer implements PlugIn {
 				img,
 				new UnsignedShortLUTConverter(Views.flatIterable(img)),
 				new UnsignedShortType());
-	}
-
-	private static class LabelMultisetLongConverter implements Converter<LabelMultisetType, UnsignedLongType> {
-
-		@Override
-		public void convert(final LabelMultisetType input, final UnsignedLongType output) {
-
-			output.set(input.argMax());
-		}
 	}
 
 	private static Interval processCropInterval(final RandomAccessibleInterval<?> img, final Interval cropInterval) {
