@@ -196,6 +196,8 @@ public class DatasetSelectorDialog {
 
 	private Predicate<N5TreeNode> n5NodeFilter;
 
+	private Predicate<N5Metadata> selectionFilter;
+
 	private TreeCellRenderer treeRenderer;
 
 	private final N5MetadataParser<?>[] groupParsers;
@@ -296,6 +298,17 @@ public class DatasetSelectorDialog {
 	public void setRecursiveFilterCallback(final Predicate<N5TreeNode> n5NodeFilter) {
 
 		this.n5NodeFilter = n5NodeFilter;
+	}
+
+	/**
+	 * Sets a selection filter. A {@link N5TreeNode} will not be selectable if the 
+	 * selection filter returns false for its metadata.
+	 * 
+	 * @param selectionFilter the predicate
+	 */
+	public void setSelectionFilter(final Predicate<N5Metadata> selectionFilter) {
+
+		this.selectionFilter = selectionFilter;
 	}
 
 	public void setCancelCallback(final Consumer<Void> cancelCallback) {
@@ -484,8 +497,9 @@ public class DatasetSelectorDialog {
 				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION);
 
 		// disable selection of nodes that are not open-able
-		containerTree.addTreeSelectionListener(
-				new N5IjTreeSelectionListener(containerTree.getSelectionModel()));
+		final N5IjTreeSelectionListener treeSelectionListener = new N5IjTreeSelectionListener(containerTree.getSelectionModel());
+		treeSelectionListener.setSelectionFilter(selectionFilter);
+		containerTree.addTreeSelectionListener(treeSelectionListener);
 
 		// By default leaf nodes (datasets) are displayed as files. This changes
 		// the default behavior to display them as folders
@@ -934,9 +948,16 @@ public class DatasetSelectorDialog {
 
 		private final TreeSelectionModel selectionModel;
 
+		private Predicate<N5Metadata> selectionFilter;
+
 		public N5IjTreeSelectionListener(final TreeSelectionModel selectionModel) {
 
 			this.selectionModel = selectionModel;
+		}
+
+		public void setSelectionFilter(final Predicate<N5Metadata> selectionFilter) {
+
+			this.selectionFilter = selectionFilter;
 		}
 
 		@Override
@@ -951,6 +972,9 @@ public class DatasetSelectorDialog {
 				if (last instanceof N5SwingTreeNode) {
 					final N5SwingTreeNode node = ((N5SwingTreeNode)last);
 					if (node.getMetadata() == null) {
+						selectionModel.removeSelectionPath(path);
+					}
+					else if( selectionFilter != null && !selectionFilter.test(node.getMetadata()) ) {
 						selectionModel.removeSelectionPath(path);
 					}
 				}

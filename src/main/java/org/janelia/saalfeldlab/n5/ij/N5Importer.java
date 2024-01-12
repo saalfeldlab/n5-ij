@@ -274,6 +274,9 @@ public class N5Importer implements PlugIn {
 			selectionDialog.getTranslationPanel().setFilter(
 					x -> (x instanceof CanonicalDatasetMetadata));
 
+			selectionDialog.setSelectionFilter(
+					x -> (x instanceof N5DatasetMetadata));
+
 			selectionDialog.setContainerPathUpdateCallback(x -> {
 				if (x != null)
 					lastOpenedContainer = x;
