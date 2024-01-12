@@ -31,11 +31,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
-import org.scijava.ItemVisibility;
 import org.scijava.app.StatusService;
 import org.scijava.command.Command;
 import org.scijava.command.ContextCommand;
@@ -45,13 +45,15 @@ import org.scijava.plugin.Plugin;
 import org.scijava.ui.UIService;
 
 import ij.IJ;
-import ij.ImageJ;
 import ij.ImagePlus;
+import net.imglib2.FinalInterval;
+import net.imglib2.Interval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.util.Intervals;
+import net.imglib2.util.Util;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
@@ -59,26 +61,6 @@ import net.imglib2.view.Views;
 	description = "Insert the current image as a patch into an existing dataset at a user-defined offset. New datasets can be created and existing "
 			+ "datsets can be extended.")
 public class N5SubsetExporter extends ContextCommand {
-
-	public static final String GZIP_COMPRESSION = "gzip";
-	public static final String RAW_COMPRESSION = "raw";
-	public static final String LZ4_COMPRESSION = "lz4";
-	public static final String XZ_COMPRESSION = "xz";
-	public static final String BLOSC_COMPRESSION = "blosc";
-
-	public static final String DOWN_SAMPLE = "Sample";
-	public static final String DOWN_AVG = "Average";
-
-	public static final String NONE = "None";
-
-	public static final String NO_OVERWRITE = "No overwrite";
-	public static final String OVERWRITE = "Overwrite";
-	public static final String DELETE_OVERWRITE = "Delete and overwrite";
-	public static final String WRITE_SUBSET = "Overwrite subset";
-
-	public static enum OVERWRITE_OPTIONS {
-		NO_OVERWRITE, OVERWRITE, WRITE_SUBSET
-	}
 
 //	@Parameter(visibility = ItemVisibility.MESSAGE, required = false)
 //	private final String message = "Insert the current image into an existing dataset at a user-defined offset. New datasets can be created, and existing"
@@ -96,7 +78,7 @@ public class N5SubsetExporter extends ContextCommand {
 	@Parameter(label = "Image")
 	private ImagePlus image; // or use Dataset? - maybe later
 
-	@Parameter(label = "N5 root url")
+	@Parameter(label = "Root url")
 	private String containerRoot;
 
 	@Parameter(label = "Dataset", required = false, description = "This argument is ignored if the N5ViewerMetadata style is selected")
@@ -105,17 +87,35 @@ public class N5SubsetExporter extends ContextCommand {
 	@Parameter(label = "Thread count", required = true, min = "1", max = "256")
 	private int nThreads = 1;
 
-	@Parameter(label = "Overwrite subset offset", required = false, description = "The point in pixel units where the origin of this image will be written into the n5-dataset (comma-delimited)")
+	@Parameter(label = "Offset", required = false, description = "The point in pixel units where the origin of this image will be written into the n5-dataset (comma-delimited)")
 	private String subsetOffset;
+
+	@Parameter(label = "Chunk size", description = "The size of chunks to use if a new array is created. Comma separated, for example: \"64,32,16\".\n " +
+			"You may provide fewer values than the data dimension. In that case, the size will "
+			+ "be expanded to necessary size with the last value, for example \"64\", will expand " +
+			"to \"64,64,64\" for 3D data.")
+	private String chunkSizeArg = "64";
+
+	@Parameter(label = "Compression", style = "listBox", description = "The compression type to use if a new array is created.",
+			choices = {
+			N5ScalePyramidExporter.GZIP_COMPRESSION,
+			N5ScalePyramidExporter.RAW_COMPRESSION,
+			N5ScalePyramidExporter.LZ4_COMPRESSION,
+			N5ScalePyramidExporter.XZ_COMPRESSION,
+			N5ScalePyramidExporter.BLOSC_COMPRESSION,
+			N5ScalePyramidExporter.ZSTD_COMPRESSION})
+	private String compressionArg = N5ScalePyramidExporter.GZIP_COMPRESSION;
 
 	private long[] offset;
 
-	public void N5SubsetExporter(final ImagePlus image, final String n5RootLocation, final String n5Dataset, final String subsetOffset) {
+	public N5SubsetExporter() {}
+
+	public N5SubsetExporter(final ImagePlus image, final String n5RootLocation, final String n5Dataset, final String subsetOffset) {
 
 		setOptions(image, n5RootLocation, n5Dataset, subsetOffset);
 	}
 
-	public void N5SubsetExporter(final ImagePlus image, final String n5RootLocation, final String n5Dataset, final long[] subsetOffset) {
+	public N5SubsetExporter(final ImagePlus image, final String n5RootLocation, final String n5Dataset, final long[] subsetOffset) {
 
 		setOptions(image, n5RootLocation, n5Dataset, subsetOffset);
 	}
@@ -140,7 +140,7 @@ public class N5SubsetExporter extends ContextCommand {
 		exp.run();
 	}
 
-	public void setOptions( final ImagePlus image, final String containerRoot, final String dataset, final String subsetOffset) {
+	public void setOptions(final ImagePlus image, final String containerRoot, final String dataset, final String subsetOffset) {
 
 		this.image = image;
 		this.containerRoot = containerRoot;
@@ -148,12 +148,34 @@ public class N5SubsetExporter extends ContextCommand {
 		this.subsetOffset = subsetOffset;
 	}
 
-	public void setOptions( final ImagePlus image, final String containerRoot, final String dataset, final long[] subsetOffset) {
+	public void setOptions(final ImagePlus image, final String containerRoot, final String dataset, final long[] subsetOffset) {
 
 		this.image = image;
 		this.containerRoot = containerRoot;
 		this.dataset = dataset;
 		this.offset = subsetOffset;
+	}
+
+	public void setOptions(final ImagePlus image, final String containerRoot, final String dataset, final String subsetOffset,
+			final String chunkSizeArg, final String compression) {
+
+		this.image = image;
+		this.containerRoot = containerRoot;
+		this.dataset = dataset;
+		this.subsetOffset = subsetOffset;
+		this.chunkSizeArg = chunkSizeArg;
+		this.compressionArg = compression;
+	}
+
+	public void setOptions(final ImagePlus image, final String containerRoot, final String dataset, final long[] subsetOffset,
+			final String chunkSizeArg, final String compression) {
+
+		this.image = image;
+		this.containerRoot = containerRoot;
+		this.dataset = dataset;
+		this.offset = subsetOffset;
+		this.chunkSizeArg = chunkSizeArg;
+		this.compressionArg = compression;
 	}
 
 	public void setOffset(final long[] offset) {
@@ -200,8 +222,6 @@ public class N5SubsetExporter extends ContextCommand {
 			final N5Writer n5) throws IOException, InterruptedException, ExecutionException {
 
 		parseOffset();
-		if (!n5.datasetExists(dataset))
-			IJ.showMessage("No dataset found at: " + dataset);
 
 		final Img<T> ipImg;
 		if (image.getType() == ImagePlus.COLOR_RGB)
@@ -210,14 +230,44 @@ public class N5SubsetExporter extends ContextCommand {
 			ipImg = ImageJFunctions.wrap(image);
 
 		final IntervalView<T> rai = Views.translate(ipImg, offset);
+
+		// create an empty dataset if it one does not exist
+		if (!n5.datasetExists(dataset)) {
+			final long[] dimensions = outputInterval(rai).dimensionsAsLongArray();
+			final int[] blockSize = N5ScalePyramidExporter.parseBlockSize(chunkSizeArg, dimensions);
+			final DatasetAttributes attributes = new DatasetAttributes(
+					dimensions,
+					blockSize,
+					N5Utils.dataType((T)Util.getTypeFromInterval(rai)),
+					N5ScalePyramidExporter.getCompression(compressionArg));
+
+			n5.createDataset(dataset, attributes);
+		}
+
 		if (nThreads > 1)
-			N5Utils.saveRegion( rai, n5, dataset );
+			N5Utils.saveRegion(rai, n5, dataset);
 		else {
-			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
-			progressMonitor( threadPool );
-			N5Utils.saveRegion( rai, n5, dataset, threadPool);
+			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
+			progressMonitor(threadPool);
+			N5Utils.saveRegion(rai, n5, dataset, threadPool);
 			threadPool.shutdown();
 		}
+	}
+
+	private Interval outputInterval(final Interval interval) {
+
+		final int N = interval.numDimensions();
+		final long[] min = new long[N];
+		final long[] max = new long[N];
+		for (int i = 0; i < N; i++) {
+			min[i] = 0;
+			if( interval.min(i) < 0 )
+				max[i] = interval.dimension(i) - 1;
+			else
+				max[i] = interval.max(i);
+		}
+
+		return new FinalInterval(min, max);
 	}
 
 	@Override

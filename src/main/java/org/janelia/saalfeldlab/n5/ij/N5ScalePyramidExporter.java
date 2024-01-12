@@ -335,11 +335,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		 impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate());
 	}
 
-	public void parseBlockSize( final long[] dims ) {
+	public static int[] parseBlockSize(final String chunkSizeArg, final long[] dims) {
 
 		final int nd = dims.length;
 		final String[] chunkArgList = chunkSizeArg.split(",");
-		chunkSize = new int[nd];
+		int[] chunkSize = new int[nd];
 		int i = 0;
 		while (i < chunkArgList.length && i < nd) {
 			chunkSize[i] = Integer.parseInt(chunkArgList[i]);
@@ -348,13 +348,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		final int N = chunkArgList.length - 1;
 
 		while (i < nd) {
-			if( chunkSize[N] > dims[i] )
+			if (chunkSize[N] > dims[i])
 				chunkSize[i] = (int)dims[i];
 			else
 				chunkSize[i] = chunkSize[N];
 
 			i++;
 		}
+		return chunkSize;
+	}
+
+	public void parseBlockSize(final long[] dims) {
+
+		chunkSize = parseBlockSize(chunkSizeArg, dims);
 	}
 
 	public void parseBlockSize() {
@@ -959,6 +965,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	private Compression getCompression() {
+
+		return getCompression(compressionArg);
+	}
+
+	public static Compression getCompression( final String compressionArg ) {
 
 		switch (compressionArg) {
 		case GZIP_COMPRESSION:
