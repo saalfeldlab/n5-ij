@@ -107,7 +107,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-@Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF",
+@Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (pyramid)",
 	description = "Save the current image as a new dataset or multi-scale pyramid." )
 public class N5ScalePyramidExporter extends ContextCommand implements WindowListener {
 
@@ -138,13 +138,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
   @Parameter(label = "Root url", description = "The type of hierarchy is inferred from the extension of the url. " +
 		  " Use \".h5\", \".n5\", or \".zarr\"")
-  private String n5RootLocation;
+  private String containerRoot;
 
   @Parameter(
 		  label = "Dataset",
 		  required = false,
 		  description = "This argument is ignored if the N5ViewerMetadata style is selected")
-  private String n5Dataset;
+  private String dataset;
 
   @Parameter(
 		  label = "Chunk size",
@@ -304,8 +304,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	public void setOptions(
 			final ImagePlus image,
-			final String n5RootLocation,
-			final String n5Dataset,
+			final String containerRoot,
+			final String dataset,
 			final String chunkSizeArg,
 			final boolean pyramidIfPossible,
 			final String downsampleMethod,
@@ -313,9 +313,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String compression) {
 
 		this.image = image;
-		this.n5RootLocation = n5RootLocation;
+		this.containerRoot = containerRoot;
 
-		this.n5Dataset = MetadataUtils.normalizeGroupPath(n5Dataset);
+		this.dataset = MetadataUtils.normalizeGroupPath(dataset);
 		this.chunkSizeArg = chunkSizeArg;
 
 		this.createPyramidIfPossible = pyramidIfPossible;
@@ -373,7 +373,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>>
 		void processMultiscale() throws IOException, InterruptedException, ExecutionException {
 
-		final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
+		final N5Writer n5 = new N5Factory().openWriter(containerRoot);
 		final Compression compression = getCompression();
 
 		// TODO should have better behavior for chunk size parsing when splitting channels
@@ -562,9 +562,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if ( metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
 				( image.getNChannels() > 1 && metadataStyle.equals(N5Importer.MetadataN5CosemKey))) {
 
-			return MetadataUtils.normalizeGroupPath(n5Dataset + String.format("/c%d", channelIndex ));
+			return MetadataUtils.normalizeGroupPath(dataset + String.format("/c%d", channelIndex ));
 		} else
-			return n5Dataset;
+			return dataset;
 	}
 
 	protected <M extends N5Metadata> String getScaleDatasetName(final int channelIndex, final int scale) {

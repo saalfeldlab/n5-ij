@@ -97,10 +97,10 @@ public class N5SubsetExporter extends ContextCommand {
 	private ImagePlus image; // or use Dataset? - maybe later
 
 	@Parameter(label = "N5 root url")
-	private String n5RootLocation;
+	private String containerRoot;
 
 	@Parameter(label = "Dataset", required = false, description = "This argument is ignored if the N5ViewerMetadata style is selected")
-	private String n5Dataset;
+	private String dataset;
 
 	@Parameter(label = "Thread count", required = true, min = "1", max = "256")
 	private int nThreads = 1;
@@ -140,19 +140,19 @@ public class N5SubsetExporter extends ContextCommand {
 		exp.run();
 	}
 
-	public void setOptions( final ImagePlus image, final String n5RootLocation, final String n5Dataset, final String subsetOffset) {
+	public void setOptions( final ImagePlus image, final String containerRoot, final String dataset, final String subsetOffset) {
 
 		this.image = image;
-		this.n5RootLocation = n5RootLocation;
-		this.n5Dataset = n5Dataset;
+		this.containerRoot = containerRoot;
+		this.dataset = dataset;
 		this.subsetOffset = subsetOffset;
 	}
 
-	public void setOptions( final ImagePlus image, final String n5RootLocation, final String n5Dataset, final long[] subsetOffset) {
+	public void setOptions( final ImagePlus image, final String containerRoot, final String dataset, final long[] subsetOffset) {
 
 		this.image = image;
-		this.n5RootLocation = n5RootLocation;
-		this.n5Dataset = n5Dataset;
+		this.containerRoot = containerRoot;
+		this.dataset = dataset;
 		this.offset = subsetOffset;
 	}
 
@@ -163,7 +163,7 @@ public class N5SubsetExporter extends ContextCommand {
 
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, InterruptedException, ExecutionException {
 
-		final N5Writer n5 = new N5Factory().openWriter(n5RootLocation);
+		final N5Writer n5 = new N5Factory().openWriter(containerRoot);
 		write(n5);
 		n5.close();
 	}
@@ -200,8 +200,8 @@ public class N5SubsetExporter extends ContextCommand {
 			final N5Writer n5) throws IOException, InterruptedException, ExecutionException {
 
 		parseOffset();
-		if (!n5.datasetExists(n5Dataset))
-			IJ.showMessage("No dataset found at: " + n5Dataset);
+		if (!n5.datasetExists(dataset))
+			IJ.showMessage("No dataset found at: " + dataset);
 
 		final Img<T> ipImg;
 		if (image.getType() == ImagePlus.COLOR_RGB)
@@ -211,11 +211,11 @@ public class N5SubsetExporter extends ContextCommand {
 
 		final IntervalView<T> rai = Views.translate(ipImg, offset);
 		if (nThreads > 1)
-			N5Utils.saveRegion( rai, n5, n5Dataset );
+			N5Utils.saveRegion( rai, n5, dataset );
 		else {
 			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor( nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
 			progressMonitor( threadPool );
-			N5Utils.saveRegion( rai, n5, n5Dataset, threadPool);
+			N5Utils.saveRegion( rai, n5, dataset, threadPool);
 			threadPool.shutdown();
 		}
 	}

@@ -117,12 +117,12 @@ public class N5Importer implements PlugIn {
 	// "z", "t" };
 	private static final String[] axisNames = new String[]{"dim1", "dim2", "dim3", "dim4", "dim5"};
 
-	public static final String n5PathKey = "n5";
+	public static final String n5PathKey = "url";
 	public static final String virtualKey = "virtual";
 	public static final String hideKey = "hide";
 	public static final String minKey = "min";
 	public static final String maxKey = "max";
-	public static final String COMMAND_NAME = "N5";
+	public static final String COMMAND_NAME = "HDF5/N5/Zarr/OME-NGFF";
 
 	public static final String BDV_OPTION = "BigDataViewer";
 	public static final String IP_OPTION = "ImagePlus";

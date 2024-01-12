@@ -65,14 +65,14 @@ public class MacroTests {
 	@Test
 	public void testMacroContent() {
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("n5=%s/%s hide", containerDir.getAbsolutePath(), "dataset" ));
+				String.format("url=%s/%s hide", containerDir.getAbsolutePath(), "dataset" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		final ImagePlus imgImported = res.get(0);
 		assertTrue( "equal content", TestExportImports.equal(imp, imgImported));
 
 		final N5Importer pluginCrop = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("n5=%s/%s hide min=0,1,2 max=5,5,5",
+				String.format("url=%s/%s hide min=0,1,2 max=5,5,5",
 						containerDir.getAbsolutePath(), "dataset" ));
 		final List<ImagePlus> resCrop = pluginCrop.getResult();
 		final ImagePlus imgImportedCrop = resCrop.get(0);
@@ -94,7 +94,7 @@ public class MacroTests {
 	public void testMacro() {
 
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("n5=%s/%s hide", n5rootF.getAbsolutePath(), "cosem" ));
+				String.format("url=%s/%s hide", n5rootF.getAbsolutePath(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
@@ -108,7 +108,7 @@ public class MacroTests {
 	@Test
 	public void testMacroVirtual() {
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("n5=%s/%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
+				String.format("url=%s/%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
@@ -122,7 +122,7 @@ public class MacroTests {
 		final String maxString = "250,250,120";
 
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("n5=%s/%s hide min=%s max=%s",
+				String.format("url=%s/%s hide min=%s max=%s",
 				n5rootF.getAbsolutePath(), "cosem", minString, maxString ));
 
 		final List<ImagePlus> res = plugin.getResult();
