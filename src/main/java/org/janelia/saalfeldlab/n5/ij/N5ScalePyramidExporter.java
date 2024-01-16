@@ -46,6 +46,7 @@ import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
@@ -187,6 +188,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   @Parameter(label = "Thread count", required = true, min = "1", max = "999")
   private int nThreads = 1;
 
+  @Parameter(label = "Overwrite",
+		  description = "Allow this plugin to delete and overwrite any existing data before writing this image.",
+		  required = false)
+  private boolean overwrite = false;
+
   private int[] chunkSize;
 
   private long[] currentAbsoluteDownsampling;
@@ -300,6 +306,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 //		System.out.println( exp.metadataWriters.get(cosem.getClass()).getClass() );
 
 		System.exit(0);
+
+	public void setOverwrite(final boolean overwrite) {
+
+		this.overwrite = overwrite;
 	}
 
 	public void setOptions(
@@ -427,6 +437,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			// write scale levels
 			// we will stop early even when maxNumScales != 1
 			final int maxNumScales = computeScales ? 99 : 1;
+			boolean anyScalesWritten = false;
 			for( int s = 0; s < maxNumScales; s++ ) {
 
 				final String dset = getScaleDatasetName(c, s);
@@ -453,22 +464,26 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				currentMetadata = (M)metadataForThisScale( dset, currentMetadata, currentAbsoluteDownsampling, currentTranslation );
 
 				// write to the appropriate dataset
-				write( currentChannelImg, n5, dset, compression, currentMetadata );
+				// if dataset exists and not overwritten, don't write metadata
+				if (!write(currentChannelImg, n5, dset, compression, currentMetadata))
+					continue;
+
 				storeScaleReference( c, s, currentChannelImg );
 
 				updateMultiscaleMetadata( multiscaleMetadata, currentMetadata );
+				anyScalesWritten = true;
 
 				// chunkSize variable is updated by the write method
 				if (lastScale(chunkSize, currentChannelImg))
 					break;
-
 			}
 
-			writeMetadata(
-					// this returns null when not multiscale
-					finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata),
-					n5,
-					channelDataset);
+			if( anyScalesWritten )
+				writeMetadata(
+						// this returns null when not multiscale
+						finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata),
+						n5,
+						channelDataset);
 		}
 	}
 
@@ -804,23 +819,32 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private <T extends RealType & NativeType, M extends N5Metadata> void write(
+	private <T extends RealType & NativeType, M extends N5Metadata> boolean write(
 			final RandomAccessibleInterval<T> image,
 			final N5Writer n5,
 			final String dataset,
 			final Compression compression, final M metadata )
 			throws IOException, InterruptedException, ExecutionException {
 
-		if ( n5.datasetExists(dataset)) {
-			if (ui != null)
-				ui.showDialog(String.format("Dataset (%s) already exists, not writing.", dataset));
-			else
-				System.out.println(String.format("Dataset (%s) already exists, not writing.", dataset));
+		final String deleteThisPathToOverwrite = needOverwrite(n5,dataset);
+		if (deleteThisPathToOverwrite != null) {
 
-			return;
+			if (!overwrite) {
+				if (ui != null)
+					overwrite = promptOverwrite(dataset);
+				else
+					overwrite = promptOverwrite(dataset);
+			}
+
+			if( overwrite ) {
+				n5.remove(deleteThisPathToOverwrite);
+			}
+			else {
+				return false; // data set exists but not overwriting
+			}
 		}
 
-		parseBlockSize( image.dimensionsAsLongArray() );
+		parseBlockSize(image.dimensionsAsLongArray());
 
 		// Here, either allowing overwrite, or not allowing, but the dataset does not exist.
 		// use threadPool even for single threaded execution for progress monitoring
@@ -831,7 +855,30 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				n5, dataset, chunkSize, compression,
 				Executors.newFixedThreadPool(nThreads));
 
-		writeMetadata( metadata, n5, dataset );
+		writeMetadata(metadata, n5, dataset);
+		return true;
+	}
+
+	private static String needOverwrite(final N5Reader n5, final String path) {
+
+		// need to overwrite if path exists
+		if( n5.exists(path))
+			return path;
+
+		// also need to overwrite if any parent of the path is a dataset
+		// datasets must be leaf nodes of the container tree
+		final String[] parts = path.split("/");
+		if( n5.datasetExists(""))
+			return "";
+
+		String currentPath = "";
+		for( String p : parts ) {
+			currentPath += "/" + p;
+			if( n5.datasetExists(currentPath))
+				return currentPath;
+		}
+
+		return null;
 	}
 
 	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsample(
@@ -967,6 +1014,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private Compression getCompression() {
 
 		return getCompression(compressionArg);
+	}
+
+	private final boolean promptOverwrite(final String dataset) {
+
+		return JOptionPane.showConfirmDialog(null,
+				String.format("Dataset (%s) exists. Overwrite?", dataset), "Warning",
+				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
 	}
 
 	public static Compression getCompression( final String compressionArg ) {
