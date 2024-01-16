@@ -26,8 +26,8 @@
 package org.janelia.saalfeldlab.n5.ij;
 
 import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
-import net.imagej.Dataset;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -83,7 +83,6 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
-import org.scijava.ItemVisibility;
 import org.scijava.app.StatusService;
 import org.scijava.command.Command;
 import org.scijava.command.ContextCommand;
@@ -268,46 +267,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		this();
 		setOptions(image, n5RootLocation, n5Dataset, chunkSizeArg, pyramidIfPossible, downsampleMethod.name(), metadataStyle, compression);
 	}
-
-	public static void main(String[] args) {
-
-
-//		final ImageJ ij = new ImageJ();
-//		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
-
-		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mri-stack_mm.tif" );
-//		final String root = "/home/john/tmp/mri-test.n5";
-		final String root = "/home/john/tmp/mri-test.zarr";
-
-//		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
-//		final String root = "/home/john/tmp/mitosis-test.zarr";
-//		final String root = "/home/john/tmp/mitosis-test.n5";
-
-//		final String metaType = N5Importer.MetadataN5ViewerKey;
-//		final String metaType = N5Importer.MetadataN5CosemKey;
-		final String metaType = N5Importer.MetadataOmeZarrKey;
-
-//		final String dsMethod = DOWN_SAMPLE;
-		final String dsMethod = DOWN_AVG;
-		
-//		final String compression = "gzip";
-		final String compression = "zstd";
-
-//		final String dset = String.format("%s_%d", metaType, nScales);
-		final String dset = String.format("%s_%s_%s", metaType, dsMethod, compression);
-//		final String dset = metaType;
-
-		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
-//		exp.setOptions(imp, root, dset, "64,64,1,2,16", true, dsMethod, metaType, compression ); //mitosis
-		exp.setOptions(imp, root, dset, "64,64,16", true, dsMethod, metaType, compression ); // mri
-		exp.run();
-
-//		final N5CosemMetadata cosem = new N5CosemMetadata("", new N5CosemMetadata.CosemTransform(
-//				new String[] {"x"}, new double[]{1}, new double[]{0}, new String[]{"mm"}),
-//				null);
-//		System.out.println( exp.metadataWriters.get(cosem.getClass()).getClass() );
-
-		System.exit(0);
 
 	public void setOverwrite(final boolean overwrite) {
 
