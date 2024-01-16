@@ -487,6 +487,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	protected <M extends N5DatasetMetadata> M defaultMetadata( final ImagePlus imp ) {
 
 		return (M)new AbstractN5DatasetMetadata("", null) {};
@@ -503,6 +504,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return (RandomAccessibleInterval<T>)previousScaleImg;
 	}
 
+	@SuppressWarnings("unchecked")
 	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata( M baseMetadata, final String path) {
 
 		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
@@ -524,6 +526,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	protected < N extends SpatialMetadataGroup<?>> N finalizeMultiscaleMetadata( final String path, N multiscaleMetadata ) {
 
 		if( !metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
@@ -559,7 +562,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final double[] translation ) {
 
 		if (baseMetadata instanceof SpatialModifiable) {
-			return (M)(((SpatialModifiable)baseMetadata).modifySpatialTransform(
+			return (M)(((SpatialModifiable<?>)baseMetadata).modifySpatialTransform(
 					newPath,
 					Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(),
 					translation ));
@@ -658,7 +661,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	// also extending NativeType causes build failures using maven, unclear why
-//	protected <T extends NumericType<T> & NativeType<T>> RandomAccessibleInterval<T> getBaseImage() {
 	@SuppressWarnings("unchecked")
 	protected <T extends NumericType<T>> RandomAccessibleInterval<T> getBaseImage() {
 		// TODO put logic checking for virtual image special cases here
@@ -808,6 +810,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				attributes.getCompression());
 	}
 
+	@SuppressWarnings("unchecked")
 	protected <M extends N5Metadata> void writeMetadata(final M metadata, final N5Writer n5, final String dataset) {
 
 		if (metadata != null)
