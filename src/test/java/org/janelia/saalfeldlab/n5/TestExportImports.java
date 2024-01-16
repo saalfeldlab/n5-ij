@@ -1,5 +1,6 @@
 package org.janelia.saalfeldlab.n5;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -310,6 +311,49 @@ public class TestExportImports
 			testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
 			testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
 		}
+	}
+
+	@Test
+	public void testOverwrite() {
+
+		final String n5Root = baseDir + "/overwriteTest.n5";
+		final String dataset = "dataset";
+		final String blockSizeString = "16";
+		final String compressionString = "raw";
+
+		String metadataType = N5ScalePyramidExporter.NONE;
+
+		final long[] szBig = new long[]{8, 6, 4};
+		final long[] szSmall = new long[]{6, 4, 2};
+		final ImagePlus impBig = NewImage.createImage("test", (int)szBig[0], (int)szBig[1], (int)szBig[2], 8, NewImage.FILL_NOISE);
+		final ImagePlus impSmall = NewImage.createImage("test", (int)szSmall[0], (int)szSmall[1], (int)szSmall[2], 8, NewImage.FILL_NOISE);
+
+		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+		writer.setOptions(impBig, n5Root, dataset, blockSizeString, false,
+				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+		writer.setOverwrite(true);
+		writer.run();
+
+		final N5Reader n5 = new N5FSReader(n5Root);
+		assertTrue(n5.datasetExists(dataset));
+
+		assertArrayEquals("size orig", szBig, n5.getDatasetAttributes(dataset).getDimensions());
+
+		final N5ScalePyramidExporter writerNoOverride = new N5ScalePyramidExporter();
+		writerNoOverride.setOptions(impSmall, n5Root, dataset, blockSizeString, false,
+				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+		writerNoOverride.setOverwrite(false);
+		writerNoOverride.run();
+
+		assertArrayEquals("size after no overwrite", szBig, n5.getDatasetAttributes(dataset).getDimensions());
+
+		final N5ScalePyramidExporter writerOverride = new N5ScalePyramidExporter();
+		writerOverride.setOptions(impSmall, n5Root, dataset, blockSizeString, false,
+				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+		writerOverride.setOverwrite(true);
+		writerOverride.run();
+
+		assertArrayEquals("size after overwrite", szSmall, n5.getDatasetAttributes(dataset).getDimensions());
 	}
 
 	public void testMultiChannelHelper( final String metatype, final String suffix )

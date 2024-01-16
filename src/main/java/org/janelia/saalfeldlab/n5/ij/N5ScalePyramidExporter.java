@@ -194,6 +194,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		  required = false)
   private boolean overwrite = false;
 
+  private boolean overwriteSet = false;
+
   private int[] chunkSize;
 
   private long[] currentAbsoluteDownsampling;
@@ -271,6 +273,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public void setOverwrite(final boolean overwrite) {
 
 		this.overwrite = overwrite;
+		this.overwriteSet = true;
+	}
+
+	public void clearOverwrite() {
+
+		overwriteSet = false;
 	}
 
 	public void setOptions(
@@ -793,7 +801,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		final String deleteThisPathToOverwrite = needOverwrite(n5,dataset);
 		if (deleteThisPathToOverwrite != null) {
 
-			if (!overwrite) {
+			if (!overwrite && !overwriteSet) {
 				if (ui != null)
 					overwrite = promptOverwrite(dataset);
 				else
