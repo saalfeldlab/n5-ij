@@ -108,7 +108,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-@Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (pyramid)",
+import javax.swing.JOptionPane;
+
+@Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF ...",
 	description = "Save the current image as a new dataset or multi-scale pyramid." )
 public class N5ScalePyramidExporter extends ContextCommand implements WindowListener {
 
