@@ -122,7 +122,7 @@ public class N5Importer implements PlugIn {
 	public static final String hideKey = "hide";
 	public static final String minKey = "min";
 	public static final String maxKey = "max";
-	public static final String COMMAND_NAME = "HDF5/N5/Zarr/OME-NGFF";
+	public static final String COMMAND_NAME = "HDF5/N5/Zarr/OME-NGFF ... ";
 
 	public static final String BDV_OPTION = "BigDataViewer";
 	public static final String IP_OPTION = "ImagePlus";
@@ -359,7 +359,6 @@ public class N5Importer implements PlugIn {
 			final String root = n5ForThisDataset.getURI().toString();
 			final String dset = new N5BasePathFun().apply(n5Path);
 
-			// TODO what's going on here
 			N5Metadata meta;
 			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5ForThisDataset, N5DatasetDiscoverer.fromParsers(PARSERS),
 					Collections.singletonList(new OmeNgffMetadataParser()));
