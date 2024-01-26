@@ -33,14 +33,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.converters.LabelMultisetLongConverter;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.imglib2.N5LabelMultisets;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
@@ -50,11 +53,13 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
 import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
@@ -70,9 +75,11 @@ import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 
 import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
 import ij.Macro;
 import ij.Prefs;
@@ -110,17 +117,18 @@ public class N5Importer implements PlugIn {
 	// "z", "t" };
 	private static final String[] axisNames = new String[]{"dim1", "dim2", "dim3", "dim4", "dim5"};
 
-	public static final String n5PathKey = "n5";
+	public static final String n5PathKey = "url";
 	public static final String virtualKey = "virtual";
 	public static final String hideKey = "hide";
 	public static final String minKey = "min";
 	public static final String maxKey = "max";
-	public static final String COMMAND_NAME = "N5";
+	public static final String COMMAND_NAME = "HDF5/N5/Zarr/OME-NGFF ... ";
 
 	public static final String BDV_OPTION = "BigDataViewer";
 	public static final String IP_OPTION = "ImagePlus";
 
 	public static final String MetadataAutoKey = "Auto-detect";
+	public static final String MetadataOmeZarrKey = "OME-Zarr";
 	public static final String MetadataImageJKey = "ImageJ";
 	public static final String MetadataN5CosemKey = "Cosem";
 	public static final String MetadataN5ViewerKey = "N5Viewer";
@@ -138,9 +146,12 @@ public class N5Importer implements PlugIn {
 	public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
 			new OmeNgffMetadataParser(),
 			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
+			new OmeNgffMetadataParser(),
 			new N5ViewerMultiscaleMetadataParser(),
 			new CanonicalMetadataParser(),
 	};
+
+	private static final Predicate<N5Metadata> ALL_PASS = x -> { return true; };
 
 	private N5Reader n5;
 
@@ -182,18 +193,24 @@ public class N5Importer implements PlugIn {
 		Recorder.record = false;
 
 		// default image plus metadata parsers
-		impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
-		impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
-		impMetaWriterTypes.put(N5CosemMetadata.class, new CosemToImagePlus());
-		impMetaWriterTypes.put(N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
-		impMetaWriterTypes.put(CanonicalDatasetMetadata.class, new CanonicalMetadataToImagePlus());
-		impMetaWriterTypes.put(CanonicalSpatialDatasetMetadata.class, new CanonicalMetadataToImagePlus());
-
+		impMetaWriterTypes = defaultImagePlusMetadataWriters();
 		numDimensionsForCrop = 5;
 		initMaxValuesForCrop = new long[numDimensionsForCrop];
 		Arrays.fill(initMaxValuesForCrop, Long.MAX_VALUE);
 
 		exec = Executors.newFixedThreadPool(Prefs.getThreads());
+	}
+
+	private static HashMap<Class<?>, ImageplusMetadata<?>> defaultImagePlusMetadataWriters()
+	{
+		final HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes = new HashMap<>();
+		impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
+		impMetaWriterTypes.put(NgffSingleScaleAxesMetadata.class, new NgffToImagePlus());
+		impMetaWriterTypes.put(N5CosemMetadata.class, new CosemToImagePlus());
+		impMetaWriterTypes.put(N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
+		impMetaWriterTypes.put(CanonicalDatasetMetadata.class, new CanonicalMetadataToImagePlus());
+		impMetaWriterTypes.put(CanonicalSpatialDatasetMetadata.class, new CanonicalMetadataToImagePlus());
+		return impMetaWriterTypes;
 	}
 
 	public N5Reader getN5() {
@@ -256,6 +273,9 @@ public class N5Importer implements PlugIn {
 			// multiscale
 			selectionDialog.getTranslationPanel().setFilter(
 					x -> (x instanceof CanonicalDatasetMetadata));
+
+			selectionDialog.setSelectionFilter(
+					x -> (x instanceof N5DatasetMetadata));
 
 			selectionDialog.setContainerPathUpdateCallback(x -> {
 				if (x != null)
@@ -338,8 +358,10 @@ public class N5Importer implements PlugIn {
 			final N5Reader n5ForThisDataset = new N5ViewerReaderFun().apply(n5Path);
 			final String root = n5ForThisDataset.getURI().toString();
 			final String dset = new N5BasePathFun().apply(n5Path);
+
 			N5Metadata meta;
-			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5ForThisDataset, N5DatasetDiscoverer.fromParsers(PARSERS), null);
+			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5ForThisDataset, N5DatasetDiscoverer.fromParsers(PARSERS),
+					Collections.singletonList(new OmeNgffMetadataParser()));
 			meta = discoverer.parse(dset).getMetadata();
 
 			if (meta instanceof N5DatasetMetadata)
@@ -573,15 +595,6 @@ public class N5Importer implements PlugIn {
 				new UnsignedShortType());
 	}
 
-	private static class LabelMultisetLongConverter implements Converter<LabelMultisetType, UnsignedLongType> {
-
-		@Override
-		public void convert(final LabelMultisetType input, final UnsignedLongType output) {
-
-			output.set(input.argMax());
-		}
-	}
-
 	private static Interval processCropInterval(final RandomAccessibleInterval<?> img, final Interval cropInterval) {
 
 		assert img.numDimensions() == cropInterval.numDimensions();
@@ -624,6 +637,70 @@ public class N5Importer implements PlugIn {
 		}
 	}
 
+	public static ImagePlus open(final String uri) {
+
+		return open(uri, ALL_PASS);
+	}
+
+	public static ImagePlus open(final String uri, final String dataset) {
+
+		return open(uri, x -> {
+			return norm(x.getPath()).equals(norm(dataset));
+		});
+	}
+
+	public static ImagePlus open(final String uri, final Predicate<N5Metadata> filter ) {
+
+		final N5Reader n5 = new N5Factory().openReader(uri);
+		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
+
+		final Predicate<N5Metadata> datasetFilter = x -> { return x instanceof N5DatasetMetadata; };
+		final Predicate<N5Metadata> totalFilter = filter == null || filter == ALL_PASS
+				? datasetFilter : datasetFilter.and(filter);
+
+		final Optional<N5DatasetMetadata> meta = N5TreeNode.flattenN5Tree(node)
+			.filter( x -> totalFilter.test(x.getMetadata()) )
+			.map( x-> { return (N5DatasetMetadata)x.getMetadata(); })
+			.findFirst();
+
+		if (meta.isPresent()) {
+			return open( n5, uri, meta.get());
+		} else {
+			System.err.println("No arrays matching criteria found in container at: " + uri);
+			return null;
+		}
+	}
+
+	public static ImagePlus open(final N5Reader n5, final String uri, final N5DatasetMetadata metadata) {
+
+		final ExecutorService exec = Executors.newFixedThreadPool(
+				Runtime.getRuntime().availableProcessors() / 2);
+
+		return N5Importer.process(n5, uri,
+				exec,
+				Collections.singletonList(metadata),
+				false, null).get(0);
+	}
+
+	private static String norm(final String groupPath) {
+
+		return groupPath.equals("/") ? groupPath : groupPath.replaceAll("^/", "");
+	}
+
+	/*
+	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
+	 */
+	public static List<ImagePlus> process(final N5Reader n5,
+			final String rootPath,
+			final ExecutorService exec,
+			final List<N5DatasetMetadata> datasetMetadataList,
+			final boolean asVirtual,
+			final Interval cropInterval) {
+
+		return process(n5, rootPath, exec, datasetMetadataList, asVirtual, cropInterval, true,
+				defaultImagePlusMetadataWriters());
+	}
+
 	/*
 	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
 	 */
@@ -663,6 +740,8 @@ public class N5Importer implements PlugIn {
 			final ImageplusMetadata<?> impMeta = impMetaWriterTypes.get(datasetMeta.getClass());
 			ImagePlus imp;
 			try {
+
+				// datasetMeta must have absolute path
 				imp = N5Importer.read(n5, exec, datasetMeta, cropInterval, asVirtual, impMeta);
 
 				FileInfo fileInfo = imp.getOriginalFileInfo();
@@ -700,20 +779,50 @@ public class N5Importer implements PlugIn {
 	}
 
 	public List<ImagePlus> process(final String n5FullPath, final boolean asVirtual, final Interval cropInterval) {
+		return process( n5FullPath, asVirtual, cropInterval, true );
+	}
+
+	public List<ImagePlus> process(final String n5FullPath, final boolean asVirtual, final Interval cropInterval,
+			final boolean parseAllMetadata) {
 
 		n5 = new N5ViewerReaderFun().apply(n5FullPath);
 		final String dataset = new N5BasePathFun().apply(n5FullPath);
 		N5DatasetMetadata metadata;
+		N5TreeNode root;
 		try {
 			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5,
-					N5DatasetDiscoverer.fromParsers(PARSERS), null);
-			metadata = (N5DatasetMetadata)discoverer.parse(dataset).getMetadata();
+					N5DatasetDiscoverer.fromParsers(PARSERS),
+					Collections.singletonList(new OmeNgffMetadataParser()));
+			if( parseAllMetadata )
+			{
+				root = discoverer.discoverAndParseRecursive("");
+				metadata = (N5DatasetMetadata)root.getDescendant(dataset).get().getMetadata();
+			}
+			else {
+				metadata = (N5DatasetMetadata)discoverer.parse(dataset).getMetadata();
+			}
 		} catch (final Exception e) {
 			System.err.println("Could not parse metadata.");
 			return null;
 		}
 
 		final List<ImagePlus> result = process(n5, dataset, exec, Collections.singletonList(metadata),
+				asVirtual, cropInterval, show, getImagePlusMetadataWriterMap());
+
+		n5.close();
+
+		return result;
+	}
+
+	public List<ImagePlus> process( final String n5FullPath, final List<N5DatasetMetadata> metadataList, final boolean asVirtual, final Interval cropInterval) {
+
+		n5 = new N5ViewerReaderFun().apply(n5FullPath);
+		final String dataset = new N5BasePathFun().apply(n5FullPath);
+
+		if( metadataList == null || metadataList.size() < 1 )
+			return null;
+
+		final List<ImagePlus> result = process(n5, dataset, exec, metadataList,
 				asVirtual, cropInterval, show, getImagePlusMetadataWriterMap());
 
 		n5.close();

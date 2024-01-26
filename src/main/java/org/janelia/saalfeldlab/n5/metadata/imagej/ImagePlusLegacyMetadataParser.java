@@ -17,8 +17,8 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import ij.ImagePlus;
 import ij.measure.Calibration;
 
-public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePlusMetadata>, 
-	N5MetadataWriter<N5ImagePlusMetadata>, ImageplusMetadata<N5ImagePlusMetadata> 
+public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePlusMetadata>,
+	N5MetadataWriter<N5ImagePlusMetadata>, ImageplusMetadata<N5ImagePlusMetadata>
 {
 
 	public static final String titleKey = "title";
@@ -41,14 +41,14 @@ public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePl
 	public static final String imagePropertiesKey = "imageProperties";
 
 	public static final String downsamplingFactorsKey = "downsamplingFactors";
-	
+
 	@Override
 	public void writeMetadata(final N5ImagePlusMetadata t, final N5Writer n5, final String dataset) throws Exception {
 
 		if (!n5.datasetExists(dataset))
 			throw new Exception("Can't write into " + dataset + ".  Must be a dataset.");
 
-		HashMap<String, Object> attrs = new HashMap<>();
+		final HashMap<String, Object> attrs = new HashMap<>();
 		attrs.put(titleKey, t.name);
 
 		attrs.put(fpsKey, t.fps);
@@ -111,7 +111,7 @@ public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePl
 			}
 		}
 	}
-	
+
 	@Override
 	public N5ImagePlusMetadata readMetadata(final ImagePlus ip) throws IOException {
 
@@ -179,9 +179,8 @@ public class ImagePlusLegacyMetadataParser implements N5MetadataParser<N5ImagePl
 
 			return Optional.of(meta);
 
-		} catch (N5Exception e) {
-		}
-		
+		} catch (final N5Exception e) { }
+
 		return Optional.empty();
 	}
 

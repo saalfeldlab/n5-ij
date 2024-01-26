@@ -25,6 +25,48 @@
  */
 package org.janelia.saalfeldlab.n5.ui;
 
+import ij.IJ;
+import ij.ImageJ;
+import ij.gui.ProgressBar;
+import se.sawano.java.text.AlphanumericComparator;
+
+import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
+import org.janelia.saalfeldlab.n5.Compression;
+import org.janelia.saalfeldlab.n5.CompressionAdapter;
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.N5Exception;
+import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
+
+import com.formdev.flatlaf.util.UIScale;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JFileChooser;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTabbedPane;
+import javax.swing.JTextField;
+import javax.swing.JTree;
+import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeCellRenderer;
+import javax.swing.tree.TreePath;
+import javax.swing.tree.TreeSelectionModel;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
@@ -154,6 +196,8 @@ public class DatasetSelectorDialog {
 
 	private Predicate<N5TreeNode> n5NodeFilter;
 
+	private Predicate<N5Metadata> selectionFilter;
+
 	private TreeCellRenderer treeRenderer;
 
 	private final N5MetadataParser<?>[] groupParsers;
@@ -256,6 +300,17 @@ public class DatasetSelectorDialog {
 		this.n5NodeFilter = n5NodeFilter;
 	}
 
+	/**
+	 * Sets a selection filter. A {@link N5TreeNode} will not be selectable if the 
+	 * selection filter returns false for its metadata.
+	 * 
+	 * @param selectionFilter the predicate
+	 */
+	public void setSelectionFilter(final Predicate<N5Metadata> selectionFilter) {
+
+		this.selectionFilter = selectionFilter;
+	}
+
 	public void setCancelCallback(final Consumer<Void> cancelCallback) {
 
 		this.cancelCallback = cancelCallback;
@@ -285,6 +340,34 @@ public class DatasetSelectorDialog {
 
 		return cropOption;
 	}
+//	// add custom metadata parser into the first position in the list if it exists
+//	final Optional<N5GenericSingleScaleMetadataParser> parserOptional = spatialMetaSpec.getParserOptional();
+//	if( parserOptional.isPresent() ) {
+//		parserList.add(parserOptional.get());
+//		parserList.addAll(Arrays.asList(parsers));
+//	}
+//	else
+//		parserList.addAll(Arrays.asList(parsers));
+//
+//	final Gson gson;
+//	if( n5 instanceof CachedGsonKeyValueN5Reader )
+//		gson = ((CachedGsonKeyValueN5Reader) n5).getGson();
+//	else
+//	{
+//		final GsonBuilder gsonBuilder = new GsonBuilder();
+//		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
+//		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
+//		gsonBuilder.disableHtmlEscaping();
+//		gson = gsonBuilder.create();
+//	}
+//
+//	boolean isTranslated = false;
+//	final Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
+//	if( translatedN5.isPresent() )
+//	{
+//		n5 = translatedN5.get();
+//		isTranslated = true;
+//>>>>>>> origin/ome-zarr-v0.4
 
 	public boolean isCropSelected() {
 
@@ -295,6 +378,10 @@ public class DatasetSelectorDialog {
 
 		return (virtualBox != null) && virtualBox.isSelected();
 	}
+//	final N5TreeNode tmpRootNode = new N5TreeNode( rootPath );
+//	rootNode = new N5SwingTreeNode( rootPath, treeModel );
+//	treeModel.setRoot(rootNode);
+//>>>>>>> origin/ome-zarr-v0.4
 
 	public String getN5RootPath() {
 
@@ -410,8 +497,9 @@ public class DatasetSelectorDialog {
 				TreeSelectionModel.DISCONTIGUOUS_TREE_SELECTION);
 
 		// disable selection of nodes that are not open-able
-		containerTree.addTreeSelectionListener(
-				new N5IjTreeSelectionListener(containerTree.getSelectionModel()));
+		final N5IjTreeSelectionListener treeSelectionListener = new N5IjTreeSelectionListener(containerTree.getSelectionModel());
+		treeSelectionListener.setSelectionFilter(selectionFilter);
+		containerTree.addTreeSelectionListener(treeSelectionListener);
 
 		// By default leaf nodes (datasets) are displayed as files. This changes
 		// the default behavior to display them as folders
@@ -592,7 +680,7 @@ public class DatasetSelectorDialog {
 			final Function<String, String> pathToRoot) {
 
 		if (ijProgressBar != null)
-			ijProgressBar.show(0.1);
+			ijProgressBar.show(0.2);
 
 		SwingUtilities.invokeLater(() -> {
 			messageLabel.setText("Building reader...");
@@ -705,6 +793,7 @@ public class DatasetSelectorDialog {
 						if (node.getParent() != null && node.getChildCount() == 0) {
 							treeModel.removeNodeFromParent(node);
 						}
+
 					}
 				}
 			});
@@ -719,6 +808,7 @@ public class DatasetSelectorDialog {
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.3);
 
+
 					SwingUtilities.invokeLater(() -> {
 						messageLabel.setText("Listing...");
 						messageLabel.repaint();
@@ -730,11 +820,13 @@ public class DatasetSelectorDialog {
 					for (final String p : datasetPaths)
 						rootNode.addPath(p);
 
+
 					sortRecursive(rootNode);
 					containerTree.expandRow(0);
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.5);
+
 
 					SwingUtilities.invokeLater(() -> {
 						messageLabel.setText("Parsing...");
@@ -748,13 +840,14 @@ public class DatasetSelectorDialog {
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.8);
 
+
 					SwingUtilities.invokeLater(() -> {
 						messageLabel.setText("Done");
 						messageLabel.repaint();
 					});
 
 					if (ijProgressBar != null)
-						ijProgressBar.show(1.0);
+						ijProgressBar.show(1.1);
 
 					Thread.sleep(1000);
 					SwingUtilities.invokeLater(() -> {
@@ -770,7 +863,6 @@ public class DatasetSelectorDialog {
 			} catch (final N5Exception e) {
 				e.printStackTrace();
 			}
-
 		});
 
 		if (isTranslated) {
@@ -856,9 +948,16 @@ public class DatasetSelectorDialog {
 
 		private final TreeSelectionModel selectionModel;
 
+		private Predicate<N5Metadata> selectionFilter;
+
 		public N5IjTreeSelectionListener(final TreeSelectionModel selectionModel) {
 
 			this.selectionModel = selectionModel;
+		}
+
+		public void setSelectionFilter(final Predicate<N5Metadata> selectionFilter) {
+
+			this.selectionFilter = selectionFilter;
 		}
 
 		@Override
@@ -873,6 +972,9 @@ public class DatasetSelectorDialog {
 				if (last instanceof N5SwingTreeNode) {
 					final N5SwingTreeNode node = ((N5SwingTreeNode)last);
 					if (node.getMetadata() == null) {
+						selectionModel.removeSelectionPath(path);
+					}
+					else if( selectionFilter != null && !selectionFilter.test(node.getMetadata()) ) {
 						selectionModel.removeSelectionPath(path);
 					}
 				}

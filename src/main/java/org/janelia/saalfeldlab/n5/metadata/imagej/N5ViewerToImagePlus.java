@@ -46,7 +46,7 @@ public class N5ViewerToImagePlus extends SpatialMetadataToImagePlus<N5SingleScal
 	final AffineTransform3D transform = N5SingleScaleMetadataParser.buildTransform(downsamplingFactors, scale, Optional.empty());
 	return new N5SingleScaleMetadata("", transform, downsamplingFactors,
 			scale, translation, units[0],
-			null);
+			ImageplusMetadata.datasetAttributes(imp));
   }
 
 }

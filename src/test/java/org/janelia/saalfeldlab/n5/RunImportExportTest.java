@@ -28,8 +28,8 @@ package org.janelia.saalfeldlab.n5;
 import java.util.HashMap;
 import java.util.List;
 
-import org.janelia.saalfeldlab.n5.ij.N5Exporter;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
+import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -84,10 +84,9 @@ public class RunImportExportTest
 
 	public void run()
 	{
-		final N5Exporter writer = new N5Exporter();
-		writer.setOptions( imp, outputPath, dataset,
-				blockSizeString, metadataType, compressionType,
-				N5Exporter.OVERWRITE, "");
+		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+		writer.setOptions( imp, outputPath, dataset, blockSizeString, false,
+				metadataType, N5ScalePyramidExporter.DOWN_SAMPLE, compressionType);
 		writer.run();
 
 		final String n5PathAndDataset = outputPath +  dataset;
