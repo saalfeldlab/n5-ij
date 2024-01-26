@@ -991,7 +991,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private final boolean promptOverwrite(final String dataset) {
 
 		return JOptionPane.showConfirmDialog(null,
-				String.format("Dataset (%s) exists. Overwrite?", dataset), "Warning",
+				String.format("Dataset (%s) already exists. Completely remove that dataa and overwrite?", dataset), "Warning",
 				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
 	}
 
