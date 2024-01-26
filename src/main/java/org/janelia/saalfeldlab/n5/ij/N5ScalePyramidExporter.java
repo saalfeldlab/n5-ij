@@ -122,7 +122,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
   public static enum DOWNSAMPLE_METHOD { Sample, Average };
   public static final String DOWN_SAMPLE = "Sample";
-  public static final String DOWN_AVG = "Average";
+  public static final String DOWN_AVERAGE = "Average";
 
   public static final String NONE = "None";
 
@@ -164,7 +164,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   @Parameter(
 		  label = "Downsampling method",
 		  style = "listBox",
-		  choices = {DOWN_SAMPLE, DOWN_AVG})
+		  choices = {DOWN_SAMPLE, DOWN_AVERAGE})
   private String downsampleMethod = DOWN_SAMPLE;
 
   @Parameter(
@@ -420,7 +420,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 					currentChannelImg = downsampleMethod((RandomAccessibleInterval<T>)getPreviousScaleImage(c, s), relativeFactors);
 
-					if (downsampleMethod.equals(DOWN_AVG))
+					if (downsampleMethod.equals(DOWN_AVERAGE))
 						Arrays.setAll(currentTranslation, i -> {
 							if( currentAbsoluteDownsampling[i] > 1 )
 								return 0.5 * currentAbsoluteDownsampling[i] - 0.5;
@@ -544,7 +544,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> downsampleMethod(final RandomAccessibleInterval<T> img,
 			final long[] factors) {
 
-		if (downsampleMethod.equals(DOWN_AVG))
+		if (downsampleMethod.equals(DOWN_AVERAGE))
 			return downsampleAvgBy2(img, factors);
 		else
 			return downsample(img, factors);
