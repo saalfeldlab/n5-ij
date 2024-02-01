@@ -84,7 +84,9 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.DoubleStream;
 
-public class NgffExporter extends ContextCommand implements WindowListener {
+@Deprecated
+public class NgffExporter implements WindowListener {
+//extends ContextCommand implements WindowListener {
 //public class NgffExporter {
 
   public static final String GZIP_COMPRESSION = "gzip";
@@ -404,7 +406,6 @@ public class NgffExporter extends ContextCommand implements WindowListener {
 		}
 	}
 
-	@Override
 	public void run() {
 
 		// add more options
