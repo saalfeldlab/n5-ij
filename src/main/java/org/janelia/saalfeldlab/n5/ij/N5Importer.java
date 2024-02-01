@@ -130,7 +130,7 @@ public class N5Importer implements PlugIn {
 	public static final String MetadataAutoKey = "Auto-detect";
 	public static final String MetadataOmeZarrKey = "OME-NGFF";
 	public static final String MetadataImageJKey = "ImageJ";
-	public static final String MetadataN5CosemKey = "Cosem";
+	public static final String MetadataN5CosemKey = "COSEM";
 	public static final String MetadataN5ViewerKey = "N5Viewer";
 	public static final String MetadataCustomKey = "Custom";
 	public static final String MetadataDefaultKey = "Default";
