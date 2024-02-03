@@ -56,10 +56,14 @@ Save images opened in Fiji as N5 datasets with `File > Save As > Export N5`.
 Parameters
 * `N5Root` - the root location of the n5 (see also [Container types](#container-types))
 * `Dataset` - the name of the dataset.
-* `Block size` - block size as comma-separated list.  
-  * Length of list must match dimensionality of dataset
+* `Chunk size` - chunk/block size as comma-separated list.  
+  * The list may have length less than the dimensionality of the image. If so, the list will be extended to the correct length, filling with the last value.  For example, for a 3D image the list `32,64` will be extended to `32,64,64`.
+* `Create Pyramid` - If checked, a multiscale pyramid will be created (if possible). See below for details.
+* `Downsampling method` - The downsampling method to be used if a multiscale pyramid can be created. See below for details.
+* `Compression` - The compression method to be used for chucnks / blocks. 
 * `metadata type` - style and type of metadata to store (see also [Metadata](#metadata))
 * `thread count` - number of threads used for parallel writing (see also [Cloud writing benchmarks](#cloud-writing-benchmarks))
+* `Overwrite` - If checked, existing data may be deleted and overwritten without warning.
 
 ## Container types
 
@@ -82,7 +86,91 @@ The export plugin infers container type from the file/directory path or url give
     * Specify one of two url styles:
     * `gs://bucket-name/path/inside/bucket/root.n5`
     * `https://bucket-name.s3.amazonaws.com/path/to/root.n5`
+ 
+## Multi-scale pyramids
 
+### How many scale levels will be created
+
+The number of scale levels is determined by the image size and specified block size.
+The exporter will downsample an image only if the block size is striclty smaller than 
+the image size in every dimension.
+
+#### Example 1
+
+If image size is `100 x 100 x 100` and the block size is `100 x 100 x 100`
+will write one scale level because the whole image fits into one block
+at the first scale level.
+
+#### Example 2
+
+If image size is `100 x 100 x 100` and the block size is `64 x 64 x 64`
+will write two scale levels: The first scale level will have a `2 x 2 x 2` grid
+of blocks.
+
+#### Example 3
+
+If image size is `100 x 100 x 32` and the block size is `64 x 64 x 64`
+will write one scale level because the third dimension of the image is
+smaller than the third dimension of the block.
+
+### Downsampling
+
+The N5 exporter always downsamples images by factors of two in all dimensions.
+There are two downsampling methods:
+
+#### Sample
+
+N5 will take even-indexed samples and discard odd-indexed samples along
+each dimension.
+
+#### Averaging
+
+N5 will average adjacent samples along each dimension. This results in a
+"half-pixel" shift, which will be reflected in the metadata.
+
+## Overwriting
+
+### Warning messages
+
+If the `overwrite` option is not selected in the dialog, the exporter will determine if the
+write operation would overwrite or invalidate existing data. If so, it prompts the user with a
+warning dialog, asking if data should be overwritten. 
+
+Data could be overwritten if:
+
+* the path where data will be written already exists and contains data. 
+* a parent of the path where data will be written already exists and contains data. 
+    * here, the newly written data would be inaccessible, because data arrays must be leafs of the hierarchy tree.
+
+If the `overwrite` option is selected in the initial dialog, the user will not be prompted, but
+data will be overwritten if needed as explained below.
+    
+#### Example 1
+
+A dataset exists at `/image`. User attempts to write data into `/image`. This warns the user
+about overwriting because an array already exists at that location.
+
+#### Example 2
+
+A dataset exists at `/data/s0`. User attempts to write data into `/data` using N5Viewer metadata.
+This warns the user about overwriting because when writing N5Viewer metadata, the plugin will 
+write the full resolution level of the multiscale pyramid at location `/data/s0`, but an array
+already exists at that location.
+
+### Overwriting removes existing data
+
+If the user decides to overwite data the N5 exporter will completely (array data and metadata)
+remove any groups that cause conflicts before writing the new data.
+
+* If a dataset already exists at a path where new data will be written, then all data at that path will be removed.
+* If a dataset already exists at a parent path where new data will be written, then all data at that parent path will be removed.
+
+#### Example 3
+
+A dataset exists at `/image`. User attempts to write data into `/image/channel0`. This warns
+the user about overwriting because the newly written data would be a child path of existing
+data, and therefore be invalid. If the user decides to overwrite, all data at `/image` will be
+removed before writing the new data to `/image/channel0`.
 
 ## Metadata 
 
