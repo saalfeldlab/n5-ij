@@ -27,6 +27,7 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,6 +44,7 @@ import java.util.stream.Collectors;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.converters.LabelMultisetLongConverter;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.imglib2.N5LabelMultisets;
@@ -735,29 +737,31 @@ public class N5Importer implements PlugIn {
 				continue;
 
 			final String d = normalPathName(datasetMeta.getPath(), n5.getGroupSeparator());
-			final String pathToN5Dataset = d.isEmpty() ? rootPath : rootPath + File.separator + d;
-
-			final ImageplusMetadata<?> impMeta = impMetaWriterTypes.get(datasetMeta.getClass());
-			ImagePlus imp;
 			try {
 
+				final String n5Url = N5URI.from(rootPath, d, null).toString();
+				final ImageplusMetadata<?> impMeta = impMetaWriterTypes.get(datasetMeta.getClass());
+
 				// datasetMeta must have absolute path
+				ImagePlus imp;
 				imp = N5Importer.read(n5, exec, datasetMeta, cropInterval, asVirtual, impMeta);
 
 				FileInfo fileInfo = imp.getOriginalFileInfo();
 				if (fileInfo == null)
 					fileInfo = new FileInfo();
 
-				fileInfo.url = rootPath + "?" + datasetMeta.getPath();
+				fileInfo.url = n5Url;
 				imp.setFileInfo(fileInfo);
 
-				record(pathToN5Dataset, asVirtual, cropInterval);
+				record(n5Url, asVirtual, cropInterval);
 				imgList.add(imp);
 				if (show)
 					imp.show();
 
 			} catch (final IOException e) {
 				IJ.error("failed to read n5");
+			} catch (URISyntaxException e1) {
+				IJ.error("unable to parse url: " + rootPath + "?" + d );
 			}
 		}
 		return imgList;
@@ -814,19 +818,17 @@ public class N5Importer implements PlugIn {
 		return result;
 	}
 
-	public List<ImagePlus> process( final String n5FullPath, final List<N5DatasetMetadata> metadataList, final boolean asVirtual, final Interval cropInterval) {
+	public List<ImagePlus> process(final String n5FullPath, final List<N5DatasetMetadata> metadataList, final boolean asVirtual, final Interval cropInterval) {
 
 		n5 = new N5ViewerReaderFun().apply(n5FullPath);
 		final String dataset = new N5BasePathFun().apply(n5FullPath);
-
-		if( metadataList == null || metadataList.size() < 1 )
+		if (metadataList == null || metadataList.size() < 1)
 			return null;
 
 		final List<ImagePlus> result = process(n5, dataset, exec, metadataList,
 				asVirtual, cropInterval, show, getImagePlusMetadataWriterMap());
 
 		n5.close();
-
 		return result;
 	}
 
@@ -848,13 +850,23 @@ public class N5Importer implements PlugIn {
 		public String message;
 
 		@Override
-		public N5Reader apply(final String n5PathIn) {
+		public N5Reader apply(final String n5UriOrPath) {
 
 			N5Reader n5;
-			if (n5PathIn == null || n5PathIn.isEmpty())
+			if (n5UriOrPath == null || n5UriOrPath.isEmpty())
 				return null;
 
-			final String rootPath = upToLastExtension(n5PathIn);
+
+			String rootPath = null ;
+			if (n5UriOrPath.contains("?")) {
+				try {
+					rootPath = new N5URI(n5UriOrPath).getContainerPath();
+				} catch (URISyntaxException e) {}
+			}
+
+			if (rootPath == null)
+				rootPath = upToLastExtension(n5UriOrPath);
+
 			final N5Factory factory = new N5Factory().cacheAttributes(true).s3RetryWithCredentials();
 			try {
 				n5 = factory.openReader(rootPath);
@@ -906,12 +918,19 @@ public class N5Importer implements PlugIn {
 		public String message;
 
 		@Override
-		public String apply(final String n5Path) {
+		public String apply(final String n5UriOrPath) {
 
-			if (n5Path.contains(".h5") || n5Path.contains(".hdf5") || n5Path.contains(".hdf"))
-				return h5DatasetPath(n5Path);
+			if( n5UriOrPath.contains("?") )
+			{
+				try {
+					return new N5URI( n5UriOrPath ).getGroupPath();
+				} catch (URISyntaxException e) {}
+			}
+
+			if (n5UriOrPath.contains(".h5") || n5UriOrPath.contains(".hdf5") || n5UriOrPath.contains(".hdf"))
+				return h5DatasetPath(n5UriOrPath);
 			else
-				return afterLastExtension(n5Path);
+				return afterLastExtension(n5UriOrPath);
 		}
 	}
 

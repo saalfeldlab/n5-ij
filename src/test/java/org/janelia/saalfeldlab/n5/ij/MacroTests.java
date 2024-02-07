@@ -63,16 +63,27 @@ public class MacroTests {
 	}
 
 	@Test
-	public void testMacroContent() {
+	public void testMacroContentPath() {
+		testMacroContentHelper("url=%s/%s");
+	}
+
+	@Test
+	public void testMacroContentUri() {
+		testMacroContentHelper("url=%s?%s");
+	}
+
+	public void testMacroContentHelper( String urlFormat ) {
+
+		// URL
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide", containerDir.getAbsolutePath(), "dataset" ));
+				String.format( urlFormat + " hide", containerDir.getAbsolutePath(), "dataset" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		final ImagePlus imgImported = res.get(0);
 		assertTrue( "equal content", TestExportImports.equal(imp, imgImported));
 
 		final N5Importer pluginCrop = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide min=0,1,2 max=5,5,5",
+				String.format( urlFormat + " hide min=0,1,2 max=5,5,5",
 						containerDir.getAbsolutePath(), "dataset" ));
 		final List<ImagePlus> resCrop = pluginCrop.getResult();
 		final ImagePlus imgImportedCrop = resCrop.get(0);
