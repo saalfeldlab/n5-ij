@@ -51,36 +51,42 @@ public class N5SwingTreeNode extends N5TreeNode implements MutableTreeNode {
 	}
 
 	@Override
-	public N5SwingTreeNode addPath( final String path ) {
-		  final String normPath = removeLeadingSlash(path);
-		  if( getPath().equals(normPath))
-			  return this;
+	public N5SwingTreeNode addPath(final String path) {
 
-		  final String relativePath = removeLeadingSlash( normPath.replaceAll( "^"+getPath(), "" ));
-		  final int sepIdx = relativePath.indexOf("/");
-		  final String childName;
-		  if( sepIdx < 0 )
-			  childName = relativePath;
-		  else
-			  childName = relativePath.substring(0, sepIdx);
+		String normPath = removeLeadingSlash(path);
+		if (!getPath().isEmpty() && !normPath.startsWith(getPath()))
+			return null;
 
-		  // get the appropriate child along the path if it exists, otherwise add it
-		  N5TreeNode child = null;
-		  Stream<N5TreeNode> cs = childrenList().stream().filter( n -> n.getNodeName().equals(childName));;
-		  Optional<N5TreeNode> copt = cs.findFirst();
-		  if( copt.isPresent() )
-			  child = copt.get();
-		  else {
-			  child = new N5SwingTreeNode( 
+		if (getPath().equals(normPath))
+			return this;
+
+		final String relativePath = removeLeadingSlash(normPath.replaceAll("^" + getPath(), ""));
+
+		final int sepIdx = relativePath.indexOf("/");
+		final String childName;
+		if (sepIdx < 0)
+			childName = relativePath;
+		else
+			childName = relativePath.substring(0, sepIdx);
+
+		// get the appropriate child along the path if it exists, otherwise add
+		// it
+		N5TreeNode child = null;
+		Stream<N5TreeNode> cs = childrenList().stream().filter(n -> n.getNodeName().equals(childName));;
+		Optional<N5TreeNode> copt = cs.findFirst();
+		if (copt.isPresent())
+			child = copt.get();
+		else {
+			child = new N5SwingTreeNode(
 					getPath().isEmpty() ? childName : getPath() + "/" + childName,
-					this, treeModel );
+					this, treeModel);
 
-			  add( child );
+			add(child);
 
-			  if( treeModel != null)
-				  treeModel.nodesWereInserted( this, new int[]{childrenList().size() - 1 });
-		  }
-		  return (N5SwingTreeNode) child.addPath(normPath);
+			if (treeModel != null)
+				treeModel.nodesWereInserted(this, new int[]{childrenList().size() - 1});
+		}
+		return (N5SwingTreeNode)child.addPath(normPath);
 	}
 
 	@Override

@@ -346,34 +346,6 @@ public class DatasetSelectorDialog {
 
 		return cropOption;
 	}
-//	// add custom metadata parser into the first position in the list if it exists
-//	final Optional<N5GenericSingleScaleMetadataParser> parserOptional = spatialMetaSpec.getParserOptional();
-//	if( parserOptional.isPresent() ) {
-//		parserList.add(parserOptional.get());
-//		parserList.addAll(Arrays.asList(parsers));
-//	}
-//	else
-//		parserList.addAll(Arrays.asList(parsers));
-//
-//	final Gson gson;
-//	if( n5 instanceof CachedGsonKeyValueN5Reader )
-//		gson = ((CachedGsonKeyValueN5Reader) n5).getGson();
-//	else
-//	{
-//		final GsonBuilder gsonBuilder = new GsonBuilder();
-//		gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
-//		gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
-//		gsonBuilder.disableHtmlEscaping();
-//		gson = gsonBuilder.create();
-//	}
-//
-//	boolean isTranslated = false;
-//	final Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
-//	if( translatedN5.isPresent() )
-//	{
-//		n5 = translatedN5.get();
-//		isTranslated = true;
-//>>>>>>> origin/ome-zarr-v0.4
 
 	public boolean isCropSelected() {
 
@@ -384,10 +356,6 @@ public class DatasetSelectorDialog {
 
 		return (virtualBox != null) && virtualBox.isSelected();
 	}
-//	final N5TreeNode tmpRootNode = new N5TreeNode( rootPath );
-//	rootNode = new N5SwingTreeNode( rootPath, treeModel );
-//	treeModel.setRoot(rootNode);
-//>>>>>>> origin/ome-zarr-v0.4
 
 	public String getN5RootPath() {
 
@@ -708,7 +676,7 @@ public class DatasetSelectorDialog {
 		}
 
 		n5 = n5Fun.apply(n5Path);
-		final String rootPath = pathToRoot.apply(n5Path);
+		final String rootPath = pathToRoot.apply(n5Path).replaceFirst("^/", "");
 
 		if (n5 == null) {
 			messageLabel.setVisible(false);
@@ -824,7 +792,7 @@ public class DatasetSelectorDialog {
 					datasetPaths = n5.deepList(rootPath, loaderExecutor);
 					N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
 					for (final String p : datasetPaths)
-						rootNode.addPath(p);
+						rootNode.addPath(rootPath + "/" + p);
 
 
 					sortRecursive(rootNode);
