@@ -185,7 +185,9 @@ public class N5SubsetExporter extends ContextCommand {
 
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, InterruptedException, ExecutionException {
 
-		final N5Writer n5 = new N5Factory().openWriter(containerRoot);
+		final N5Writer n5 = new N5Factory()
+				.s3UseCredentials()
+				.openWriter(containerRoot);
 		write(n5);
 		n5.close();
 	}

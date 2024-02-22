@@ -358,7 +358,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>>
 		void processMultiscale() throws IOException, InterruptedException, ExecutionException {
 
-		final N5Writer n5 = new N5Factory().openWriter(containerRoot);
+		final N5Writer n5 = new N5Factory()
+				.s3UseCredentials()				// need credentials if writing to s3
+				.openWriter(containerRoot);
 		final Compression compression = getCompression();
 
 		// TODO should have better behavior for chunk size parsing when splitting channels
@@ -454,6 +456,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 						n5,
 						channelDataset);
 		}
+		n5.close();
 	}
 
 	@SuppressWarnings("unchecked")
