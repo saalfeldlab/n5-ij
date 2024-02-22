@@ -216,6 +216,8 @@ public class DatasetSelectorDialog {
 
 	private ProgressBar ijProgressBar;
 
+	private boolean detectCalled;
+
 	private final AlphanumericComparator comp = new AlphanumericComparator(Collator.getInstance());
 
 	public DatasetSelectorDialog(
@@ -239,6 +241,8 @@ public class DatasetSelectorDialog {
 		final ImageJ ij = IJ.getInstance();
 		if (ij != null)
 			ijProgressBar = ij.getProgressBar();
+
+		detectCalled = false;
 	}
 
 	public DatasetSelectorDialog(
@@ -273,6 +277,8 @@ public class DatasetSelectorDialog {
 		final ImageJ ij = IJ.getInstance();
 		if (ij != null)
 			ijProgressBar = ij.getProgressBar();
+
+		detectCalled = false;
 	}
 
 	public N5MetadataTranslationPanel getTranslationPanel() {
@@ -856,9 +862,9 @@ public class DatasetSelectorDialog {
 						messageLabel.repaint();
 					});
 				} catch (final InterruptedException e) {
-					e.printStackTrace();
+					// can ignore
 				} catch (final ExecutionException e) {
-					e.printStackTrace();
+					// can ignore
 				}
 			} catch (final N5Exception e) {
 				e.printStackTrace();
@@ -872,6 +878,8 @@ public class DatasetSelectorDialog {
 					xlatedN5.getTranslation().getOrig(),
 					xlatedN5.getTranslation().getTranslated());
 		}
+
+		detectCalled = true;
 	}
 
 	public void ok() {
@@ -883,8 +891,9 @@ public class DatasetSelectorDialog {
 		final ArrayList<N5Metadata> selectedMetadata = new ArrayList<>();
 
 		// check if we can skip explicit dataset detection
-		if (containerTree.getSelectionCount() == 0) {
-			final String n5Path = getN5RootPath();
+		final String n5Path = getN5RootPath();
+		if (!detectCalled && !n5Path.isEmpty()) {
+
 			containerPathUpdateCallback.accept(getN5RootPath());
 
 			if( n5== null )
@@ -894,18 +903,34 @@ public class DatasetSelectorDialog {
 				datasetDiscoverer = makeDiscoverer();
 
 			final String dataset = pathFun.apply(n5Path);
-			N5TreeNode node = null;
 			try {
-				node = datasetDiscoverer.parse(dataset);
-				if (node.isDataset() && node.getMetadata() != null)
+
+				final Predicate<N5Metadata> filter = selectionFilter != null ? selectionFilter : x -> { return x != null; };
+				final N5TreeNode node = datasetDiscoverer.parse(dataset);
+				if (node != null && filter.test(node.getMetadata()))
 					selectedMetadata.add(node.getMetadata());
+
+//				final N5TreeNode root = datasetDiscoverer.discoverAndParseRecursive("");
+//				root.getDescendant(dataset)
+//					.filter(x -> {
+//						return x.getMetadata() != null && filter.test(x.getMetadata());
+//					})
+//					.ifPresent(x -> {
+//						selectedMetadata.add(x.getMetadata());
+//					});
+
 			} catch (final Exception e) {}
 
-			if (node == null || !node.isDataset() || node.getMetadata() == null) {
+			if (selectedMetadata.isEmpty()) {
 				JOptionPane.showMessageDialog(null, "Could not find a dataset / metadata at the provided path.");
 				return;
 			}
 		} else {
+			if( containerTree.getSelectionPath() == null ) {
+				JOptionPane.showMessageDialog(null, "No dataset selected.");
+				return;
+			}
+
 			// datasets were selected by the user
 			for (final TreePath path : containerTree.getSelectionPaths())
 				selectedMetadata.add(((N5SwingTreeNode)path.getLastPathComponent()).getMetadata());
