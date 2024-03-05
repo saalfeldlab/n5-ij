@@ -49,16 +49,18 @@ public class MacroTests {
 		System.out.println( containerDir.getAbsolutePath() );
 
 		imp = NewImage.createImage("test", 8, 7, 9, 16, NewImage.FILL_NOISE);
+		final String format = N5ScalePyramidExporter.AUTO_FORMAT;
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", "16,16,16", false,
+		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", format, "16,16,16", false,
 				N5ScalePyramidExporter.NONE, N5ScalePyramidExporter.DOWN_SAMPLE, N5ScalePyramidExporter.RAW_COMPRESSION);
 		writer.run(); // run() closes the n5 writer
 	}
 
 	@After
 	public void after() {
-		final N5Writer n5 = new N5Factory().openWriter( containerDir.getAbsolutePath());
+
+		final N5Writer n5 = new N5Factory().openWriter(containerDir.getAbsolutePath());
 		n5.remove();
 	}
 

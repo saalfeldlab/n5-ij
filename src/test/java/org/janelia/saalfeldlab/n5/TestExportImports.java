@@ -3,15 +3,24 @@ package org.janelia.saalfeldlab.n5;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.Function;
 
+import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
+import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
+import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,7 +74,7 @@ public class TestExportImports
 		final String dataset = "n5v_4d";
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, n5RootPath, dataset, "32", false,
+		writer.setOptions( imp, n5RootPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, "32", false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataN5ViewerKey, N5ScalePyramidExporter.GZIP_COMPRESSION);
 		writer.run(); // run() closes the n5 writer
 
@@ -222,9 +231,8 @@ public class TestExportImports
 			boolean testMeta,
 			boolean testData )
 	{
-//		System.out.println("outputPath: " + outputPath + "  " + dataset);
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, outputPath, dataset, blockSizeString, false,
+		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
 		writer.run(); // run() closes the n5 writer
 
@@ -329,18 +337,18 @@ public class TestExportImports
 		final ImagePlus impSmall = NewImage.createImage("test", (int)szSmall[0], (int)szSmall[1], (int)szSmall[2], 8, NewImage.FILL_NOISE);
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions(impBig, n5Root, dataset, blockSizeString, false,
+		writer.setOptions(impBig, n5Root, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
 		writer.setOverwrite(true);
 		writer.run();
 
-		final N5Reader n5 = new N5FSReader(n5Root);
+		final N5Writer n5 = new N5FSWriter(n5Root);
 		assertTrue(n5.datasetExists(dataset));
 
 		assertArrayEquals("size orig", szBig, n5.getDatasetAttributes(dataset).getDimensions());
 
 		final N5ScalePyramidExporter writerNoOverride = new N5ScalePyramidExporter();
-		writerNoOverride.setOptions(impSmall, n5Root, dataset, blockSizeString, false,
+		writerNoOverride.setOptions(impSmall, n5Root, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
 		writerNoOverride.setOverwrite(false);
 		writerNoOverride.run();
@@ -348,12 +356,179 @@ public class TestExportImports
 		assertArrayEquals("size after no overwrite", szBig, n5.getDatasetAttributes(dataset).getDimensions());
 
 		final N5ScalePyramidExporter writerOverride = new N5ScalePyramidExporter();
-		writerOverride.setOptions(impSmall, n5Root, dataset, blockSizeString, false,
+		writerOverride.setOptions(impSmall, n5Root, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
 		writerOverride.setOverwrite(true);
 		writerOverride.run();
 
 		assertArrayEquals("size after overwrite", szSmall, n5.getDatasetAttributes(dataset).getDimensions());
+
+		n5.remove();
+		n5.close();
+	}
+
+	@Test
+	public void testFormatOptions() {
+
+		final String n5Root = baseDir + "/root_of_some_container";
+		final String dataset = "dataset";
+		final String blockSizeString = "16";
+		final String compressionString = "raw";
+		String metadataType = N5ScalePyramidExporter.NONE;
+
+		// get a writer from a string
+		final HashMap<String, Function<String, N5Writer>> writerMap = new HashMap<>();
+		writerMap.put(N5ScalePyramidExporter.HDF5_FORMAT, x -> new N5HDF5Writer(x));
+		writerMap.put(N5ScalePyramidExporter.N5_FORMAT, x -> new N5FSWriter(x));
+		writerMap.put(N5ScalePyramidExporter.ZARR_FORMAT, x -> new N5ZarrWriter(x));
+
+		final HashMap<String, Function<String, N5Reader>> readerMap = new HashMap<>();
+		readerMap.put(N5ScalePyramidExporter.HDF5_FORMAT, x -> new N5HDF5Reader(x));
+		readerMap.put(N5ScalePyramidExporter.N5_FORMAT, x -> new N5FSReader(x));
+		readerMap.put(N5ScalePyramidExporter.ZARR_FORMAT, x -> new N5ZarrReader(x));
+
+		final long[] szBig = new long[]{8, 6, 4};
+		final ImagePlus imp = NewImage.createImage("test", (int)szBig[0], (int)szBig[1], (int)szBig[2], 8, NewImage.FILL_NOISE);
+
+		String[] formats = new String[]{
+				N5ScalePyramidExporter.HDF5_FORMAT,
+				N5ScalePyramidExporter.N5_FORMAT,
+				N5ScalePyramidExporter.ZARR_FORMAT
+		};
+
+		for (final String format : formats) {
+
+			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+			writer.setOptions(imp, n5Root, dataset, format, blockSizeString, false,
+					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+			writer.run();
+
+			try {
+				// ensure opening the correct container type works
+				final N5Writer n5 = writerMap.get(format).apply(n5Root);
+
+				/*
+				 * eventually test that other formats fail to open, but is
+				 * complicated by the fact that it is possible to open a zarr
+				 * container with an n5 reader. So ignore this for now
+				 */
+
+				n5.remove();
+				n5.close();
+			} catch (Exception e) {
+				fail("option only: " + format);
+			}
+		}
+
+		// repeat the above using uri format prefixes instead of the explicit option
+		for (final String format : formats) {
+
+			final String n5RootWithFormatPrefix = format.toLowerCase() + ":" + n5Root;
+			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+			writer.setOptions(imp, n5RootWithFormatPrefix, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
+					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+			writer.run();
+
+			try {
+				// ensure opening the correct container type works
+				final N5Writer n5 = writerMap.get(format).apply(n5Root);
+
+				/*
+				 * eventually test that other formats fail to open, but is
+				 * complicated by the fact that it is possible to open a zarr
+				 * container with an n5 reader. So ignore this for now
+				 */
+
+				n5.remove();
+				n5.close();
+			} catch (Exception e) {
+				fail("prefix only " + format);
+			}
+		}
+
+		// repeat the above using uri format prefixes AND a the same explicit option
+		for (final String format : formats) {
+
+			final String n5RootWithFormatPrefix = format.toLowerCase() + ":" + n5Root;
+
+			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+			writer.setOptions(imp, n5RootWithFormatPrefix, dataset, format, blockSizeString, false,
+					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+			writer.run();
+
+			try {
+				// ensure opening the correct container type works
+				final N5Writer n5 = writerMap.get(format).apply(n5Root);
+
+				/*
+				 * eventually test that other formats fail to open, but is
+				 * complicated by the fact that it is possible to open a zarr
+				 * container with an n5 reader. So ignore this for now
+				 */
+
+				n5.remove();
+				n5.close();
+			} catch (Exception e) {
+				fail("consistent prefix and option: " + format);
+			}
+		}
+
+		/*
+		 * the plugin will print errors for the below test, which will create noise
+		 * in the test output. swallow the errors instead, and check that something
+		 * was written
+		 */
+		TriggerOutputStream trigger = new TriggerOutputStream();
+		System.setOut(new PrintStream(trigger));
+
+		// inconsistent options should fail
+		for (final String format : formats) {
+
+			for (final String otherFormat : formats) {
+
+				if( format.equals(otherFormat))
+					continue;
+
+				final String n5RootWithFormatPrefix = otherFormat.toLowerCase() + ":" + n5Root;
+				final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+				writer.setOptions(imp, n5RootWithFormatPrefix, dataset, format, blockSizeString, false,
+						N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+				writer.run();
+
+				try {
+					// the container should not exist
+					final N5Reader n5 = readerMap.get(format).apply(n5Root);
+					n5.close();
+					fail("inconsistent prefix and option did not fail: " + format + " " + otherFormat);
+
+
+				} catch (Exception e) {
+					// check that the plugin printed some error
+					assertTrue(trigger.somethingWritten);
+					trigger.reset(); // reset
+				}
+
+			}
+		}
+
+		System.setOut(System.out);
+	}
+
+	private static class TriggerOutputStream extends OutputStream {
+
+		boolean somethingWritten = false;
+
+		@Override
+		public void write(int b) throws IOException {
+
+			somethingWritten = true;
+		}
+
+		public void reset() {
+
+			somethingWritten = false;
+		}
+
 	}
 
 	public void testMultiChannelHelper( final String metatype, final String suffix )
@@ -404,7 +579,7 @@ public class TestExportImports
 			boolean testData )
 	{
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, outputPath, dataset, blockSizeString, true, downsampleMethod, metadataType, compressionType);
+		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, true, downsampleMethod, metadataType, compressionType);
 		writer.run(); // run() closes the n5 writer
 
 		final String readerDataset;

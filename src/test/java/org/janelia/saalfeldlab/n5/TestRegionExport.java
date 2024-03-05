@@ -63,7 +63,7 @@ public class TestRegionExport {
 		writerZero.setOptions(imp, rootPath, dsetZeroOffset, zeroOffsetString, blockSizeString, compressionString);
 		writerZero.run();
 
-		final N5Reader n5 = new N5FSReader(rootPath);
+		final N5Writer n5 = new N5FSWriter(rootPath);
 		final long[] dims = n5.getDatasetAttributes(dsetZeroOffset).getDimensions();
 		assertArrayEquals("zero-offset", trueDims, dims);
 
@@ -84,6 +84,7 @@ public class TestRegionExport {
 		final long[] dimsOffset = n5.getDatasetAttributes(dsetOffset).getDimensions();
 		assertArrayEquals("offset", trueOffsetDims, dimsOffset);
 
+		n5.remove();
 		n5.close();
 	}
 
