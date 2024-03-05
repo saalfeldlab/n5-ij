@@ -195,7 +195,7 @@ public class N5SubsetExporter extends ContextCommand {
 
 		final N5Writer n5 = new N5Factory()
 				.s3UseCredentials()
-				.getWriter(containerRoot);
+				.openWriter(containerRoot);
 		write(n5);
 		n5.close();
 	}

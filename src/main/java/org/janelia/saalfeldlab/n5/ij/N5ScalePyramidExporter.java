@@ -390,7 +390,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 * @param showWarning whether show a warning if a conflict was detected
 	 * @return a container root uri with format prefix, if possible
 	 */
-	protected String containerRootWithFormatPrefix(final boolean showWarning) {
+	public static String containerRootWithFormatPrefix(final String containerRoot, final String storageFormat, final boolean showWarning) {
 
 		final StorageFormat uriFormat = StorageFormat.getStorageFromNestedScheme(containerRoot).getA();
 		if (storageFormat.equals(AUTO_FORMAT)) {
@@ -423,13 +423,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>>
 		void processMultiscale() throws IOException, InterruptedException, ExecutionException {
 
-		final String rootWithFormatPrefix = containerRootWithFormatPrefix(true);
+		final String rootWithFormatPrefix = containerRootWithFormatPrefix(containerRoot, storageFormat, true);
 		if (rootWithFormatPrefix == null)
 			return;
 
 		final N5Writer n5 = new N5Factory()
 				.s3UseCredentials()				// need credentials if writing to s3
-				.getWriter(rootWithFormatPrefix);
+				.openWriter(rootWithFormatPrefix);
 		final Compression compression = getCompression();
 
 		// TODO should have better behavior for chunk size parsing when splitting channels
@@ -481,8 +481,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				final String dset = getScaleDatasetName(c, s);
 				// downsample when relevant
+				long[] relativeFactors = new long[nd];
+				Arrays.fill(relativeFactors, 1);
 				if( s > 0 ) {
-					final long[] relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
+					relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
 
 					// update absolute downsampling factors
 					for( int i = 0; i < nd; i++ )
@@ -500,7 +502,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				}
 
 				// update metadata to reflect this scale level, returns new metadata instance
-				currentMetadata = (M)metadataForThisScale( dset, currentMetadata, currentAbsoluteDownsampling, currentTranslation );
+
+				// TODO needs to be relative downsampling
+				currentMetadata = (M)metadataForThisScale( dset, currentMetadata, relativeFactors, currentTranslation );
 
 				// write to the appropriate dataset
 				// if dataset exists and not overwritten, don't write metadata
