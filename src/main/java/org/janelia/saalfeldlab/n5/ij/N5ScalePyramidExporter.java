@@ -387,7 +387,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 * Returns the container path with an additional storage prefix if the format is
 	 * defined by the plugin parameter. or null if the passed uri and storage format parameters conflict.
 	 *
+	 * @param containerRoot A URI pointing to the root of a container, potentially with a format suffix (e.g. zarr:)
+	 * @param storageFormat an explicit storage format, may be "Auto" to automatically detect from the URI
 	 * @param showWarning whether show a warning if a conflict was detected
+	 * 
 	 * @return a container root uri with format prefix, if possible
 	 */
 	public static String containerRootWithFormatPrefix(final String containerRoot, final String storageFormat, final boolean showWarning) {
@@ -721,13 +724,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	/**
 	 * If relevant, according to the passed {@link N5DatasetMetadata} metadata instance,
-	 * return a list containing
+	 * return a list containing the channels of the input image. A list containing the 
+	 * input image will be returned if there is exactly one channel.
+	 *
+	 * @param <T> the image type
+	 * @param <M> the metadata type
+	 * @param metadata the metadata
+	 * @param img the image
+	 * @return A list of images containing the channels of the input image.
 	 */
 	protected <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> List<RandomAccessibleInterval<T>> splitChannels(M metadata,
 			RandomAccessibleInterval<T> img) {
 
 		// TODO perhaps should return new metadata that is not
-
 		// some metadata styles never split channels, return input image in that case
 		if (metadataStyle.equals(NONE) || metadataStyle.equals(N5Importer.MetadataCustomKey) ||
 				metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||

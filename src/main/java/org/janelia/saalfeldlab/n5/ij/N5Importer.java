@@ -81,7 +81,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScale
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 
 import ij.IJ;
-import ij.ImageJ;
 import ij.ImagePlus;
 import ij.Macro;
 import ij.Prefs;
@@ -102,7 +101,6 @@ import net.imglib2.img.imageplus.ImagePlusImgFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.parallel.DefaultTaskExecutor;
 import net.imglib2.type.NativeType;
-import net.imglib2.type.label.LabelMultisetType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.integer.UnsignedIntType;
@@ -115,8 +113,7 @@ import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn {
 
-	// private static final String[] axisNames = new String[] { "x", "y", "c",
-	// "z", "t" };
+	// private static final String[] axisNames = new String[] { "x", "y", "c", "z", "t" };
 	private static final String[] axisNames = new String[]{"dim1", "dim2", "dim3", "dim4", "dim5"};
 
 	public static final String n5PathKey = "url";
@@ -471,6 +468,8 @@ public class N5Importer implements PlugIn {
 	 *            the metadata type
 	 * @param n5
 	 *            the n5Reader
+	 * @param exec
+	 *            an ExecutorService to manage parallel reading
 	 * @param datasetMeta
 	 *            datasetMetadata containing the path
 	 * @param cropIntervalIn
