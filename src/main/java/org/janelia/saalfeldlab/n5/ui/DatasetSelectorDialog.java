@@ -64,6 +64,7 @@ import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
+import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 import java.awt.Container;
@@ -78,10 +79,15 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -608,6 +614,8 @@ public class DatasetSelectorDialog {
 	private void openContainer(final Function<String, N5Reader> n5Fun, final Supplier<String> opener,
 			final Function<String, String> pathToRoot) {
 
+		System.out.println("NEW DEEP LIST");
+
 		if (ijProgressBar != null)
 			ijProgressBar.show(0.2);
 
@@ -728,11 +736,60 @@ public class DatasetSelectorDialog {
 					});
 
 					// build a temporary tree
-					datasetPaths = n5.deepList(rootPath, loaderExecutor);
-					N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
-					for (final String p : datasetPaths)
-						rootNode.addPath(rootPath + "/" + p);
+					//TODO list
+					//datasetPaths = n5.deepList(rootPath, loaderExecutor);
+					
+//					N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
+//					for (final String p : datasetPaths)
+//						rootNode.addPath(rootPath + "/" + p);
 
+					final ConcurrentLinkedQueue<Future<?>> futures = new ConcurrentLinkedQueue<>();
+					final ForkJoinPool service = new ForkJoinPool(Runtime.getRuntime().availableProcessors()) {
+
+						@Override public <T> ForkJoinTask<T> submit(Callable<T> task) {
+
+							final ForkJoinTask<T> task_ = super.submit(task);
+							futures.add(task_);
+							return task_;
+						}
+					};
+
+					final AtomicBoolean isDone = new AtomicBoolean(false);
+					new Thread(() -> {
+						try {
+							n5.deepList("", service);
+							isDone.getAndSet(true);
+						} catch (InterruptedException e) {
+							throw new RuntimeException(e);
+						} catch (ExecutionException e) {
+							throw new RuntimeException(e);
+						}
+					}).start();
+
+					while (!isDone.get()) {
+						final Future<?> poll = futures.poll();
+						if (poll != null) {
+							if (poll.isDone()) {
+
+								final String path = (String)poll.get();
+								if (path != null && !path.isEmpty()) {
+									final N5SwingTreeNode newNode = rootNode.addPath(path);
+									final N5SwingTreeNode parent = (N5SwingTreeNode)newNode.getParent();
+									final int idx = parent.getIndex(newNode);
+									treeModel.insertNodeInto(rootNode, parent, idx);
+									containerTree.repaint();
+								}
+
+//								treeModel.nodeStructureChanged(rootNode);
+//								rootNode.getDescendant(rootPath);
+//								treeModel.nodesWereInserted(rootNode, null)
+							} else {
+								futures.add(poll);
+							}
+						} else {
+							Thread.sleep(250);
+						}
+					}
 
 					sortRecursive(rootNode);
 					containerTree.expandRow(0);
