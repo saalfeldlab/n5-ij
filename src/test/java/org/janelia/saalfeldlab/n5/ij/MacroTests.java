@@ -49,30 +49,43 @@ public class MacroTests {
 		System.out.println( containerDir.getAbsolutePath() );
 
 		imp = NewImage.createImage("test", 8, 7, 9, 16, NewImage.FILL_NOISE);
+		final String format = N5ScalePyramidExporter.AUTO_FORMAT;
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", "16,16,16", false,
+		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", format, "16,16,16", false,
 				N5ScalePyramidExporter.NONE, N5ScalePyramidExporter.DOWN_SAMPLE, N5ScalePyramidExporter.RAW_COMPRESSION);
 		writer.run(); // run() closes the n5 writer
 	}
 
 	@After
 	public void after() {
-		final N5Writer n5 = new N5Factory().openWriter( containerDir.getAbsolutePath());
+
+		final N5Writer n5 = new N5Factory().openWriter(containerDir.getAbsolutePath());
 		n5.remove();
 	}
 
 	@Test
-	public void testMacroContent() {
+	public void testMacroContentPath() {
+		testMacroContentHelper("url=%s/%s");
+	}
+
+	@Test
+	public void testMacroContentUri() {
+		testMacroContentHelper("url=%s?%s");
+	}
+
+	public void testMacroContentHelper( String urlFormat ) {
+
+		// URL
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide", containerDir.getAbsolutePath(), "dataset" ));
+				String.format( urlFormat + " hide", containerDir.getAbsolutePath(), "dataset" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		final ImagePlus imgImported = res.get(0);
 		assertTrue( "equal content", TestExportImports.equal(imp, imgImported));
 
 		final N5Importer pluginCrop = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide min=0,1,2 max=5,5,5",
+				String.format( urlFormat + " hide min=0,1,2 max=5,5,5",
 						containerDir.getAbsolutePath(), "dataset" ));
 		final List<ImagePlus> resCrop = pluginCrop.getResult();
 		final ImagePlus imgImportedCrop = resCrop.get(0);

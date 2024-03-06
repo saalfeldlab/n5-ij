@@ -26,7 +26,6 @@
 package org.janelia.saalfeldlab.n5.ij;
 
 import ij.IJ;
-import ij.ImageJ;
 import ij.ImagePlus;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
@@ -53,6 +52,7 @@ import org.janelia.saalfeldlab.n5.XzCompression;
 import org.janelia.saalfeldlab.n5.blosc.BloscCompression;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.AbstractN5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
@@ -120,6 +120,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
   public static final String BLOSC_COMPRESSION = "blosc";
   public static final String ZSTD_COMPRESSION = "zstd";
 
+  public static final String AUTO_FORMAT = "Auto";
+  public static final String HDF5_FORMAT = "HDF5";
+  public static final String N5_FORMAT = "N5";
+  public static final String ZARR_FORMAT = "Zarr";
+
   public static enum DOWNSAMPLE_METHOD { Sample, Average };
   public static final String DOWN_SAMPLE = "Sample";
   public static final String DOWN_AVERAGE = "Average";
@@ -147,6 +152,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		  required = false,
 		  description = "This argument is ignored if the N5ViewerMetadata style is selected")
   private String dataset;
+
+  @Parameter(
+		  label = "Format",
+		  style = "listBox",
+		  choices = {AUTO_FORMAT, HDF5_FORMAT, N5_FORMAT, ZARR_FORMAT})
+  private String storageFormat = AUTO_FORMAT;
 
   @Parameter(
 		  label = "Chunk size",
@@ -247,6 +258,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public N5ScalePyramidExporter(final ImagePlus image,
 			final String n5RootLocation,
 			final String n5Dataset,
+			final String storageFormat,
 			final String chunkSizeArg,
 			final boolean pyramidIfPossible,
 			final String downsampleMethod,
@@ -254,12 +266,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String compression) {
 
 		this();
-		setOptions(image, n5RootLocation, n5Dataset, chunkSizeArg, pyramidIfPossible, downsampleMethod, metadataStyle, compression);
+		setOptions(image, n5RootLocation, n5Dataset, storageFormat, chunkSizeArg, pyramidIfPossible, downsampleMethod, metadataStyle, compression);
 	}
 
 	public N5ScalePyramidExporter(final ImagePlus image,
 			final String n5RootLocation,
 			final String n5Dataset,
+			final String storageFormat,
 			final String chunkSizeArg,
 			final boolean pyramidIfPossible,
 			final DOWNSAMPLE_METHOD downsampleMethod,
@@ -267,7 +280,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String compression) {
 
 		this();
-		setOptions(image, n5RootLocation, n5Dataset, chunkSizeArg, pyramidIfPossible, downsampleMethod.name(), metadataStyle, compression);
+		setOptions(image, n5RootLocation, n5Dataset, storageFormat, chunkSizeArg, pyramidIfPossible, downsampleMethod.name(), metadataStyle, compression);
 	}
 
 	public void setOverwrite(final boolean overwrite) {
@@ -291,8 +304,24 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String metadataStyle,
 			final String compression) {
 
+		setOptions(image, containerRoot, dataset, AUTO_FORMAT, chunkSizeArg, pyramidIfPossible,
+				downsampleMethod, metadataStyle, compression);
+	}
+
+	public void setOptions(
+			final ImagePlus image,
+			final String containerRoot,
+			final String dataset,
+			final String storageFormat,
+			final String chunkSizeArg,
+			final boolean pyramidIfPossible,
+			final String downsampleMethod,
+			final String metadataStyle,
+			final String compression) {
+
 		this.image = image;
 		this.containerRoot = containerRoot;
+		this.storageFormat = storageFormat;
 
 		this.dataset = MetadataUtils.normalizeGroupPath(dataset);
 		this.chunkSizeArg = chunkSizeArg;
@@ -354,16 +383,60 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				metadataStyle.equals(N5Importer.MetadataOmeZarrKey);
 	}
 
+	/**
+	 * Returns the container path with an additional storage prefix if the format is
+	 * defined by the plugin parameter. or null if the passed uri and storage format parameters conflict.
+	 *
+	 * @param containerRoot A URI pointing to the root of a container, potentially with a format suffix (e.g. zarr:)
+	 * @param storageFormat an explicit storage format, may be "Auto" to automatically detect from the URI
+	 * @param showWarning whether show a warning if a conflict was detected
+	 * 
+	 * @return a container root uri with format prefix, if possible
+	 */
+	public static String containerRootWithFormatPrefix(final String containerRoot, final String storageFormat, final boolean showWarning) {
+
+		final StorageFormat uriFormat = StorageFormat.getStorageFromNestedScheme(containerRoot).getA();
+		if (storageFormat.equals(AUTO_FORMAT)) {
+			// "Auto" in dropdown means infer from uri, so return the uri as is
+			return containerRoot;
+		} else {
+
+			// dropdown format will not be Auto
+			final StorageFormat dropdownFormat = StorageFormat.valueOf(storageFormat.toUpperCase());
+			if (uriFormat == null) {
+				// add the format prefix to the uri
+				return dropdownFormat.toString().toLowerCase() + ":" + containerRoot;
+			}
+
+			// check that uri format and dropdown format are consistent.
+			// warn and exit if not
+			if (uriFormat != null && !storageFormat.equals(AUTO_FORMAT) && uriFormat != dropdownFormat) {
+
+				if (showWarning)
+					IJ.showMessage("Warning", String.format("Selected format (%s) does not match format from url (%s)!",
+							dropdownFormat.toString(), uriFormat.toString()));
+
+				return null;
+			}
+			return containerRoot;
+		}
+	}
+
 	@SuppressWarnings("unchecked")
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>>
 		void processMultiscale() throws IOException, InterruptedException, ExecutionException {
 
-		final N5Writer n5 = new N5Factory().openWriter(containerRoot);
+		final String rootWithFormatPrefix = containerRootWithFormatPrefix(containerRoot, storageFormat, true);
+		if (rootWithFormatPrefix == null)
+			return;
+
+		final N5Writer n5 = new N5Factory()
+				.s3UseCredentials()				// need credentials if writing to s3
+				.openWriter(rootWithFormatPrefix);
 		final Compression compression = getCompression();
 
 		// TODO should have better behavior for chunk size parsing when splitting channels
 		// this might be done
-
 		final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
 
 		N5MetadataWriter<M> metadataWriter = null;
@@ -411,8 +484,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				final String dset = getScaleDatasetName(c, s);
 				// downsample when relevant
+				long[] relativeFactors = new long[nd];
+				Arrays.fill(relativeFactors, 1);
 				if( s > 0 ) {
-					final long[] relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
+					relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
 
 					// update absolute downsampling factors
 					for( int i = 0; i < nd; i++ )
@@ -430,7 +505,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				}
 
 				// update metadata to reflect this scale level, returns new metadata instance
-				currentMetadata = (M)metadataForThisScale( dset, currentMetadata, currentAbsoluteDownsampling, currentTranslation );
+
+				// TODO needs to be relative downsampling
+				currentMetadata = (M)metadataForThisScale( dset, currentMetadata, relativeFactors, currentTranslation );
 
 				// write to the appropriate dataset
 				// if dataset exists and not overwritten, don't write metadata
@@ -454,6 +531,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 						n5,
 						channelDataset);
 		}
+		n5.close();
 	}
 
 	@SuppressWarnings("unchecked")
@@ -646,13 +724,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	/**
 	 * If relevant, according to the passed {@link N5DatasetMetadata} metadata instance,
-	 * return a list containing
+	 * return a list containing the channels of the input image. A list containing the 
+	 * input image will be returned if there is exactly one channel.
+	 *
+	 * @param <T> the image type
+	 * @param <M> the metadata type
+	 * @param metadata the metadata
+	 * @param img the image
+	 * @return A list of images containing the channels of the input image.
 	 */
 	protected <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> List<RandomAccessibleInterval<T>> splitChannels(M metadata,
 			RandomAccessibleInterval<T> img) {
 
 		// TODO perhaps should return new metadata that is not
-
 		// some metadata styles never split channels, return input image in that case
 		if (metadataStyle.equals(NONE) || metadataStyle.equals(N5Importer.MetadataCustomKey) ||
 				metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||

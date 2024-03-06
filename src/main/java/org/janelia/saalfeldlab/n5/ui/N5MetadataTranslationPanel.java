@@ -74,6 +74,8 @@ public class N5MetadataTranslationPanel {
 	/**
 	 * Returns an optional containing the parser if any fields are non empty.
 	 * 
+	 * @param n5 the {@link N5Reader}
+	 * @param gson the {@link Gson}
 	 * @return the parser optional
 	 */
 	public Optional<TranslatedN5Reader> getTranslatedN5Optional( final N5Reader n5, final Gson gson ) {

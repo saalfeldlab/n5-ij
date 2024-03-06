@@ -224,6 +224,7 @@ public class N5IJUtils {
    * @param <T>         the image data type
    * @param <M>         the image data type
    * @param <W>         the metadata writer type
+   * @param <I>         the ImageplusMetadata that extracts the N5DatasetMetadata from the ImagePlus
    * @param imp         the ImagePlus
    * @param n5          the writer
    * @param datasetName the dataset name
@@ -333,6 +334,7 @@ public class N5IJUtils {
    * @param <T>         the image data type.
    * @param <M>         the metadata type.
    * @param <W>         the metadata writer type.
+   * @param <I>         the ImageplusMetadata that extracts the N5DatasetMetadata from the ImagePlus
    * @param imp         the ImagePlus
    * @param n5          the writer
    * @param datasetName the dataset name

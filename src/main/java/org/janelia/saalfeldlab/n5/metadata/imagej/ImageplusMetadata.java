@@ -65,11 +65,9 @@ public interface ImageplusMetadata<T extends N5DatasetMetadata> {
 	/**
 	 * Create and return a new metadata object from the given {@link ImagePlus}.
 	 *
-	 * @param ip
-	 *            the ImagePlus
-	 * @return
-	 * @throws IOException
-	 *             the io exception
+	 * @param ip the ImagePlus
+	 * @return the metadata extracted from the ImagePlus
+	 * @throws IOException the io exception
 	 */
 	public T readMetadata(ImagePlus ip) throws IOException;
 

@@ -90,6 +90,10 @@ public class N5SubsetExporter extends ContextCommand {
 	@Parameter(label = "Offset", required = false, description = "The point in pixel units where the origin of this image will be written into the n5-dataset (comma-delimited)")
 	private String subsetOffset;
 
+	@Parameter(label = "Format", style = "listBox", choices = {N5ScalePyramidExporter.AUTO_FORMAT,
+		N5ScalePyramidExporter.HDF5_FORMAT, N5ScalePyramidExporter.N5_FORMAT, N5ScalePyramidExporter.ZARR_FORMAT})
+	private String storageFormat = N5ScalePyramidExporter.AUTO_FORMAT;
+
 	@Parameter(label = "Chunk size", description = "The size of chunks to use if a new array is created. Comma separated, for example: \"64,32,16\".\n " +
 			"You may provide fewer values than the data dimension. In that case, the size will "
 			+ "be expanded to necessary size with the last value, for example \"64\", will expand " +
@@ -185,7 +189,13 @@ public class N5SubsetExporter extends ContextCommand {
 
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> void process() throws IOException, InterruptedException, ExecutionException {
 
-		final N5Writer n5 = new N5Factory().openWriter(containerRoot);
+		final String rootWithFormatPrefix = N5ScalePyramidExporter.containerRootWithFormatPrefix(containerRoot, storageFormat, true);
+		if (rootWithFormatPrefix == null)
+			return;
+
+		final N5Writer n5 = new N5Factory()
+				.s3UseCredentials()
+				.openWriter(containerRoot);
 		write(n5);
 		n5.close();
 	}

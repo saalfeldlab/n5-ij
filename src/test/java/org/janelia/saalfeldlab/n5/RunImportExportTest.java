@@ -85,7 +85,7 @@ public class RunImportExportTest
 	public void run()
 	{
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, outputPath, dataset, blockSizeString, false,
+		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				metadataType, N5ScalePyramidExporter.DOWN_SAMPLE, compressionType);
 		writer.run();
 
