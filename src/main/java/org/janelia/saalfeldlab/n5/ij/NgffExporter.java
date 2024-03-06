@@ -25,15 +25,18 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
-import ij.IJ;
-import ij.ImagePlus;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.Img;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.type.NativeType;
-import net.imglib2.type.numeric.RealType;
-import net.imglib2.view.SubsampleIntervalView;
-import net.imglib2.view.Views;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.DoubleStream;
+
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
@@ -64,141 +67,146 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiSca
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.coordinateTransformations.CoordinateTransformation;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.coordinateTransformations.ScaleCoordinateTransformation;
-import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
 import org.scijava.ItemVisibility;
 import org.scijava.app.StatusService;
-import org.scijava.command.ContextCommand;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.ui.UIService;
 
-import java.awt.event.WindowEvent;
-import java.awt.event.WindowListener;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.stream.DoubleStream;
+import ij.IJ;
+import ij.ImagePlus;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.Img;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
+import net.imglib2.view.SubsampleIntervalView;
+import net.imglib2.view.Views;
 
 @Deprecated
 public class NgffExporter implements WindowListener {
-//extends ContextCommand implements WindowListener {
-//public class NgffExporter {
+	// extends ContextCommand implements WindowListener {
+	// public class NgffExporter {
 
-  public static final String GZIP_COMPRESSION = "gzip";
-  public static final String RAW_COMPRESSION = "raw";
-  public static final String LZ4_COMPRESSION = "lz4";
-  public static final String XZ_COMPRESSION = "xz";
-  public static final String BLOSC_COMPRESSION = "blosc";
+	public static final String GZIP_COMPRESSION = "gzip";
+	public static final String RAW_COMPRESSION = "raw";
+	public static final String LZ4_COMPRESSION = "lz4";
+	public static final String XZ_COMPRESSION = "xz";
+	public static final String BLOSC_COMPRESSION = "blosc";
 
-  public static final String NONE = "None";
+	public static final String NONE = "None";
 
-  public static final String NO_OVERWRITE = "No overwrite";
-  public static final String OVERWRITE = "Overwrite";
-  public static final String WRITE_SUBSET = "Overwrite subset";
+	public static final String NO_OVERWRITE = "No overwrite";
+	public static final String OVERWRITE = "Overwrite";
+	public static final String WRITE_SUBSET = "Overwrite subset";
 
-  public static enum OVERWRITE_OPTIONS {NO_OVERWRITE, OVERWRITE, WRITE_SUBSET}
+	public static enum OVERWRITE_OPTIONS {
+		NO_OVERWRITE, OVERWRITE, WRITE_SUBSET
+	}
 
-  @Parameter(visibility = ItemVisibility.MESSAGE, required = false)
-  private final String message = "Export an ImagePlus to an OME-NGFF";
+	@Parameter(visibility = ItemVisibility.MESSAGE, required = false)
+	private final String message = "Export an ImagePlus to an OME-NGFF";
 
-  @Parameter
-  private LogService log;
+	@Parameter
+	private LogService log;
 
-  @Parameter
-  private StatusService status;
+	@Parameter
+	private StatusService status;
 
-  @Parameter
-  private UIService ui;
+	@Parameter
+	private UIService ui;
 
-  @Parameter(label = "Image")
-  private ImagePlus image; // or use Dataset? - maybe later
+	@Parameter(label = "Image")
+	private ImagePlus image; // or use Dataset? - maybe later
 
-  @Parameter(label = "Root url")
-  private String rootLocation;
+	@Parameter(label = "Root url")
+	private String rootLocation;
 
-  @Parameter(
-		  label = "Dataset",
-		  required = false)
-  private String dataset;
+	@Parameter(label = "Dataset", required = false)
+	private String dataset;
 
-  @Parameter(label = "Block size")
-  private String blockSizeArg;
+	@Parameter(label = "Block size")
+	private String blockSizeArg;
 
-  @Parameter(label = "Number of scales")
-  private Integer numScales = 1;
+	@Parameter(label = "Number of scales")
+	private Integer numScales = 1;
 
-  @Parameter(
-		  label = "Compression",
-		  choices = {GZIP_COMPRESSION, RAW_COMPRESSION, LZ4_COMPRESSION, XZ_COMPRESSION, BLOSC_COMPRESSION},
-		  style = "listBox")
-  private String compressionArg = GZIP_COMPRESSION;
+	@Parameter(
+			label = "Compression",
+			choices = {
+					GZIP_COMPRESSION,
+					RAW_COMPRESSION,
+					LZ4_COMPRESSION,
+					XZ_COMPRESSION,
+					BLOSC_COMPRESSION}, style = "listBox")
+	private String compressionArg = GZIP_COMPRESSION;
 
-  @Parameter(label = "Thread count", required = true, min = "1", max = "256")
-  private final int nThreads = 1;
+	@Parameter(label = "Thread count", required = true, min = "1", max = "256")
+	private final int nThreads = 1;
 
-  @Parameter(
-		  label = "Overwrite options", required = true,
-		  choices = {NO_OVERWRITE, OVERWRITE, WRITE_SUBSET},
-		  description = "Determines whether overwriting datasets allows, and how overwriting occurs."
-				  + "If selected will overwrite values in an existing dataset if they exist.")
-  private String overwriteChoices = NO_OVERWRITE;
+	@Parameter(
+			label = "Overwrite options",
+			required = true,
+			choices = {
+					NO_OVERWRITE,
+					OVERWRITE,
+					WRITE_SUBSET},
+			description = "Determines whether overwriting datasets allows, and how overwriting occurs. If selected will overwrite values in an existing dataset if they exist.")
+	private String overwriteChoices = NO_OVERWRITE;
 
-  @Parameter(label = "Overwrite subset offset", required = false,
-		  description = "The point in pixel units where the origin of this image will be written into the n5-dataset (comma-delimited)")
-  private String subsetOffset;
+	@Parameter(
+			label = "Overwrite subset offset",
+			required = false,
+			description = "The point in pixel units where the origin of this image will be written into the n5-dataset (comma-delimited)")
+	private String subsetOffset;
 
-  private int[] blockSize;
+	private int[] blockSize;
 
-  private final Map<String, N5MetadataWriter<?>> styles;
+	private final Map<String, N5MetadataWriter<?>> styles;
 
-  private ImageplusMetadata<?> impMeta;
+	private ImageplusMetadata<?> impMeta;
 
-  private N5MetadataSpecDialog metaSpecDialog;
+	private N5MetadataSpecDialog metaSpecDialog;
 
-  private final HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes;
+	private final HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes;
 
-  public NgffExporter() {
+	public NgffExporter() {
 
-	styles = new HashMap<String, N5MetadataWriter<?>>();
-	styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadataParser());
-	styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadataParser());
-	styles.put(N5Importer.MetadataImageJKey, new ImagePlusLegacyMetadataParser());
+		styles = new HashMap<String, N5MetadataWriter<?>>();
+		styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadataParser());
+		styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadataParser());
+		styles.put(N5Importer.MetadataImageJKey, new ImagePlusLegacyMetadataParser());
 
-	// default image plus metadata writers
-	impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
-	impMetaWriterTypes.put(ImagePlusLegacyMetadataParser.class, new ImagePlusLegacyMetadataParser());
-	impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
-	impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
+		// default image plus metadata writers
+		impMetaWriterTypes = new HashMap<Class<?>, ImageplusMetadata<?>>();
+		impMetaWriterTypes.put(ImagePlusLegacyMetadataParser.class, new ImagePlusLegacyMetadataParser());
+		impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
+		impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
 
-  }
+	}
 
-  public void setOptions(
-		  final ImagePlus image,
-		  final String rootLocation,
-		  final String dataset,
-		  final String blockSizeArg,
-		  final String compression,
-		  final int nScales,
-		  final String overwriteOption,
-		  final String subsetOffset) {
+	public void setOptions(
+			final ImagePlus image,
+			final String rootLocation,
+			final String dataset,
+			final String blockSizeArg,
+			final String compression,
+			final int nScales,
+			final String overwriteOption,
+			final String subsetOffset) {
 
-	this.image = image;
-	this.rootLocation = rootLocation;
-	this.dataset = N5URI.normalizeGroupPath(dataset);
+		this.image = image;
+		this.rootLocation = rootLocation;
+		this.dataset = N5URI.normalizeGroupPath(dataset);
 
-	this.blockSizeArg = blockSizeArg;
-	this.compressionArg = compression;
+		this.blockSizeArg = blockSizeArg;
+		this.compressionArg = compression;
 
-	this.numScales = nScales;
+		this.numScales = nScales;
 
-	this.overwriteChoices = overwriteOption;
-	this.subsetOffset = subsetOffset;
-  }
+		this.overwriteChoices = overwriteOption;
+		this.subsetOffset = subsetOffset;
+	}
 
 	public void parseBlockSize() {
 
@@ -222,6 +230,7 @@ public class NgffExporter implements WindowListener {
 			throws IOException, InterruptedException, ExecutionException {
 
 		final N5Writer n5 = new N5Factory()
+				.zarrDimensionSeparator("/")
 				.gsonBuilder(OmeNgffMetadataParser.gsonBuilder())
 				.openWriter(rootLocation);
 
@@ -233,12 +242,11 @@ public class NgffExporter implements WindowListener {
 		// check and warn re: RGB image if relevant
 		// if (image.getType() == ImagePlus.COLOR_RGB && !(writer instanceof
 		// N5ImagePlusMetadata))
-		// log.warn("RGB images are best saved using ImageJ metatadata. Other choices "
-		// + "may lead to unexpected behavior.");
+		// log.warn("RGB images are best saved using ImageJ metatadata. Other
+		// choices may lead to unexpected behavior.");
 		final Img<T> img = ImageJFunctions.wrap(image);
 		final int nd = img.numDimensions();
-		write( img, n5, dataset + "/s0", compression, writer);
-
+		write(img, n5, dataset + "/s0", compression, writer);
 
 		final DatasetAttributes[] dsetAttrs = new DatasetAttributes[numScales];
 		final OmeNgffDataset[] msDatasets = new OmeNgffDataset[numScales];
@@ -249,10 +257,10 @@ public class NgffExporter implements WindowListener {
 		msDatasets[0].path = dset;
 
 		int scale = 1;
-		for( int i = 1; i < numScales; i++ ) {
+		for (int i = 1; i < numScales; i++) {
 
 			scale *= 2;
-			final SubsampleIntervalView<T> imgDown = downsampleSimple( img, scale );
+			final SubsampleIntervalView<T> imgDown = downsampleSimple(img, scale);
 			dset = String.format("%s/s%d", dataset, i);
 
 			write(imgDown, n5, dset, compression, writer);
@@ -261,14 +269,14 @@ public class NgffExporter implements WindowListener {
 			msDatasets[i] = new OmeNgffDataset();
 			msDatasets[i].path = dset;
 			final double s = scale;
-			msDatasets[i].coordinateTransformations = new CoordinateTransformation[] {
-					new ScaleCoordinateTransformation( DoubleStream.generate(() -> s ).limit(nd).toArray())
+			msDatasets[i].coordinateTransformations = new CoordinateTransformation[]{
+					new ScaleCoordinateTransformation(DoubleStream.generate(() -> s).limit(nd).toArray())
 			};
 
 		}
 
 		final OmeNgffMultiScaleMetadata ms = buildMetadata(dataset, dsetAttrs, msDatasets);
-		final OmeNgffMultiScaleMetadata[] msList = new OmeNgffMultiScaleMetadata[] { ms };
+		final OmeNgffMultiScaleMetadata[] msList = new OmeNgffMultiScaleMetadata[]{ms};
 
 		final OmeNgffMetadata meta = new OmeNgffMetadata(dataset, msList);
 		try {
@@ -282,12 +290,13 @@ public class NgffExporter implements WindowListener {
 
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> SubsampleIntervalView<T> downsampleSimple(
 			final RandomAccessibleInterval<T> img, final int downsampleFactor) {
+
 		return Views.subsample(img, downsampleFactor);
 	}
 
 	public OmeNgffMultiScaleMetadata buildMetadata(final String path, final DatasetAttributes[] dsetAttrs, final OmeNgffDataset[] datasets) {
 
-		if( !OmeNgffMultiScaleMetadata.allSameAxisOrder(dsetAttrs))
+		if (!OmeNgffMultiScaleMetadata.allSameAxisOrder(dsetAttrs))
 			throw new RuntimeException("All ome-zarr arrays must have same array order");
 
 		final int nc = image.getNChannels();
@@ -334,20 +343,20 @@ public class NgffExporter implements WindowListener {
 		}
 
 		// need to reverse the axes if the arrays are in C order
-		final Axis[] axesToWrite = OmeNgffMultiScaleMetadata.reverseIfCorder( dsetAttrs[0], axes );
+		final Axis[] axesToWrite = OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], axes);
 
 		final String name = image.getTitle();
 		final String type = "sampling";
 		final String version = "0.4";
 
 		return new OmeNgffMultiScaleMetadata(
-			N, path, name, type, version, axesToWrite,
-			datasets, dsetAttrs,
-			null, null); // no global coordinate transforms of downsampling metadata
+				N, path, name, type, version, axesToWrite,
+				datasets, dsetAttrs,
+				null, null); // no global coordinate transforms of downsampling
+								// metadata
 	}
 
-
-	@SuppressWarnings({ "rawtypes" })
+	@SuppressWarnings({"rawtypes"})
 	private <T extends RealType & NativeType, M extends N5DatasetMetadata> void write(
 			final RandomAccessibleInterval<T> image,
 			final N5Writer n5,
@@ -364,8 +373,7 @@ public class NgffExporter implements WindowListener {
 			return;
 		}
 
-		// Here, either allowing overwrite, or not allowing, but the dataset does not
-		// exist
+		// Here, either allowing overwrite, or not allowing, but the dataset does not exist
 
 		// use threadPool even for single threaded execution for progress monitoring
 		final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
@@ -377,15 +385,16 @@ public class NgffExporter implements WindowListener {
 
 	@SuppressWarnings("unused")
 	private static long[] getOffsetForSaveSubset3d(final ImagePlus imp) {
+
 		final int nd = imp.getNDimensions();
 		final long[] offset = new long[nd];
 
-		offset[0] = (int) imp.getCalibration().xOrigin;
-		offset[1] = (int) imp.getCalibration().yOrigin;
+		offset[0] = (int)imp.getCalibration().xOrigin;
+		offset[1] = (int)imp.getCalibration().yOrigin;
 
 		int j = 2;
 		if (imp.getNSlices() > 1)
-			offset[j++] = (int) imp.getCalibration().zOrigin;
+			offset[j++] = (int)imp.getCalibration().zOrigin;
 
 		return offset;
 	}
@@ -420,29 +429,26 @@ public class NgffExporter implements WindowListener {
 		}
 	}
 
-	private void progressMonitor( final ThreadPoolExecutor exec )
-	{
-		new Thread()
-		{
+	private void progressMonitor(final ThreadPoolExecutor exec) {
+
+		new Thread() {
+
 			@Override
-			public void run()
-			{
-				IJ.showProgress( 0.01 );
-				try
-				{
-					Thread.sleep( 333 );
+			public void run() {
+
+				IJ.showProgress(0.01);
+				try {
+					Thread.sleep(333);
 					boolean done = false;
-					while( !done && !exec.isShutdown() )
-					{
+					while (!done && !exec.isShutdown()) {
 						final long i = exec.getCompletedTaskCount();
 						final long N = exec.getTaskCount();
 						done = i == N;
-						IJ.showProgress( (double)i / N );
-						Thread.sleep( 333 );
+						IJ.showProgress((double)i / N);
+						Thread.sleep(333);
 					}
-				}
-				catch ( final InterruptedException e ) { }
-				IJ.showProgress( 1.0 );
+				} catch (final InterruptedException e) {}
+				IJ.showProgress(1.0);
 			}
 		}.start();
 		return;
@@ -481,17 +487,17 @@ public class NgffExporter implements WindowListener {
 	@Override
 	public void windowClosing(final WindowEvent e) {
 
-	  styles.put(N5Importer.MetadataCustomKey, metaSpecDialog.getMapper());
-	  impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate());
+		styles.put(N5Importer.MetadataCustomKey, metaSpecDialog.getMapper());
+		impMetaWriterTypes.put(MetadataTemplateMapper.class, new ImagePlusMetadataTemplate());
 
-	  try {
-		process();
-	  } catch (final IOException e1) {
-		e1.printStackTrace();
-	  } catch (final InterruptedException e1) {
-		e1.printStackTrace();
-	  } catch (final ExecutionException e1) {
-		e1.printStackTrace();
+		try {
+			process();
+		} catch (final IOException e1) {
+			e1.printStackTrace();
+		} catch (final InterruptedException e1) {
+			e1.printStackTrace();
+		} catch (final ExecutionException e1) {
+			e1.printStackTrace();
 		}
 	}
 

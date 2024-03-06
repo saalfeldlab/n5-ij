@@ -57,14 +57,12 @@ import net.imglib2.util.Util;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
-@Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (patch)",
-	description = "Insert the current image as a patch into an existing dataset at a user-defined offset. New datasets can be created and existing "
-			+ "datsets can be extended.")
+@Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (patch)", description = "Insert the current image as a patch into an existing dataset at a user-defined offset. New datasets can be created and existing "
+		+ "datsets can be extended.")
 public class N5SubsetExporter extends ContextCommand {
 
-//	@Parameter(visibility = ItemVisibility.MESSAGE, required = false)
-//	private final String message = "Insert the current image into an existing dataset at a user-defined offset. New datasets can be created, and existing"
-//			+ "datsets can be extended.";
+	// @Parameter(visibility = ItemVisibility.MESSAGE, required = false)
+	// private final String message = "Insert the current image into an existing dataset at a user-defined offset. New datasets can be created, and existing datsets can be extended.";
 
 	@Parameter
 	private LogService log;
@@ -81,33 +79,50 @@ public class N5SubsetExporter extends ContextCommand {
 	@Parameter(label = "Root url")
 	private String containerRoot;
 
-	@Parameter(label = "Dataset", required = false, description = "This argument is ignored if the N5ViewerMetadata style is selected")
+	@Parameter(
+			label = "Dataset",
+			required = false,
+			description = "This argument is ignored if the N5ViewerMetadata style is selected")
 	private String dataset;
 
 	@Parameter(label = "Thread count", required = true, min = "1", max = "256")
 	private int nThreads = 1;
 
-	@Parameter(label = "Offset", required = false, description = "The point in pixel units where the origin of this image will be written into the n5-dataset (comma-delimited)")
+	@Parameter(
+			label = "Offset",
+			required = false,
+			description = "The point in pixel units where the origin of this image will be written into the n5-dataset (comma-delimited)")
 	private String subsetOffset;
 
-	@Parameter(label = "Format", style = "listBox", choices = {N5ScalePyramidExporter.AUTO_FORMAT,
-		N5ScalePyramidExporter.HDF5_FORMAT, N5ScalePyramidExporter.N5_FORMAT, N5ScalePyramidExporter.ZARR_FORMAT})
+	@Parameter(
+			label = "Format",
+			style = "listBox",
+			choices = {
+					N5ScalePyramidExporter.AUTO_FORMAT,
+					N5ScalePyramidExporter.HDF5_FORMAT,
+					N5ScalePyramidExporter.N5_FORMAT,
+					N5ScalePyramidExporter.ZARR_FORMAT})
 	private String storageFormat = N5ScalePyramidExporter.AUTO_FORMAT;
 
-	@Parameter(label = "Chunk size", description = "The size of chunks to use if a new array is created. Comma separated, for example: \"64,32,16\".\n " +
-			"You may provide fewer values than the data dimension. In that case, the size will "
-			+ "be expanded to necessary size with the last value, for example \"64\", will expand " +
-			"to \"64,64,64\" for 3D data.")
+	@Parameter(
+			label = "Chunk size",
+			description = "The size of chunks to use if a new array is created. Comma separated, for example: \"64,32,16\".\n " +
+					"You may provide fewer values than the data dimension. In that case, the size will " +
+					"be expanded to necessary size with the last value, for example \"64\", will expand " +
+					"to \"64,64,64\" for 3D data.")
 	private String chunkSizeArg = "64";
 
-	@Parameter(label = "Compression", style = "listBox", description = "The compression type to use if a new array is created.",
+	@Parameter(
+			label = "Compression",
+			style = "listBox",
+			description = "The compression type to use if a new array is created.",
 			choices = {
-			N5ScalePyramidExporter.GZIP_COMPRESSION,
-			N5ScalePyramidExporter.RAW_COMPRESSION,
-			N5ScalePyramidExporter.LZ4_COMPRESSION,
-			N5ScalePyramidExporter.XZ_COMPRESSION,
-			N5ScalePyramidExporter.BLOSC_COMPRESSION,
-			N5ScalePyramidExporter.ZSTD_COMPRESSION})
+					N5ScalePyramidExporter.GZIP_COMPRESSION,
+					N5ScalePyramidExporter.RAW_COMPRESSION,
+					N5ScalePyramidExporter.LZ4_COMPRESSION,
+					N5ScalePyramidExporter.XZ_COMPRESSION,
+					N5ScalePyramidExporter.BLOSC_COMPRESSION,
+					N5ScalePyramidExporter.ZSTD_COMPRESSION})
 	private String compressionArg = N5ScalePyramidExporter.GZIP_COMPRESSION;
 
 	private long[] offset;
@@ -126,16 +141,17 @@ public class N5SubsetExporter extends ContextCommand {
 
 	public static void main(final String[] args) {
 
-//		final ImageJ ij = new ImageJ();
-//		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
+		// final ImageJ ij = new ImageJ();
+		// final ImagePlus imp =
+		// IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
 
-//		final ImagePlus imp = IJ.openImage("/home/john/tmp/mri-stack.tif");
-//		final String root = "/home/john/tmp/mri-test.n5";
+		// final ImagePlus imp = IJ.openImage("/home/john/tmp/mri-stack.tif");
+		// final String root = "/home/john/tmp/mri-test.n5";
 
-//		final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
-//		final String root = "/home/john/tmp/mitosis-test.zarr";
+		// final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
+		// final String root = "/home/john/tmp/mitosis-test.zarr";
 
-		final ImagePlus imp = IJ.openImage( "/home/john/tmp/boats.tif");
+		final ImagePlus imp = IJ.openImage("/home/john/tmp/boats.tif");
 		final String root = "/home/john/tmp/asdf.n5";
 		final String dset = "a/b";
 
@@ -194,6 +210,7 @@ public class N5SubsetExporter extends ContextCommand {
 			return;
 
 		final N5Writer n5 = new N5Factory()
+				.zarrDimensionSeparator("/")
 				.s3UseCredentials()
 				.openWriter(containerRoot);
 		write(n5);
@@ -207,7 +224,7 @@ public class N5SubsetExporter extends ContextCommand {
 
 		final int nd = image.getNDimensions();
 		final String[] blockArgList = subsetOffset.split(",");
-		final int[] dims = Intervals.dimensionsAsIntArray( ImageJFunctions.wrap( image ));
+		final int[] dims = Intervals.dimensionsAsIntArray(ImageJFunctions.wrap(image));
 
 		offset = new long[nd];
 		int i = 0;
@@ -218,7 +235,7 @@ public class N5SubsetExporter extends ContextCommand {
 		final int N = blockArgList.length - 1;
 
 		while (i < nd) {
-			if( offset[N] > dims[i] )
+			if (offset[N] > dims[i])
 				offset[i] = dims[i];
 			else
 				offset[i] = offset[N];
@@ -271,7 +288,7 @@ public class N5SubsetExporter extends ContextCommand {
 		final long[] max = new long[N];
 		for (int i = 0; i < N; i++) {
 			min[i] = 0;
-			if( interval.min(i) < 0 )
+			if (interval.min(i) < 0)
 				max[i] = interval.dimension(i) - 1;
 			else
 				max[i] = interval.max(i);
@@ -294,29 +311,26 @@ public class N5SubsetExporter extends ContextCommand {
 		}
 	}
 
-	private void progressMonitor( final ThreadPoolExecutor exec )
-	{
-		new Thread()
-		{
+	private void progressMonitor(final ThreadPoolExecutor exec) {
+
+		new Thread() {
+
 			@Override
-			public void run()
-			{
-				IJ.showProgress( 0.01 );
-				try
-				{
-					Thread.sleep( 333 );
+			public void run() {
+
+				IJ.showProgress(0.01);
+				try {
+					Thread.sleep(333);
 					boolean done = false;
-					while( !done && !exec.isShutdown() )
-					{
+					while (!done && !exec.isShutdown()) {
 						final long i = exec.getCompletedTaskCount();
 						final long N = exec.getTaskCount();
 						done = i == N;
-						IJ.showProgress( (double)i / N );
-						Thread.sleep( 333 );
+						IJ.showProgress((double)i / N);
+						Thread.sleep(333);
 					}
-				}
-				catch ( final InterruptedException e ) { }
-				IJ.showProgress( 1.0 );
+				} catch (final InterruptedException e) {}
+				IJ.showProgress(1.0);
 			}
 		}.start();
 		return;

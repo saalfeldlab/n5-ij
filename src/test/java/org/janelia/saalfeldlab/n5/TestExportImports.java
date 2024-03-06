@@ -228,8 +228,8 @@ public class TestExportImports
 			final String blockSizeString,
 			final String metadataType,
 			final String compressionType,
-			boolean testMeta,
-			boolean testData )
+			final boolean testMeta,
+			final boolean testData )
 	{
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
@@ -329,7 +329,7 @@ public class TestExportImports
 		final String blockSizeString = "16";
 		final String compressionString = "raw";
 
-		String metadataType = N5ScalePyramidExporter.NONE;
+		final String metadataType = N5ScalePyramidExporter.NONE;
 
 		final long[] szBig = new long[]{8, 6, 4};
 		final long[] szSmall = new long[]{6, 4, 2};
@@ -374,7 +374,7 @@ public class TestExportImports
 		final String dataset = "dataset";
 		final String blockSizeString = "16";
 		final String compressionString = "raw";
-		String metadataType = N5ScalePyramidExporter.NONE;
+		final String metadataType = N5ScalePyramidExporter.NONE;
 
 		// get a writer from a string
 		final HashMap<String, Function<String, N5Writer>> writerMap = new HashMap<>();
@@ -390,7 +390,7 @@ public class TestExportImports
 		final long[] szBig = new long[]{8, 6, 4};
 		final ImagePlus imp = NewImage.createImage("test", (int)szBig[0], (int)szBig[1], (int)szBig[2], 8, NewImage.FILL_NOISE);
 
-		String[] formats = new String[]{
+		final String[] formats = new String[]{
 				N5ScalePyramidExporter.HDF5_FORMAT,
 				N5ScalePyramidExporter.N5_FORMAT,
 				N5ScalePyramidExporter.ZARR_FORMAT
@@ -415,7 +415,7 @@ public class TestExportImports
 
 				n5.remove();
 				n5.close();
-			} catch (Exception e) {
+			} catch (final Exception e) {
 				fail("option only: " + format);
 			}
 		}
@@ -441,7 +441,7 @@ public class TestExportImports
 
 				n5.remove();
 				n5.close();
-			} catch (Exception e) {
+			} catch (final Exception e) {
 				fail("prefix only " + format);
 			}
 		}
@@ -468,7 +468,7 @@ public class TestExportImports
 
 				n5.remove();
 				n5.close();
-			} catch (Exception e) {
+			} catch (final Exception e) {
 				fail("consistent prefix and option: " + format);
 			}
 		}
@@ -478,7 +478,7 @@ public class TestExportImports
 		 * in the test output. swallow the errors instead, and check that something
 		 * was written
 		 */
-		TriggerOutputStream trigger = new TriggerOutputStream();
+		final TriggerOutputStream trigger = new TriggerOutputStream();
 		System.setOut(new PrintStream(trigger));
 
 		// inconsistent options should fail
@@ -502,7 +502,7 @@ public class TestExportImports
 					fail("inconsistent prefix and option did not fail: " + format + " " + otherFormat);
 
 
-				} catch (Exception e) {
+				} catch (final Exception e) {
 					// check that the plugin printed some error
 					assertTrue(trigger.somethingWritten);
 					trigger.reset(); // reset
@@ -519,7 +519,7 @@ public class TestExportImports
 		boolean somethingWritten = false;
 
 		@Override
-		public void write(int b) throws IOException {
+		public void write(final int b) throws IOException {
 
 			somethingWritten = true;
 		}
@@ -575,8 +575,8 @@ public class TestExportImports
 			final String downsampleMethod,
 			final String metadataType,
 			final String compressionType,
-			boolean testMeta,
-			boolean testData )
+			final boolean testMeta,
+			final boolean testData )
 	{
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, true, downsampleMethod, metadataType, compressionType);
