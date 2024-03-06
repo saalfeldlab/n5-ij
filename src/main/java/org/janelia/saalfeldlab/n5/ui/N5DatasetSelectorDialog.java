@@ -46,6 +46,7 @@ import javax.swing.tree.TreePath;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
 
+@Deprecated
 public class N5DatasetSelectorDialog
 {
 	public final N5Reader n5;
