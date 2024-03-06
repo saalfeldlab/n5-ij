@@ -11,7 +11,7 @@
 
 	<groupId>org.janelia.saalfeldlab</groupId>
 	<artifactId>n5-ij</artifactId>
-	<version>4.1.1-SNAPSHOT</version>
+	<version>4.1.2-SNAPSHOT</version>
 
 	<name>N5 ImageJ Bindings</name>
 	<description>ImageJ convenience layer for N5</description>
