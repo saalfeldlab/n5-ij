@@ -165,6 +165,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@Parameter(
 			label = "Chunk size",
 			description = "The size of chunks. Comma separated, for example: \"64,32,16\".\n " +
+					"ImageJ's axis order is X,Y,C,Z,T. The chunk size must be specified in this order. " +
+					"You must skip any axis whose size is 1, e.g. a 2D time-series without channels " +
+					"may have a chunk size of 1024,1024,1 (X,Y,T)." +
 					"You may provide fewer values than the data dimension. In that case, the size will " +
 					"be expanded to necessary size with the last value, for example \"64\", will expand " +
 					"to \"64,64,64\" for 3D data.")

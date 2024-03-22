@@ -57,7 +57,8 @@ Parameters
 * `N5Root` - the root location of the n5 (see also [Container types](#container-types))
 * `Dataset` - the name of the dataset.
 * `Chunk size` - chunk/block size as comma-separated list.  
-  * The list may have length less than the dimensionality of the image. If so, the list will be extended to the correct length, filling with the last value.  For example, for a 3D image the list `32,64` will be extended to `32,64,64`.
+  * ImageJ's axis order is X,Y,C,Z,T. The chunk size must be specified in this order. You must skip any axis whose size is `1`, e.g. a 2D time-series without channels may have a chunk size of `1024,1024,1` (X,Y,T).
+  * You may provide fewer values than the data dimension. In that case, the list will be expanded to necessary size with the last value, for example `64`, will expand to `64,64,64` for 3D data.
 * `Create Pyramid` - If checked, a multiscale pyramid will be created (if possible). See below for details.
 * `Downsampling method` - The downsampling method to be used if a multiscale pyramid can be created. See below for details.
 * `Compression` - The compression method to be used for chucnks / blocks. 
