@@ -491,9 +491,14 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
 			final int nd = currentChannelImg.numDimensions();
 
+			final double[] relativeTranslation = new double[nd];
+
 			// every channel starts at the original scale level reset downsampling factors to 1
 			currentAbsoluteDownsampling = new long[nd];
 			Arrays.fill(currentAbsoluteDownsampling, 1);
+
+			final double[] baseResolution = new double[nd];
+			Arrays.fill(baseResolution, 1);
 
 			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset);
 			currentTranslation = new double[nd];
@@ -524,12 +529,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 							else
 								return 0.0;
 						});
+
+					if (downsampleMethod.equals(DOWN_AVERAGE))
+						Arrays.fill(relativeTranslation, 0.5);
 				}
 
 				// update metadata to reflect this scale level, returns new metadata instance
-
-				// TODO needs to be relative downsampling
-				currentMetadata = (M)metadataForThisScale(dset, currentMetadata, relativeFactors, currentTranslation);
+				currentMetadata = (M)metadataForThisScale(dset, currentMetadata, downsampleMethod, relativeFactors, relativeTranslation);
 
 				// write to the appropriate dataset
 				// if dataset exists and not overwritten, don't write metadata
@@ -626,15 +632,28 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return false;
 	}
 
-	@SuppressWarnings("unchecked")
-	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath, final M baseMetadata, final long[] downsamplingFactors,
+	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath, final M baseMetadata, 
+			final String downsampleMethod,
+			final long[] downsamplingFactors,
 			final double[] translation) {
+
+		return metadataForThisScale(newPath, baseMetadata, downsampleMethod,
+				Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(),
+				translation);
+	}
+
+	@SuppressWarnings("unchecked")
+	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath, final M baseMetadata, 
+			final String downsampleMethod,
+			final double[] relativeFactor,
+			final double[] relativeTranslation) {
+
 
 		if (baseMetadata instanceof SpatialModifiable) {
 			return (M)(((SpatialModifiable<?>)baseMetadata).modifySpatialTransform(
 					newPath,
-					Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(),
-					translation));
+					relativeFactor,
+					relativeTranslation));
 		}
 
 		// System.err.println("WARNING: metadata not spatial modifiable");
@@ -1092,7 +1111,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private final boolean promptOverwrite(final String dataset) {
 
 		return JOptionPane.showConfirmDialog(null,
-				String.format("Dataset (%s) already exists. Completely remove that dataa and overwrite?", dataset), "Warning",
+				String.format("Dataset (%s) already exists. Completely remove that data and overwrite?", dataset), "Warning",
 				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
 	}
 
