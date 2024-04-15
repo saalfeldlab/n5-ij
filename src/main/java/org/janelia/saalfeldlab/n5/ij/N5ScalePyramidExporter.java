@@ -67,14 +67,15 @@ import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.AbstractN5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata.CosemTransform;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadataGroup;
-import org.janelia.saalfeldlab.n5.universe.metadata.SpatialModifiable;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
@@ -101,6 +102,8 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.realtransform.AffineGet;
+import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.ScaleAndTranslation;
 import net.imglib2.type.NativeType;
@@ -393,13 +396,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		parseBlockSize(Intervals.dimensionsAsLongArray(ImageJFunctions.wrap(image)));
 	}
 
-	protected boolean metadataSupportsScales() {
-
-		return metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
-				metadataStyle.equals(N5Importer.MetadataN5CosemKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrKey);
-	}
-
 	/**
 	 * Returns the container path with an additional storage prefix if the
 	 * format is defined by the plugin parameter. or null if the passed uri and
@@ -489,16 +485,18 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			currentMetadata = copyMetadata((M)currentChannelMetadata);
 			final String channelDataset = getChannelDatasetName(c);
 			RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
+
 			final int nd = currentChannelImg.numDimensions();
+			final double[] baseResolution = new double[nd];
+			fillResolution(baseMetadata, baseResolution);
 
-			final double[] relativeTranslation = new double[nd];
-
-			// every channel starts at the original scale level reset downsampling factors to 1
+			// every channel starts at the original scale level reset
+			// downsampling factors to 1
 			currentAbsoluteDownsampling = new long[nd];
 			Arrays.fill(currentAbsoluteDownsampling, 1);
 
-			final double[] baseResolution = new double[nd];
-			Arrays.fill(baseResolution, 1);
+			final double[] currentResolution = new double[nd];
+			System.arraycopy(baseResolution, 0, currentResolution, 0, nd);
 
 			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset);
 			currentTranslation = new double[nd];
@@ -513,6 +511,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				// downsample when relevant
 				long[] relativeFactors = new long[nd];
 				Arrays.fill(relativeFactors, 1);
+
 				if (s > 0) {
 					relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
 
@@ -522,20 +521,26 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 					currentChannelImg = downsampleMethod((RandomAccessibleInterval<T>)getPreviousScaleImage(c, s), relativeFactors);
 
+					// update resolution
+					Arrays.setAll(currentResolution, i -> {
+						return currentAbsoluteDownsampling[i] * baseResolution[i];
+					});
+
 					if (downsampleMethod.equals(DOWN_AVERAGE))
 						Arrays.setAll(currentTranslation, i -> {
 							if (currentAbsoluteDownsampling[i] > 1)
-								return 0.5 * currentAbsoluteDownsampling[i] - 0.5;
+								return baseResolution[i] * (0.5 * currentAbsoluteDownsampling[i] - 0.5);
 							else
 								return 0.0;
 						});
-
-					if (downsampleMethod.equals(DOWN_AVERAGE))
-						Arrays.fill(relativeTranslation, 0.5);
 				}
 
 				// update metadata to reflect this scale level, returns new metadata instance
-				currentMetadata = (M)metadataForThisScale(dset, currentMetadata, downsampleMethod, relativeFactors, relativeTranslation);
+				currentMetadata = (M)metadataForThisScale(dset, currentMetadata, downsampleMethod, 
+						baseResolution,
+						currentAbsoluteDownsampling, 
+						currentResolution,
+						currentTranslation);
 
 				// write to the appropriate dataset
 				// if dataset exists and not overwritten, don't write metadata
@@ -543,7 +548,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					continue;
 
 				storeScaleReference(c, s, currentChannelImg);
-
 				updateMultiscaleMetadata(multiscaleMetadata, currentMetadata);
 				anyScalesWritten = true;
 
@@ -560,6 +564,25 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 						channelDataset);
 		}
 		n5.close();
+	}
+
+	protected int numNonChannelDimensions(final ImagePlus imp) {
+
+		int nd = 2;
+		if (imp.getNSlices() > 1)
+			nd++;
+
+		if (imp.getNFrames() > 1)
+			nd++;
+
+		return nd;
+	}
+
+	protected boolean metadataSupportsScales() {
+
+		return metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
+				metadataStyle.equals(N5Importer.MetadataN5CosemKey) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrKey);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -632,32 +655,75 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return false;
 	}
 
-	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath, final M baseMetadata, 
+	protected <M extends N5DatasetMetadata> void fillResolution(final M baseMetadata, final double[] resolution) {
+
+		if (baseMetadata == null) {
+			Arrays.fill(resolution, 1);
+			return;
+		}
+
+		if (baseMetadata.getClass().equals(N5SingleScaleMetadata.class)) {
+			final double[] res = ((N5SingleScaleMetadata)baseMetadata).getPixelResolution();
+			final int nd = res.length < resolution.length ? res.length : resolution.length;
+			System.arraycopy(res, 0, resolution, 0, nd);
+		} else if (baseMetadata instanceof N5CosemMetadata) {
+			final double[] res = ((N5CosemMetadata)baseMetadata).getCosemTransform().scale;
+			final int nd = res.length < resolution.length ? res.length : resolution.length;
+			System.arraycopy(res, 0, resolution, 0, nd);
+		} else if (baseMetadata instanceof NgffSingleScaleAxesMetadata) {
+			final double[] res = ((NgffSingleScaleAxesMetadata)baseMetadata).getScale();
+			final int nd = res.length < resolution.length ? res.length : resolution.length;
+			System.arraycopy(res, 0, resolution, 0, nd);
+
+		} else if (baseMetadata instanceof SpatialMetadata) {
+			final AffineGet affine = ((SpatialMetadata)baseMetadata).spatialTransform();
+			final int nd = affine.numTargetDimensions();
+			for (int i = 0; i < nd; i++)
+				resolution[i] = affine.get(i, i);
+		} else
+			Arrays.fill(resolution, 1);
+	}
+
+	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath,
+			final M baseMetadata,
 			final String downsampleMethod,
-			final long[] downsamplingFactors,
+			final double[] baseResolution,
+			final long[] absoluteDownsamplingFactors,
+			final double[] scale,
 			final double[] translation) {
 
 		return metadataForThisScale(newPath, baseMetadata, downsampleMethod,
-				Arrays.stream(downsamplingFactors).mapToDouble(x -> (double)x).toArray(),
+				baseResolution,
+				Arrays.stream(absoluteDownsamplingFactors).mapToDouble(x -> (double)x).toArray(),
+				scale,
 				translation);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath, final M baseMetadata, 
+	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath,
+			final M baseMetadata,
 			final String downsampleMethod,
-			final double[] relativeFactor,
-			final double[] relativeTranslation) {
+			final double[] baseResolution,
+			final double[] absoluteDownsamplingFactors,
+			final double[] absoluteScale,
+			final double[] absoluteTranslation) {
 
+		if (baseMetadata == null)
+			return null;
 
-		if (baseMetadata instanceof SpatialModifiable) {
-			return (M)(((SpatialModifiable<?>)baseMetadata).modifySpatialTransform(
-					newPath,
-					relativeFactor,
-					relativeTranslation));
-		}
+		/**
+		 * if metadata is N5SingleScaleMetadata and not a subclass of it then
+		 * this is using N5Viewer metadata which does not have an offset
+		 */
+		if (baseMetadata.getClass().equals(N5SingleScaleMetadata.class)) {
+			return (M)buildN5VMetadata(newPath, (N5SingleScaleMetadata)baseMetadata, downsampleMethod, baseResolution, absoluteDownsamplingFactors);
+		} else if (baseMetadata instanceof N5CosemMetadata) {
+			return (M)buildCosemMetadata(newPath, (N5CosemMetadata)baseMetadata, absoluteScale, absoluteTranslation);
 
-		// System.err.println("WARNING: metadata not spatial modifiable");
-		return baseMetadata;
+		} else if (baseMetadata instanceof NgffSingleScaleAxesMetadata) {
+			return (M)buildNgffMetadata(newPath, (NgffSingleScaleAxesMetadata)baseMetadata, absoluteScale, absoluteTranslation);
+		} else
+			return baseMetadata;
 	}
 
 	protected <T extends RealType<T> & NativeType<T>> RandomAccessibleInterval<T> downsampleMethod(final RandomAccessibleInterval<T> img,
@@ -907,6 +973,95 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					((N5MetadataWriter<M>)writer).writeMetadata(metadata, n5, dataset);
 				} catch (final Exception e) {}
 			});
+	}
+
+	protected N5SingleScaleMetadata buildN5VMetadata(
+			final String path,
+			final N5SingleScaleMetadata baseMetadata,
+			final String downsampleMethod,
+			final double[] baseResolution,
+			final double[] downsamplingFactors) {
+
+		/**
+		 * N5Viewer metadata doesn't have a way to directly represent offset.
+		 * Rather, the half-pixel offsets that averaging downsampling introduces
+		 * are assumed when downsampling factors are not equal to ones.
+		 * 
+		 * As a result, we use downsampling factors with average downsampling,
+		 * but set the factors to one otherwise.
+		 */
+		final int nd = baseResolution.length > 3 ? 3 : baseResolution.length;
+		final double[] resolution = new double[nd];
+		final double[] factors = new double[nd];
+
+		if (downsampleMethod.equals(N5ScalePyramidExporter.DOWN_AVERAGE)) {
+			System.arraycopy(baseResolution, 0, resolution, 0, nd);
+			System.arraycopy(downsamplingFactors, 0, factors, 0, nd);
+		} else {
+			for (int i = 0; i < nd; i++)
+				resolution[i] = baseResolution[i] * downsamplingFactors[i];
+
+			Arrays.fill(factors, 1);
+		}
+
+		final AffineTransform3D transform = new AffineTransform3D();
+		for (int i = 0; i < nd; i++)
+			transform.set(resolution[i], i, i);
+
+		return new N5SingleScaleMetadata(
+				path,
+				transform,
+				factors,
+				resolution,
+				baseMetadata.getOffset(),
+				baseMetadata.unit(),
+				baseMetadata.getAttributes(),
+				baseMetadata.minIntensity(),
+				baseMetadata.maxIntensity(),
+				baseMetadata.isLabelMultiset());
+
+	}
+
+	protected N5CosemMetadata buildCosemMetadata(
+			final String path,
+			final N5CosemMetadata baseMetadata,
+			final double[] absoluteResolution,
+			final double[] absoluteTranslation) {
+
+		final double[] resolution = new double[absoluteResolution.length];
+		System.arraycopy(absoluteResolution, 0, resolution, 0, absoluteResolution.length);
+
+		final double[] translation = new double[absoluteTranslation.length];
+		System.arraycopy(absoluteTranslation, 0, translation, 0, absoluteTranslation.length);
+
+		return new N5CosemMetadata(
+				path,
+				new CosemTransform(
+						baseMetadata.getCosemTransform().axes,
+						resolution,
+						translation,
+						baseMetadata.getCosemTransform().units),
+				baseMetadata.getAttributes());
+	}
+
+	protected NgffSingleScaleAxesMetadata buildNgffMetadata(
+			final String path,
+			final NgffSingleScaleAxesMetadata baseMetadata,
+			final double[] absoluteResolution,
+			final double[] absoluteTranslation) {
+
+		final double[] resolution = new double[absoluteResolution.length];
+		System.arraycopy(absoluteResolution, 0, resolution, 0, absoluteResolution.length);
+
+		final double[] translation = new double[absoluteTranslation.length];
+		System.arraycopy(absoluteTranslation, 0, translation, 0, absoluteTranslation.length);
+
+		return new NgffSingleScaleAxesMetadata(
+				path,
+				resolution,
+				translation,
+				baseMetadata.getAxes(),
+				baseMetadata.getAttributes());
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
