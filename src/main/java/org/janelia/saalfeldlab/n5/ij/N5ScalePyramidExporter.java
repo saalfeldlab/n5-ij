@@ -33,6 +33,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -468,6 +469,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@SuppressWarnings("unchecked")
 	public <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> void processMultiscale()
 			throws IOException, InterruptedException, ExecutionException {
+
+		if (promptHomeDirectoryWarning(containerRoot))
+			return;
 
 		final String rootWithFormatPrefix = containerRootWithFormatPrefix(containerRoot, storageFormat, true);
 		if (rootWithFormatPrefix == null)
@@ -1334,6 +1338,36 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private Compression getCompression() {
 
 		return getCompression(compressionArg);
+	}
+
+	/**
+	 * Checks if the given path is the users' home directory. If so, prompts the user
+	 * and returns true. Otherwise returns false.
+	 *
+	 * @param root the root directory
+	 * @return false if the root path is the user's home directory
+	 */
+	private final boolean promptHomeDirectoryWarning(final String root) {
+
+		try {
+			final String f = new File(System.getProperty("user.home")).getCanonicalPath();
+			final String rootPathCanonical = new File(root).getCanonicalPath();
+
+			if (f.equals(rootPathCanonical)) {
+
+				JOptionPane.showMessageDialog(null,
+						"You have chosen your home directory as the container root.\n" +
+								"This is not allowed. Please choose a different path.\n" +
+								"We strongly suggest creating an empty directory.",
+						"Warning",
+						JOptionPane.WARNING_MESSAGE);
+
+				return true;
+			}
+
+		} catch (IOException e) {}
+
+		return false;
 	}
 
 	private final boolean promptOverwrite(final String dataset) {
