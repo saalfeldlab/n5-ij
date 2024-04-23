@@ -25,6 +25,12 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Frame;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.io.IOException;
@@ -41,7 +47,16 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import javax.swing.Icon;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JTextPane;
+import javax.swing.UIManager;
 
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
@@ -92,10 +107,12 @@ import org.scijava.command.ContextCommand;
 import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
+import org.scijava.prefs.PrefService;
 import org.scijava.ui.UIService;
 
 import ij.IJ;
 import ij.ImagePlus;
+import net.imagej.legacy.ui.LegacyApplicationFrame;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -136,8 +153,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	public static final String NONE = "None";
 
+	private static final String IJ_PROPERTY_DO_NOT_WARN = "N5-SKIP-OVERWRITE-SKIP-WARNING";
+
 	@Parameter
 	private LogService log;
+
+	@Parameter
+	private PrefService prefs;
 
 	@Parameter
 	private StatusService status;
@@ -156,7 +178,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@Parameter(
 			label = "Dataset",
 			required = false,
-			description = "This argument is ignored if the N5ViewerMetadata style is selected")
+			persist = false,
+			initializer = "initializeDataset",
+			description = "The location This argument is ignored if the N5ViewerMetadata style is selected")
 	private String dataset;
 
 	@Parameter(
@@ -168,11 +192,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@Parameter(
 			label = "Chunk size",
 			description = "The size of chunks. Comma separated, for example: \"64,32,16\".\n " +
-					"ImageJ's axis order is X,Y,C,Z,T. The chunk size must be specified in this order. " +
-					"You must skip any axis whose size is 1, e.g. a 2D time-series without channels " +
-					"may have a chunk size of 1024,1024,1 (X,Y,T)." +
-					"You may provide fewer values than the data dimension. In that case, the size will " +
-					"be expanded to necessary size with the last value, for example \"64\", will expand " +
+					"ImageJ's axis order is X,Y,C,Z,T. The chunk size must be specified in this order.\n" +
+					"You must skip any axis whose size is 1, e.g. a 2D time-series without channels\n" +
+					"may have a chunk size of 1024,1024,1 (X,Y,T).\n" +
+					"You may provide fewer values than the data dimension. In that case, the size will\n" +
+					"be expanded to necessary size with the last value, for example \"64\", will expand\n" +
 					"to \"64,64,64\" for 3D data.")
 	private String chunkSizeArg;
 
@@ -455,6 +479,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				.openWriter(rootWithFormatPrefix);
 		final Compression compression = getCompression();
 
+		if( !promptOverwriteAndDelete(n5, dataset))
+			return;
+
 		// TODO should have better behavior for chunk size parsing when splitting channels this might be done
 		final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
 
@@ -564,6 +591,22 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 						channelDataset);
 		}
 		n5.close();
+	}
+
+	protected void initializeDataset() {
+
+		dataset = image.getShortTitle();
+	}
+
+	protected boolean validateDataset() {
+
+		System.out.println("validateDataset");
+		if (dataset.isEmpty()) {
+			cancel("Please provide a name for the dataset");
+			return false;
+		}
+
+		return true;
 	}
 
 	protected int numNonChannelDimensions(final ImagePlus imp) {
@@ -1064,23 +1107,34 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				baseMetadata.getAttributes());
 	}
 
-	@SuppressWarnings({"rawtypes", "unchecked"})
-	private <T extends RealType & NativeType, M extends N5Metadata> boolean write(
-			final RandomAccessibleInterval<T> image,
-			final N5Writer n5,
-			final String dataset,
-			final Compression compression, final M metadata)
-			throws IOException, InterruptedException, ExecutionException {
+	/**
+	 * Checks if writing data to the given location with the given n5 writer
+	 * would either overwrite existing data or be inaccessible or invalid.
+	 * In that case, the user is prompted.
+	 * <p>
+	 * This method returns true if writing data can proceed - either
+	 * because data do not exist at the requested location, or because
+	 * data did exist but was deleted at the user's request.
+	 *
+	 * @param n5 the n5 writer
+	 * @param dataset the dataset
+	 * @return true if may proceed
+	 */
+	protected boolean promptOverwriteAndDelete(final N5Writer n5, final String dataset) {
 
 		final String deleteThisPathToOverwrite = needOverwrite(n5, dataset);
 		if (deleteThisPathToOverwrite != null) {
 
 			if (!overwrite && !overwriteSet) {
 				if (ui != null)
-					overwrite = promptOverwrite(dataset);
+					overwrite = promptOverwrite(deleteThisPathToOverwrite);
 				else
-					overwrite = promptOverwrite(dataset);
+					overwrite = promptOverwrite(deleteThisPathToOverwrite);
 			}
+
+			// double check that the user really wants to overwrite
+			if (overwrite)
+				overwrite = promptOverwriteWarning(n5, containerRoot, deleteThisPathToOverwrite);
 
 			if (overwrite) {
 				n5.remove(deleteThisPathToOverwrite);
@@ -1088,6 +1142,17 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				return false; // data set exists but not overwriting
 			}
 		}
+
+		return true;
+	}
+
+	@SuppressWarnings({"rawtypes", "unchecked"})
+	private <T extends RealType & NativeType, M extends N5Metadata> boolean write(
+			final RandomAccessibleInterval<T> image,
+			final N5Writer n5,
+			final String dataset,
+			final Compression compression, final M metadata)
+			throws IOException, InterruptedException, ExecutionException {
 
 		parseBlockSize(image.dimensionsAsLongArray());
 
@@ -1107,7 +1172,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private static String needOverwrite(final N5Reader n5, final String path) {
 
 		// need to overwrite if path exists
-		if (n5.exists(path))
+		if (n5.datasetExists(path))
 			return path;
 
 		// also need to overwrite if any parent of the path is a dataset
@@ -1115,6 +1180,14 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		final String[] parts = path.split("/");
 		if (n5.datasetExists(""))
 			return "";
+
+		// also need to overwrite if the given path 
+		// has any child group or datasets
+		if (n5.exists(path)) {
+			final String[] children = n5.list(path);
+			if (children.length > 0)
+				return path;
+		}
 
 		String currentPath = "";
 		for (final String p : parts) {
@@ -1266,8 +1339,46 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private final boolean promptOverwrite(final String dataset) {
 
 		return JOptionPane.showConfirmDialog(null,
-				String.format("Dataset (%s) already exists. Completely remove that data and overwrite?", dataset), "Warning",
+				String.format("Group or dataset %s already exists. Completely remove that data and overwrite?", dataset), "Warning",
 				JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
+	}
+
+	private final boolean promptOverwriteWarning(final N5Writer n5, final String root, final String dataset) {
+		return promptOverwriteWarning(n5, root, dataset, true);
+	}
+
+	private final boolean promptOverwriteWarning(final N5Writer n5, final String root, final String dataset, final boolean checkPrefs) {
+
+		System.out.println("prompt overwrite warning");
+		if (prefs == null) // tests
+			return true;
+
+		final boolean skipWarning = prefs.getBoolean(getClass(), IJ_PROPERTY_DO_NOT_WARN, false);
+		if (skipWarning)
+			return true;
+
+		Frame parentFrame = null;
+		try {
+			final LegacyApplicationFrame appFrame = (LegacyApplicationFrame)ui.getDefaultUI().getApplicationFrame();
+			parentFrame = appFrame.getComponent();
+		} catch (Exception e) {
+			parentFrame = new JFrame();
+		}
+
+		// Not sure when this will be the case when running from a fiji instance.
+		// what should happen when calling this programmatically?
+		if (parentFrame == null)
+			return true;
+
+		// this dialog blocks execution
+		final DetailedOverwriteWarningDialog warningDialog = new DetailedOverwriteWarningDialog(parentFrame, root, dataset);
+		warningDialog.setVisible(true);
+
+		// update skip warning preference
+		prefs.put(getClass(), IJ_PROPERTY_DO_NOT_WARN, warningDialog.skipWarningCheckbox());
+
+		parentFrame = null;
+		return warningDialog.doDelete();
 	}
 
 	public static Compression getCompression(final String compressionArg) {
@@ -1319,5 +1430,136 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	@Override
 	public void windowActivated(final WindowEvent e) {}
+
+	private static class DetailedOverwriteWarningDialog extends JDialog  {
+
+		private static final long serialVersionUID = 4515617981904344864L;
+
+		private static int SML = 4;
+		private static int MED = 8;
+		private static int BIG = 16;
+		private static int VBIG = 32;
+
+		private boolean skipWarning = false;
+
+		private boolean doDelete = false;
+
+		public DetailedOverwriteWarningDialog(final Frame parent, final String root, final String dataset) {
+			super(parent,"WARNING", true);
+			initComponents(root, dataset);
+			final Dimension dims = new Dimension(600, 250);
+			setSize(dims);
+			setPreferredSize(dims);
+			setResizable(false);
+			setLocationRelativeTo(null);
+		}
+
+		public boolean skipWarningCheckbox() {
+			return skipWarning;
+		}
+
+		public boolean doDelete() {
+			return doDelete;
+		}
+
+		private void initComponents(String root, String dataset) {
+
+			final JPanel panel = new JPanel(false);
+			panel.setLayout(new GridBagLayout());
+
+			final GridBagConstraints gbc = new GridBagConstraints();
+			panel.setLayout(new GridBagLayout());
+			gbc.gridx = 1;
+			gbc.gridy = 0;
+			gbc.gridwidth = 1;
+			gbc.gridheight = 1;
+			gbc.weightx = 0.0;
+			gbc.weighty = 0.0;
+			gbc.anchor = GridBagConstraints.LINE_END;
+			gbc.fill = GridBagConstraints.NONE;
+			gbc.insets = new Insets(SML, VBIG, MED, SML);
+			gbc.ipadx = 10;
+			gbc.ipady = 10;
+			final Icon warningIcon = UIManager.getIcon("OptionPane.warningIcon");
+			panel.add(new JLabel(warningIcon), gbc);
+
+			gbc.weightx = 1.0;
+			gbc.weighty = 0.0;
+			gbc.gridx = 2;
+			gbc.gridy = 0;
+			gbc.gridwidth = 4;
+			gbc.gridheight = 1;
+			gbc.anchor = GridBagConstraints.CENTER;
+			gbc.fill = GridBagConstraints.HORIZONTAL;
+			gbc.insets = new Insets(SML, SML, MED, VBIG );
+			gbc.ipadx = 10;
+			gbc.ipady = 10;
+			panel.add(new JLabel("<html><b>Warning: data will be deleted</b></html>"), gbc);
+
+			gbc.gridx = 0;
+			gbc.gridy = 1;
+			gbc.weightx = 1.0;
+			gbc.weighty = 0.2;
+			gbc.gridwidth = 5;
+			gbc.gridheight = 1;
+			gbc.anchor = GridBagConstraints.CENTER;
+			gbc.fill = GridBagConstraints.BOTH;
+			gbc.insets = new Insets(MED, VBIG, SML, VBIG);
+			final JTextPane warningText = new JTextPane();
+			warningText.setContentType("text/html");
+			warningText.setText(String.format(
+					"<html>This operation <b>WILL REMOVE ALL FILES AND ALL DATA</b> in:<br><br>"
+					+ "<tt>%s/%s</tt><br><br>"
+					+ "Do you want to proceed?<br>"
+					+ "</html>",
+					root, dataset));
+			warningText.setEditable(false);
+			warningText.setBackground(new Color(0,0,0,0));
+			panel.add(warningText, gbc);
+
+
+			final JCheckBox doNotWarnAgainCheckbox = new JCheckBox();
+			doNotWarnAgainCheckbox.setText("Do not show this warning again");
+			gbc.gridx = 0;
+			gbc.gridy = 2;
+			gbc.gridheight = 1;
+			gbc.gridwidth = 3;
+			gbc.anchor = GridBagConstraints.LINE_START;
+			gbc.fill = GridBagConstraints.NONE;
+			gbc.ipadx = 50;
+			doNotWarnAgainCheckbox.addItemListener( e -> {
+				skipWarning = doNotWarnAgainCheckbox.isSelected();
+			});
+			panel.add(doNotWarnAgainCheckbox, gbc);
+
+			final JButton deleteBtn = new JButton("Delete");
+			gbc.gridx = 3;
+			gbc.gridheight = 1;
+			gbc.gridwidth = 1;
+			gbc.anchor = GridBagConstraints.EAST;
+			gbc.fill = GridBagConstraints.NONE;
+			gbc.insets = new Insets(MED, BIG, MED, MED);
+			gbc.ipadx = 10;
+			deleteBtn.addActionListener( e -> {
+				doDelete = true;
+				setVisible(false);
+			});
+			panel.add(deleteBtn, gbc);
+
+			final JButton cancelBtn = new JButton("Cancel");
+			gbc.gridx = 4;
+			gbc.anchor = GridBagConstraints.WEST;
+			gbc.insets = new Insets(MED, SML, MED, BIG);
+			panel.add(cancelBtn, gbc);
+			cancelBtn.addActionListener(e -> {
+				doDelete = false;
+				setVisible(false);
+			});
+
+			add(panel);
+			pack();
+		}
+
+	}
 
 }
