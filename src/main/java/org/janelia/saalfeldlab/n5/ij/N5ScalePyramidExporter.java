@@ -173,7 +173,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	@Parameter(
 			label = "Root url",
-			description = "The type of hierarchy is inferred from the extension of the url. Use \".h5\", \".n5\", or \".zarr\"")
+			description = "The location of the container that will store the data. May be a folder on your filesystem,\n"
+					+ "an HDF5 file, or a url to cloud storage. The storage type is inferred\n"
+					+ "from the extension of the url (use \".h5\", \".n5\", or \".zarr\").")
 	private String containerRoot;
 
 	@Parameter(
@@ -181,12 +183,16 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			required = false,
 			persist = false,
 			initializer = "initializeDataset",
-			description = "The location This argument is ignored if the N5ViewerMetadata style is selected")
+			description = "The location in the container to write data.\n"
+					+ "If a pyramid is requested, arrays will be written to\n"
+					+ "child paths of the given dataset, with particulars depending\n"
+					+ "on the selected metadata type.")
 	private String dataset;
 
 	@Parameter(
 			label = "Format",
 			style = "listBox",
+			description = "The storage format.",
 			choices = {AUTO_FORMAT, HDF5_FORMAT, N5_FORMAT, ZARR_FORMAT})
 	private String storageFormat = AUTO_FORMAT;
 
@@ -243,7 +249,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	@Parameter(
 			label = "Overwrite",
-			description = "Allow this plugin to delete and overwrite any existing data before writing this image.",
+			description = "When selected, this plugin will, WITHOUT WARNING, delete and overwrite any existing data\n"
+					+ "before writing this image.",
 			required = false)
 	private boolean overwrite = false;
 
