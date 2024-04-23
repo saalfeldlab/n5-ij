@@ -1349,7 +1349,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	private final boolean promptOverwriteWarning(final N5Writer n5, final String root, final String dataset, final boolean checkPrefs) {
 
-		System.out.println("prompt overwrite warning");
 		if (prefs == null) // tests
 			return true;
 
