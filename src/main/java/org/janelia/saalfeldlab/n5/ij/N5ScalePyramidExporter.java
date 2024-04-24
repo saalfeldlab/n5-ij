@@ -41,7 +41,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -63,7 +62,9 @@ import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
+import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
@@ -484,13 +485,32 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (rootWithFormatPrefix == null)
 			return;
 
+		/**
+		 * If writing into the container root, prompt for an overwrite warning
+		 * only if the container exists before being created by the N5Writer below.
+		 */
+		boolean doGroupExistsWarning = true;
+		if( N5URI.normalizeGroupPath(dataset).isEmpty()) {
+			try {
+				final N5Reader n5Reader = new N5Factory()
+						.zarrDimensionSeparator("/")
+						.openReader(rootWithFormatPrefix);
+				doGroupExistsWarning = n5Reader.exists("");
+			} catch (N5Exception e) {
+				// an exception may be thrown if the container does not exist
+				// in which case we should skip group existence check
+				// because it will be created below
+				doGroupExistsWarning = false;
+			}
+		}
+
 		final N5Writer n5 = new N5Factory()
 				.zarrDimensionSeparator("/")
 				.s3UseCredentials() // need credentials if writing to s3
 				.openWriter(rootWithFormatPrefix);
 		final Compression compression = getCompression();
 
-		if( !promptOverwriteAndDelete(n5, dataset))
+		if( !promptOverwriteAndDelete(n5, dataset, doGroupExistsWarning))
 			return;
 
 		// TODO should have better behavior for chunk size parsing when splitting channels this might be done
@@ -1127,14 +1147,20 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 * This method returns true if writing data can proceed - either
 	 * because data do not exist at the requested location, or because
 	 * data did exist but was deleted at the user's request.
+	 * <p>
+	 * Because {@link N5Writer}s create the root group on creation by default,
+	 * if the given dataset is the root, we should ignore its existence
+	 * for the purpose of warning the user if it was created by this plugin
+	 * by the N5Writer. 
 	 *
 	 * @param n5 the n5 writer
 	 * @param dataset the dataset
+	 * @param doGroupExistsWarning if true, warns of the group exists
 	 * @return true if may proceed
 	 */
-	protected boolean promptOverwriteAndDelete(final N5Writer n5, final String dataset) {
+	protected boolean promptOverwriteAndDelete(final N5Writer n5, final String dataset, final boolean doGroupExistsWarning) {
 
-		final String deleteThisPathToOverwrite = needOverwrite(n5, dataset);
+		final String deleteThisPathToOverwrite = needOverwrite(n5, dataset, doGroupExistsWarning);
 		if (deleteThisPathToOverwrite != null) {
 
 			if (!overwrite && !overwriteSet) {
@@ -1181,17 +1207,24 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return true;
 	}
 
-	private static String needOverwrite(final N5Reader n5, final String path) {
+	private static String needOverwrite(final N5Reader n5, final String path, final boolean checkGroupExists) {
 
 		// need to overwrite if path exists
-		if (n5.datasetExists(path))
+		if (checkGroupExists && n5.exists(path))
 			return path;
 
 		// also need to overwrite if any parent of the path is a dataset
 		// datasets must be leaf nodes of the container tree
-		final String[] parts = path.split("/");
-		if (n5.datasetExists(""))
+		String currentPath = "";
+		if (n5.datasetExists(currentPath))
 			return "";
+
+		final String[] parts = path.split("/");
+		for (final String p : parts) {
+			currentPath += "/" + p;
+			if (n5.datasetExists(currentPath))
+				return currentPath;
+		}
 
 		// also need to overwrite if the given path 
 		// has any child group or datasets
@@ -1199,13 +1232,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String[] children = n5.list(path);
 			if (children.length > 0)
 				return path;
-		}
-
-		String currentPath = "";
-		for (final String p : parts) {
-			currentPath += "/" + p;
-			if (n5.datasetExists(currentPath))
-				return currentPath;
 		}
 
 		return null;
