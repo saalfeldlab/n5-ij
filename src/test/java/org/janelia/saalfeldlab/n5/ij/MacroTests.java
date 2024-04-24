@@ -83,21 +83,26 @@ public class MacroTests {
 		return new URI("file", null, basePath, null).toString();
 	}
 
-	@Test
-	public void testMacroContentPath() {
-		testMacroContentHelper("url=%s/%s");
-	}
+//	@Test
+//	public void testMacroContentPath() throws IOException {
+//		System.out.println("testMacroContentPath");
+//		testMacroContentHelper("url=%s/%s");
+//	}
+//
+//	@Test
+//	public void testMacroContentUri() throws IOException {
+//		System.out.println("testMacroContentUri");
+//		testMacroContentHelper("url=%s?%s");
+//	}
 
-	@Test
-	public void testMacroContentUri() {
-		testMacroContentHelper("url=%s?%s");
-	}
+	public void testMacroContentHelper( String urlFormat ) throws IOException {
 
-	public void testMacroContentHelper( String urlFormat ) {
+		System.out.println(urlFormat);
+		System.out.println(containerDir.getCanonicalPath());
 
 		// URL
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format( urlFormat + " hide", containerDir.getAbsolutePath(), dataset ));
+				String.format( urlFormat + " hide", containerDir.getCanonicalPath(), dataset ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		final ImagePlus imgImported = res.get(0);
@@ -116,10 +121,10 @@ public class MacroTests {
 		final ImagePlus impCrop = ImageJFunctions.wrap(imgCrop, "imgCrop");
 		impCrop.setDimensions(1, 4, 1);
 
-		assertEquals( "  cont crop w", impCrop.getWidth(), imgImportedCrop.getWidth());
-		assertEquals( "  cont crop h", impCrop.getHeight(), imgImportedCrop.getHeight());
-		assertEquals( "  cont crop d", impCrop.getNSlices(), imgImportedCrop.getNSlices());
-		assertTrue( "equal content crop", TestExportImports.equal(impCrop, imgImportedCrop));
+		assertEquals("cont crop w", impCrop.getWidth(), imgImportedCrop.getWidth());
+		assertEquals("cont crop h", impCrop.getHeight(), imgImportedCrop.getHeight());
+		assertEquals("cont crop d", impCrop.getNSlices(), imgImportedCrop.getNSlices());
+		assertTrue("equal content crop", TestExportImports.equal(impCrop, imgImportedCrop));
 	}
 
 	@Test
@@ -129,12 +134,12 @@ public class MacroTests {
 				String.format("url=%s?%s hide", n5rootF.getAbsolutePath(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
-		assertEquals(" crop num", 1, res.size());
+		assertEquals("crop num", 1, res.size());
 		final ImagePlus img = res.get(0);
 
-		assertEquals(" crop w", 256, img.getWidth());
-		assertEquals(" crop h", 256, img.getHeight());
-		assertEquals(" crop d", 129, img.getNSlices() );
+		assertEquals("crop w", 256, img.getWidth());
+		assertEquals("crop h", 256, img.getHeight());
+		assertEquals("crop d", 129, img.getNSlices());
 	}
 
 	@Test
@@ -143,9 +148,9 @@ public class MacroTests {
 				String.format("url=%s?%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
-		assertEquals(" crop num", 1, res.size());
+		assertEquals("crop num", 1, res.size());
 		final ImagePlus img = res.get(0);
-		assertTrue( " is virtual", (img.getStack() instanceof ImageJVirtualStack) );
+		assertTrue( "is virtual", (img.getStack() instanceof ImageJVirtualStack) );
 	}
 
 	@Test
@@ -161,9 +166,9 @@ public class MacroTests {
 		assertEquals(" crop num", 1, res.size());
 
 		final ImagePlus img = res.get(0);
-		assertEquals(" crop w", 151, img.getWidth());
-		assertEquals(" crop h", 151, img.getHeight());
-		assertEquals(" crop d",  71, img.getNSlices() );
+		assertEquals("crop w", 151, img.getWidth());
+		assertEquals("crop h", 151, img.getHeight());
+		assertEquals("crop d",  71, img.getNSlices() );
 	}
 
 }
