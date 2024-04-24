@@ -12,6 +12,7 @@ import java.io.PrintStream;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
@@ -19,6 +20,11 @@ import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5SpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 import org.junit.Assert;
@@ -31,6 +37,7 @@ import net.imglib2.Cursor;
 import net.imglib2.RandomAccess;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.realtransform.AffineTransform;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
@@ -108,6 +115,7 @@ public class TestExportImports
 		final String compressionString = N5ScalePyramidExporter.GZIP_COMPRESSION;
 		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
 		final String[] metadataTypes = new String[]{
+				N5Importer.MetadataOmeZarrKey,
 				N5Importer.MetadataImageJKey,
 				N5Importer.MetadataN5CosemKey,
 				N5Importer.MetadataN5ViewerKey
@@ -130,6 +138,8 @@ public class TestExportImports
 			}
 		}
 	}
+
+
 
 	public static < T extends RealType< T > & NativeType< T > > boolean equal( final ImagePlus a, final ImagePlus b )
 	{
@@ -252,14 +262,13 @@ public class TestExportImports
 
 		assertEquals( String.format( "%s %s one image opened ", outputPath, dataset ), 1, impList.size() );
 
+		final double EPS = 1e-9;
 		final ImagePlus impRead = impList.get( 0 );
 		if( testMeta )
 		{
-			final boolean resEqual = impRead.getCalibration().pixelWidth == imp.getCalibration().pixelWidth &&
-					impRead.getCalibration().pixelHeight == imp.getCalibration().pixelHeight
-					&& impRead.getCalibration().pixelDepth == imp.getCalibration().pixelDepth;
-
-			assertTrue( String.format( "%s resolutions ", dataset ), resEqual );
+			assertEquals( String.format( "%s resolutions x", dataset ), imp.getCalibration().pixelWidth, impRead.getCalibration().pixelWidth, EPS );
+			assertEquals( String.format( "%s resolutions y", dataset ), imp.getCalibration().pixelHeight, impRead.getCalibration().pixelHeight, EPS );
+			assertEquals( String.format( "%s resolutions z", dataset ), imp.getCalibration().pixelDepth, impRead.getCalibration().pixelDepth, EPS );
 
 			final boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() );
 			assertTrue( String.format( "%s units ", dataset ), unitsEqual );
@@ -563,7 +572,48 @@ public class TestExportImports
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
 				}
 			}
+		}
+	}
 
+	@Test
+	public void testReadWriteParsePyramid()
+	{
+		final HashMap<String,String> typeToExtension = new HashMap<>();
+		typeToExtension.put( "FILESYSTEM", "n5" );
+		typeToExtension.put( "ZARR", "zarr" );
+		typeToExtension.put( "HDF5", "h5" );
+
+		final String blockSizeString = "2,2,2";
+		final String compressionString = N5ScalePyramidExporter.GZIP_COMPRESSION;
+
+		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
+		final String[] metadataTypes = new String[]{
+				N5Importer.MetadataN5CosemKey,
+				N5Importer.MetadataN5ViewerKey,
+				N5Importer.MetadataOmeZarrKey
+		};
+
+		final String[] downsampleTypes = new String[]{
+				N5ScalePyramidExporter.DOWN_AVERAGE,
+				N5ScalePyramidExporter.DOWN_SAMPLE
+		};
+
+		final int bitDepth = 16;
+		final ImagePlus imp = NewImage.createImage("test", 16, 16, 16, bitDepth, NewImage.FILL_NOISE);
+		imp.setDimensions( 1, 4, 1 );
+		for( final String containerType : containerTypes )
+		{
+			for( final String downsampleMethod : downsampleTypes )
+			{
+				for( final String metatype : metadataTypes )
+				{
+					final String n5RootPath = baseDir + "/test." + typeToExtension.get( containerType );
+					final String datasetBase = "/test_"+metatype+"_"+downsampleMethod+"_"+bitDepth;
+					final String dataset = datasetBase;
+
+					pyramidReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, downsampleMethod, metatype, compressionString, true, true );
+				}
+			}
 		}
 	}
 
@@ -578,62 +628,71 @@ public class TestExportImports
 			final boolean testMeta,
 			final boolean testData )
 	{
+		final double EPS = 1e-6;
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, true, downsampleMethod, metadataType, compressionType);
 		writer.run(); // run() closes the n5 writer
 
 		final String readerDataset;
 		if( metadataType.equals( N5Importer.MetadataN5ViewerKey ))
-			readerDataset = dataset + "/c0/s0";
-		else if( metadataType.equals( N5Importer.MetadataN5CosemKey ) && imp.getNChannels() > 1 )
 			readerDataset = dataset + "/c0";
 		else
 			readerDataset = dataset;
 
 		final String n5PathAndDataset = outputPath + readerDataset;
-
-		final N5Importer reader = new N5Importer();
-		reader.setShow( false );
-		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
-
-		assertEquals( String.format( "%s %s one image opened ", outputPath, dataset ), 1, impList.size() );
-
-		final ImagePlus impRead = impList.get( 0 );
-
-		if( testMeta )
+		final N5Reader n5r = new N5Factory()
+				.openReader(outputPath);
+		String[] dsetList = n5r.list(readerDataset);
+		for( String d : dsetList )
 		{
-			final boolean resEqual = impRead.getCalibration().pixelWidth == imp.getCalibration().pixelWidth &&
-					impRead.getCalibration().pixelHeight == imp.getCalibration().pixelHeight
-					&& impRead.getCalibration().pixelDepth == imp.getCalibration().pixelDepth;
+			final String dsetPath = readerDataset + "/" + d;
+			assertTrue("dataset does not exist at: " + d , n5r.datasetExists(readerDataset+ "/" + d));
 
-			assertTrue( String.format( "%s resolutions ", dataset ), resEqual );
+			final int nd = n5r.getDatasetAttributes(dsetPath).getNumDimensions();
+			final int level = Integer.parseInt( d.replaceFirst("^s", ""));
+			final double factor = Math.pow(2, level);
+			final double[] flatAffine = downsamplingAffineFlat( nd, factor, downsampleMethod );
 
-			final boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() );
-			assertTrue( String.format( "%s units ", dataset ), unitsEqual );
+			final N5MetadataParser<?> parser = getParser(metadataType);
+			@SuppressWarnings("unchecked")
+			final Optional<N5SpatialDatasetMetadata> meta = (Optional<N5SpatialDatasetMetadata>)parser.parseMetadata(n5r,dsetPath);
+			assertTrue("metadata does not exist or not parsable", meta.isPresent());
+			assertArrayEquals("affine", flatAffine, meta.get().spatialTransform().getRowPackedCopy(), EPS);
 		}
 
-		if( testData )
-		{
-			boolean imagesEqual;
-			if( imp.getType() == ImagePlus.COLOR_RGB )
-			{
-				imagesEqual = equalRGB( imp, impRead );
-				assertEquals( String.format( "%s as rgb ", dataset ), ImagePlus.COLOR_RGB, impRead.getType() );
-			}
-			else
-				imagesEqual = equal( imp, impRead );
-
-			assertTrue( String.format( "%s data ", dataset ), imagesEqual );
-		}
-
+		n5r.close();
 		try {
 			final N5Writer n5w = new N5Factory().openWriter(outputPath);
 			n5w.remove();
-		} catch (final N5Exception e) {
-			e.printStackTrace();
-		}
+			n5w.close();
+		} catch (final N5Exception e) { }
+	}
 
-		impRead.close();
+	private double[] downsamplingAffineFlat( final int nd, final double factor, final String downsampleMethod ) {
+
+		final AffineTransform out = new AffineTransform(nd);
+		for (int i = 0; i < nd; i++) {
+			out.set(factor, i, i);
+			if (downsampleMethod.equals(N5ScalePyramidExporter.DOWN_AVERAGE)) {
+				out.set( 0.5 * factor - 0.5, i, nd);
+			}
+		}
+		return out.getRowPackedCopy();
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T extends N5SpatialDatasetMetadata> N5MetadataParser<T> getParser(final String metadataType) {
+
+		switch (metadataType) {
+		case N5Importer.MetadataN5CosemKey:
+			return (N5MetadataParser<T>)new N5CosemMetadataParser();
+		case N5Importer.MetadataN5ViewerKey:
+			return (N5MetadataParser<T>)new N5SingleScaleMetadataParser();
+		case N5Importer.MetadataOmeZarrKey:
+			return (N5MetadataParser<T>)new NgffSingleScaleMetadataParser();
+		default:
+			return null;
+		}
 	}
 
 	public void testPyramidHelper( final String metatype, final String suffix )
