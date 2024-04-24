@@ -866,7 +866,7 @@ public class N5Importer implements PlugIn {
 			if (rootPath == null)
 				rootPath = upToLastExtension(n5UriOrPath);
 
-			final N5Factory factory = new N5Factory().cacheAttributes(true).s3RetryWithCredentials();
+			final N5Factory factory = new N5Factory().cacheAttributes(true);
 			try {
 				n5 = factory.openReader(rootPath);
 			} catch (final N5Exception e) {
