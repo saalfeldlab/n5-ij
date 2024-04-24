@@ -5,13 +5,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 
-import org.janelia.saalfeldlab.n5.N5Exception;
-import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.RunImportExportTest;
 import org.janelia.saalfeldlab.n5.TestExportImports;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.junit.After;
@@ -30,9 +30,11 @@ import net.imglib2.view.Views;
 
 public class MacroTests {
 
+	private File containerDir;
+
 	private File n5rootF;
 
-	private File containerDir;
+	private String dataset;
 
 	private ImagePlus imp;
 
@@ -40,19 +42,16 @@ public class MacroTests {
 	public void before() {
 		System.setProperty("java.awt.headless", "true");
 
-		final String n5Root = "src/test/resources/test.n5";
-		n5rootF = new File(n5Root);
+		containerDir = new File(tempN5PathName());
 
-		final URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
-		final File baseDir = new File( configUrl.getFile() ).getParentFile();
-		containerDir = new File( baseDir, "macrotest.n5" );
-		System.out.println( containerDir.getAbsolutePath() );
+		n5rootF = Paths.get("src", "test", "resources", "test.n5").toFile();
+		dataset = "dataset";
 
 		imp = NewImage.createImage("test", 8, 7, 9, 16, NewImage.FILL_NOISE);
-		final String format = N5ScalePyramidExporter.AUTO_FORMAT;
+		final String format = N5ScalePyramidExporter.N5_FORMAT;
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, containerDir.getAbsolutePath(), "dataset", format, "16,16,16", false,
+		writer.setOptions( imp, containerDir.getAbsolutePath(), dataset, format, "16,16,16", false,
 				N5ScalePyramidExporter.NONE, N5ScalePyramidExporter.DOWN_SAMPLE, N5ScalePyramidExporter.RAW_COMPRESSION);
 		writer.run(); // run() closes the n5 writer
 	}
@@ -60,8 +59,28 @@ public class MacroTests {
 	@After
 	public void after() {
 
-		final N5Writer n5 = new N5Factory().openWriter(containerDir.getAbsolutePath());
-		n5.remove();
+		N5Writer n5;
+		try {
+			n5 = new N5Factory().openWriter(containerDir.getCanonicalPath());
+			n5.remove();
+		} catch (IOException e) {}
+	}
+
+	private static String tempN5PathName() {
+
+		try {
+			final File tmpFile = Files.createTempDirectory("n5-ij-macro-test-").toFile();
+			tmpFile.deleteOnExit();
+			return tmpFile.getCanonicalPath();
+		} catch (final Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	protected String tempN5Location() throws URISyntaxException {
+
+		final String basePath = new File(tempN5PathName()).toURI().normalize().getPath();
+		return new URI("file", null, basePath, null).toString();
 	}
 
 	@Test
@@ -78,7 +97,7 @@ public class MacroTests {
 
 		// URL
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format( urlFormat + " hide", containerDir.getAbsolutePath(), "dataset" ));
+				String.format( urlFormat + " hide", containerDir.getAbsolutePath(), dataset ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		final ImagePlus imgImported = res.get(0);
@@ -107,7 +126,7 @@ public class MacroTests {
 	public void testMacro() {
 
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide", n5rootF.getAbsolutePath(), "cosem" ));
+				String.format("url=%s?%s hide", n5rootF.getAbsolutePath(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
@@ -121,7 +140,7 @@ public class MacroTests {
 	@Test
 	public void testMacroVirtual() {
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
+				String.format("url=%s?%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
@@ -135,7 +154,7 @@ public class MacroTests {
 		final String maxString = "250,250,120";
 
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide min=%s max=%s",
+				String.format("url=%s?%s hide min=%s max=%s",
 				n5rootF.getAbsolutePath(), "cosem", minString, maxString ));
 
 		final List<ImagePlus> res = plugin.getResult();
