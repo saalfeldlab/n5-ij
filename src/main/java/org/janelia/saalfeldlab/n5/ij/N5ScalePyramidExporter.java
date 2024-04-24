@@ -1021,12 +1021,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@SuppressWarnings("unchecked")
 	protected <M extends N5Metadata> void writeMetadata(final M metadata, final N5Writer n5, final String dataset) {
 
-		if (metadata != null)
-			Optional.ofNullable(metadataWriters.get(metadata.getClass())).ifPresent(writer -> {
+		if (metadata != null) {
+			final N5MetadataWriter<?> writer = metadataWriters.get(metadata.getClass());
+			if (writer != null)
 				try {
 					((N5MetadataWriter<M>)writer).writeMetadata(metadata, n5, dataset);
-				} catch (final Exception e) {}
-			});
+				} catch (Exception e) {}
+		}
 	}
 
 	protected N5SingleScaleMetadata buildN5VMetadata(
