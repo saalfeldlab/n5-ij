@@ -27,7 +27,9 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,6 +64,7 @@ import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
@@ -108,6 +111,7 @@ import net.imglib2.type.numeric.integer.UnsignedLongType;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
@@ -855,18 +859,24 @@ public class N5Importer implements PlugIn {
 			if (n5UriOrPath == null || n5UriOrPath.isEmpty())
 				return null;
 
-
-			String rootPath = null ;
+			String rootPath = null;
 			if (n5UriOrPath.contains("?")) {
+
 				try {
-					rootPath = new N5URI(n5UriOrPath).getContainerPath();
+					// need to strip off storage format for n5uri to correctly remove query;
+					final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(n5UriOrPath);
+					final StorageFormat format = fmtUri.getA();
+
+					final N5URI n5uri = from(fmtUri.getB().toString());
+					// add the format prefix back if it was present
+					rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
 				} catch (URISyntaxException e) {}
 			}
 
 			if (rootPath == null)
 				rootPath = upToLastExtension(n5UriOrPath);
 
-			final N5Factory factory = new N5Factory().cacheAttributes(true);
+			final N5Factory factory = new N5Factory().cacheAttributes(true).s3RetryWithCredentials();
 			try {
 				n5 = factory.openReader(rootPath);
 			} catch (final N5Exception e) {
@@ -874,6 +884,42 @@ public class N5Importer implements PlugIn {
 				return null;
 			}
 			return n5;
+		}
+	}
+
+	/**
+	 * Generate an {@link N5URI} from a String.
+	 *
+	 * @param uriOrPath
+	 *            a string representation of a uri or a path string.
+	 * @return the {@link N5URI}
+	 */
+	private static N5URI from(final String uriOrPath) {
+
+		try {
+			return new N5URI(new URI(uriOrPath));
+		} catch (Throwable ignore) {}
+
+		try {
+			final String[] split = uriOrPath.split("\\?");
+			final URI tmp = Paths.get(split[0]).toUri();
+			if (split.length == 1)
+				return new N5URI(tmp);
+			else {
+				StringBuffer buildUri = new StringBuffer();
+				buildUri.append(tmp.toString());
+				buildUri.append("?");
+				for (int i = 1; i < split.length; i++)
+					buildUri.append(split[i]);
+
+				return new N5URI(new URI(buildUri.toString()));
+			}
+		} catch (Throwable ignore) {}
+
+		try {
+			return new N5URI(N5URI.encodeAsUri(uriOrPath));
+		} catch (URISyntaxException e) {
+			throw new N5Exception(e);
 		}
 	}
 
