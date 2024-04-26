@@ -6,6 +6,8 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,6 +31,7 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
@@ -44,8 +47,11 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.gson.JsonElement;
+
 import ij.ImagePlus;
 import ij.gui.NewImage;
+import net.imglib2.util.Pair;
 
 public class WriteAxesTests {
 
@@ -213,6 +219,23 @@ public class WriteAxesTests {
 		remove(rootLocation);
 	}
 
+	@Test
+	public void testFormatParsing() throws IOException, InterruptedException, ExecutionException, URISyntaxException {
+
+		final int nc = 1;
+		final int nz = 3;
+		final int nt = 1;
+		final String dataset = "";
+		final ImagePlus imp = createImage(nc, nz, nt);
+		final String rootLocation = createDataset("xyz_teet.zarr", dataset, imp);
+
+		final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(rootLocation);
+		System.out.println(fmtUri.getA());
+		System.out.println(fmtUri.getB());
+
+		remove(rootLocation);
+	}
+
 	private ImagePlus createImage(final int nc, final int nz, final int nt) {
 
 		final ImagePlus imp = NewImage.createImage("test", nx, ny, nc * nz * nt, 8, NewImage.FILL_NOISE);
@@ -240,12 +263,18 @@ public class WriteAxesTests {
 	private OmeNgffMetadata readMetadata(final String rootLocation, final String dataset) {
 
 		final N5Reader zarr = new N5Factory().openReader(rootLocation);
+		final String prefix = String.format("%s - %s", rootLocation, dataset);
+
+		assertNotNull(prefix + " reader null", zarr);
+		assertTrue(prefix + " root exists", zarr.exists(""));
+
 		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr, Collections.singletonList(new N5GenericSingleScaleMetadataParser()),
 				Collections.singletonList(new OmeNgffMetadataParser()));
 
-		final String prefix = String.format("%s - %s", rootLocation, dataset);
-		assertNotNull(prefix + " reader null", zarr);
 		assertNotNull(prefix + " node null", node);
+		assertNotNull( zarr.getAttribute(dataset, "", JsonElement.class).getAsJsonObject().get("multiscales"));
+
+		assertTrue(prefix + " is not group", zarr.exists(dataset));
 		assertNotNull(prefix + " metadata null", node.getMetadata());
 
 		final N5Metadata meta = node.getMetadata();
