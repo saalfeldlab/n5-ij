@@ -133,9 +133,12 @@ public class MacroTests {
 	public void testMacro() {
 
 		System.out.println("testMacro: " + n5rootF);
+		System.out.println("testMacro: " + n5rootF.getAbsolutePath());
 
+//		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+//				String.format("url=%s?%s hide", n5rootF.getAbsolutePath(), "cosem" ));
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s?%s hide", n5rootF.getAbsolutePath(), "cosem" ));
+				String.format("url=%s/%s hide", n5rootF.getAbsolutePath(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals("crop num", 1, res.size());
@@ -148,8 +151,10 @@ public class MacroTests {
 
 	@Test
 	public void testMacroVirtual() {
+//		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+//				String.format("url=%s?%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s?%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
+				String.format("url=%s/%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals("crop num", 1, res.size());
@@ -162,8 +167,11 @@ public class MacroTests {
 		final String minString = "100,100,50";
 		final String maxString = "250,250,120";
 
+//		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
+//				String.format("url=%s?%s hide min=%s max=%s",
+//				n5rootF.getAbsolutePath(), "cosem", minString, maxString ));
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s?%s hide min=%s max=%s",
+				String.format("url=%s/%s hide min=%s max=%s",
 				n5rootF.getAbsolutePath(), "cosem", minString, maxString ));
 
 		final List<ImagePlus> res = plugin.getResult();
