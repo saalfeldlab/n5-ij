@@ -83,17 +83,19 @@ public class MacroTests {
 		return new URI("file", null, basePath, null).toString();
 	}
 
-//	@Test
-//	public void testMacroContentPath() throws IOException {
-//		System.out.println("testMacroContentPath");
-//		testMacroContentHelper("url=%s/%s");
-//	}
-//
-//	@Test
-//	public void testMacroContentUri() throws IOException {
-//		System.out.println("testMacroContentUri");
-//		testMacroContentHelper("url=%s?%s");
-//	}
+	@Test
+	public void testMacroContentPath() throws IOException {
+		System.out.println("testMacroContent Path style");
+		testMacroContentHelper("url=%s/%s");
+	}
+
+	@Test
+	public void testMacroContentUri() throws IOException {
+		System.out.println("testMacroContent URI style skip windows");
+		final String os = System.getProperty("os.name").toLowerCase();
+		if( !os.startsWith("windows"))
+			testMacroContentHelper("url=%s?%s");
+	}
 
 	public void testMacroContentHelper( String urlFormat ) throws IOException {
 
@@ -129,6 +131,8 @@ public class MacroTests {
 
 	@Test
 	public void testMacro() {
+
+		System.out.println("testMacro: " + n5rootF);
 
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
 				String.format("url=%s?%s hide", n5rootF.getAbsolutePath(), "cosem" ));

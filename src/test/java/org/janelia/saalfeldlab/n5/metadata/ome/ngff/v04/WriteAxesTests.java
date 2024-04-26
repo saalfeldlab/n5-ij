@@ -219,23 +219,6 @@ public class WriteAxesTests {
 		remove(rootLocation);
 	}
 
-	@Test
-	public void testFormatParsing() throws IOException, InterruptedException, ExecutionException, URISyntaxException {
-
-		final int nc = 1;
-		final int nz = 3;
-		final int nt = 1;
-		final String dataset = "";
-		final ImagePlus imp = createImage(nc, nz, nt);
-		final String rootLocation = createDataset("xyz_fmtTest.zarr", dataset, imp);
-
-		final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(rootLocation);
-		System.out.println(fmtUri.getA());
-		System.out.println(fmtUri.getB());
-
-		remove(rootLocation);
-	}
-
 	private ImagePlus createImage(final int nc, final int nz, final int nt) {
 
 		final ImagePlus imp = NewImage.createImage("test", nx, ny, nc * nz * nt, 8, NewImage.FILL_NOISE);
@@ -256,7 +239,6 @@ public class WriteAxesTests {
 				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrKey, compression);
 		writer.run(); // run() closes the n5 writer
 
-		System.out.println("createDataset returned: " + rootLocation);
 		return rootLocation;
 	}
 
