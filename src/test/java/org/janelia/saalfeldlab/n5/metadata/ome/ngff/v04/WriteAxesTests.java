@@ -227,7 +227,7 @@ public class WriteAxesTests {
 		final int nt = 1;
 		final String dataset = "";
 		final ImagePlus imp = createImage(nc, nz, nt);
-		final String rootLocation = createDataset("xyz_teet.zarr", dataset, imp);
+		final String rootLocation = createDataset("xyz_fmtTest.zarr", dataset, imp);
 
 		final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(rootLocation);
 		System.out.println(fmtUri.getA());
@@ -268,16 +268,17 @@ public class WriteAxesTests {
 		assertNotNull(prefix + " reader null", zarr);
 		assertTrue(prefix + " root exists", zarr.exists(""));
 
-		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr, Collections.singletonList(new N5GenericSingleScaleMetadataParser()),
+		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr,
+				Collections.singletonList(new N5GenericSingleScaleMetadataParser()),
 				Collections.singletonList(new OmeNgffMetadataParser()));
 
 		assertNotNull(prefix + " node null", node);
 		assertNotNull( zarr.getAttribute(dataset, "", JsonElement.class).getAsJsonObject().get("multiscales"));
-
 		assertTrue(prefix + " is not group", zarr.exists(dataset));
-		assertNotNull(prefix + " metadata null", node.getMetadata());
 
 		final N5Metadata meta = node.getMetadata();
+		assertNotNull(prefix + " metadata null", meta);
+		assertTrue(prefix + " metadata not OmeNgff", (meta instanceof OmeNgffMetadata));
 		if( meta instanceof OmeNgffMetadata ) {
 			return (OmeNgffMetadata) meta;
 		}
