@@ -28,6 +28,8 @@ package org.janelia.saalfeldlab.n5.ui;
 import ij.IJ;
 import ij.ImageJ;
 import ij.gui.ProgressBar;
+import net.imglib2.util.Pair;
+import net.imglib2.util.ValuePair;
 import se.sawano.java.text.AlphanumericComparator;
 
 import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
@@ -37,6 +39,7 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
@@ -50,6 +53,7 @@ import com.google.gson.GsonBuilder;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
+import javax.swing.JFormattedTextField.AbstractFormatter;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -60,6 +64,8 @@ import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeModel;
@@ -72,7 +78,12 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.Collator;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -105,7 +116,7 @@ public class DatasetSelectorDialog {
 
 	private JFrame dialog;
 
-	private JTextField containerPathText;
+	private ImprovedFormattedTextField containerPathText;
 
 	private JCheckBox virtualBox;
 
@@ -366,8 +377,7 @@ public class DatasetSelectorDialog {
 		tabs.addTab("Metadata Translation", translationPanel.buildPanel());
 		tabs.addTab("Translation Result", translationResultPanel.buildPanel());
 
-		containerPathText = new JTextField();
-		containerPathText.setText(initialContainerPath);
+		containerPathText = new ImprovedFormattedTextField(new UriValidator(), initialContainerPath);
 		containerPathText.setPreferredSize(new Dimension(frameSizeX / 3, containerPathText.getPreferredSize().height));
 		containerPathText.addActionListener(e -> openContainer(n5Fun, () -> getN5RootPath(), pathFun));
 
@@ -932,6 +942,48 @@ public class DatasetSelectorDialog {
 	private static boolean pathsEqual(final String a, final String b) {
 
 		return normalDatasetName(a, "/").equals(normalDatasetName(b, "/"));
+	}
+
+	private static class UriValidator extends AbstractFormatter {
+
+		@Override
+		public Object stringToValue(String input) throws ParseException {
+
+			if (input == null || input.isEmpty())
+				return null;
+
+//			System.out.println("stringToValue: " + input);
+			try {
+				URI uri = new URI(input);
+//				if( uri.isAbsolute())
+					return uri;
+//				else
+//					throw new ParseException("input " + input + " must be absolute", 0);
+			} catch (Throwable ignore) {}
+
+			try {
+//				System.out.println("  try as path");
+				Path path = Paths.get(input);
+//				if( path.isAbsolute())
+					return path.toUri();
+//				else
+//					throw new ParseException("input " + input + " must be absolute", 0);
+
+			} catch (Throwable ignore) {}
+
+			throw new ParseException("input " + input + " not a valid URI", 0);
+		}
+
+		@Override
+		public String valueToString(Object arg) throws ParseException {
+
+			System.out.println("val to string");
+			if( arg instanceof URI )
+				return ((URI)arg).toString();
+			else
+				throw new ParseException("input " + arg + " not a valid URI", 0);
+		}
+
 	}
 
 }
