@@ -28,8 +28,6 @@ package org.janelia.saalfeldlab.n5.ui;
 import ij.IJ;
 import ij.ImageJ;
 import ij.gui.ProgressBar;
-import net.imglib2.util.Pair;
-import net.imglib2.util.ValuePair;
 import se.sawano.java.text.AlphanumericComparator;
 
 import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
@@ -39,7 +37,6 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
@@ -60,12 +57,9 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import javax.swing.event.TreeSelectionEvent;
 import javax.swing.event.TreeSelectionListener;
 import javax.swing.tree.DefaultTreeModel;
@@ -79,7 +73,6 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.Collator;
@@ -944,7 +937,9 @@ public class DatasetSelectorDialog {
 		return normalDatasetName(a, "/").equals(normalDatasetName(b, "/"));
 	}
 
-	private static class UriValidator extends AbstractFormatter {
+	protected static class UriValidator extends AbstractFormatter {
+
+		private static final long serialVersionUID = 6765664180035018335L;
 
 		@Override
 		public Object stringToValue(String input) throws ParseException {
@@ -952,23 +947,12 @@ public class DatasetSelectorDialog {
 			if (input == null || input.isEmpty())
 				return null;
 
-//			System.out.println("stringToValue: " + input);
 			try {
-				URI uri = new URI(input);
-//				if( uri.isAbsolute())
-					return uri;
-//				else
-//					throw new ParseException("input " + input + " must be absolute", 0);
+				return new URI(input);
 			} catch (Throwable ignore) {}
 
 			try {
-//				System.out.println("  try as path");
-				Path path = Paths.get(input);
-//				if( path.isAbsolute())
-					return path.toUri();
-//				else
-//					throw new ParseException("input " + input + " must be absolute", 0);
-
+				return Paths.get(input).toUri();
 			} catch (Throwable ignore) {}
 
 			throw new ParseException("input " + input + " not a valid URI", 0);
