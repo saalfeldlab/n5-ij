@@ -50,13 +50,13 @@ import com.google.gson.GsonBuilder;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
+import javax.swing.JFormattedTextField.AbstractFormatter;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
 import javax.swing.JTree;
 import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
@@ -72,7 +72,11 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
+import java.net.URI;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.Collator;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -105,7 +109,7 @@ public class DatasetSelectorDialog {
 
 	private JFrame dialog;
 
-	private JTextField containerPathText;
+	private ImprovedFormattedTextField containerPathText;
 
 	private JCheckBox virtualBox;
 
@@ -366,8 +370,7 @@ public class DatasetSelectorDialog {
 		tabs.addTab("Metadata Translation", translationPanel.buildPanel());
 		tabs.addTab("Translation Result", translationResultPanel.buildPanel());
 
-		containerPathText = new JTextField();
-		containerPathText.setText(initialContainerPath);
+		containerPathText = new ImprovedFormattedTextField(new UriValidator(), initialContainerPath);
 		containerPathText.setPreferredSize(new Dimension(frameSizeX / 3, containerPathText.getPreferredSize().height));
 		containerPathText.addActionListener(e -> openContainer(n5Fun, () -> getN5RootPath(), pathFun));
 
@@ -932,6 +935,40 @@ public class DatasetSelectorDialog {
 	private static boolean pathsEqual(final String a, final String b) {
 
 		return normalDatasetName(a, "/").equals(normalDatasetName(b, "/"));
+	}
+
+	protected static class UriValidator extends AbstractFormatter {
+
+		private static final long serialVersionUID = 6765664180035018335L;
+
+		@Override
+		public Object stringToValue(String input) throws ParseException {
+
+			if (input == null || input.isEmpty())
+				return null;
+
+			try {
+				final URI uri = new URI(input);
+				if (uri.isAbsolute())
+					return uri;
+			} catch (Throwable ignore) {}
+
+			try {
+				return Paths.get(input).toUri();
+			} catch (Throwable ignore) {}
+
+			throw new ParseException("input " + input + " not a valid URI", 0);
+		}
+
+		@Override
+		public String valueToString(Object arg) throws ParseException {
+
+			if( arg instanceof URI )
+				return ((URI)arg).toString().replaceFirst("^file://", "");
+			else
+				throw new ParseException("input " + arg + " not a valid URI", 0);
+		}
+
 	}
 
 }

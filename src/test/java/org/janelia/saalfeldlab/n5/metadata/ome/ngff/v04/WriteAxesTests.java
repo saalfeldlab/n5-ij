@@ -1,10 +1,13 @@
 package org.janelia.saalfeldlab.n5.metadata.ome.ngff.v04;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Collections;
@@ -14,6 +17,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.TestExportImports;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
@@ -27,6 +31,7 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
@@ -38,11 +43,15 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDa
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.google.gson.JsonElement;
+
 import ij.ImagePlus;
 import ij.gui.NewImage;
+import net.imglib2.util.Pair;
 
 public class WriteAxesTests {
 
@@ -80,8 +89,15 @@ public class WriteAxesTests {
 	public void before() {
 
 		/* To explicitly test headless */
-//		 System.setProperty("java.awt.headless", "true");
+		System.setProperty("java.awt.headless", "true");
+
 		impWriters = defaultImagePlusMetadataWriters();
+	}
+
+	private void remove(final String rootLocation) {
+
+		final N5Writer zarr = new N5Factory().openWriter(rootLocation);
+		zarr.remove();
 	}
 
 	@Test
@@ -90,17 +106,19 @@ public class WriteAxesTests {
 		final int nc = 1;
 		final int nz = 6;
 		final int nt = 1;
+		final String dataset = "";
 		final ImagePlus imp = createImage( nc, nz, nt );
-		final String rootLocation = createDataset("xyz.zarr", imp );
+		final String rootLocation = createDataset("xyz.zarr", dataset, imp );
 
-		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation);
+		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation, dataset);
 		assertTrue(Arrays.stream(ngffMeta.multiscales[0].axes).allMatch(x -> x.getUnit().equals(UNIT)));
 		assertEquals(3, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.SPACE)).count());
 		assertEquals(0, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.CHANNEL)).count());
 		assertEquals(0, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.TIME)).count());
 
-		final ImagePlus impRead = readImage( rootLocation );
-		assertTrue( TestExportImports.equal(imp, impRead));
+		final ImagePlus impRead = readImage(rootLocation);
+		assertTrue(TestExportImports.equal(imp, impRead));
+		remove(rootLocation);
 	}
 
 	@Test
@@ -109,16 +127,18 @@ public class WriteAxesTests {
 		final int nc = 6;
 		final int nz = 1;
 		final int nt = 1;
-		final ImagePlus imp = createImage( nc, nz, nt );
-		final String rootLocation = createDataset("xyc.zarr", imp );
+		final String dataset = "";
+		final ImagePlus imp = createImage(nc, nz, nt);
+		final String rootLocation = createDataset("xyc.zarr", dataset, imp);
 
-		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation);
+		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation, dataset);
 		assertEquals(2, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.SPACE)).count());
 		assertEquals(1, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.CHANNEL)).count());
 		assertEquals(0, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.TIME)).count());
 
-		final ImagePlus impRead = readImage( rootLocation );
-		assertTrue( TestExportImports.equal(imp, impRead));
+		final ImagePlus impRead = readImage(rootLocation);
+		assertTrue(TestExportImports.equal(imp, impRead));
+		remove(rootLocation);
 	}
 
 	@Test
@@ -127,16 +147,18 @@ public class WriteAxesTests {
 		final int nc = 1;
 		final int nz = 1;
 		final int nt = 6;
-		final ImagePlus imp = createImage( nc, nz, nt );
-		final String rootLocation = createDataset("xyt.zarr", imp );
+		final String dataset = "";
+		final ImagePlus imp = createImage(nc, nz, nt);
+		final String rootLocation = createDataset("xyt.zarr", dataset, imp);
 
-		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation);
+		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation, dataset);
 		assertEquals(2, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.SPACE)).count());
 		assertEquals(0, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.CHANNEL)).count());
 		assertEquals(1, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.TIME)).count());
 
-		final ImagePlus impRead = readImage( rootLocation );
-		assertTrue( TestExportImports.equal(imp, impRead));
+		final ImagePlus impRead = readImage(rootLocation);
+		assertTrue(TestExportImports.equal(imp, impRead));
+		remove(rootLocation);
 	}
 
 	@Test
@@ -145,16 +167,18 @@ public class WriteAxesTests {
 		final int nc = 3;
 		final int nz = 2;
 		final int nt = 1;
-		final ImagePlus imp = createImage( nc, nz, nt );
-		final String rootLocation = createDataset("xycz.zarr", imp );
+		final String dataset = "";
+		final ImagePlus imp = createImage(nc, nz, nt);
+		final String rootLocation = createDataset("xycz.zarr", dataset, imp);
 
-		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation);
+		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation, dataset);
 		assertEquals(3, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.SPACE)).count());
 		assertEquals(1, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.CHANNEL)).count());
 		assertEquals(0, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.TIME)).count());
 
-		final ImagePlus impRead = readImage( rootLocation );
-		assertTrue( TestExportImports.equal(imp, impRead));
+		final ImagePlus impRead = readImage(rootLocation);
+		assertTrue(TestExportImports.equal(imp, impRead));
+		remove(rootLocation);
 	}
 
 	@Test
@@ -163,16 +187,18 @@ public class WriteAxesTests {
 		final int nc = 3;
 		final int nz = 2;
 		final int nt = 1;
-		final ImagePlus imp = createImage( nc, nz, nt );
-		final String rootLocation = createDataset("czyx.zarr", imp);
+		final String dataset = "";
+		final ImagePlus imp = createImage(nc, nz, nt);
+		final String rootLocation = createDataset("czyx.zarr", dataset, imp);
 
-		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation);
+		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation, dataset);
 		assertEquals(3, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.SPACE)).count());
 		assertEquals(1, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.CHANNEL)).count());
 		assertEquals(0, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.TIME)).count());
 
-		final ImagePlus impRead = readImage( rootLocation );
-		assertTrue( TestExportImports.equal(imp, impRead));
+		final ImagePlus impRead = readImage(rootLocation);
+		assertTrue(TestExportImports.equal(imp, impRead));
+		remove(rootLocation);
 		// TODO other checks?
 	}
 
@@ -182,45 +208,59 @@ public class WriteAxesTests {
 		final int nc = 4;
 		final int nz = 3;
 		final int nt = 2;
-		final ImagePlus imp = createImage( nc, nz, nt );
-		final String rootLocation = createDataset("xyczt.zarr", imp);
+		final String dataset = "";
+		final ImagePlus imp = createImage(nc, nz, nt);
+		final String rootLocation = createDataset("xyczt.zarr", dataset, imp);
 
-		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation);
+		final OmeNgffMetadata ngffMeta = readMetadata(rootLocation, dataset);
 		assertEquals(3, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.SPACE)).count());
 		assertEquals(1, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.CHANNEL)).count());
 		assertEquals(1, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.TIME)).count());
+		remove(rootLocation);
 	}
 
-	private ImagePlus createImage( final int nc, final int nz, final int nt ) {
+	private ImagePlus createImage(final int nc, final int nz, final int nt) {
+
 		final ImagePlus imp = NewImage.createImage("test", nx, ny, nc * nz * nt, 8, NewImage.FILL_NOISE);
 		imp.setDimensions(nc, nz, nt);
 		imp.getCalibration().setUnit(UNIT);
 		return imp;
 	}
 
-	private String createDataset(final String containerName, final ImagePlus imp )
+	private String createDataset(final String containerName, final String dataset, final ImagePlus imp)
 			throws IOException, InterruptedException, ExecutionException {
 
 		final String rootLocation = tempPathName() + File.separator + containerName;
-		final String dataset = "/";
 		final String blockSizeArg = "32,32,32";
 		final String compression = N5ScalePyramidExporter.GZIP_COMPRESSION;
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, rootLocation, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeArg, false,
+		writer.setOptions(imp, rootLocation, dataset, N5ScalePyramidExporter.ZARR_FORMAT, blockSizeArg, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrKey, compression);
 		writer.run(); // run() closes the n5 writer
 
 		return rootLocation;
 	}
 
-	private OmeNgffMetadata readMetadata(final String rootLocation ) {
+	private OmeNgffMetadata readMetadata(final String rootLocation, final String dataset) {
 
 		final N5Reader zarr = new N5Factory().openReader(rootLocation);
-		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr, Collections.singletonList(new N5GenericSingleScaleMetadataParser()),
+		final String prefix = String.format("%s - %s", rootLocation, dataset);
+
+		assertNotNull(prefix + " reader null", zarr);
+		assertTrue(prefix + " root exists", zarr.exists(""));
+
+		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr,
+				Collections.singletonList(new N5GenericSingleScaleMetadataParser()),
 				Collections.singletonList(new OmeNgffMetadataParser()));
 
+		assertNotNull(prefix + " node null", node);
+		assertNotNull( zarr.getAttribute(dataset, "", JsonElement.class).getAsJsonObject().get("multiscales"));
+		assertTrue(prefix + " is not group", zarr.exists(dataset));
+
 		final N5Metadata meta = node.getMetadata();
+		assertNotNull(prefix + " metadata null", meta);
+		assertTrue(prefix + " metadata not OmeNgff", (meta instanceof OmeNgffMetadata));
 		if( meta instanceof OmeNgffMetadata ) {
 			return (OmeNgffMetadata) meta;
 		}
