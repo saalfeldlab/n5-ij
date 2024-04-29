@@ -44,17 +44,17 @@ public class TestUriValidation {
 			assertNotNull(urival.stringToValue("/a/\\//b").toString());
 			assertNotNull(urival.stringToValue("://////").toString());
 			assertNotNull(urival.stringToValue("..").toString());
+
+			assertNotNull(urival.stringToValue("/a/b/c"));
+			assertNotNull(urival.stringToValue("/a/b/c?d/e"));
+			assertNotNull(urival.stringToValue("/a/b/c?d/e#f/g"));
 		}
 
+		// both windows and not
 		assertNotNull(urival.stringToValue(p.toString()));
 		assertNotNull(urival.stringToValue(p.toUri().toString()));
 		assertNotNull(urival.stringToValue(p.toUri().toString() + "?d/e"));
 		assertNotNull(urival.stringToValue(p.toUri().toString() + "?d/e#f/g"));
-
-		// both windows and not
-		assertNotNull(urival.stringToValue("/a/b/c"));
-		assertNotNull(urival.stringToValue("/a/b/c?d/e"));
-		assertNotNull(urival.stringToValue("/a/b/c?d/e#f/g"));
 
 		assertNotNull(urival.stringToValue("file:///a/b/c"));
 		assertNotNull(urival.stringToValue("file:///a/b/c?d/e"));
