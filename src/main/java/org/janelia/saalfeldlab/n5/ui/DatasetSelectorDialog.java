@@ -948,7 +948,9 @@ public class DatasetSelectorDialog {
 				return null;
 
 			try {
-				return new URI(input);
+				final URI uri = new URI(input);
+				if (uri.isAbsolute())
+					return uri;
 			} catch (Throwable ignore) {}
 
 			try {
