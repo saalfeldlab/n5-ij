@@ -30,7 +30,7 @@ import net.imglib2.view.Views;
 
 public class MacroTests {
 
-	private File containerDir;
+	private URI containerDir;
 
 	private URI n5rootF;
 
@@ -42,7 +42,9 @@ public class MacroTests {
 	public void before() {
 		System.setProperty("java.awt.headless", "true");
 
-		containerDir = new File(tempN5PathName());
+		try {
+			containerDir = new File(tempN5PathName()).getCanonicalFile().toURI();
+		} catch (IOException e) {}
 
 		n5rootF = Paths.get("src", "test", "resources", "test.n5").toUri();
 		dataset = "dataset";
@@ -51,7 +53,7 @@ public class MacroTests {
 		final String format = N5ScalePyramidExporter.N5_FORMAT;
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions( imp, containerDir.getAbsolutePath(), dataset, format, "16,16,16", false,
+		writer.setOptions( imp, containerDir.toString(), dataset, format, "16,16,16", false,
 				N5ScalePyramidExporter.NONE, N5ScalePyramidExporter.DOWN_SAMPLE, N5ScalePyramidExporter.RAW_COMPRESSION);
 		writer.run(); // run() closes the n5 writer
 	}
@@ -59,11 +61,8 @@ public class MacroTests {
 	@After
 	public void after() {
 
-		N5Writer n5;
-		try {
-			n5 = new N5Factory().openWriter(containerDir.getCanonicalPath());
-			n5.remove();
-		} catch (IOException e) {}
+		N5Writer n5 = new N5Factory().openWriter(containerDir.toString());
+		n5.remove();
 	}
 
 	private static String tempN5PathName() {
@@ -85,7 +84,6 @@ public class MacroTests {
 
 	@Test
 	public void testMacroContentPath() throws IOException {
-		System.out.println("testMacroContent Path style");
 		testMacroContentHelper("url=%s/%s");
 	}
 
@@ -99,12 +97,8 @@ public class MacroTests {
 
 	public void testMacroContentHelper( String urlFormat ) throws IOException {
 
-		System.out.println(urlFormat);
-		System.out.println(containerDir.getCanonicalPath());
-
-		// URL
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format( urlFormat + " hide", containerDir.getCanonicalPath(), dataset ));
+				String.format( urlFormat + " hide", containerDir.toString(), dataset ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		final ImagePlus imgImported = res.get(0);
@@ -112,7 +106,7 @@ public class MacroTests {
 
 		final N5Importer pluginCrop = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
 				String.format( urlFormat + " hide min=0,1,2 max=5,5,5",
-						containerDir.getAbsolutePath(), "dataset" ));
+						containerDir.toString(), "dataset" ));
 		final List<ImagePlus> resCrop = pluginCrop.getResult();
 		final ImagePlus imgImportedCrop = resCrop.get(0);
 
