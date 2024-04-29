@@ -3,6 +3,7 @@ package org.janelia.saalfeldlab.n5.ui;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
@@ -37,8 +38,12 @@ public class TestUriValidation {
 
 			// test some weird strings that can technically be interpreted as paths or uris
 			assertNotNull(urival.stringToValue("."));
+			assertNotNull(urival.stringToValue("/.."));
 			assertNotNull(urival.stringToValue("\\\\"));
 			assertNotNull(urival.stringToValue("::"));
+			assertNotNull(urival.stringToValue("/a/\\//b").toString());
+			assertNotNull(urival.stringToValue("://////").toString());
+			assertNotNull(urival.stringToValue("..").toString());
 		}
 
 		assertNotNull(urival.stringToValue(p.toString()));
@@ -70,6 +75,15 @@ public class TestUriValidation {
 		assertNotNull(urival.stringToValue("https://storage.googleapis.com/a/b"));
 		assertNotNull(urival.stringToValue("https://storage.googleapis.com/a/b/c?d/e"));
 		assertNotNull(urival.stringToValue("https://storage.googleapis.com/a/b/c?d/e#f/g"));
+
+		assertNotNull(urival.stringToValue("zarr:/a/b/c"));
+		assertNotNull(urival.stringToValue("zarr:/a/b/c?d/e"));
+		assertNotNull(urival.stringToValue("zarr:/a/b/c?d/e#f/g"));
+
+		assertNotNull(urival.stringToValue("zarr:file:///a/b/c"));
+		assertNotNull(urival.stringToValue("zarr:file:///a/b/c?d/e"));
+		assertNotNull(urival.stringToValue("zarr:file:///a/b/c?d/e#f/g"));
+
 	}
 
 }
