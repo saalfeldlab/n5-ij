@@ -977,9 +977,8 @@ public class DatasetSelectorDialog {
 		@Override
 		public String valueToString(Object arg) throws ParseException {
 
-			System.out.println("val to string");
 			if( arg instanceof URI )
-				return ((URI)arg).toString();
+				return ((URI)arg).toString().replaceFirst("^file://", "");
 			else
 				throw new ParseException("input " + arg + " not a valid URI", 0);
 		}
