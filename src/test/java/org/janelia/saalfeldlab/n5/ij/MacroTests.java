@@ -32,7 +32,7 @@ public class MacroTests {
 
 	private File containerDir;
 
-	private File n5rootF;
+	private URI n5rootF;
 
 	private String dataset;
 
@@ -44,7 +44,7 @@ public class MacroTests {
 
 		containerDir = new File(tempN5PathName());
 
-		n5rootF = Paths.get("src", "test", "resources", "test.n5").toFile();
+		n5rootF = Paths.get("src", "test", "resources", "test.n5").toUri();
 		dataset = "dataset";
 
 		imp = NewImage.createImage("test", 8, 7, 9, 16, NewImage.FILL_NOISE);
@@ -133,12 +133,11 @@ public class MacroTests {
 	public void testMacro() {
 
 		System.out.println("testMacro: " + n5rootF);
-		System.out.println("testMacro: " + n5rootF.getAbsolutePath());
 
 //		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
 //				String.format("url=%s?%s hide", n5rootF.getAbsolutePath(), "cosem" ));
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide", n5rootF.getAbsolutePath(), "cosem" ));
+				String.format("url=%s" + File.separator + "%s hide", n5rootF.toString(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals("crop num", 1, res.size());
@@ -154,7 +153,7 @@ public class MacroTests {
 //		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
 //				String.format("url=%s?%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide virtual", n5rootF.getAbsolutePath(), "cosem" ));
+				String.format("url=%s" + File.separator + "%s hide virtual", n5rootF.toString(), "cosem" ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals("crop num", 1, res.size());
@@ -171,8 +170,8 @@ public class MacroTests {
 //				String.format("url=%s?%s hide min=%s max=%s",
 //				n5rootF.getAbsolutePath(), "cosem", minString, maxString ));
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s/%s hide min=%s max=%s",
-				n5rootF.getAbsolutePath(), "cosem", minString, maxString ));
+				String.format("url=%s" + File.separator + "%s hide min=%s max=%s",
+						n5rootF.toString(), "cosem", minString, maxString ));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
