@@ -1487,9 +1487,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		public DetailedOverwriteWarningDialog(final Frame parent, final String root, final String dataset) {
 			super(parent,"WARNING", true);
 			initComponents(root, dataset);
-			final Dimension dims = new Dimension(600, 250);
-			setSize(dims);
-			setPreferredSize(dims);
 			setResizable(false);
 			setLocationRelativeTo(null);
 		}
