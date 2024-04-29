@@ -43,12 +43,7 @@ public class ImprovedFormattedTextField extends JFormattedTextField {
 	public ImprovedFormattedTextField(AbstractFormatter formatter) {
 
 		super(formatter);
-
-//		setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT);
-		setFocusLostBehavior(JFormattedTextField.PERSIST);
-//		setFocusLostBehavior(JFormattedTextField.COMMIT);
-//		setFocusLostBehavior(JFormattedTextField.REVERT);
-
+		setFocusLostBehavior(JFormattedTextField.COMMIT_OR_REVERT);
 		updateBackgroundOnEachUpdate();
 
 		// improve the caret behavior
