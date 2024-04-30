@@ -27,17 +27,18 @@ public class TestUriValidation {
 		if (os.contains("windows")) {
 			// windows only
 
-			System.out.println("#########");
-			System.out.println( urival.stringToValue(p.toString() + "?d/e").toString());
-			System.out.println( urival.stringToValue(p.toString() + "?d/e#f/g").toString());
-			System.out.println("#########");
+			System.err.println("#########");
+			System.err.println( p.toString());
+			System.err.println( urival.stringToValue(p.toString() + "?d/e").toString());
+			System.err.println( urival.stringToValue(p.toString() + "?d/e#f/g").toString());
+			System.err.println("#########");
 
-//			assertThrows(ParseException.class, () -> {
-//				urival.stringToValue(p.toString() + "?d/e");
-//			});
-//			assertThrows(ParseException.class, () -> {
-//				urival.stringToValue(p.toString() + "?d/e#/f/g");
-//			});
+			assertThrows(ParseException.class, () -> {
+				urival.stringToValue(p.toString() + "?d/e");
+			});
+			assertThrows(ParseException.class, () -> {
+				urival.stringToValue(p.toString() + "?d/e#/f/g");
+			});
 		} else {
 			// not windows
 			assertIsPathGet("relative path", p.normalize().toString(), urival);
