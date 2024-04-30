@@ -964,7 +964,7 @@ public class DatasetSelectorDialog {
 		public String valueToString(Object arg) throws ParseException {
 
 			if( arg instanceof URI )
-				return ((URI)arg).toString().replaceFirst("^file://", "");
+				return ((URI)arg).toString();
 			else
 				throw new ParseException("input " + arg + " not a valid URI", 0);
 		}
