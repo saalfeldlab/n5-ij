@@ -960,7 +960,7 @@ public class DatasetSelectorDialog {
 			if (format != null)
 				fmt = format.toString().toLowerCase() + ":";
 
-			input = fmtAndUri.toString();
+			input = fmtAndUri.getB();
 
 			N5URI n5uri = null;
 			try {
