@@ -28,6 +28,7 @@ package org.janelia.saalfeldlab.n5.ui;
 import ij.IJ;
 import ij.ImageJ;
 import ij.gui.ProgressBar;
+import net.imglib2.util.Pair;
 import se.sawano.java.text.AlphanumericComparator;
 
 import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
@@ -36,6 +37,8 @@ import org.janelia.saalfeldlab.n5.CompressionAdapter;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
@@ -74,7 +77,7 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.io.File;
 import java.net.URI;
-import java.nio.file.Path;
+import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.text.Collator;
 import java.text.ParseException;
@@ -943,16 +946,27 @@ public class DatasetSelectorDialog {
 		private static final long serialVersionUID = 6765664180035018335L;
 
 		@Override
-		public Object stringToValue(String input) throws ParseException {
+		public Object stringToValue(String inputArg) throws ParseException {
 
-			if (input == null || input.isEmpty())
+			if (inputArg == null || inputArg.isEmpty())
 				return null;
+
+			// Check if the input starts with a format string 
+			// one of "h5:", "hdf5:", "n5:", "zarr:", etc
+			String fmt = null;
+			String input = inputArg;
+			final Pair<StorageFormat, String> fmtAndUri = N5Factory.StorageFormat.getStorageFromNestedScheme(input);
+			final StorageFormat format = fmtAndUri.getA();
+			if (format != null)
+				fmt = format.toString().toLowerCase() + ":";
+
+			input = fmtAndUri.getB();
 
 			N5URI n5uri = null;
 			try {
 				URI uri = new URI(input.trim());
 				if (uri.isAbsolute())
-					return uri.normalize();
+					return addTypeScheme(fmt, uri.normalize());
 				else {
 					n5uri = new N5URI(uri);
 				}
@@ -966,13 +980,22 @@ public class DatasetSelectorDialog {
 						uri.getQuery() == null ? null : n5uri.getGroupPath(),
 						uri.getFragment() == null ? null : n5uri.getAttributePath());
 
-					return pathOnly.resolve(queryFragmentOnly).getURI().normalize();
+					return addTypeScheme(fmt, pathOnly.resolve(queryFragmentOnly).getURI().normalize());
 				} else
-					return Paths.get(input.trim()).normalize().toUri();
+					return addTypeScheme(fmt, Paths.get(input.trim()).normalize().toUri());
 
 			} catch (Throwable ignore) {}
 
 			throw new ParseException("input " + input + " not a valid URI", 0);
+		}
+
+		private URI addTypeScheme(String typeScheme, URI uri) {
+
+			if (typeScheme == null)
+				return uri;
+			else
+				return URI.create(typeScheme + uri.toString());
+
 		}
 
 		@Override

@@ -2,6 +2,7 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -74,13 +75,10 @@ public class TestUriValidation {
 		assertIsUriCreate("https gcs path, query", "https://storage.googleapis.com/a/b/c?d/e", urival);
 		assertIsUriCreate("https gcs path, query, frament", "https://storage.googleapis.com/a/b/c?d/e#f/g", urival);
 
-		assertIsUriCreate("zarr: path", "zarr:/a/b/c", urival);
-		assertIsUriCreate("zarr: path, query", "zarr:/a/b/c?d/e", urival);
-		assertIsUriCreate("zarr: path, query fragment", "zarr:/a/b/c?d/e#f/g", urival);
-
-		assertIsUriCreate("zarr:file: path", "zarr:file:///a/b/c", urival);
-		assertIsUriCreate("zarr:file: path, query", "zarr:file:///a/b/c?d/e", urival);
-		assertIsUriCreate("zarr:file: path, query fragment", "zarr:file:///a/b/c?d/e#f/g", urival);
+		assertIsPathGetType("zarr: path", "zarr:", "/a/b/c", urival);
+		assertIsUriCreateType("zarr:file: path", "zarr:", "file:///a/b/c", urival);
+		assertIsUriCreateType("zarr:file: path, query", "zarr:", "file:///a/b/c?d/e", urival);
+		assertIsUriCreateType("zarr:file: path, query fragment", "zarr:", "file:///a/b/c?d/e#f/g", urival);
 	}
 
 	private void assertIsUriCreate(String message, String s, UriValidator urival) throws ParseException {
@@ -88,9 +86,25 @@ public class TestUriValidation {
 		assertEquals(message, URI.create(s).normalize(), urival.stringToValue(s));
 	}
 
+	private void assertIsUriCreateType(String message, String typeScheme, String s, UriValidator urival) throws ParseException {
+
+		final URI val = (URI)urival.stringToValue(typeScheme + s);
+		assertTrue(message + " starts with typescheme", val.toString().startsWith(typeScheme));
+		final URI uriNoType = URI.create(val.toString().replaceFirst("^" + typeScheme, ""));
+		assertEquals(message, URI.create(s).normalize(), uriNoType);
+	}
+
 	private void assertIsPathGet(String message, String s, UriValidator urival) throws ParseException {
 
 		assertEquals(message, Paths.get(s).toUri().normalize(), urival.stringToValue(s));
+	}
+
+	private void assertIsPathGetType(String message, String typeScheme, String s, UriValidator urival) throws ParseException {
+
+		final URI val = (URI)urival.stringToValue(typeScheme + s);
+		assertTrue(message + " starts with typescheme", val.toString().startsWith(typeScheme));
+		final URI uriNoType = URI.create(val.toString().replaceFirst("^" + typeScheme, ""));
+		assertEquals(message, Paths.get(s).toUri().normalize(), uriNoType);
 	}
 
 }
