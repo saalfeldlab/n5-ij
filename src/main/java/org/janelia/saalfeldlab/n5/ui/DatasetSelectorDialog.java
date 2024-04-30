@@ -951,20 +951,16 @@ public class DatasetSelectorDialog {
 			if (inputArg == null || inputArg.isEmpty())
 				return null;
 
-			URI returnVal;
+			// Check if the input starts with a format string 
+			// one of "h5:", "hdf5:", "n5:", "zarr:", etc
 			String fmt = null;
 			String input = inputArg;
-			try {
+			final Pair<StorageFormat, String> fmtAndUri = N5Factory.StorageFormat.getStorageFromNestedScheme(input);
+			final StorageFormat format = fmtAndUri.getA();
+			if (format != null)
+				fmt = format.toString().toLowerCase() + ":";
 
-				final Pair<StorageFormat, URI> fmtAndUri = N5Factory.StorageFormat.parseUri(input);
-
-				final StorageFormat format = fmtAndUri.getA();
-				if (format != null)
-					fmt = format.toString().toLowerCase() + ":";
-
-				input = fmtAndUri.getB().toString();
-
-			} catch (URISyntaxException e) {}
+			input = fmtAndUri.toString();
 
 			N5URI n5uri = null;
 			try {
