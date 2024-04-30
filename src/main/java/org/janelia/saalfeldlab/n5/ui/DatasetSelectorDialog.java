@@ -947,14 +947,28 @@ public class DatasetSelectorDialog {
 			if (input == null || input.isEmpty())
 				return null;
 
+			N5URI n5uri = null;
 			try {
-				final URI uri = new URI(input);
+				URI uri = new URI(input.trim());
 				if (uri.isAbsolute())
-					return uri;
+					return uri.normalize();
+				else {
+					n5uri = new N5URI(uri);
+				}
 			} catch (Throwable ignore) {}
 
 			try {
-				return Paths.get(input).toUri();
+				if (n5uri != null) {
+					final N5URI pathOnly = new N5URI(Paths.get(n5uri.getContainerPath()).normalize().toUri());
+					final URI uri = n5uri.getURI();
+					N5URI queryFragmentOnly = N5URI.from("",
+						uri.getQuery() == null ? null : n5uri.getGroupPath(),
+						uri.getFragment() == null ? null : n5uri.getAttributePath());
+
+					return pathOnly.resolve(queryFragmentOnly).getURI().normalize();
+				} else
+					return Paths.get(input.trim()).normalize().toUri();
+
 			} catch (Throwable ignore) {}
 
 			throw new ParseException("input " + input + " not a valid URI", 0);
