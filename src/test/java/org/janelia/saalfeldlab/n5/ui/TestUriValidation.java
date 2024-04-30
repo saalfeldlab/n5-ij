@@ -27,12 +27,6 @@ public class TestUriValidation {
 		if (os.contains("windows")) {
 			// windows only
 
-			System.err.println("#########");
-			System.err.println( p.toString());
-			System.err.println( urival.stringToValue(p.toString() + "?d/e").toString());
-			System.err.println( urival.stringToValue(p.toString() + "?d/e#f/g").toString());
-			System.err.println("#########");
-
 			assertThrows(ParseException.class, () -> {
 				urival.stringToValue(p.toString() + "?d/e");
 			});
