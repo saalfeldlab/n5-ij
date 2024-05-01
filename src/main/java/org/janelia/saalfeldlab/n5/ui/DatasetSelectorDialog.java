@@ -964,7 +964,7 @@ public class DatasetSelectorDialog {
 			final Pair<StorageFormat, String> fmtAndUri = N5Factory.StorageFormat.getStorageFromNestedScheme(input);
 			final StorageFormat format = fmtAndUri.getA();
 			if (format != null)
-				fmt = format.toString().toLowerCase() + ":";
+				fmt = format.toString().toLowerCase() + "://";
 
 			input = fmtAndUri.getB();
 
