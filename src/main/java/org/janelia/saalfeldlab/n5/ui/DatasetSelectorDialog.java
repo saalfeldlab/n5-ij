@@ -947,7 +947,7 @@ public class DatasetSelectorDialog {
 		return normalDatasetName(a, "/").equals(normalDatasetName(b, "/"));
 	}
 
-	protected static class UriValidator extends AbstractFormatter {
+	public static class UriValidator extends AbstractFormatter {
 
 		private static final long serialVersionUID = 6765664180035018335L;
 

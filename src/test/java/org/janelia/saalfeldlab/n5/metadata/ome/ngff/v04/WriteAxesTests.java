@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -28,6 +29,9 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
+import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
+import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog.UriValidator;
+import org.janelia.saalfeldlab.n5.ui.TestUriValidation;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
@@ -196,6 +200,7 @@ public class WriteAxesTests {
 		assertEquals(1, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.CHANNEL)).count());
 		assertEquals(0, Arrays.stream(ngffMeta.multiscales[0].axes).filter(x -> x.getType().equals(Axis.TIME)).count());
 
+		System.out.println(rootLocation);
 		final ImagePlus impRead = readImage(rootLocation);
 		assertTrue(TestExportImports.equal(imp, impRead));
 		remove(rootLocation);
@@ -267,7 +272,15 @@ public class WriteAxesTests {
 		return null;
 	}
 
-	private ImagePlus readImage(final String rootLocation ) {
+	private ImagePlus readImage(final String rootLocationArg) {
+
+		final UriValidator validator = new DatasetSelectorDialog.UriValidator();
+		String rootLocation = rootLocationArg;
+		try {
+			rootLocation = ((URI)validator.stringToValue(rootLocation)).toString();
+		} catch (ParseException e) {
+			e.printStackTrace();
+		}
 
 		final N5Reader zarr = new N5Factory().openReader(rootLocation);
 		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr,
@@ -278,7 +291,7 @@ public class WriteAxesTests {
 		if( meta instanceof N5DatasetMetadata ) {
 
 			final N5DatasetMetadata dsetmeta = (N5DatasetMetadata)meta;
-			final List<N5DatasetMetadata> metaList = Collections.singletonList( dsetmeta );
+			final List<N5DatasetMetadata> metaList = Collections.singletonList(dsetmeta);
 			final List<ImagePlus> impList = N5Importer.process(zarr, rootLocation, Executors.newFixedThreadPool(1), metaList, false, null, false, impWriters);
 			return impList.size() == 0 ? null : impList.get(0);
 		}
