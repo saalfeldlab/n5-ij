@@ -624,6 +624,9 @@ public class DatasetSelectorDialog {
 			messageLabel.repaint();
 		});
 
+		// validate and update input
+		containerPathText.validateAndUpdate();
+
 		final String n5Path = opener.get();
 		containerPathUpdateCallback.accept(n5Path);
 
@@ -800,6 +803,9 @@ public class DatasetSelectorDialog {
 		// stop parsing things
 		if (parseExec != null)
 			parseExec.shutdownNow();
+
+		// validate and update input
+		containerPathText.validateAndUpdate();
 
 		final ArrayList<N5Metadata> selectedMetadata = new ArrayList<>();
 
