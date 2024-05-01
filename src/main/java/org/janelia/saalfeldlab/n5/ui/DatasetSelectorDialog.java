@@ -624,6 +624,9 @@ public class DatasetSelectorDialog {
 			messageLabel.repaint();
 		});
 
+		// validate and update input
+		containerPathText.validateAndUpdate();
+
 		final String n5Path = opener.get();
 		containerPathUpdateCallback.accept(n5Path);
 
@@ -801,6 +804,9 @@ public class DatasetSelectorDialog {
 		if (parseExec != null)
 			parseExec.shutdownNow();
 
+		// validate and update input
+		containerPathText.validateAndUpdate();
+
 		final ArrayList<N5Metadata> selectedMetadata = new ArrayList<>();
 
 		// check if we can skip explicit dataset detection
@@ -941,7 +947,7 @@ public class DatasetSelectorDialog {
 		return normalDatasetName(a, "/").equals(normalDatasetName(b, "/"));
 	}
 
-	protected static class UriValidator extends AbstractFormatter {
+	public static class UriValidator extends AbstractFormatter {
 
 		private static final long serialVersionUID = 6765664180035018335L;
 
@@ -958,7 +964,7 @@ public class DatasetSelectorDialog {
 			final Pair<StorageFormat, String> fmtAndUri = N5Factory.StorageFormat.getStorageFromNestedScheme(input);
 			final StorageFormat format = fmtAndUri.getA();
 			if (format != null)
-				fmt = format.toString().toLowerCase() + ":";
+				fmt = format.toString().toLowerCase() + "://";
 
 			input = fmtAndUri.getB();
 

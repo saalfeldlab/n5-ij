@@ -203,6 +203,19 @@ public class ImprovedFormattedTextField extends JFormattedTextField {
 		}
 	}
 
+	public void validateAndUpdate() {
+
+		final AbstractFormatter formatter = getFormatter();
+		if (formatter != null) {
+			try {
+				Object result = formatter.stringToValue((String)getText());
+				setValue((URI)result, false, false);	// no callback, no validation
+			} catch (ParseException ignore) {
+				ignore.printStackTrace();
+			}
+		}
+	}
+
 	private static class MousePositionCorrectorListener extends FocusAdapter {
 
 		@Override
@@ -239,24 +252,14 @@ public class ImprovedFormattedTextField extends JFormattedTextField {
 		
 		private final ImprovedFormattedTextField field;
 
-		public ContainerTextUpdateOnFocus(ImprovedFormattedTextField field) {
+		public ContainerTextUpdateOnFocus(final ImprovedFormattedTextField field) {
 
 			this.field = field;
 		}
 
 		@Override
 		public void focusLost(FocusEvent e) {
-
-			final AbstractFormatter formatter = field.getFormatter();
-			if (formatter != null) {
-				try {
-					Object result = formatter.stringToValue((String)field.getText());
-					field.setValue((URI)result, false, false); // no callback, no validation
-				} catch (ParseException ignore) {
-					ignore.printStackTrace();
-				}
-			}
-
+			field.validateAndUpdate();
 		}
 	}
 
