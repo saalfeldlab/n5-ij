@@ -79,6 +79,11 @@ public class TestUriValidation {
 		assertIsUriCreateType("zarr:file: path", "zarr:", "file:///a/b/c", urival);
 		assertIsUriCreateType("zarr:file: path, query", "zarr:", "file:///a/b/c?d/e", urival);
 		assertIsUriCreateType("zarr:file: path, query fragment", "zarr:", "file:///a/b/c?d/e#f/g", urival);
+
+		assertIsPathGetType("zarr: path", "zarr://", "/a/b/c", urival);
+		assertIsUriCreateType("zarr:file: path", "zarr://", "file:///a/b/c", urival);
+		assertIsUriCreateType("zarr:file: path, query", "zarr://", "file:///a/b/c?d/e", urival);
+		assertIsUriCreateType("zarr:file: path, query fragment", "zarr://", "file:///a/b/c?d/e#f/g", urival);
 	}
 
 	private void assertIsUriCreate(String message, String s, UriValidator urival) throws ParseException {
@@ -90,7 +95,7 @@ public class TestUriValidation {
 
 		final URI val = (URI)urival.stringToValue(typeScheme + s);
 		assertTrue(message + " starts with typescheme", val.toString().startsWith(typeScheme));
-		final URI uriNoType = URI.create(val.toString().replaceFirst("^" + typeScheme, ""));
+		final URI uriNoType = URI.create(val.toString().replaceFirst("^" + typeScheme + "\\/*", ""));
 		assertEquals(message, URI.create(s).normalize(), uriNoType);
 	}
 
@@ -103,7 +108,7 @@ public class TestUriValidation {
 
 		final URI val = (URI)urival.stringToValue(typeScheme + s);
 		assertTrue(message + " starts with typescheme", val.toString().startsWith(typeScheme));
-		final URI uriNoType = URI.create(val.toString().replaceFirst("^" + typeScheme, ""));
+		final URI uriNoType = URI.create(val.toString().replaceFirst("^" + typeScheme + "\\/*", ""));
 		assertEquals(message, Paths.get(s).toUri().normalize(), uriNoType);
 	}
 

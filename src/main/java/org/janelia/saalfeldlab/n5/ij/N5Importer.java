@@ -29,7 +29,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -725,7 +724,7 @@ public class N5Importer implements PlugIn {
 	 * requested.
 	 */
 	public static List<ImagePlus> process(final N5Reader n5,
-			final String rootPath,
+			final String rootPathArg,
 			final ExecutorService exec,
 			final List<N5DatasetMetadata> datasetMetadataList,
 			final boolean asVirtual,
@@ -733,6 +732,8 @@ public class N5Importer implements PlugIn {
 			final boolean show,
 			final Map<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes) {
 
+		// determine if the root path contains a query
+		String rootPath = rootPathArg;
 		final ArrayList<ImagePlus> imgList = new ArrayList<>();
 		for (final N5DatasetMetadata datasetMeta : datasetMetadataList) {
 			// is this check necessary?
@@ -742,7 +743,10 @@ public class N5Importer implements PlugIn {
 			final String d = normalPathName(datasetMeta.getPath(), n5.getGroupSeparator());
 			try {
 
-				final String n5Url = N5URI.from(rootPath, d, null).toString();
+				final StorageFormat fmt = N5Factory.StorageFormat.guessStorageFromUri(URI.create(rootPathArg));
+				final String fmtPrefix = fmt == null ? "" : fmt.toString().toLowerCase() + "://";
+
+				final String n5Url = fmtPrefix + N5URI.from(n5.getURI().toString(), d, null).toString();
 				final ImageplusMetadata<?> impMeta = impMetaWriterTypes.get(datasetMeta.getClass());
 
 				// datasetMeta must have absolute path
@@ -867,7 +871,7 @@ public class N5Importer implements PlugIn {
 					final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(n5UriOrPath);
 					final StorageFormat format = fmtUri.getA();
 
-					final N5URI n5uri = from(fmtUri.getB().toString());
+					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
 					// add the format prefix back if it was present
 					rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
 				} catch (URISyntaxException e) {}
@@ -965,10 +969,13 @@ public class N5Importer implements PlugIn {
 		@Override
 		public String apply(final String n5UriOrPath) {
 
-			if( n5UriOrPath.contains("?") )
-			{
+			if (n5UriOrPath.contains("?")) {
 				try {
-					return new N5URI( n5UriOrPath ).getGroupPath();
+					// need to strip off storage format for n5uri to correctly remove query;
+					// but can ignore the format here
+					final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(n5UriOrPath);
+					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
+					return n5uri.getGroupPath();
 				} catch (URISyntaxException e) {}
 			}
 
