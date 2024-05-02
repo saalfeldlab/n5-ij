@@ -210,9 +210,7 @@ public class ImprovedFormattedTextField extends JFormattedTextField {
 			try {
 				Object result = formatter.stringToValue((String)getText());
 				setValue((URI)result, false, false);	// no callback, no validation
-			} catch (ParseException ignore) {
-				ignore.printStackTrace();
-			}
+			} catch (ParseException ignore) {}
 		}
 	}
 
