@@ -62,8 +62,8 @@ import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
@@ -81,6 +81,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataP
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -495,14 +496,20 @@ public class N5Importer implements PlugIn {
 		final String d = datasetMeta.getPath();
 		final CachedCellImg imgRaw = N5Utils.open(n5, d);
 
+		RandomAccessibleInterval imgNorm;
+		if (OmeNgffMultiScaleMetadata.fOrder(datasetMeta.getAttributes()))
+			imgNorm = AxisUtils.reverseDimensions(imgRaw);
+		else
+			imgNorm = imgRaw;
+
 		// crop if necesssary
 		final RandomAccessibleInterval imgC;
 		Interval cropInterval = null;
 		if (cropIntervalIn != null) {
-			cropInterval = processCropInterval(imgRaw, cropIntervalIn);
-			imgC = Views.interval(imgRaw, cropInterval);
+			cropInterval = processCropInterval(imgNorm, cropIntervalIn);
+			imgC = Views.interval(imgNorm, cropInterval);
 		} else
-			imgC = imgRaw;
+			imgC = imgNorm;
 
 		// permute axes if necessary (specified by metadata)
 		final RandomAccessibleInterval img;
@@ -733,7 +740,7 @@ public class N5Importer implements PlugIn {
 			final Map<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes) {
 
 		// determine if the root path contains a query
-		String rootPath = rootPathArg;
+		final String rootPath = rootPathArg;
 		final ArrayList<ImagePlus> imgList = new ArrayList<>();
 		for (final N5DatasetMetadata datasetMeta : datasetMetadataList) {
 			// is this check necessary?
@@ -767,7 +774,7 @@ public class N5Importer implements PlugIn {
 
 			} catch (final IOException e) {
 				IJ.error("failed to read n5");
-			} catch (URISyntaxException e1) {
+			} catch (final URISyntaxException e1) {
 				IJ.error("unable to parse url: " + rootPath + "?" + d );
 			}
 		}
@@ -874,7 +881,7 @@ public class N5Importer implements PlugIn {
 					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
 					// add the format prefix back if it was present
 					rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
-				} catch (URISyntaxException e) {}
+				} catch (final URISyntaxException e) {}
 			}
 
 			if (rootPath == null)
@@ -940,7 +947,7 @@ public class N5Importer implements PlugIn {
 					final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(n5UriOrPath);
 					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
 					return n5uri.getGroupPath();
-				} catch (URISyntaxException e) {}
+				} catch (final URISyntaxException e) {}
 			}
 
 			if (n5UriOrPath.contains(".h5") || n5UriOrPath.contains(".hdf5") || n5UriOrPath.contains(".hdf"))
