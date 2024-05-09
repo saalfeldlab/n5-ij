@@ -118,7 +118,16 @@
 		</dependency>
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
+			<artifactId>n5-universe</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-zarr</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.janelia</groupId>
+			<artifactId>n5-zstandard</artifactId>
+			<version>${n5-zstandard.version}</version>
 		</dependency>
 
 		<!-- ImgLib2 dependencies -->
@@ -176,6 +185,11 @@
 			<groupId>info.picocli</groupId>
 			<artifactId>picocli</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.formdev</groupId>
+			<artifactId>flatlaf</artifactId>
+		</dependency>
+
 
 		<!-- Test dependencies -->
 		<dependency>
@@ -184,17 +198,11 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>com.formdev</groupId>
-			<artifactId>flatlaf</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-universe</artifactId>
-		</dependency>
-		<dependency>
-			<groupId>org.janelia</groupId>
-			<artifactId>n5-zstandard</artifactId>
-			<version>${n5-zstandard.version}</version>
+			<version>${n5-universe.version}</version>
+			<classifier>tests</classifier>
+			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
