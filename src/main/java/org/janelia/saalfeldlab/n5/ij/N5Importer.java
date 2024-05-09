@@ -41,7 +41,9 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -64,6 +66,7 @@ import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
@@ -650,32 +653,74 @@ public class N5Importer implements PlugIn {
 
 	public static ImagePlus open(final String uri) {
 
+		return open(uri, true);
+	}
+
+	public static ImagePlus open(final String uri, final boolean show) {
+
+		try {
+			final N5URI n5uri = new N5URI(uri);
+			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
+			if (!grp.isEmpty()) {
+				return open(uri, grp, show);
+			}
+		} catch (final URISyntaxException e) {}
+
 		return open(uri, ALL_PASS);
 	}
 
 	public static ImagePlus open(final String uri, final String dataset) {
 
-		return open(uri, x -> {
-			return norm(x.getPath()).equals(norm(dataset));
-		});
+		return open(uri, dataset, true);
+	}
+
+	public static ImagePlus open(final String uri, final String dataset, final boolean show) {
+
+		return open(uri,
+				x -> {
+					return norm(x.getPath()).equals(norm(dataset));
+				},
+				show);
 	}
 
 	public static ImagePlus open(final String uri, final Predicate<N5Metadata> filter ) {
 
-		final N5Reader n5 = new N5Factory().openReader(uri);
+		return open(uri, filter, true);
+	}
+
+	public static ImagePlus open(final String uri, final Predicate<N5Metadata> filter, final boolean show) {
+
+		final N5Reader n5;
+		try {
+			n5 = new N5ViewerReaderFun().apply(uri);
+		} catch (final Exception e) {
+			e.printStackTrace();
+			return null;
+		}
 		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
 
 		final Predicate<N5Metadata> datasetFilter = x -> { return x instanceof N5DatasetMetadata; };
 		final Predicate<N5Metadata> totalFilter = filter == null || filter == ALL_PASS
 				? datasetFilter : datasetFilter.and(filter);
 
-		final Optional<N5DatasetMetadata> meta = N5TreeNode.flattenN5Tree(node)
+		Stream<N5DatasetMetadata> metaStream = N5TreeNode.flattenN5Tree(node)
 			.filter( x -> totalFilter.test(x.getMetadata()) )
-			.map( x-> { return (N5DatasetMetadata)x.getMetadata(); })
-			.findFirst();
+				.map(x -> {
+					return (N5DatasetMetadata)x.getMetadata();
+				});
 
+		N5URI n5uri;
+		try {
+			n5uri = new N5URI(uri);
+			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
+			if (!grp.isEmpty()) {
+				metaStream = metaStream.filter(x -> N5URI.normalizeAttributePath(x.getPath()).equals(grp));
+			}
+		} catch (final URISyntaxException e) {}
+
+		final Optional<N5DatasetMetadata> meta = metaStream.findFirst();
 		if (meta.isPresent()) {
-			return open( n5, uri, meta.get());
+			return open(n5, uri, meta.get(), show);
 		} else {
 			System.err.println("No arrays matching criteria found in container at: " + uri);
 			return null;
@@ -684,13 +729,18 @@ public class N5Importer implements PlugIn {
 
 	public static ImagePlus open(final N5Reader n5, final String uri, final N5DatasetMetadata metadata) {
 
+		return open(n5, uri, metadata, true);
+	}
+
+	public static ImagePlus open(final N5Reader n5, final String uri, final N5DatasetMetadata metadata, final boolean show) {
+
 		final ExecutorService exec = Executors.newFixedThreadPool(
 				Runtime.getRuntime().availableProcessors() / 2);
 
 		return N5Importer.process(n5, uri,
 				exec,
 				Collections.singletonList(metadata),
-				false, null).get(0);
+				false, show, null).get(0);
 	}
 
 	private static String norm(final String groupPath) {
@@ -709,6 +759,21 @@ public class N5Importer implements PlugIn {
 			final Interval cropInterval) {
 
 		return process(n5, rootPath, exec, datasetMetadataList, asVirtual, cropInterval, true,
+				defaultImagePlusMetadataWriters());
+	}
+
+	/*
+	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
+	 */
+	public static List<ImagePlus> process(final N5Reader n5,
+			final String rootPath,
+			final ExecutorService exec,
+			final List<N5DatasetMetadata> datasetMetadataList,
+			final boolean asVirtual,
+			final boolean show,
+			final Interval cropInterval) {
+
+		return process(n5, rootPath, exec, datasetMetadataList, asVirtual, cropInterval, show,
 				defaultImagePlusMetadataWriters());
 	}
 
