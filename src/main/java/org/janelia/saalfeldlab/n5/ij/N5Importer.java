@@ -477,7 +477,7 @@ public class N5Importer implements PlugIn {
 	 *            the n5Reader
 	 * @param exec
 	 *            an ExecutorService to manage parallel reading
-	 * @param datasetMeta
+	 * @param datasetMetaArg
 	 *            datasetMetadata containing the path
 	 * @param cropIntervalIn
 	 *            optional crop interval
@@ -490,18 +490,20 @@ public class N5Importer implements PlugIn {
 	 *             io
 	 */
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	public static <T extends NumericType<T> & NativeType<T>, M extends N5DatasetMetadata> ImagePlus read(
+	public static <T extends NumericType<T> & NativeType<T>, M extends N5DatasetMetadata, A extends AxisMetadata & N5Metadata> ImagePlus read(
 			final N5Reader n5,
 			final ExecutorService exec,
-			final N5DatasetMetadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
+			final N5DatasetMetadata datasetMetaArg, final Interval cropIntervalIn, final boolean asVirtual,
 			final ImageplusMetadata<M> ipMeta) throws IOException {
 
-		final String d = datasetMeta.getPath();
+		final String d = datasetMetaArg.getPath();
 		final CachedCellImg imgRaw = N5Utils.open(n5, d);
 
 		RandomAccessibleInterval imgNorm;
-		if (OmeNgffMultiScaleMetadata.fOrder(datasetMeta.getAttributes()))
+		if (OmeNgffMultiScaleMetadata.fOrder(datasetMetaArg.getAttributes())) {
 			imgNorm = AxisUtils.reverseDimensions(imgRaw);
+			ArrayUtils.reverse(datasetMetaArg.getAttributes().getDimensions());
+		}
 		else
 			imgNorm = imgRaw;
 
@@ -514,12 +516,36 @@ public class N5Importer implements PlugIn {
 		} else
 			imgC = imgNorm;
 
-		// permute axes if necessary (specified by metadata)
 		final RandomAccessibleInterval img;
-		if (datasetMeta != null && datasetMeta instanceof AxisMetadata)
-			img = AxisUtils.permuteForImagePlus(imgC, (AxisMetadata)datasetMeta);
-		else
+		M datasetMeta;
+		if (datasetMetaArg != null && datasetMetaArg instanceof AxisMetadata) {
+
+			// this permutation will be applied to the image whose dimensions
+			// are padded to 5d with a canoni
+			final int[] p = AxisUtils.findImagePlusPermutation((AxisMetadata)datasetMetaArg);
+
+			// store the permutation for metadata
+			final int[] metadataPermutation = Arrays.stream(p).filter(x -> x >= 0).toArray();
+
+			// pad the image permutation
+			AxisUtils.fillPermutation(p);
+
+			RandomAccessibleInterval<T> imgTmp = imgC;
+			while (imgTmp.numDimensions() < 5)
+				imgTmp = Views.addDimension(imgTmp, 0, 0);
+
+			if (AxisUtils.isIdentityPermutation(p)) {
+				img = imgTmp;
+				datasetMeta = (M)datasetMetaArg;
+			} else {
+				img = AxisUtils.permute(imgTmp, AxisUtils.invertPermutation(p));
+				datasetMeta = (M)MetadataUtils.permuteSpatialMetadata(datasetMetaArg, metadataPermutation);
+			}
+
+		} else {
 			img = imgC;
+			datasetMeta = (M)datasetMetaArg;
+		}
 
 		RandomAccessibleInterval<T> convImg;
 		final DataType type = datasetMeta.getAttributes().getDataType();

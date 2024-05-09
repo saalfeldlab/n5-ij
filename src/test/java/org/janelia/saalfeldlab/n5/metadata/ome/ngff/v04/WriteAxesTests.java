@@ -7,7 +7,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.text.ParseException;
 import java.util.Arrays;
@@ -31,11 +30,9 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog.UriValidator;
-import org.janelia.saalfeldlab.n5.ui.TestUriValidation;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
@@ -47,7 +44,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDa
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -55,7 +51,6 @@ import com.google.gson.JsonElement;
 
 import ij.ImagePlus;
 import ij.gui.NewImage;
-import net.imglib2.util.Pair;
 
 public class WriteAxesTests {
 
@@ -204,7 +199,6 @@ public class WriteAxesTests {
 		final ImagePlus impRead = readImage(rootLocation);
 		assertTrue(TestExportImports.equal(imp, impRead));
 		remove(rootLocation);
-		// TODO other checks?
 	}
 
 	@Test
@@ -278,7 +272,7 @@ public class WriteAxesTests {
 		String rootLocation = rootLocationArg;
 		try {
 			rootLocation = ((URI)validator.stringToValue(rootLocation)).toString();
-		} catch (ParseException e) {
+		} catch (final ParseException e) {
 			e.printStackTrace();
 		}
 

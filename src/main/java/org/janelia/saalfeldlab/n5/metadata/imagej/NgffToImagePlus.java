@@ -10,7 +10,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiSca
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
 
 import ij.ImagePlus;
-import ij.measure.Calibration;
 
 public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleAxesMetadata> {
 
@@ -18,11 +17,6 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 	public void writeMetadata(final NgffSingleScaleAxesMetadata t, final ImagePlus ip) throws IOException {
 
 		ip.setTitle(t.getPath());
-		final Calibration cal = ip.getCalibration();
-
-		final int nd = t.getAttributes().getNumDimensions();
-		final long[] dims = t.getAttributes().getDimensions();
-
 		int numChannels = 0;
 		int numTimes = 0;
 		int numZ = 0;
@@ -66,8 +60,6 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		numChannels = numChannels == 0 ? 1 : numChannels;
 		numZ = numZ == 0 ? 1 : numZ;
 		numTimes = numTimes == 0 ? 1 : numTimes;
-		ip.setDimensions(numChannels, numZ, numTimes);
-
 		if( xIdx >= 0 ) {
 			ip.getCalibration().pixelWidth = t.getScale()[xIdx];
 			ip.getCalibration().xOrigin = t.getTranslation()[xIdx];
