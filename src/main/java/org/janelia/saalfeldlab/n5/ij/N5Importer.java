@@ -41,10 +41,12 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5URI;
@@ -66,11 +68,11 @@ import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
-import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DefaultSingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
@@ -85,6 +87,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDa
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -517,30 +520,27 @@ public class N5Importer implements PlugIn {
 			imgC = imgNorm;
 
 		final RandomAccessibleInterval img;
-		M datasetMeta;
+		final M datasetMeta;
 		if (datasetMetaArg != null && datasetMetaArg instanceof AxisMetadata) {
 
 			// this permutation will be applied to the image whose dimensions
 			// are padded to 5d with a canoni
 			final int[] p = AxisUtils.findImagePlusPermutation((AxisMetadata)datasetMetaArg);
 
-			// store the permutation for metadata
-			final int[] metadataPermutation = Arrays.stream(p).filter(x -> x >= 0).toArray();
+			final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadataForImagePlus(p, imgC, datasetMetaArg);
+			img = res.getA();
+			datasetMeta = res.getB();
 
-			// pad the image permutation
-			AxisUtils.fillPermutation(p);
+		} else if (zarrFOrderAndEmptyMetadata(n5, datasetMetaArg)) {
 
-			RandomAccessibleInterval<T> imgTmp = imgC;
-			while (imgTmp.numDimensions() < 5)
-				imgTmp = Views.addDimension(imgTmp, 0, 0);
+			// reverse dimensions if no metadata, and f-order zarr
+			final int N = imgC.numDimensions();
+			final int[] p = IntStream.iterate(N - 1, x -> x - 1)
+					.limit(N)
+					.toArray();
 
-			if (AxisUtils.isIdentityPermutation(p)) {
-				img = imgTmp;
-				datasetMeta = (M)datasetMetaArg;
-			} else {
-				img = AxisUtils.permute(imgTmp, AxisUtils.invertPermutation(p));
-				datasetMeta = (M)MetadataUtils.permuteSpatialMetadata(datasetMetaArg, metadataPermutation);
-			}
+			img = imgC;
+			datasetMeta = (M)datasetMetaArg;
 
 		} else {
 			img = imgC;
@@ -606,6 +606,17 @@ public class N5Importer implements PlugIn {
 		}
 
 		return imp;
+	}
+
+	private static boolean zarrFOrderAndEmptyMetadata(final N5Reader n5, N5Metadata meta) {
+
+		if (n5 instanceof ZarrKeyValueReader && meta instanceof N5DefaultSingleScaleMetadata) {
+
+			final DatasetAttributes attrs = ((N5DefaultSingleScaleMetadata)meta).getAttributes();
+			return true;
+		}
+
+		return false;
 	}
 
 	public static RandomAccessibleInterval<FloatType> convertDouble(
