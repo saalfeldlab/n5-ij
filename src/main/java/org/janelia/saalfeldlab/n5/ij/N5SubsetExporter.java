@@ -139,27 +139,6 @@ public class N5SubsetExporter extends ContextCommand {
 		setOptions(image, n5RootLocation, n5Dataset, subsetOffset);
 	}
 
-	public static void main(final String[] args) {
-
-		// final ImageJ ij = new ImageJ();
-		// final ImagePlus imp =
-		// IJ.openImage("/home/john/tmp/mitosis-xyct.tif");
-
-		// final ImagePlus imp = IJ.openImage("/home/john/tmp/mri-stack.tif");
-		// final String root = "/home/john/tmp/mri-test.n5";
-
-		// final ImagePlus imp = IJ.openImage( "/home/john/tmp/mitosis.tif" );
-		// final String root = "/home/john/tmp/mitosis-test.zarr";
-
-		final ImagePlus imp = IJ.openImage("/home/john/tmp/boats.tif");
-		final String root = "/home/john/tmp/asdf.n5";
-		final String dset = "a/b";
-
-		final N5SubsetExporter exp = new N5SubsetExporter();
-		exp.setOptions(imp, root, dset, "200,400");
-		exp.run();
-	}
-
 	public void setOptions(final ImagePlus image, final String containerRoot, final String dataset, final String subsetOffset) {
 
 		this.image = image;
