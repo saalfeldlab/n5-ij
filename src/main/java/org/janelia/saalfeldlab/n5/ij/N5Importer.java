@@ -740,7 +740,7 @@ public class N5Importer implements PlugIn {
 			n5uri = new N5URI(uri);
 			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
 			if (!grp.isEmpty()) {
-				metaStream = metaStream.filter(x -> N5URI.normalizeAttributePath(x.getPath()).equals(grp));
+				metaStream = metaStream.filter(x -> N5URI.normalizeGroupPath(x.getPath()).equals(grp));
 			}
 		} catch (final URISyntaxException e) {}
 
