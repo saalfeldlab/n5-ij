@@ -26,16 +26,28 @@
 package org.janelia.saalfeldlab.n5.ij;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DefaultSingleScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
+import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
+import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 import org.scijava.app.StatusService;
 import org.scijava.command.Command;
 import org.scijava.command.ContextCommand;
@@ -48,13 +60,13 @@ import ij.IJ;
 import ij.ImagePlus;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Util;
-import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (patch)", description = "Insert the current image as a patch into an existing dataset at a user-defined offset. New datasets can be created and existing "
@@ -229,13 +241,14 @@ public class N5SubsetExporter extends ContextCommand {
 
 		parseOffset();
 
-		final Img<T> ipImg;
+		RandomAccessibleInterval<T> ipImg;
 		if (image.getType() == ImagePlus.COLOR_RGB)
 			ipImg = (Img<T>)N5IJUtils.wrapRgbAsInt(image);
 		else
 			ipImg = ImageJFunctions.wrap(image);
 
-		final IntervalView<T> rai = Views.translate(ipImg, offset);
+		final RandomAccessibleInterval<T> rai = Views.translate(ipImg, offset);
+		RandomAccessibleInterval<T> axisPermutedImg = rai;
 
 		// create an empty dataset if it one does not exist
 		if (!n5.datasetExists(dataset)) {
@@ -249,15 +262,60 @@ public class N5SubsetExporter extends ContextCommand {
 
 			n5.createDataset(dataset, attributes);
 		}
+		else {
 
-		if (nThreads > 1)
-			N5Utils.saveRegion(rai, n5, dataset);
+			// if the dataset exists, we may need to permute the image
+			// based on existing metadata
+			// first detect any metadata
+			final N5TreeNode root = N5DatasetDiscoverer.discover(n5);
+			final Optional<N5Metadata> metaOpt = root.getDescendant(N5URI.normalizeGroupPath(dataset))
+					.filter(x -> {
+						final N5Metadata m = x.getMetadata();
+						return m != null && m instanceof N5DatasetMetadata;
+					}).map(N5TreeNode::getMetadata);
+
+			if (metaOpt.isPresent()) {
+
+				final N5DatasetMetadata meta = (N5DatasetMetadata)metaOpt.get();
+				if (meta instanceof AxisMetadata) {
+					final int[] impPerm = AxisUtils.findImagePlusPermutation((AxisMetadata)meta);
+					final int[] p = Arrays.stream(impPerm).filter(x -> x >= 0).toArray();
+					if (!AxisUtils.isIdentityPermutation(p))
+						axisPermutedImg = AxisUtils.permute(rai, p);
+				}
+				else if (zarrFOrderAndEmptyMetadata(n5, meta)) {
+					// reverse dimensions if no metadata, and f-order zarr
+					axisPermutedImg = AxisUtils.reverseDimensions(rai);
+				}
+			}
+		}
+
+		if (zarrFOrder(n5, dataset))
+			axisPermutedImg = AxisUtils.reverseDimensions(axisPermutedImg);
+
+		if (nThreads == 1)
+			N5Utils.saveRegion(axisPermutedImg, n5, dataset);
 		else {
 			final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>());
 			progressMonitor(threadPool);
-			N5Utils.saveRegion(rai, n5, dataset, threadPool);
+			N5Utils.saveRegion(axisPermutedImg, n5, dataset, threadPool);
 			threadPool.shutdown();
 		}
+	}
+
+	private static boolean zarrFOrder(final N5Reader n5, String path) {
+
+		if (n5 instanceof ZarrKeyValueReader) {
+			final ZarrDatasetAttributes zattrs = ((ZarrKeyValueReader)n5).getDatasetAttributes(path);
+			return !zattrs.isRowMajor();
+		}
+
+		return false;
+	}
+
+	private static boolean zarrFOrderAndEmptyMetadata(final N5Reader n5, N5Metadata meta) {
+
+		return (meta instanceof N5DefaultSingleScaleMetadata) && zarrFOrder(n5, meta.getPath());
 	}
 
 	private Interval outputInterval(final Interval interval) {
