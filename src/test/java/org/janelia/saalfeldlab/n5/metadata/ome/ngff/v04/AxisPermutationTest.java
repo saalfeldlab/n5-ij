@@ -5,19 +5,21 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.util.function.BiConsumer;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata.CosemTransform;
 import org.janelia.saalfeldlab.n5.universe.metadata.NgffTests;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,7 +33,13 @@ public class AxisPermutationTest {
 
 	private static final double EPS = 1e-6;
 
-	public static final String[] defaultAxes = new String[]{"x", "y", "c", "z", "t"};
+	public static final String[] AXIS_PERMUTATIONS = new String[]{
+			"xyz", "zyx", "yzx",
+			"xyc", "xcy", "cyx",
+			"xyt", "xty", "tyx",
+			"xyzt", "xtyz", "tyzx", "zxty",
+			"xyczt", "xyzct", "xytcz", "tzcyx", "ctzxy"
+	};
 
 	private URI containerUri;
 
@@ -63,11 +71,6 @@ public class AxisPermutationTest {
 		}
 	}
 
-	protected String tempN5Location() throws URISyntaxException {
-
-		final String basePath = new File(tempN5PathName()).toURI().normalize().getPath();
-		return new URI("file", null, basePath, null).toString();
-	}
 
 	/**
 	 * The default behavior of n5-imglib2 and n5-zarr is such that the dimensions of an imglib2 img
@@ -113,31 +116,44 @@ public class AxisPermutationTest {
 
 		final N5Writer zarr = new N5Factory().openWriter(StorageFormat.ZARR, containerUri.toString());
 		// don't check every axis permutation, but some relevant ones, and some strange ones
-		final String[] names = new String[]{
-				"xyz", "zyx", "yzx",
-				"xyc", "xcy", "cyx",
-				"xyt", "xty", "tyx",
-				"xyzt", "xtyz", "tyzx", "zxty",
-				"xyczt", "xyzct", "xytcz", "tzcyx", "ctzxy"
-		};
-
 		// check both c- and f-order storage
-		for (final String axes : names) {
-			writeAndTest(zarr, axes + "_c");
-			writeAndTest(zarr, axes + "_f");
+		for (final String axes : AXIS_PERMUTATIONS) {
+			final String dsetC = axes + "_c";
+			writeAndTest((z, n) -> {
+				writePermutedAxesNgff(zarr, dsetC);
+			}, zarr, dsetC);
+
+			final String dsetF = axes + "_f";
+			writeAndTest((z, n) -> {
+				writePermutedAxesNgff(zarr, dsetF);
+			}, zarr, dsetF);
 		}
-
 	}
 
-	protected void writeAndTest(final N5Writer zarr, final String dset) {
+	@Test
+	public void testCosemAxisPermutations() {
 
-		writeAndTest(zarr, dset, NgffTests.isCOrderFromName(dset), NgffTests.permutationFromName(dset));
+		final N5Writer zarr = new N5Factory().openWriter(StorageFormat.ZARR, containerUri.toString());
+		// don't check every axis permutation, but some relevant ones, and some strange ones
+		// check both c- and f-order storage
+		for (final String axes : AXIS_PERMUTATIONS) {
+
+			final String dsetC = axes + "_c";
+			writeAndTest((z, n) -> {
+				writePermutedAxesCosem(zarr, dsetC + "/s0");
+			}, zarr, dsetC);
+
+			final String dsetF = axes + "_f";
+			writeAndTest((z, n) -> {
+				writePermutedAxesCosem(zarr, dsetF + "/s0");
+			}, zarr, dsetF);
+		}
 	}
 
-	protected void writeAndTest(final N5Writer zarr, final String dset, final boolean cOrder, final int[] p) {
+	protected void writeAndTest(final BiConsumer<N5Writer, String> writeTestData, final N5Writer zarr, final String dset) {
 
 		// write
-		NgffTests.writePermutedAxes(zarr, baseName(p, cOrder), cOrder, p);
+		writeTestData.accept(zarr, dset);
 
 		// read
 		final ImagePlus imp = N5Importer.open(String.format("%s?%s", containerUri.toString(), dset + "/s0"), false);
@@ -164,12 +180,34 @@ public class AxisPermutationTest {
 			assertEquals("res t", NgffTests.RT, imp.getCalibration().frameInterval, EPS);
 		}
 
+		zarr.remove(dset);
 	}
 
-	private static String baseName(final int[] p, final boolean cOrder) {
+	public static void writePermutedAxesNgff(final N5Writer zarr, final String dsetPath) {
 
-		final String suffix = cOrder ? "_c" : "_f";
-		return Arrays.stream(p).mapToObj(i -> defaultAxes[i]).collect(Collectors.joining()) + suffix;
+		NgffTests.writePermutedAxes(zarr, dsetPath,
+				NgffTests.isCOrderFromName(dsetPath),
+				NgffTests.permutationFromName(dsetPath));
+	}
+
+	public static void writePermutedAxesCosem(final N5Writer zarr, final String dsetPath) {
+
+		writePermutedAxesCosem(zarr, dsetPath,
+				NgffTests.isCOrderFromName(dsetPath),
+				NgffTests.permutationFromName(dsetPath));
+	}
+
+	public static void writePermutedAxesCosem(final N5Writer zarr, final String dsetPath, final boolean cOrder, final int[] permutation) {
+
+		final long[] dims = AxisUtils.permute(NgffTests.DEFAULT_DIMENSIONS, permutation);
+		final int[] blkSize = Arrays.stream(dims).mapToInt(x -> (int)x).toArray();
+
+		NgffTests.createDataset(zarr, cOrder, dsetPath, dims, blkSize, DataType.UINT8, new RawCompression());
+
+		final DatasetAttributes dsetAttrs = zarr.getDatasetAttributes(dsetPath);
+
+		final CosemTransform cosemTform = NgffTests.buildPermutedAxesCosemMetadata(permutation, true, dsetAttrs);
+		zarr.setAttribute(dsetPath, "transform", cosemTform);
 	}
 
 }
