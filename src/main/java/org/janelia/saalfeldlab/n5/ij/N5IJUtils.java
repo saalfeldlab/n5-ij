@@ -39,6 +39,8 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 
 import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
@@ -135,15 +137,26 @@ public class N5IJUtils {
 			final W metaReader,
 			final I ipMeta) throws IOException, ImgLibException {
 
-		final RandomAccessibleInterval<T> rai = N5Utils.open(n5, dataset);
+		RandomAccessibleInterval<T> rai = N5Utils.open(n5, dataset);
 		final DatasetAttributes attributes = n5.getDatasetAttributes(dataset);
-		final long[] dimensions = attributes.getDimensions();
+		long[] dimensions = attributes.getDimensions();
 
 		M metadata = null;
 		if (metaReader != null && metaReader != null) {
 			try {
 				metadata = metaReader.parseMetadata(n5, dataset).get();
 
+				if (metadata != null && metadata instanceof AxisMetadata) {
+
+					// this permutation will be applied to the image whose dimensions
+					// are padded to 5d with a canoni
+					final int[] p = AxisUtils.findImagePlusPermutation((AxisMetadata)metadata);
+
+					final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadataForImagePlus(p, rai, metadata);
+					rai = res.getA();
+					dimensions = rai.dimensionsAsLongArray();
+					metadata = res.getB();
+				}
 			} catch (final Exception e) {
 				System.err.println("Warning: could not read metadata.");
 			}
@@ -239,7 +252,7 @@ public class N5IJUtils {
 	 * @throws IOException
 	 *             io exception
 	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings({"rawtypes"})
 	public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M> & ImageplusMetadata<M>> void save(
 			final ImagePlus imp,
 			final N5Writer n5,
@@ -377,7 +390,7 @@ public class N5IJUtils {
 	 * @throws ExecutionException
 	 *             execution
 	 */
-	@SuppressWarnings({"unchecked", "rawtypes"})
+	@SuppressWarnings({"rawtypes"})
 	public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M> & ImageplusMetadata<M>> void save(
 			final ImagePlus imp,
 			final N5Writer n5,
