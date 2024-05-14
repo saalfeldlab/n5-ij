@@ -41,12 +41,10 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5URI;
@@ -87,6 +85,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDa
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
 import ij.IJ;
@@ -530,18 +529,6 @@ public class N5Importer implements PlugIn {
 			final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadataForImagePlus(p, imgC, datasetMetaArg);
 			img = res.getA();
 			datasetMeta = res.getB();
-
-		} else if (zarrFOrderAndEmptyMetadata(n5, datasetMetaArg)) {
-
-			// reverse dimensions if no metadata, and f-order zarr
-			final int N = imgC.numDimensions();
-			final int[] p = IntStream.iterate(N - 1, x -> x - 1)
-					.limit(N)
-					.toArray();
-
-			img = imgC;
-			datasetMeta = (M)datasetMetaArg;
-
 		} else {
 			img = imgC;
 			datasetMeta = (M)datasetMetaArg;
@@ -611,9 +598,8 @@ public class N5Importer implements PlugIn {
 	private static boolean zarrFOrderAndEmptyMetadata(final N5Reader n5, N5Metadata meta) {
 
 		if (n5 instanceof ZarrKeyValueReader && meta instanceof N5DefaultSingleScaleMetadata) {
-
-			final DatasetAttributes attrs = ((N5DefaultSingleScaleMetadata)meta).getAttributes();
-			return true;
+			final ZarrDatasetAttributes zattrs = ((ZarrKeyValueReader)n5).getDatasetAttributes(meta.getPath());
+			return !zattrs.isRowMajor();
 		}
 
 		return false;
