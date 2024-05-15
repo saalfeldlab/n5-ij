@@ -671,10 +671,11 @@ public class DatasetSelectorDialog {
 		}
 
 		datasetDiscoverer = makeDiscoverer();
-		final String[] pathParts = n5Path.split(n5.getGroupSeparator());
-		final String rootName = pathParts[pathParts.length - 1];
+		final String[] pathParts = n5.getURI().toString().split(n5.getGroupSeparator());
+		final String suffix = (rootPath == null || rootPath.isEmpty()) ? "" : n5.getGroupSeparator() + rootPath;
+		final String treeRootName = pathParts[pathParts.length - 1] + suffix;
 		if (treeRenderer != null && treeRenderer instanceof N5DatasetTreeCellRenderer)
-			((N5DatasetTreeCellRenderer)treeRenderer).setRootName(rootName);
+			((N5DatasetTreeCellRenderer)treeRenderer).setRootName(treeRootName);
 
 		final N5TreeNode tmpRootNode = new N5TreeNode(rootPath);
 		rootNode = new N5SwingTreeNode(rootPath, treeModel);
