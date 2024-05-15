@@ -25,7 +25,7 @@
  */
 package org.janelia.saalfeldlab.n5;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -35,6 +35,12 @@ import java.util.stream.IntStream;
 
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.ij.N5IJUtils;
+import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
+import org.janelia.saalfeldlab.n5.metadata.imagej.MetadataTemplateMapper;
+import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
@@ -45,12 +51,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5MultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5ViewerMultiscaleMetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
-import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusMetadataTemplate;
-import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
-import org.janelia.saalfeldlab.n5.metadata.imagej.MetadataTemplateMapper;
-import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 import org.junit.Assert;
 import org.junit.Before;
@@ -151,7 +151,7 @@ public class MetadataIoTests
 		}
 
 
-		N5SingleScaleMetadataParser p = new N5SingleScaleMetadataParser();
+		final N5SingleScaleMetadataParser p = new N5SingleScaleMetadataParser();
 		N5SingleScaleMetadata metaS0 = null;
 		N5SingleScaleMetadata metaS1 = null;
 		try
@@ -300,20 +300,20 @@ public class MetadataIoTests
 
 		final N5CosemMetadataParser cosemMeta = new N5CosemMetadataParser();
 		final CosemToImagePlus cosemIpw = new CosemToImagePlus();
-		
+
 		final N5SingleScaleMetadataParser n5vMeta = new N5SingleScaleMetadataParser();
 		final N5ViewerToImagePlus n5vIpw = new N5ViewerToImagePlus();
 
-		testReadWriteMetadata( imp2d, n5, testBaseDatasetName + "/imp2d", metaWriter, metaWriter );
-		testReadWriteMetadata( imp2d, n5, testBaseDatasetName + "/imp2d_cosem", cosemMeta, cosemIpw );
-		testReadWriteMetadata( imp2d, n5, testBaseDatasetName + "/imp2d_n5v", n5vMeta, n5vIpw );
+		testReadWriteMetadata(imp2d, n5, testBaseDatasetName + "/imp2d", metaWriter, metaWriter);
+		testReadWriteMetadata(imp2d, n5, testBaseDatasetName + "/imp2d_cosem", cosemMeta, cosemIpw);
+		testReadWriteMetadata(imp2d, n5, testBaseDatasetName + "/imp2d_n5v", n5vMeta, n5vIpw);
 
-		testReadWriteMetadata( imp3d, n5, testBaseDatasetName + "/imp3d", metaWriter, metaWriter  );
+		testReadWriteMetadata(imp3d, n5, testBaseDatasetName + "/imp3d", metaWriter, metaWriter);
 		testReadWriteMetadata( imp3d, n5, testBaseDatasetName + "/imp3d_cosem", cosemMeta, cosemIpw );
-		testReadWriteMetadata( imp3d, n5, testBaseDatasetName + "/imp3d_n5v", n5vMeta, n5vIpw );
+		testReadWriteMetadata(imp3d, n5, testBaseDatasetName + "/imp3d_n5v", n5vMeta, n5vIpw);
 
-		testReadWriteMetadata( imp4d, n5, testBaseDatasetName + "/imp4d", metaWriter, metaWriter );
-		testReadWriteMetadata( imp5d, n5, testBaseDatasetName + "/imp5d", metaWriter, metaWriter );
+		testReadWriteMetadata(imp4d, n5, testBaseDatasetName + "/imp4d", metaWriter, metaWriter);
+		testReadWriteMetadata(imp5d, n5, testBaseDatasetName + "/imp5d", metaWriter, metaWriter);
 	}
 
 	private < T extends N5DatasetMetadata, W extends N5MetadataWriter< T > & N5MetadataParser< T >, I extends ImageplusMetadata< T > >
