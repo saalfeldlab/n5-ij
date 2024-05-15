@@ -96,6 +96,7 @@ import ij.gui.GenericDialog;
 import ij.io.FileInfo;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
+import ij.process.ImageStatistics;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -523,7 +524,7 @@ public class N5Importer implements PlugIn {
 		if (datasetMetaArg != null && datasetMetaArg instanceof AxisMetadata) {
 
 			// this permutation will be applied to the image whose dimensions
-			// are padded to 5d with a canoni
+			// are padded to 5d with a canonical axis order
 			final int[] p = AxisUtils.findImagePlusPermutation((AxisMetadata)datasetMetaArg);
 
 			final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadataForImagePlus(p, imgC, datasetMetaArg);
@@ -857,8 +858,18 @@ public class N5Importer implements PlugIn {
 
 				record(n5Url, asVirtual, cropInterval);
 				imgList.add(imp);
-				if (show)
+				if (show) {
+					// set the display min and max with a heuristic:
+					// set the min of the range to the min value and the max range to the 98th
+					// percentile
+					final ImageStatistics stats = ImageStatistics.getStatistics(imp.getProcessor());
+					final double[] hist = stats.histogram();
+					toCumulativeHistogram(hist);
+					final double min = stats.histMin;
+					final double max = min + (stats.binSize * nthPercentile(hist, 0.98));
+					imp.setDisplayRange(min, max);
 					imp.show();
+				}
 
 			} catch (final IOException e) {
 				IJ.error("failed to read n5");
@@ -868,6 +879,51 @@ public class N5Importer implements PlugIn {
 		}
 		return imgList;
 	}
+
+	/**
+	 * Turns a histogram into a cumulative histogram, in place and returns the total sum.
+	 * <p>
+	 * After running this method, the ith element of the array will contain the sum of the elements
+	 * of the 0th through ith elements of the input array.
+	 *
+	 * @param histogram
+	 *            a histogram
+	 * @return the total sum
+	 */
+	private static double toCumulativeHistogram(final double[] histogram) {
+
+		double total = 0;
+		for (int i = 0; i < histogram.length; i++) {
+			total += histogram[i];
+			histogram[i] = total;
+		}
+
+		return total;
+	}
+
+	/**
+	 *
+	 *
+	 * @param cumulativeHistogram
+	 *            a cumulative histogram
+	 * @param percentile
+	 *            a percentile in the range [0,1]
+	 * @return the bin corresponding the the given percentile
+	 *
+	 */
+	private static int nthPercentile(final double[] cumulativeHistogram, final double percentile) {
+
+		final int N = cumulativeHistogram.length - 1;
+		final double total = cumulativeHistogram[N];
+
+		for (int i = N; i >= 0; i--) {
+			if (cumulativeHistogram[i] <= percentile * total)
+				return i + 1;
+		}
+
+		return 0;
+	}
+
 
 	/*
 	 * Convenience method to process using the current state of this object. Can
