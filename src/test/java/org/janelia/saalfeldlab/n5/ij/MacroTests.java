@@ -44,7 +44,7 @@ public class MacroTests {
 
 		try {
 			containerDir = new File(tempN5PathName()).getCanonicalFile().toURI();
-		} catch (IOException e) {}
+		} catch (final IOException e) {}
 
 		n5rootF = Paths.get("src", "test", "resources", "test.n5").toUri();
 		dataset = "dataset";
@@ -61,7 +61,7 @@ public class MacroTests {
 	@After
 	public void after() {
 
-		N5Writer n5 = new N5Factory().openWriter(containerDir.toString());
+		final N5Writer n5 = new N5Factory().openWriter(containerDir.toString());
 		n5.remove();
 	}
 
@@ -115,11 +115,10 @@ public class MacroTests {
 				Intervals.createMinMax( 0, 1, 2, 5, 5, 5 )));
 
 		final ImagePlus impCrop = ImageJFunctions.wrap(imgCrop, "imgCrop");
-		impCrop.setDimensions(1, 4, 1);
-
 		assertEquals("cont crop w", impCrop.getWidth(), imgImportedCrop.getWidth());
 		assertEquals("cont crop h", impCrop.getHeight(), imgImportedCrop.getHeight());
 		assertEquals("cont crop d", impCrop.getNSlices(), imgImportedCrop.getNSlices());
+		assertEquals("cont crop c", impCrop.getNChannels(), imgImportedCrop.getNChannels());
 		assertTrue("equal content crop", TestExportImports.equal(impCrop, imgImportedCrop));
 	}
 

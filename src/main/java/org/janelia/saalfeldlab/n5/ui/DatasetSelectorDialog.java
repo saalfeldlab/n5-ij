@@ -25,31 +25,29 @@
  */
 package org.janelia.saalfeldlab.n5.ui;
 
-import ij.IJ;
-import ij.ImageJ;
-import ij.gui.ProgressBar;
-import net.imglib2.util.Pair;
-import se.sawano.java.text.AlphanumericComparator;
-
-import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
-import org.janelia.saalfeldlab.n5.Compression;
-import org.janelia.saalfeldlab.n5.CompressionAdapter;
-import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.N5Exception;
-import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
-import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5URI;
-import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
-
-import com.formdev.flatlaf.util.UIScale;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+import java.io.File;
+import java.net.URI;
+import java.nio.file.Paths;
+import java.text.Collator;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -70,30 +68,32 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
-import java.awt.Container;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.io.File;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.Paths;
-import java.text.Collator;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
+
+import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
+import org.janelia.saalfeldlab.n5.Compression;
+import org.janelia.saalfeldlab.n5.CompressionAdapter;
+import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.N5Exception;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5URI;
+import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
+
+import com.formdev.flatlaf.util.UIScale;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import ij.IJ;
+import ij.ImageJ;
+import ij.gui.ProgressBar;
+import net.imglib2.util.Pair;
+import se.sawano.java.text.AlphanumericComparator;
 
 public class DatasetSelectorDialog {
 
@@ -970,19 +970,19 @@ public class DatasetSelectorDialog {
 
 			N5URI n5uri = null;
 			try {
-				URI uri = new URI(input.trim());
+				final URI uri = new URI(input.trim());
 				if (uri.isAbsolute())
 					return addTypeScheme(fmt, uri.normalize());
 				else {
 					n5uri = new N5URI(uri);
 				}
-			} catch (Throwable ignore) {}
+			} catch (final Throwable ignore) {}
 
 			try {
 				if (n5uri != null) {
 					final N5URI pathOnly = new N5URI(Paths.get(n5uri.getContainerPath()).normalize().toUri());
 					final URI uri = n5uri.getURI();
-					N5URI queryFragmentOnly = N5URI.from("",
+					final N5URI queryFragmentOnly = N5URI.from("",
 						uri.getQuery() == null ? null : n5uri.getGroupPath(),
 						uri.getFragment() == null ? null : n5uri.getAttributePath());
 
@@ -990,7 +990,7 @@ public class DatasetSelectorDialog {
 				} else
 					return addTypeScheme(fmt, Paths.get(input.trim()).normalize().toUri());
 
-			} catch (Throwable ignore) {}
+			} catch (final Throwable ignore) {}
 
 			throw new ParseException("input " + input + " not a valid URI", 0);
 		}

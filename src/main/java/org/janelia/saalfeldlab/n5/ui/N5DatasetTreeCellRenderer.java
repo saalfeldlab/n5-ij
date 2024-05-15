@@ -4,17 +4,18 @@ import java.awt.Component;
 import java.text.CharacterIterator;
 import java.text.StringCharacterIterator;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 
 import javax.swing.JTree;
 import javax.swing.tree.DefaultTreeCellRenderer;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 
 import ij.ImagePlus;
 
@@ -24,7 +25,6 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 
 	protected static final String thinSpace = "&#x2009;";
 
-//	private static final String times = "&#x2715;";
 	protected static final String times = "&#xd7;";
 
 	protected static final String warningFormat = "<font color=\"rgb(179, 58, 58)\">%s</font>";
@@ -117,19 +117,19 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		return "";
 	}
 
-	public String getParameterString( final N5TreeNode node ) {
+	public String getParameterString(final N5TreeNode node) {
 
-	  final N5Metadata meta = node.getMetadata();
-	  if ( meta == null || !(meta instanceof N5DatasetMetadata ) )
-		return "";
+		final N5Metadata meta = node.getMetadata();
+		if (meta == null || !(meta instanceof N5DatasetMetadata))
+			return "";
 
-	  final DatasetAttributes attributes = ((N5DatasetMetadata)node.getMetadata()).getAttributes();
-	  final String dimString = String.join(dimDelimeter,
-			  Arrays.stream(attributes.getDimensions())
-					  .mapToObj(d -> Long.toString(d))
-					  .collect(Collectors.toList()));
+		final DatasetAttributes attributes = ((N5DatasetMetadata)node.getMetadata()).getAttributes();
+		final String[] dimStrArr = Arrays.stream(attributes.getDimensions()).mapToObj(d -> Long.toString(d)).toArray(n -> new String[n]);
 
-	  return dimString + ", " + attributes.getDataType();
+		if (OmeNgffMultiScaleMetadata.fOrder(attributes))
+			ArrayUtils.reverse(dimStrArr);
+
+		return String.join(dimDelimeter, dimStrArr) + ", " + attributes.getDataType();
 	}
 
 	protected String memString( final N5TreeNode node )

@@ -41,7 +41,9 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.apache.commons.lang.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -62,12 +64,13 @@ import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DefaultSingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
@@ -81,6 +84,9 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataP
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
+import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -90,6 +96,7 @@ import ij.gui.GenericDialog;
 import ij.io.FileInfo;
 import ij.plugin.PlugIn;
 import ij.plugin.frame.Recorder;
+import ij.process.ImageStatistics;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -473,7 +480,7 @@ public class N5Importer implements PlugIn {
 	 *            the n5Reader
 	 * @param exec
 	 *            an ExecutorService to manage parallel reading
-	 * @param datasetMeta
+	 * @param datasetMetaArg
 	 *            datasetMetadata containing the path
 	 * @param cropIntervalIn
 	 *            optional crop interval
@@ -486,30 +493,47 @@ public class N5Importer implements PlugIn {
 	 *             io
 	 */
 	@SuppressWarnings({"rawtypes", "unchecked"})
-	public static <T extends NumericType<T> & NativeType<T>, M extends N5DatasetMetadata> ImagePlus read(
+	public static <T extends NumericType<T> & NativeType<T>, M extends N5DatasetMetadata, A extends AxisMetadata & N5Metadata> ImagePlus read(
 			final N5Reader n5,
 			final ExecutorService exec,
-			final N5DatasetMetadata datasetMeta, final Interval cropIntervalIn, final boolean asVirtual,
+			final N5DatasetMetadata datasetMetaArg, final Interval cropIntervalIn, final boolean asVirtual,
 			final ImageplusMetadata<M> ipMeta) throws IOException {
 
-		final String d = datasetMeta.getPath();
+		final String d = datasetMetaArg.getPath();
 		final CachedCellImg imgRaw = N5Utils.open(n5, d);
+
+		RandomAccessibleInterval imgNorm;
+		if (OmeNgffMultiScaleMetadata.fOrder(datasetMetaArg.getAttributes())) {
+			imgNorm = AxisUtils.reverseDimensions(imgRaw);
+			ArrayUtils.reverse(datasetMetaArg.getAttributes().getDimensions());
+		}
+		else
+			imgNorm = imgRaw;
 
 		// crop if necesssary
 		final RandomAccessibleInterval imgC;
 		Interval cropInterval = null;
 		if (cropIntervalIn != null) {
-			cropInterval = processCropInterval(imgRaw, cropIntervalIn);
-			imgC = Views.interval(imgRaw, cropInterval);
+			cropInterval = processCropInterval(imgNorm, cropIntervalIn);
+			imgC = Views.interval(imgNorm, cropInterval);
 		} else
-			imgC = imgRaw;
+			imgC = imgNorm;
 
-		// permute axes if necessary (specified by metadata)
 		final RandomAccessibleInterval img;
-		if (datasetMeta != null && datasetMeta instanceof AxisMetadata)
-			img = AxisUtils.permuteForImagePlus(imgC, (AxisMetadata)datasetMeta);
-		else
+		final M datasetMeta;
+		if (datasetMetaArg != null && datasetMetaArg instanceof AxisMetadata) {
+
+			// this permutation will be applied to the image whose dimensions
+			// are padded to 5d with a canonical axis order
+			final int[] p = AxisUtils.findImagePlusPermutation((AxisMetadata)datasetMetaArg);
+
+			final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadataForImagePlus(p, imgC, datasetMetaArg);
+			img = res.getA();
+			datasetMeta = res.getB();
+		} else {
 			img = imgC;
+			datasetMeta = (M)datasetMetaArg;
+		}
 
 		RandomAccessibleInterval<T> convImg;
 		final DataType type = datasetMeta.getAttributes().getDataType();
@@ -570,6 +594,16 @@ public class N5Importer implements PlugIn {
 		}
 
 		return imp;
+	}
+
+	private static boolean zarrFOrderAndEmptyMetadata(final N5Reader n5, N5Metadata meta) {
+
+		if (n5 instanceof ZarrKeyValueReader && meta instanceof N5DefaultSingleScaleMetadata) {
+			final ZarrDatasetAttributes zattrs = ((ZarrKeyValueReader)n5).getDatasetAttributes(meta.getPath());
+			return !zattrs.isRowMajor();
+		}
+
+		return false;
 	}
 
 	public static RandomAccessibleInterval<FloatType> convertDouble(
@@ -643,32 +677,74 @@ public class N5Importer implements PlugIn {
 
 	public static ImagePlus open(final String uri) {
 
+		return open(uri, true);
+	}
+
+	public static ImagePlus open(final String uri, final boolean show) {
+
+		try {
+			final N5URI n5uri = new N5URI(uri);
+			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
+			if (!grp.isEmpty()) {
+				return open(uri, grp, show);
+			}
+		} catch (final URISyntaxException e) {}
+
 		return open(uri, ALL_PASS);
 	}
 
 	public static ImagePlus open(final String uri, final String dataset) {
 
-		return open(uri, x -> {
-			return norm(x.getPath()).equals(norm(dataset));
-		});
+		return open(uri, dataset, true);
+	}
+
+	public static ImagePlus open(final String uri, final String dataset, final boolean show) {
+
+		return open(uri,
+				x -> {
+					return norm(x.getPath()).equals(norm(dataset));
+				},
+				show);
 	}
 
 	public static ImagePlus open(final String uri, final Predicate<N5Metadata> filter ) {
 
-		final N5Reader n5 = new N5Factory().openReader(uri);
+		return open(uri, filter, true);
+	}
+
+	public static ImagePlus open(final String uri, final Predicate<N5Metadata> filter, final boolean show) {
+
+		final N5Reader n5;
+		try {
+			n5 = new N5ViewerReaderFun().apply(uri);
+		} catch (final Exception e) {
+			e.printStackTrace();
+			return null;
+		}
 		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
 
 		final Predicate<N5Metadata> datasetFilter = x -> { return x instanceof N5DatasetMetadata; };
 		final Predicate<N5Metadata> totalFilter = filter == null || filter == ALL_PASS
 				? datasetFilter : datasetFilter.and(filter);
 
-		final Optional<N5DatasetMetadata> meta = N5TreeNode.flattenN5Tree(node)
+		Stream<N5DatasetMetadata> metaStream = N5TreeNode.flattenN5Tree(node)
 			.filter( x -> totalFilter.test(x.getMetadata()) )
-			.map( x-> { return (N5DatasetMetadata)x.getMetadata(); })
-			.findFirst();
+				.map(x -> {
+					return (N5DatasetMetadata)x.getMetadata();
+				});
 
+		N5URI n5uri;
+		try {
+			n5uri = new N5URI(uri);
+			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
+			if (!grp.isEmpty()) {
+				metaStream = metaStream.filter(x -> N5URI.normalizeGroupPath(x.getPath()).equals(grp));
+			}
+		} catch (final URISyntaxException e) {}
+
+		final Optional<N5DatasetMetadata> meta = metaStream.findFirst();
 		if (meta.isPresent()) {
-			return open( n5, uri, meta.get());
+			return open(n5, uri, meta.get(), show);
 		} else {
 			System.err.println("No arrays matching criteria found in container at: " + uri);
 			return null;
@@ -677,13 +753,18 @@ public class N5Importer implements PlugIn {
 
 	public static ImagePlus open(final N5Reader n5, final String uri, final N5DatasetMetadata metadata) {
 
+		return open(n5, uri, metadata, true);
+	}
+
+	public static ImagePlus open(final N5Reader n5, final String uri, final N5DatasetMetadata metadata, final boolean show) {
+
 		final ExecutorService exec = Executors.newFixedThreadPool(
 				Runtime.getRuntime().availableProcessors() / 2);
 
 		return N5Importer.process(n5, uri,
 				exec,
 				Collections.singletonList(metadata),
-				false, null).get(0);
+				false, show, null).get(0);
 	}
 
 	private static String norm(final String groupPath) {
@@ -702,6 +783,21 @@ public class N5Importer implements PlugIn {
 			final Interval cropInterval) {
 
 		return process(n5, rootPath, exec, datasetMetadataList, asVirtual, cropInterval, true,
+				defaultImagePlusMetadataWriters());
+	}
+
+	/*
+	 * Read one or more N5 dataset into ImagePlus object(s) and show them.
+	 */
+	public static List<ImagePlus> process(final N5Reader n5,
+			final String rootPath,
+			final ExecutorService exec,
+			final List<N5DatasetMetadata> datasetMetadataList,
+			final boolean asVirtual,
+			final boolean show,
+			final Interval cropInterval) {
+
+		return process(n5, rootPath, exec, datasetMetadataList, asVirtual, cropInterval, show,
 				defaultImagePlusMetadataWriters());
 	}
 
@@ -733,7 +829,7 @@ public class N5Importer implements PlugIn {
 			final Map<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes) {
 
 		// determine if the root path contains a query
-		String rootPath = rootPathArg;
+		final String rootPath = rootPathArg;
 		final ArrayList<ImagePlus> imgList = new ArrayList<>();
 		for (final N5DatasetMetadata datasetMeta : datasetMetadataList) {
 			// is this check necessary?
@@ -762,17 +858,72 @@ public class N5Importer implements PlugIn {
 
 				record(n5Url, asVirtual, cropInterval);
 				imgList.add(imp);
-				if (show)
+				if (show) {
+					// set the display min and max with a heuristic:
+					// set the min of the range to the min value and the max range to the 98th
+					// percentile
+					final ImageStatistics stats = ImageStatistics.getStatistics(imp.getProcessor());
+					final double[] hist = stats.histogram();
+					toCumulativeHistogram(hist);
+					final double min = stats.histMin;
+					final double max = min + (stats.binSize * nthPercentile(hist, 0.98));
+					imp.setDisplayRange(min, max);
 					imp.show();
+				}
 
 			} catch (final IOException e) {
 				IJ.error("failed to read n5");
-			} catch (URISyntaxException e1) {
+			} catch (final URISyntaxException e1) {
 				IJ.error("unable to parse url: " + rootPath + "?" + d );
 			}
 		}
 		return imgList;
 	}
+
+	/**
+	 * Turns a histogram into a cumulative histogram, in place and returns the total sum.
+	 * <p>
+	 * After running this method, the ith element of the array will contain the sum of the elements
+	 * of the 0th through ith elements of the input array.
+	 *
+	 * @param histogram
+	 *            a histogram
+	 * @return the total sum
+	 */
+	private static double toCumulativeHistogram(final double[] histogram) {
+
+		double total = 0;
+		for (int i = 0; i < histogram.length; i++) {
+			total += histogram[i];
+			histogram[i] = total;
+		}
+
+		return total;
+	}
+
+	/**
+	 *
+	 *
+	 * @param cumulativeHistogram
+	 *            a cumulative histogram
+	 * @param percentile
+	 *            a percentile in the range [0,1]
+	 * @return the bin corresponding the the given percentile
+	 *
+	 */
+	private static int nthPercentile(final double[] cumulativeHistogram, final double percentile) {
+
+		final int N = cumulativeHistogram.length - 1;
+		final double total = cumulativeHistogram[N];
+
+		for (int i = N; i >= 0; i--) {
+			if (cumulativeHistogram[i] <= percentile * total)
+				return i + 1;
+		}
+
+		return 0;
+	}
+
 
 	/*
 	 * Convenience method to process using the current state of this object. Can
@@ -874,7 +1025,7 @@ public class N5Importer implements PlugIn {
 					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
 					// add the format prefix back if it was present
 					rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
-				} catch (URISyntaxException e) {}
+				} catch (final URISyntaxException e) {}
 			}
 
 			if (rootPath == null)
@@ -940,7 +1091,7 @@ public class N5Importer implements PlugIn {
 					final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(n5UriOrPath);
 					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
 					return n5uri.getGroupPath();
-				} catch (URISyntaxException e) {}
+				} catch (final URISyntaxException e) {}
 			}
 
 			if (n5UriOrPath.contains(".h5") || n5UriOrPath.contains(".hdf5") || n5UriOrPath.contains(".hdf"))

@@ -25,6 +25,23 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
+import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+
+import org.janelia.saalfeldlab.n5.Compression;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
+import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5Writer;
+import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
+import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
+
 import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
@@ -43,20 +60,6 @@ import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.integer.UnsignedIntType;
 import net.imglib2.util.Pair;
 import net.imglib2.view.Views;
-import org.janelia.saalfeldlab.n5.Compression;
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
-import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5Writer;
-import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataWriter;
-import org.janelia.saalfeldlab.n5.metadata.imagej.ImagePlusLegacyMetadataParser;
-import org.janelia.saalfeldlab.n5.metadata.imagej.ImageplusMetadata;
-
-import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
 
 /**
  * @author Stephan Saalfeld &lt;saalfelds@janelia.hhmi.org&gt;
@@ -64,463 +67,566 @@ import java.util.concurrent.ExecutorService;
  */
 public class N5IJUtils {
 
-  public static <T extends NativeType<T> & NumericType<T>> ImagePlus load(
-		  final N5Reader n5,
-		  final String dataset) throws IOException, ImgLibException {
+	public static <T extends NativeType<T> & NumericType<T>> ImagePlus load(
+			final N5Reader n5,
+			final String dataset) throws IOException, ImgLibException {
 
-	return load(n5, dataset, null);
-  }
-
-  /**
-   * Loads and N5 dataset into an {@link ImagePlus}.  Other than
-   * {@link N5Utils#open(N5Reader, String)} which uses {@link LazyCellImg},
-   * the data is actually loaded completely into memory.
-   *
-   * @param <T>        the image data type.
-   * @param <M>        the metadata type
-   * @param <W>        the metadata parser type
-   * @param n5         the reader
-   * @param dataset    the dataset
-   * @param metaReader an optional metadata reader
-   * @return the ImagePlus
-   * @throws IOException     io exception
-   * @throws ImgLibException imglib2 exception
-   */
-  public static <T extends NativeType<T> & NumericType<T>, M extends N5DatasetMetadata, W extends N5MetadataParser<M> & ImageplusMetadata<M>> ImagePlus load(
-		  final N5Reader n5,
-		  final String dataset,
-		  final W metaReader) throws IOException, ImgLibException {
-
-	  return load( n5, dataset, metaReader, metaReader );
-  }
-
-
-  /**
-   * Loads and N5 dataset into an {@link ImagePlus}.  Other than
-   * {@link N5Utils#open(N5Reader, String)} which uses {@link LazyCellImg},
-   * the data is actually loaded completely into memory.
-   *
-   * @param <T>        the image data type.
-   * @param <M>        the metadata type
-   * @param <W>        the metadata parser type
-   * @param n5         the reader
-   * @param dataset    the dataset
-   * @param metaReader an optional metadata reader
-   * @param ipMeta an optional image plus metadata writer
-   * @return the ImagePlus
-   * @throws IOException     io exception
-   * @throws ImgLibException imglib2 exception
-   */
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  public static <T extends NativeType<T> & NumericType<T>, M extends N5DatasetMetadata, W extends N5MetadataParser<M>, I extends ImageplusMetadata<M>> ImagePlus load(
-		  final N5Reader n5,
-		  final String dataset,
-		  final W metaReader,
-		  final I ipMeta) throws IOException, ImgLibException {
-
-	final RandomAccessibleInterval<T> rai = N5Utils.open(n5, dataset);
-	final DatasetAttributes attributes = n5.getDatasetAttributes(dataset);
-	final long[] dimensions = attributes.getDimensions();
-
-	M metadata = null;
-	if (metaReader != null && metaReader != null) {
-	  try {
-		metadata = metaReader.parseMetadata(n5, dataset).get();
-	  } catch (final Exception e) {
-		System.err.println("Warning: could not read metadata.");
-	  }
+		return load(n5, dataset, null);
 	}
 
-	final ImagePlusImg<T, ?> impImg;
-	switch (attributes.getDataType()) {
-	case UINT8:
-	  impImg = (ImagePlusImg)ImagePlusImgs.unsignedBytes(dimensions);
-	  break;
-	case INT8:
-	  impImg = (ImagePlusImg)ImagePlusImgs.bytes(dimensions);
-	  break;
-	case UINT16:
-	  impImg = (ImagePlusImg)ImagePlusImgs.unsignedShorts(dimensions);
-	  break;
-	case INT16:
-	  impImg = (ImagePlusImg)ImagePlusImgs.shorts(dimensions);
-	  break;
-	case UINT32:
-	  impImg = (ImagePlusImg)ImagePlusImgs.unsignedInts(dimensions);
-	  break;
-	case INT32:
-	  impImg = (ImagePlusImg)ImagePlusImgs.ints(dimensions);
-	  break;
-	case FLOAT32:
-	  impImg = (ImagePlusImg)ImagePlusImgs.floats(dimensions);
-	  break;
-	default:
-	  System.err.println("Data type " + attributes.getDataType() + " not supported in ImageJ.");
-	  return null;
+	/**
+	 * Loads and N5 dataset into an {@link ImagePlus}. Other than
+	 * {@link N5Utils#open(N5Reader, String)} which uses {@link LazyCellImg}, the data is actually
+	 * loaded completely into memory.
+	 *
+	 * @param <T>
+	 *            the image data type.
+	 * @param <M>
+	 *            the metadata type
+	 * @param <W>
+	 *            the metadata parser type
+	 * @param n5
+	 *            the reader
+	 * @param dataset
+	 *            the dataset
+	 * @param metaReader
+	 *            an optional metadata reader
+	 * @return the ImagePlus
+	 * @throws IOException
+	 *             io exception
+	 * @throws ImgLibException
+	 *             imglib2 exception
+	 */
+	public static <T extends NativeType<T> & NumericType<T>, M extends N5DatasetMetadata, W extends N5MetadataParser<M> & ImageplusMetadata<M>> ImagePlus load(
+			final N5Reader n5,
+			final String dataset,
+			final W metaReader) throws IOException, ImgLibException {
+
+		return load(n5, dataset, metaReader, metaReader);
 	}
 
-	for (final Pair<T, T> pair : Views.flatIterable(Views.interval(Views.pair(rai, impImg), rai)))
-	  pair.getB().set(pair.getA());
+	/**
+	 * Loads and N5 dataset into an {@link ImagePlus}. Other than
+	 * {@link N5Utils#open(N5Reader, String)} which uses {@link LazyCellImg}, the data is actually
+	 * loaded completely into memory.
+	 *
+	 * @param <T>
+	 *            the image data type.
+	 * @param <M>
+	 *            the metadata type
+	 * @param <W>
+	 *            the metadata parser type
+	 * @param n5
+	 *            the reader
+	 * @param dataset
+	 *            the dataset
+	 * @param metaReader
+	 *            an optional metadata reader
+	 * @param ipMeta
+	 *            an optional image plus metadata writer
+	 * @return the ImagePlus
+	 * @throws IOException
+	 *             io exception
+	 * @throws ImgLibException
+	 *             imglib2 exception
+	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public static <T extends NativeType<T> & NumericType<T>, M extends N5DatasetMetadata, W extends N5MetadataParser<M>, I extends ImageplusMetadata<M>> ImagePlus load(
+			final N5Reader n5,
+			final String dataset,
+			final W metaReader,
+			final I ipMeta) throws IOException, ImgLibException {
 
-	final ImagePlus imp = impImg.getImagePlus();
-	if (metadata != null)
-	  ipMeta.writeMetadata(metadata, imp);
+		RandomAccessibleInterval<T> rai = N5Utils.open(n5, dataset);
+		final DatasetAttributes attributes = n5.getDatasetAttributes(dataset);
+		long[] dimensions = attributes.getDimensions();
 
-	return imp;
-  }
+		M metadata = null;
+		if (metaReader != null && metaReader != null) {
+			try {
+				metadata = metaReader.parseMetadata(n5, dataset).get();
 
-  /**
-   * Save an {@link ImagePlus} as an N5 dataset.
-   *
-   * @param imp         the ImagePlus
-   * @param n5          the writer
-   * @param datasetName the dataset name
-   * @param blockSize   the block size
-   * @param compression the compression type
-   * @throws IOException io exception
-   */
-  public static void save(
-		  final ImagePlus imp,
-		  final N5Writer n5,
-		  final String datasetName,
-		  final int[] blockSize,
-		  final Compression compression) throws IOException {
+				if (metadata != null && metadata instanceof AxisMetadata) {
+
+					// this permutation will be applied to the image whose dimensions
+					// are padded to 5d with a canoni
+					final int[] p = AxisUtils.findImagePlusPermutation((AxisMetadata)metadata);
+
+					final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadataForImagePlus(p, rai, metadata);
+					rai = res.getA();
+					dimensions = rai.dimensionsAsLongArray();
+					metadata = res.getB();
+				}
+			} catch (final Exception e) {
+				System.err.println("Warning: could not read metadata.");
+			}
+		}
+
+		final ImagePlusImg<T, ?> impImg;
+		switch (attributes.getDataType()) {
+		case UINT8:
+			impImg = (ImagePlusImg)ImagePlusImgs.unsignedBytes(dimensions);
+			break;
+		case INT8:
+			impImg = (ImagePlusImg)ImagePlusImgs.bytes(dimensions);
+			break;
+		case UINT16:
+			impImg = (ImagePlusImg)ImagePlusImgs.unsignedShorts(dimensions);
+			break;
+		case INT16:
+			impImg = (ImagePlusImg)ImagePlusImgs.shorts(dimensions);
+			break;
+		case UINT32:
+			impImg = (ImagePlusImg)ImagePlusImgs.unsignedInts(dimensions);
+			break;
+		case INT32:
+			impImg = (ImagePlusImg)ImagePlusImgs.ints(dimensions);
+			break;
+		case FLOAT32:
+			impImg = (ImagePlusImg)ImagePlusImgs.floats(dimensions);
+			break;
+		default:
+			System.err.println("Data type " + attributes.getDataType() + " not supported in ImageJ.");
+			return null;
+		}
+
+		for (final Pair<T, T> pair : Views.flatIterable(Views.interval(Views.pair(rai, impImg), rai)))
+			pair.getB().set(pair.getA());
+
+		final ImagePlus imp = impImg.getImagePlus();
+		if (metadata != null)
+			ipMeta.writeMetadata(metadata, imp);
+
+		return imp;
+	}
+
+	/**
+	 * Save an {@link ImagePlus} as an N5 dataset.
+	 *
+	 * @param imp
+	 *            the ImagePlus
+	 * @param n5
+	 *            the writer
+	 * @param datasetName
+	 *            the dataset name
+	 * @param blockSize
+	 *            the block size
+	 * @param compression
+	 *            the compression type
+	 * @throws IOException
+	 *             io exception
+	 */
+	public static void save(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String datasetName,
+			final int[] blockSize,
+			final Compression compression) throws IOException {
 
 		final ImagePlusLegacyMetadataParser nullWriter = null;
-		save( imp, n5, datasetName, blockSize, compression, nullWriter );
-//	throw new UnsupportedOperationException("");
-  }
-
-  /**
-   * Save an {@link ImagePlus} as an N5 dataset.
-   *
-   * @param <T>         the image data type
-   * @param <M>         the image data type
-   * @param <W>         the metadata writer type
-   * @param imp         the ImagePlus
-   * @param n5          the writer
-   * @param datasetName the dataset name
-   * @param blockSize   the block size
-   * @param compression the compression type
-   * @param metaWriter  (optional) metadata writer
-   * @throws IOException io exception
-   */
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M> & ImageplusMetadata<M>>
-  void save(
-		  final ImagePlus imp,
-		  final N5Writer n5,
-		  final String datasetName,
-		  final int[] blockSize,
-		  final Compression compression,
-		  final W metaWriter) throws IOException {
-
-	  save( imp, n5, datasetName, blockSize, compression, metaWriter, metaWriter );
-  }
-  
-  /**
-   * Save an {@link ImagePlus} as an N5 dataset.
-   *
-   * @param <T>         the image data type
-   * @param <M>         the image data type
-   * @param <W>         the metadata writer type
-   * @param <I>         the ImageplusMetadata that extracts the N5DatasetMetadata from the ImagePlus
-   * @param imp         the ImagePlus
-   * @param n5          the writer
-   * @param datasetName the dataset name
-   * @param blockSize   the block size
-   * @param compression the compression type
-   * @param metaWriter  (optional) metadata writer
-   * @param ipMetadata  (optional) ImagePlus metadata reader
-   * @throws IOException io exception
-   */
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M>, I extends ImageplusMetadata<M>>
-  void save(
-		  final ImagePlus imp,
-		  final N5Writer n5,
-		  final String datasetName,
-		  final int[] blockSize,
-		  final Compression compression,
-		  final W metaWriter,
-		  final I ipMetadata) throws IOException {
-
-	final Img<T> rai;
-	if (imp.getType() == ImagePlus.COLOR_RGB)
-	  rai = (Img<T>)wrapRgbAsInt(imp);
-	else
-	  rai = ImageJFunctions.wrap(imp);
-
-	N5Utils.save(
-			rai,
-			n5,
-			datasetName,
-			blockSize,
-			compression);
-
-	if (metaWriter != null && metaWriter != null) {
-	  try {
-		final M metadata = ipMetadata.readMetadata(imp);
-		metaWriter.writeMetadata(metadata, n5, datasetName);
-	  } catch (final Exception e) {
-		e.printStackTrace();
-	  }
+		save(imp, n5, datasetName, blockSize, compression, nullWriter);
+		// throw new UnsupportedOperationException("");
 	}
-  }
 
-  /**
-   * Save and {@link ImagePlus} as an N5 dataset.  Parallelizes export using
-   * an {@link ExecutorService}.
-   *
-   * @param imp         the ImagePlus
-   * @param n5          the writer
-   * @param datasetName the dataset name
-   * @param blockSize   the block size
-   * @param compression the compression type
-   * @param exec        executor
-   * @throws IOException          io exception
-   * @throws InterruptedException interrupted
-   * @throws ExecutionException   execution
-   */
-  public static void save(
-		  final ImagePlus imp,
-		  final N5Writer n5,
-		  final String datasetName,
-		  final int[] blockSize,
-		  final Compression compression,
-		  final ExecutorService exec
-  ) throws IOException, InterruptedException, ExecutionException {
+	/**
+	 * Save an {@link ImagePlus} as an N5 dataset.
+	 *
+	 * @param <T>
+	 *            the image data type
+	 * @param <M>
+	 *            the image data type
+	 * @param <W>
+	 *            the metadata writer type
+	 * @param imp
+	 *            the ImagePlus
+	 * @param n5
+	 *            the writer
+	 * @param datasetName
+	 *            the dataset name
+	 * @param blockSize
+	 *            the block size
+	 * @param compression
+	 *            the compression type
+	 * @param metaWriter
+	 *            (optional) metadata writer
+	 * @throws IOException
+	 *             io exception
+	 */
+	@SuppressWarnings({"rawtypes"})
+	public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M> & ImageplusMetadata<M>> void save(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String datasetName,
+			final int[] blockSize,
+			final Compression compression,
+			final W metaWriter) throws IOException {
 
-	save(imp, n5, datasetName, blockSize, compression, exec, null, null);
-  }
-  
-  /**
-   * Save and {@link ImagePlus} as an N5 dataset.  Parallelizes export using
-   * an {@link ExecutorService}.
-   *
-   * @param <T>         the image data type.
-   * @param <M>         the metadata type.
-   * @param <W>         the metadata writer type.
-   * @param imp         the ImagePlus
-   * @param n5          the writer
-   * @param datasetName the dataset name
-   * @param blockSize   the block size
-   * @param compression the compression type
-   * @param exec        the executor
-   * @param metaWriter  (optional) metadata writer
-   * @throws IOException          io
-   * @throws InterruptedException interrupted
-   * @throws ExecutionException   execution
-   */
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M> & ImageplusMetadata<M>>
-  void save(
-		  final ImagePlus imp,
-		  final N5Writer n5,
-		  final String datasetName,
-		  final int[] blockSize,
-		  final Compression compression,
-		  final ExecutorService exec,
-		  final W metaWriter)
-		  throws IOException, InterruptedException, ExecutionException {
-
-	  save( imp, n5, datasetName, blockSize, compression, exec, metaWriter, metaWriter );
-  }
-
-  /**
-   * Save and {@link ImagePlus} as an N5 dataset.  Parallelizes export using
-   * an {@link ExecutorService}.
-   *
-   * @param <T>         the image data type.
-   * @param <M>         the metadata type.
-   * @param <W>         the metadata writer type.
-   * @param <I>         the ImageplusMetadata that extracts the N5DatasetMetadata from the ImagePlus
-   * @param imp         the ImagePlus
-   * @param n5          the writer
-   * @param datasetName the dataset name
-   * @param blockSize   the block size
-   * @param compression the compression type
-   * @param exec        the executor
-   * @param metaWriter  (optional) metadata writer
-   * @param ipMetadata  (optional) ImagePlus metadata reader
-   * @throws IOException          io
-   * @throws InterruptedException interrupted
-   * @throws ExecutionException   execution
-   */
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M>, I extends ImageplusMetadata<M>>
-  void save(
-		  final ImagePlus imp,
-		  final N5Writer n5,
-		  final String datasetName,
-		  final int[] blockSize,
-		  final Compression compression,
-		  final ExecutorService exec,
-		  final W metaWriter,
-		  final I ipMetadata)
-		  throws IOException, InterruptedException, ExecutionException {
-
-	final Img<T> rai;
-	if (imp.getType() == ImagePlus.COLOR_RGB)
-	  rai = (Img<T>)wrapRgbAsInt(imp);
-	else
-	  rai = ImageJFunctions.wrap(imp);
-
-	N5Utils.save(
-			rai,
-			n5,
-			datasetName,
-			blockSize,
-			compression,
-			exec);
-
-	if (metaWriter != null && metaWriter != null) {
-	  try {
-		final M metadata = ipMetadata.readMetadata(imp);
-		metaWriter.writeMetadata(metadata, n5, datasetName);
-	  } catch (final Exception e) {
-		e.printStackTrace();
-	  }
+		save(imp, n5, datasetName, blockSize, compression, metaWriter, metaWriter);
 	}
-  }
 
-  /**
-   * Save an ARGB image that contains gray scale data and uses inequality of
-   * the three colors as a mask channel into an N5 group with two uint8 datasets
-   * ('gray' and 'mask).  Mask is 1 where all color channels are equal and 0
-   * everywhere else.
-   *
-   * @param imp         argb image
-   * @param n5          the writer
-   * @param groupName   the base path of the datasets
-   * @param blockSize   the block size
-   * @param compression the compression type
-   * @throws IOException io
-   */
-  public static void saveMaskedUnsignedByte(
-		  final ImagePlus imp,
-		  final N5Writer n5,
-		  final String groupName,
-		  final int[] blockSize,
-		  final Compression compression) throws IOException {
+	/**
+	 * Save an {@link ImagePlus} as an N5 dataset.
+	 *
+	 * @param <T>
+	 *            the image data type
+	 * @param <M>
+	 *            the image data type
+	 * @param <W>
+	 *            the metadata writer type
+	 * @param <I>
+	 *            the ImageplusMetadata that extracts the N5DatasetMetadata from the ImagePlus
+	 * @param imp
+	 *            the ImagePlus
+	 * @param n5
+	 *            the writer
+	 * @param datasetName
+	 *            the dataset name
+	 * @param blockSize
+	 *            the block size
+	 * @param compression
+	 *            the compression type
+	 * @param metaWriter
+	 *            (optional) metadata writer
+	 * @param ipMetadata
+	 *            (optional) ImagePlus metadata reader
+	 * @throws IOException
+	 *             io exception
+	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M>, I extends ImageplusMetadata<M>> void save(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String datasetName,
+			final int[] blockSize,
+			final Compression compression,
+			final W metaWriter,
+			final I ipMetadata) throws IOException {
 
-	final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
+		final Img<T> rai;
+		if (imp.getType() == ImagePlus.COLOR_RGB)
+			rai = (Img<T>)wrapRgbAsInt(imp);
+		else
+			rai = ImageJFunctions.wrap(imp);
 
-	final RandomAccessibleInterval<UnsignedByteType> mask = Converters.convert(
-			(RandomAccessibleInterval<ARGBType>)rai,
-			(argb, uint8) -> {
-			  final int argbValue = argb.get();
-			  final int r = ARGBType.red(argbValue);
-			  final int g = ARGBType.green(argbValue);
-			  final int b = ARGBType.blue(argbValue);
-			  if (r == g && g == b)
-				uint8.set(1);
-			  else
-				uint8.set(0);
-			},
-			new UnsignedByteType());
+		N5Utils.save(
+				rai,
+				n5,
+				datasetName,
+				blockSize,
+				compression);
 
-	final RandomAccessibleInterval<UnsignedByteType> gray = Converters.convert(
-			(RandomAccessibleInterval<ARGBType>)rai,
-			(argb, uint8) -> {
-			  uint8.set(ARGBType.red(argb.get()));
-			},
-			new UnsignedByteType());
+		if (metaWriter != null && metaWriter != null) {
+			try {
+				final M metadata = ipMetadata.readMetadata(imp);
+				metaWriter.writeMetadata(metadata, n5, datasetName);
+			} catch (final Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
 
-	n5.createGroup(groupName);
-	N5Utils.save(
-			mask,
-			n5, groupName + "/mask",
-			blockSize,
-			compression);
-	N5Utils.save(
-			gray,
-			n5, groupName + "/gray",
-			blockSize,
-			compression);
-  }
+	/**
+	 * Save and {@link ImagePlus} as an N5 dataset. Parallelizes export using an
+	 * {@link ExecutorService}.
+	 *
+	 * @param imp
+	 *            the ImagePlus
+	 * @param n5
+	 *            the writer
+	 * @param datasetName
+	 *            the dataset name
+	 * @param blockSize
+	 *            the block size
+	 * @param compression
+	 *            the compression type
+	 * @param exec
+	 *            executor
+	 * @throws IOException
+	 *             io exception
+	 * @throws InterruptedException
+	 *             interrupted
+	 * @throws ExecutionException
+	 *             execution
+	 */
+	public static void save(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String datasetName,
+			final int[] blockSize,
+			final Compression compression,
+			final ExecutorService exec) throws IOException, InterruptedException, ExecutionException {
 
-  /**
-   * Save an ARGB image that contains gray scale data and uses inequality of
-   * the three colors as a mask channel into an N5 group with two uint8 datasets
-   * ('gray' and 'mask).  Mask is 1 where all color channels are equal and 0
-   * everywhere else.  Parallelizes export using an {@link ExecutorService}.
-   *
-   * @param imp         ARGB image
-   * @param n5          the writer
-   * @param groupName   the base path of the datasets
-   * @param blockSize   the block size
-   * @param compression the compression type
-   * @param exec        the executor service
-   * @throws IOException          io
-   * @throws InterruptedException interrupted
-   * @throws ExecutionException   execution
-   */
-  public static void saveMaskedUnsignedByte(
-		  final ImagePlus imp,
-		  final N5Writer n5,
-		  final String groupName,
-		  final int[] blockSize,
-		  final Compression compression,
-		  final ExecutorService exec) throws IOException, InterruptedException, ExecutionException {
+		save(imp, n5, datasetName, blockSize, compression, exec, null, null);
+	}
 
-	final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
+	/**
+	 * Save and {@link ImagePlus} as an N5 dataset. Parallelizes export using an
+	 * {@link ExecutorService}.
+	 *
+	 * @param <T>
+	 *            the image data type.
+	 * @param <M>
+	 *            the metadata type.
+	 * @param <W>
+	 *            the metadata writer type.
+	 * @param imp
+	 *            the ImagePlus
+	 * @param n5
+	 *            the writer
+	 * @param datasetName
+	 *            the dataset name
+	 * @param blockSize
+	 *            the block size
+	 * @param compression
+	 *            the compression type
+	 * @param exec
+	 *            the executor
+	 * @param metaWriter
+	 *            (optional) metadata writer
+	 * @throws IOException
+	 *             io
+	 * @throws InterruptedException
+	 *             interrupted
+	 * @throws ExecutionException
+	 *             execution
+	 */
+	@SuppressWarnings({"rawtypes"})
+	public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M> & ImageplusMetadata<M>> void save(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String datasetName,
+			final int[] blockSize,
+			final Compression compression,
+			final ExecutorService exec,
+			final W metaWriter)
+			throws IOException, InterruptedException, ExecutionException {
 
-	final RandomAccessibleInterval<UnsignedByteType> mask = Converters.convert(
-			(RandomAccessibleInterval<ARGBType>)rai,
-			(argb, uint8) -> {
-			  final int argbValue = argb.get();
-			  final int r = ARGBType.red(argbValue);
-			  final int g = ARGBType.green(argbValue);
-			  final int b = ARGBType.blue(argbValue);
-			  if (r == g && g == b)
-				uint8.set(1);
-			  else
-				uint8.set(0);
-			},
-			new UnsignedByteType());
+		save(imp, n5, datasetName, blockSize, compression, exec, metaWriter, metaWriter);
+	}
 
-	final RandomAccessibleInterval<UnsignedByteType> gray = Converters.convert(
-			(RandomAccessibleInterval<ARGBType>)rai,
-			(argb, uint8) -> {
-			  uint8.set(ARGBType.red(argb.get()));
-			},
-			new UnsignedByteType());
+	/**
+	 * Save and {@link ImagePlus} as an N5 dataset. Parallelizes export using an
+	 * {@link ExecutorService}.
+	 *
+	 * @param <T>
+	 *            the image data type.
+	 * @param <M>
+	 *            the metadata type.
+	 * @param <W>
+	 *            the metadata writer type.
+	 * @param <I>
+	 *            the ImageplusMetadata that extracts the N5DatasetMetadata from the ImagePlus
+	 * @param imp
+	 *            the ImagePlus
+	 * @param n5
+	 *            the writer
+	 * @param datasetName
+	 *            the dataset name
+	 * @param blockSize
+	 *            the block size
+	 * @param compression
+	 *            the compression type
+	 * @param exec
+	 *            the executor
+	 * @param metaWriter
+	 *            (optional) metadata writer
+	 * @param ipMetadata
+	 *            (optional) ImagePlus metadata reader
+	 * @throws IOException
+	 *             io
+	 * @throws InterruptedException
+	 *             interrupted
+	 * @throws ExecutionException
+	 *             execution
+	 */
+	@SuppressWarnings({"unchecked", "rawtypes"})
+	public static <T extends RealType & NativeType, M extends N5DatasetMetadata, W extends N5MetadataWriter<M>, I extends ImageplusMetadata<M>> void save(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String datasetName,
+			final int[] blockSize,
+			final Compression compression,
+			final ExecutorService exec,
+			final W metaWriter,
+			final I ipMetadata)
+			throws IOException, InterruptedException, ExecutionException {
 
-	n5.createGroup(groupName);
-	N5Utils.save(
-			mask,
-			n5, groupName + "/mask",
-			blockSize,
-			compression,
-			exec);
-	N5Utils.save(
-			gray,
-			n5, groupName + "/gray",
-			blockSize,
-			compression,
-			exec);
-  }
+		final Img<T> rai;
+		if (imp.getType() == ImagePlus.COLOR_RGB)
+			rai = (Img<T>)wrapRgbAsInt(imp);
+		else
+			rai = ImageJFunctions.wrap(imp);
 
-  /**
-   * Wraps an RGB image as a {@link Img} of type {@link UnsignedIntType}.
-   *
-   * @param imp the ImagePlus
-   * @return the wrapped image
-   */
-  public static Img<UnsignedIntType> wrapRgbAsInt(final ImagePlus imp) {
+		N5Utils.save(
+				rai,
+				n5,
+				datasetName,
+				blockSize,
+				compression,
+				exec);
 
-	if (imp.getType() != ImagePlus.COLOR_RGB)
-	  return null;
+		if (metaWriter != null && metaWriter != null) {
+			try {
+				final M metadata = ipMetadata.readMetadata(imp);
+				metaWriter.writeMetadata(metadata, n5, datasetName);
+			} catch (final Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
 
-	final IntImagePlus<UnsignedIntType> container = new IntImagePlus<>(imp);
+	/**
+	 * Save an ARGB image that contains gray scale data and uses inequality of the three colors as a
+	 * mask channel into an N5 group with two uint8 datasets ('gray' and 'mask). Mask is 1 where all
+	 * color channels are equal and 0 everywhere else.
+	 *
+	 * @param imp
+	 *            argb image
+	 * @param n5
+	 *            the writer
+	 * @param groupName
+	 *            the base path of the datasets
+	 * @param blockSize
+	 *            the block size
+	 * @param compression
+	 *            the compression type
+	 * @throws IOException
+	 *             io
+	 */
+	public static void saveMaskedUnsignedByte(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String groupName,
+			final int[] blockSize,
+			final Compression compression) throws IOException {
 
-	// create a Type that is linked to the container
-	final UnsignedIntType linkedType = new UnsignedIntType(container);
+		final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
 
-	// pass it to the DirectAccessContainer
-	container.setLinkedType(linkedType);
+		final RandomAccessibleInterval<UnsignedByteType> mask = Converters.convert(
+				(RandomAccessibleInterval<ARGBType>)rai,
+				(argb, uint8) -> {
+					final int argbValue = argb.get();
+					final int r = ARGBType.red(argbValue);
+					final int g = ARGBType.green(argbValue);
+					final int b = ARGBType.blue(argbValue);
+					if (r == g && g == b)
+						uint8.set(1);
+					else
+						uint8.set(0);
+				},
+				new UnsignedByteType());
 
-	return container;
-  }
+		final RandomAccessibleInterval<UnsignedByteType> gray = Converters.convert(
+				(RandomAccessibleInterval<ARGBType>)rai,
+				(argb, uint8) -> {
+					uint8.set(ARGBType.red(argb.get()));
+				},
+				new UnsignedByteType());
+
+		n5.createGroup(groupName);
+		N5Utils.save(
+				mask,
+				n5, groupName + "/mask",
+				blockSize,
+				compression);
+		N5Utils.save(
+				gray,
+				n5, groupName + "/gray",
+				blockSize,
+				compression);
+	}
+
+	/**
+	 * Save an ARGB image that contains gray scale data and uses inequality of the three colors as a
+	 * mask channel into an N5 group with two uint8 datasets ('gray' and 'mask). Mask is 1 where all
+	 * color channels are equal and 0 everywhere else. Parallelizes export using an
+	 * {@link ExecutorService}.
+	 *
+	 * @param imp
+	 *            ARGB image
+	 * @param n5
+	 *            the writer
+	 * @param groupName
+	 *            the base path of the datasets
+	 * @param blockSize
+	 *            the block size
+	 * @param compression
+	 *            the compression type
+	 * @param exec
+	 *            the executor service
+	 * @throws IOException
+	 *             io
+	 * @throws InterruptedException
+	 *             interrupted
+	 * @throws ExecutionException
+	 *             execution
+	 */
+	public static void saveMaskedUnsignedByte(
+			final ImagePlus imp,
+			final N5Writer n5,
+			final String groupName,
+			final int[] blockSize,
+			final Compression compression,
+			final ExecutorService exec) throws IOException, InterruptedException, ExecutionException {
+
+		final ImagePlusImg<ARGBType, ?> rai = ImagePlusImgs.from(imp);
+
+		final RandomAccessibleInterval<UnsignedByteType> mask = Converters.convert(
+				(RandomAccessibleInterval<ARGBType>)rai,
+				(argb, uint8) -> {
+					final int argbValue = argb.get();
+					final int r = ARGBType.red(argbValue);
+					final int g = ARGBType.green(argbValue);
+					final int b = ARGBType.blue(argbValue);
+					if (r == g && g == b)
+						uint8.set(1);
+					else
+						uint8.set(0);
+				},
+				new UnsignedByteType());
+
+		final RandomAccessibleInterval<UnsignedByteType> gray = Converters.convert(
+				(RandomAccessibleInterval<ARGBType>)rai,
+				(argb, uint8) -> {
+					uint8.set(ARGBType.red(argb.get()));
+				},
+				new UnsignedByteType());
+
+		n5.createGroup(groupName);
+		N5Utils.save(
+				mask,
+				n5, groupName + "/mask",
+				blockSize,
+				compression,
+				exec);
+		N5Utils.save(
+				gray,
+				n5, groupName + "/gray",
+				blockSize,
+				compression,
+				exec);
+	}
+
+	/**
+	 * Wraps an RGB image as a {@link Img} of type {@link UnsignedIntType}.
+	 *
+	 * @param imp
+	 *            the ImagePlus
+	 * @return the wrapped image
+	 */
+	public static Img<UnsignedIntType> wrapRgbAsInt(final ImagePlus imp) {
+
+		if (imp.getType() != ImagePlus.COLOR_RGB)
+			return null;
+
+		final IntImagePlus<UnsignedIntType> container = new IntImagePlus<>(imp);
+
+		// create a Type that is linked to the container
+		final UnsignedIntType linkedType = new UnsignedIntType(container);
+
+		// pass it to the DirectAccessContainer
+		container.setLinkedType(linkedType);
+
+		return container;
+	}
 }
