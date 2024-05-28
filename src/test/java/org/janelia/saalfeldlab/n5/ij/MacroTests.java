@@ -126,7 +126,7 @@ public class MacroTests {
 	public void testMacro() {
 
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s" + File.separator + "%s hide", n5rootF.toString(), "cosem" ));
+				"url=" + n5rootF.resolve("cosem").toString() + " hide");
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals("crop num", 1, res.size());
@@ -141,7 +141,7 @@ public class MacroTests {
 	public void testMacroVirtual() {
 
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s" + File.separator + "%s hide virtual", n5rootF.toString(), "cosem" ));
+				"url=" + n5rootF.resolve("cosem").toString() + " hide virtual");
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals("crop num", 1, res.size());
@@ -155,8 +155,9 @@ public class MacroTests {
 		final String minString = "100,100,50";
 		final String maxString = "250,250,120";
 		final N5Importer plugin = (N5Importer)IJ.runPlugIn("org.janelia.saalfeldlab.n5.ij.N5Importer",
-				String.format("url=%s" + File.separator + "%s hide min=%s max=%s",
-						n5rootF.toString(), "cosem", minString, maxString ));
+				String.format("url=%s hide min=%s max=%s",
+						n5rootF.resolve("cosem").toString(),
+						minString, maxString));
 
 		final List<ImagePlus> res = plugin.getResult();
 		assertEquals(" crop num", 1, res.size());
