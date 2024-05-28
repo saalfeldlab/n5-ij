@@ -123,7 +123,6 @@ import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn {
 
-	// private static final String[] axisNames = new String[] { "x", "y", "c", "z", "t" };
 	private static final String[] axisNames = new String[]{"dim1", "dim2", "dim3", "dim4", "dim5"};
 
 	public static final String n5PathKey = "url";
@@ -365,16 +364,29 @@ public class N5Importer implements PlugIn {
 			Recorder.record = initialRecorderState;
 
 			final N5Reader n5ForThisDataset = new N5ViewerReaderFun().apply(n5Path);
-			final String root = n5ForThisDataset.getURI().toString();
+			final String rootPath = n5ForThisDataset.getURI().toString();
 			final String dset = new N5BasePathFun().apply(n5Path);
 
-			N5Metadata meta;
 			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5ForThisDataset, N5DatasetDiscoverer.fromParsers(PARSERS),
 					Collections.singletonList(new OmeNgffMetadataParser()));
-			meta = discoverer.parse(dset).getMetadata();
 
-			if (meta instanceof N5DatasetMetadata)
-				lastResult = process(n5ForThisDataset, root, exec, Collections.singletonList((N5DatasetMetadata)meta), openAsVirtual, thisDatasetCropInterval,
+			N5Metadata meta = null;
+			try {
+				final N5TreeNode root = discoverer.discoverAndParseRecursive("");
+				final Optional<N5Metadata> metaOpt = root.getDescendant(dset)
+						.filter(x -> {
+							return x.getMetadata() != null;
+						}).map(N5TreeNode::getMetadata);
+
+				if (metaOpt.isPresent())
+					meta = metaOpt.get();
+
+			} catch (final Exception e) {
+				throw new N5Exception("Failure to parse or find data at " + dset, e);
+			}
+
+			if (meta != null && meta instanceof N5DatasetMetadata)
+				lastResult = process(n5ForThisDataset, rootPath, exec, Collections.singletonList((N5DatasetMetadata)meta), openAsVirtual, thisDatasetCropInterval,
 						show, impMetaWriterTypes);
 			else
 				System.err.println("not a dataset : " + n5Path);
@@ -510,7 +522,7 @@ public class N5Importer implements PlugIn {
 		else
 			imgNorm = imgRaw;
 
-		// crop if necesssary
+		// crop if necessary
 		final RandomAccessibleInterval imgC;
 		Interval cropInterval = null;
 		if (cropIntervalIn != null) {
