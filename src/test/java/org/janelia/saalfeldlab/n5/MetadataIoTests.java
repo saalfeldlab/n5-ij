@@ -29,6 +29,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.IntStream;
@@ -64,7 +65,14 @@ import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 public class MetadataIoTests
 {
-	static private String testDirPath = System.getProperty("user.home") + "/tmp/n5-test";
+	static private String testDirPath = createTestDirPath("n5-test");
+	private static String createTestDirPath(String dirName) {
+		try {
+			return Files.createTempDirectory(dirName).toString();
+		} catch (IOException exc) {
+			return System.getProperty("user.home") + "/tmp/" + dirName;
+		}
+	}
 	static private String testBaseDatasetName = "/test/data";
 
 	private ImagePlus imp2d;
