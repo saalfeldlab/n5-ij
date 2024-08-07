@@ -26,7 +26,6 @@
 package org.janelia.saalfeldlab.n5.ij;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -119,6 +118,7 @@ import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
+import net.imglib2.img.VirtualStackAdapter;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineGet;
@@ -496,7 +496,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 						.zarrDimensionSeparator("/")
 						.openReader(rootWithFormatPrefix);
 				doGroupExistsWarning = n5Reader.exists("");
-			} catch (N5Exception e) {
+			} catch (final N5Exception e) {
 				// an exception may be thrown if the container does not exist
 				// in which case we should skip group existence check
 				// because it will be created below
@@ -594,9 +594,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				}
 
 				// update metadata to reflect this scale level, returns new metadata instance
-				currentMetadata = (M)metadataForThisScale(dset, currentMetadata, downsampleMethod, 
+				currentMetadata = (M)metadataForThisScale(dset, currentMetadata, downsampleMethod,
 						baseResolution,
-						currentAbsoluteDownsampling, 
+						currentAbsoluteDownsampling,
 						currentResolution,
 						currentTranslation);
 
@@ -900,7 +900,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (image.getType() == ImagePlus.COLOR_RGB)
 			baseImg = (RandomAccessibleInterval<T>)(N5IJUtils.wrapRgbAsInt(image));
 		else
-			baseImg = (RandomAccessibleInterval<T>)ImageJFunctions.wrap(image);
+			baseImg = (RandomAccessibleInterval<T>)VirtualStackAdapter.wrap(image);
 
 		return baseImg;
 	}
@@ -1046,7 +1046,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			if (writer != null)
 				try {
 					((N5MetadataWriter<M>)writer).writeMetadata(metadata, n5, dataset);
-				} catch (Exception e) {}
+				} catch (final Exception e) {}
 		}
 	}
 
@@ -1061,7 +1061,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		 * N5Viewer metadata doesn't have a way to directly represent offset.
 		 * Rather, the half-pixel offsets that averaging downsampling introduces
 		 * are assumed when downsampling factors are not equal to ones.
-		 * 
+		 *
 		 * As a result, we use downsampling factors with average downsampling,
 		 * but set the factors to one otherwise.
 		 */
@@ -1151,7 +1151,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 * Because {@link N5Writer}s create the root group on creation by default,
 	 * if the given dataset is the root, we should ignore its existence
 	 * for the purpose of warning the user if it was created by this plugin
-	 * by the N5Writer. 
+	 * by the N5Writer.
 	 *
 	 * @param n5 the n5 writer
 	 * @param dataset the dataset
@@ -1226,7 +1226,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				return currentPath;
 		}
 
-		// also need to overwrite if the given path 
+		// also need to overwrite if the given path
 		// has any child group or datasets
 		if (n5.exists(path)) {
 			final String[] children = n5.list(path);
@@ -1399,7 +1399,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				return true;
 			}
 
-		} catch (IOException e) {}
+		} catch (final IOException e) {}
 
 		return false;
 	}
@@ -1428,7 +1428,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		try {
 			final LegacyApplicationFrame appFrame = (LegacyApplicationFrame)ui.getDefaultUI().getApplicationFrame();
 			parentFrame = appFrame.getComponent();
-		} catch (Exception e) {
+		} catch (final Exception e) {
 			parentFrame = new JFrame();
 		}
 
