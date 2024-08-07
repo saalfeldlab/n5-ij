@@ -611,7 +611,7 @@ public class N5IJUtils {
 	/**
 	 * Wraps an RGB image as a {@link Img} of type {@link UnsignedIntType}.
 	 *
-	 * @param imp
+	 * @param image
 	 *            the ImagePlus
 	 * @return the wrapped image
 	 */
