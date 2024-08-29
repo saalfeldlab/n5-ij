@@ -85,6 +85,20 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
+		<!-- TEMP: Until next pom-scijava release. -->
+		<imagej-common.version>2.1.1</imagej-common.version>
+		<imagej-mesh.version>0.8.2</imagej-mesh.version>
+		<imagej-ops.version>2.2.0</imagej-ops.version>
+		<imglib2-algorithm.version>0.15.3</imglib2-algorithm.version>
+		<imglib2-cache.version>1.0.0-beta-18</imglib2-cache.version>
+		<imglib2-ij.version>2.0.2</imglib2-ij.version>
+		<imglib2-realtransform.version>4.0.3</imglib2-realtransform.version>
+		<imglib2-roi.version>0.15.0</imglib2-roi.version>
+		<imglib2.version>7.1.0</imglib2.version>
+		<n5-imglib2.version>7.0.1-SNAPSHOT</n5-imglib2.version> <!-- TEMP: until n5-imglib2 release -->
+		<enforcer.skip>true</enforcer.skip> <!-- TEMP: until n5-imglib2 release -->
+		<scijava-common.version>2.99.0</scijava-common.version>
+		<scijava-ui-swing.version>1.0.2</scijava-ui-swing.version>
 	</properties>
 
 	<dependencies>
