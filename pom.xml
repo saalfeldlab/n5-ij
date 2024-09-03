@@ -95,8 +95,7 @@
 		<imglib2-realtransform.version>4.0.3</imglib2-realtransform.version>
 		<imglib2-roi.version>0.15.0</imglib2-roi.version>
 		<imglib2.version>7.1.0</imglib2.version>
-		<n5-imglib2.version>7.0.1-SNAPSHOT</n5-imglib2.version> <!-- TEMP: until n5-imglib2 release -->
-		<enforcer.skip>true</enforcer.skip> <!-- TEMP: until n5-imglib2 release -->
+		<n5-imglib2.version>7.0.1</n5-imglib2.version>
 		<scijava-common.version>2.99.0</scijava-common.version>
 		<scijava-ui-swing.version>1.0.2</scijava-ui-swing.version>
 	</properties>
