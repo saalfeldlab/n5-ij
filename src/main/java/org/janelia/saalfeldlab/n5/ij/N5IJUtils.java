@@ -44,14 +44,15 @@ import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 
 import ij.ImagePlus;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converter;
 import net.imglib2.converter.Converters;
 import net.imglib2.exception.ImgLibException;
 import net.imglib2.img.Img;
+import net.imglib2.img.VirtualStackAdapter;
 import net.imglib2.img.cell.LazyCellImg;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgs;
-import net.imglib2.img.imageplus.IntImagePlus;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
@@ -610,23 +611,26 @@ public class N5IJUtils {
 	/**
 	 * Wraps an RGB image as a {@link Img} of type {@link UnsignedIntType}.
 	 *
-	 * @param imp
+	 * @param image
 	 *            the ImagePlus
 	 * @return the wrapped image
 	 */
-	public static Img<UnsignedIntType> wrapRgbAsInt(final ImagePlus imp) {
+	public static RandomAccessibleInterval<UnsignedIntType> wrapRgbAsInt(final ImagePlus image) {
 
-		if (imp.getType() != ImagePlus.COLOR_RGB)
-			return null;
+		if (image.getType() != ImagePlus.COLOR_RGB)
+			throw new IllegalArgumentException();
 
-		final IntImagePlus<UnsignedIntType> container = new IntImagePlus<>(imp);
+		final RandomAccessibleInterval<ARGBType> wimg = VirtualStackAdapter.wrapRGBA(image);
+		return Converters.convertRAI(wimg,
+				new Converter<ARGBType, UnsignedIntType>() {
 
-		// create a Type that is linked to the container
-		final UnsignedIntType linkedType = new UnsignedIntType(container);
+					@Override
+					public void convert(ARGBType input, UnsignedIntType output) {
 
-		// pass it to the DirectAccessContainer
-		container.setLinkedType(linkedType);
+						output.set(input.get());
+					}
+				},
+				new UnsignedIntType());
 
-		return container;
 	}
 }
