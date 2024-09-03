@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>37.0.0</version>
+		<version>38.0.1</version>
 		<relativePath />
 	</parent>
 
@@ -85,17 +85,20 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
-		<imagej-legacy.version>1.2.2</imagej-legacy.version>
-
-		<n5.version>3.2.0</n5.version>
-		<n5-aws-s3.version>4.1.2</n5-aws-s3.version>
-		<n5-blosc.version>1.1.1</n5-blosc.version>
-		<n5-google-cloud.version>4.1.0</n5-google-cloud.version>
-		<n5-hdf5.version>2.2.0</n5-hdf5.version>
-		<n5-imglib2.version>7.0.0</n5-imglib2.version>
-		<n5-universe.version>1.5.0</n5-universe.version>
-		<n5-zarr.version>1.3.2</n5-zarr.version>
-		<n5-zstandard.version>1.0.2</n5-zstandard.version>
+		<!-- TEMP: Until next pom-scijava release. -->
+		<imagej-common.version>2.1.1</imagej-common.version>
+		<imagej-mesh.version>0.8.2</imagej-mesh.version>
+		<imagej-ops.version>2.2.0</imagej-ops.version>
+		<imglib2-algorithm.version>0.15.3</imglib2-algorithm.version>
+		<imglib2-cache.version>1.0.0-beta-18</imglib2-cache.version>
+		<imglib2-ij.version>2.0.2</imglib2-ij.version>
+		<imglib2-realtransform.version>4.0.3</imglib2-realtransform.version>
+		<imglib2-roi.version>0.15.0</imglib2-roi.version>
+		<imglib2.version>7.1.0</imglib2.version>
+		<n5-imglib2.version>7.0.1-SNAPSHOT</n5-imglib2.version> <!-- TEMP: until n5-imglib2 release -->
+		<enforcer.skip>true</enforcer.skip> <!-- TEMP: until n5-imglib2 release -->
+		<scijava-common.version>2.99.0</scijava-common.version>
+		<scijava-ui-swing.version>1.0.2</scijava-ui-swing.version>
 	</properties>
 
 	<dependencies>
@@ -127,7 +130,7 @@
 		<dependency>
 			<groupId>org.janelia</groupId>
 			<artifactId>n5-zstandard</artifactId>
-			<version>${n5-zstandard.version}</version>
+			<version>${n5-zstandard.version}</version> <!-- TEMP: Until next pom-scijava release. -->
 		</dependency>
 
 		<!-- ImgLib2 dependencies -->
