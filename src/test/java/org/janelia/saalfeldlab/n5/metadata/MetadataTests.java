@@ -13,6 +13,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadata;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.File;
@@ -30,20 +31,18 @@ import static org.junit.Assert.fail;
 
 public class MetadataTests {
 
-  N5FSReader n5;
+  private static N5FSReader n5;
 
-  @Before
-  public void setUp() throws IOException {
+  @BeforeClass
+  public static void setUp() throws IOException {
 
 	final String n5Root = "src/test/resources/test.n5";
-	File n5rootF = new File(n5Root);
 	n5 = new N5FSReader(n5Root);
   }
 
   @Test
   public void testCosemMetadataMultiscale() {
 
-	final double eps = 1e-6;
 	final N5MetadataParser<?>[] parsers = new N5MetadataParser[]{new N5CosemMetadataParser()};
 	final N5MetadataParser<?>[] grpparsers = new N5MetadataParser[]{new N5CosemMultiScaleMetadata.CosemMultiScaleParser()};
 
