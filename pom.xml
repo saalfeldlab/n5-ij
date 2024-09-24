@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>37.0.0</version>
+		<version>38.0.1</version>
 		<relativePath />
 	</parent>
 
@@ -98,7 +98,6 @@
 		<scijava-common.version>2.99.0</scijava-common.version>
 		<scijava-ui-swing.version>1.0.2</scijava-ui-swing.version>
 		<n5-imglib2.version>7.0.2</n5-imglib2.version>
-		<n5-zstandard.version>1.0.2</n5-zstandard.version>
 	</properties>
 
 	<dependencies>
