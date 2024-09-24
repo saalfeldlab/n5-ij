@@ -133,7 +133,7 @@ public class TestExportImports
 	}
 
 	@Test
-	public void testReadWriteParse()
+	public void testReadWriteParse() throws InterruptedException
 	{
 		final HashMap<String,String> typeToExtension = new HashMap<>();
 		typeToExtension.put( "FILESYSTEM", "n5" );
@@ -163,6 +163,7 @@ public class TestExportImports
 					final String dataset = datasetBase;
 
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
+					Thread.sleep(50);
 				}
 			}
 		}
@@ -353,10 +354,14 @@ public class TestExportImports
 	{
 		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
 		{
-			testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
+			try {
+				testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -570,10 +575,9 @@ public class TestExportImports
 
 	}
 
-	public void testMultiChannelHelper( final String metatype, final String suffix )
+	public void testMultiChannelHelper( final String metatype, final String suffix ) throws InterruptedException
 	{
 		final int bitDepth = 8;
-
 		final String blockSizeString = "16";
 		final String compressionString = "raw";
 
@@ -601,6 +605,7 @@ public class TestExportImports
 					final String n5RootPath = baseDir + "/test_" + metatype + "_" + dimCode + suffix;
 					final String dataset = String.format("/%s", dimCode);
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
+					Thread.sleep(50);
 				}
 			}
 		}
