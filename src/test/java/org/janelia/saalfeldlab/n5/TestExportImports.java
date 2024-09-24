@@ -72,7 +72,7 @@ public class TestExportImports
 		baseDir.delete();
 	}
 
-	private boolean deleteContainer(final String rootPath) {
+	private static boolean deleteContainer(final String rootPath) {
 
 		final N5Writer n5w = new N5Factory().openWriter(rootPath);
 		final boolean removed = n5w.remove();
@@ -257,7 +257,7 @@ public class TestExportImports
 		singleReadWriteParseTest( imp, outputPath, dataset, blockSizeString, metadataType, compressionType, testMeta, true);
 	}
 
-	public void singleReadWriteParseTest(
+	public static void singleReadWriteParseTest(
 			final ImagePlus imp,
 			final String outputPath,
 			final String dataset,
