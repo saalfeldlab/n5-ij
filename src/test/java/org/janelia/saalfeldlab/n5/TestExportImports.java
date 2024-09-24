@@ -74,8 +74,10 @@ public class TestExportImports
 
 	private boolean deleteContainer(final String rootPath) {
 
-		N5Writer n5w = new N5Factory().openWriter(rootPath);
-		return n5w.remove();
+		final N5Writer n5w = new N5Factory().openWriter(rootPath);
+		final boolean removed = n5w.remove();
+		n5w.close();
+		return removed;
 	}
 
 	@Test
@@ -265,6 +267,8 @@ public class TestExportImports
 			final boolean testMeta,
 			final boolean testData )
 	{
+		System.out.println("singleReadWriteParseTest for " + outputPath + " : " + dataset);
+
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
