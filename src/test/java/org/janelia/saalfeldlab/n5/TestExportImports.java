@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5SpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -50,10 +52,29 @@ public class TestExportImports
 	private File baseDir;
 
 	@Before
-	public void before()
-	{
-		final URL configUrl = RunImportExportTest.class.getResource( "/plugins.config" );
-		baseDir = new File( configUrl.getFile()).getParentFile();
+	public void before() {
+
+		final URL configUrl = RunImportExportTest.class.getResource("/plugins.config");
+		baseDir = new File(configUrl.getFile()).getParentFile();
+
+		try {
+			baseDir = Files.createTempDirectory("n5-ij-tests-").toFile();
+			baseDir.deleteOnExit();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@After
+	public void after() {
+
+		baseDir.delete();
+	}
+
+	private boolean deleteContainer(final String rootPath) {
+
+		N5Writer n5w = new N5Factory().openWriter(rootPath);
+		return n5w.remove();
 	}
 
 	@Test
@@ -101,6 +122,8 @@ public class TestExportImports
 			e.printStackTrace();
 			Assert.fail();
 		}
+
+		deleteContainer(n5RootPath);
 	}
 
 	@Test
