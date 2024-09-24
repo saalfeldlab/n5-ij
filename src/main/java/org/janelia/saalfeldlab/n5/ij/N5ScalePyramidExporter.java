@@ -385,7 +385,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	/**
-	 * Set the custom metadata mapper to use programmically.
+	 * Set the custom metadata mapper to use programmatically.
 	 *
 	 * @param metadataMapper
 	 *            the metadata template mapper
