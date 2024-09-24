@@ -29,9 +29,9 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5SpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import ij.ImagePlus;
@@ -50,10 +50,10 @@ import net.imglib2.view.Views;
 public class TestExportImports
 {
 
-	private File baseDir;
+	private static File baseDir;
 
-	@Before
-	public void before() {
+	@BeforeClass
+	public static void setup() {
 
 		final URL configUrl = RunImportExportTest.class.getResource("/plugins.config");
 		baseDir = new File(configUrl.getFile()).getParentFile();
@@ -66,8 +66,8 @@ public class TestExportImports
 		}
 	}
 
-	@After
-	public void after() {
+	@AfterClass
+	public static void tearDown() {
 
 		baseDir.delete();
 	}
