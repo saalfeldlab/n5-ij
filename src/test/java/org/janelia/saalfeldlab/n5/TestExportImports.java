@@ -75,7 +75,6 @@ public class TestExportImports
 	private static boolean deleteContainer(final String rootPath) {
 
 		try ( final N5Writer n5w = new N5Factory().openWriter(rootPath) ) {
-			System.out.println( " removing: " + rootPath );
 			return n5w.remove();
 		} catch( N5Exception e ) {
 			e.printStackTrace();
@@ -134,7 +133,7 @@ public class TestExportImports
 	}
 
 	@Test
-	public void testReadWriteParse() throws InterruptedException
+	public void testReadWriteParse()
 	{
 		final HashMap<String,String> typeToExtension = new HashMap<>();
 		typeToExtension.put( "FILESYSTEM", "n5" );
@@ -164,7 +163,6 @@ public class TestExportImports
 					final String dataset = datasetBase;
 
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
-					Thread.sleep(50);
 				}
 			}
 		}
@@ -272,8 +270,6 @@ public class TestExportImports
 			final boolean testMeta,
 			final boolean testData )
 	{
-		System.out.println("singleReadWriteParseTest for " + outputPath + " : " + dataset);
-
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
@@ -355,20 +351,13 @@ public class TestExportImports
 	@Test
 	public void testMultiChannel()
 	{
-		System.out.println( "####################");
-		System.out.println( "testMultiChannel");
 		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
 		{
-			try {
-				testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
-				testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
-				testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
-				testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
+			testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
+			testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
+			testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
 		}
-		System.out.println( "####################\n ");
 	}
 
 	@Test
@@ -581,9 +570,8 @@ public class TestExportImports
 
 	}
 
-	public void testMultiChannelHelper( final String metatype, final String suffix ) throws InterruptedException
+	public void testMultiChannelHelper( final String metatype, final String suffix )
 	{
-		System.out.println( "  " + metatype + " : " + suffix );
 		final int bitDepth = 8;
 
 		final String blockSizeString = "16";
@@ -613,7 +601,6 @@ public class TestExportImports
 					final String n5RootPath = baseDir + "/test_" + metatype + "_" + dimCode + suffix;
 					final String dataset = String.format("/%s", dimCode);
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
-					Thread.sleep(50);
 				}
 			}
 		}
