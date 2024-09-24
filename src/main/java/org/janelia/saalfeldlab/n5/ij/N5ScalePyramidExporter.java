@@ -1261,7 +1261,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final RandomAccessibleInterval<T> img, final long[] downsampleFactors) {
 
 		// ensure downsampleFactors contains only 1's and 2's
-		assert Arrays.stream(downsampleFactors).filter(x -> (x == 1) || (x == 2)).count() == downsampleFactors.length;
+		assert Arrays.stream(downsampleFactors).allMatch(x -> (x == 1) || (x == 2));
 
 		final int nd = downsampleFactors.length;
 		final double[] scale = new double[nd];
