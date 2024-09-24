@@ -84,7 +84,7 @@ public class TestExportImports
 	}
 
 	@Test
-	public void testEmptyMeta()
+	public void testEmptyMeta() throws InterruptedException
 	{
 		final ImagePlus imp = NewImage.createImage("test", 8, 6, 2, 16, NewImage.FILL_NOISE);
 		final String metaType = N5Importer.MetadataDefaultKey;
@@ -163,7 +163,7 @@ public class TestExportImports
 					final String dataset = datasetBase;
 
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
-					Thread.sleep(50);
+					Thread.sleep(25);
 				}
 			}
 		}
@@ -256,7 +256,7 @@ public class TestExportImports
 			final String blockSizeString,
 			final String metadataType,
 			final String compressionType,
-			final boolean testMeta )
+			final boolean testMeta ) throws InterruptedException
 	{
 		singleReadWriteParseTest( imp, outputPath, dataset, blockSizeString, metadataType, compressionType, testMeta, true);
 	}
@@ -269,7 +269,7 @@ public class TestExportImports
 			final String metadataType,
 			final String compressionType,
 			final boolean testMeta,
-			final boolean testData )
+			final boolean testData ) throws InterruptedException
 	{
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
@@ -293,6 +293,7 @@ public class TestExportImports
 		else
 			assertTrue("n5 or zarr root is not a directory:" + outputPath, n5RootWritten.isDirectory());
 
+		Thread.sleep(25);
 		final N5Importer reader = new N5Importer();
 		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
@@ -308,8 +309,7 @@ public class TestExportImports
 			assertEquals( String.format( "%s resolutions y", dataset ), imp.getCalibration().pixelHeight, impRead.getCalibration().pixelHeight, EPS );
 			assertEquals( String.format( "%s resolutions z", dataset ), imp.getCalibration().pixelDepth, impRead.getCalibration().pixelDepth, EPS );
 
-			final boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() );
-			assertTrue( String.format( "%s units ", dataset ), unitsEqual );
+			final boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() ); assertTrue( String.format( "%s units ", dataset ), unitsEqual );
 		}
 
 		if( testData )
@@ -327,11 +327,11 @@ public class TestExportImports
 		}
 
 		impRead.close();
-//		deleteContainer(outputPath);
+		deleteContainer(outputPath);
 	}
 
 	@Test
-	public void testRgb()
+	public void testRgb() throws InterruptedException
 	{
 		final ImagePlus imp = NewImage.createRGBImage("test", 8, 6, 4, NewImage.FILL_NOISE);
 		final String metaType = N5Importer.MetadataImageJKey;
@@ -605,7 +605,7 @@ public class TestExportImports
 					final String n5RootPath = baseDir + "/test_" + metatype + "_" + dimCode + suffix;
 					final String dataset = String.format("/%s", dimCode);
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
-					Thread.sleep(50);
+					Thread.sleep(25);
 				}
 			}
 		}
