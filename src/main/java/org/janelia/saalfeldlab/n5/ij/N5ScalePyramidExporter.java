@@ -57,6 +57,11 @@ import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.UIManager;
 
+import net.imglib2.algorithm.blocks.BlockAlgoUtils;
+import net.imglib2.algorithm.blocks.BlockSupplier;
+import net.imglib2.algorithm.blocks.downsample.Downsample;
+import net.imglib2.util.Util;
+import net.imglib2.view.fluent.RandomAccessibleIntervalView.Extension;
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
@@ -385,7 +390,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	/**
-	 * Set the custom metadata mapper to use programmically.
+	 * Set the custom metadata mapper to use programmatically.
 	 *
 	 * @param metadataMapper
 	 *            the metadata template mapper
@@ -1261,7 +1266,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final RandomAccessibleInterval<T> img, final long[] downsampleFactors) {
 
 		// ensure downsampleFactors contains only 1's and 2's
-		assert Arrays.stream(downsampleFactors).filter(x -> (x == 1) || (x == 2)).count() == downsampleFactors.length;
+		assert Arrays.stream(downsampleFactors).allMatch(x -> (x == 1) || (x == 2));
 
 		final int nd = downsampleFactors.length;
 		final double[] scale = new double[nd];
@@ -1282,11 +1287,25 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			}
 		}
 
+		if (img.getType() instanceof NativeType) {
+			return downsampleAvgBy2NativeType((RandomAccessibleInterval) img, Util.long2int(downsampleFactors), dims);
+		}
+
 		// TODO clamping NLinearInterpFactory when relevant
 		// TODO record offset in metadata as (s-0.5)
 		final RealRandomAccessible<T> imgE = Views.interpolate(Views.extendBorder(img), new NLinearInterpolatorFactory());
 		return Views.interval(RealViews.transform(imgE, new ScaleAndTranslation(scale, translation)),
 				new FinalInterval(dims));
+	}
+
+	private static <T extends NativeType<T>> RandomAccessibleInterval<T> downsampleAvgBy2NativeType(
+			final RandomAccessibleInterval<T> img, final int[] downsampleFactors, final long[] dimensions) {
+
+		final int[] cellDimensions = new int[] {32};
+		final BlockSupplier<T> blocks = BlockSupplier
+				.of(img.view().extend(Extension.border()))
+				.andThen(Downsample.downsample(downsampleFactors));
+		return BlockAlgoUtils.cellImg(blocks, dimensions, cellDimensions);
 	}
 
 	private int[] sliceBlockSize(final int exclude) {
