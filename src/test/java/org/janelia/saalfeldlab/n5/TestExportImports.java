@@ -2,6 +2,7 @@ package org.janelia.saalfeldlab.n5;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -279,10 +280,18 @@ public class TestExportImports
 
 		final String n5PathAndDataset = outputPath + readerDataset;
 
+		final File n5RootWritten = new File(outputPath);
+		assertTrue("root does not exist: " + outputPath, n5RootWritten.exists());
+		if (outputPath.endsWith(".h5"))
+			assertTrue("hdf5 file exists", n5RootWritten.exists());
+		else
+			assertTrue("n5 or zarr root is not a directory:" + outputPath, n5RootWritten.isDirectory());
+
 		final N5Importer reader = new N5Importer();
 		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
 
+		assertNotNull(String.format( "Failed to open image: %s %s ", outputPath, dataset ), impList);
 		assertEquals( String.format( "%s %s one image opened ", outputPath, dataset ), 1, impList.size() );
 
 		final double EPS = 1e-9;
@@ -311,15 +320,8 @@ public class TestExportImports
 			assertTrue( String.format( "%s data ", dataset ), imagesEqual );
 		}
 
-		try {
-			final N5Writer n5w = new N5Factory().openWriter(outputPath);
-			n5w.remove();
-		} catch (final N5Exception e) {
-			e.printStackTrace();
-		}
-
 		impRead.close();
-
+		deleteContainer(outputPath);
 	}
 
 	@Test
