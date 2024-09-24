@@ -155,7 +155,7 @@ public class TestExportImports
 			{
 				for( final String metatype : metadataTypes )
 				{
-					final String n5RootPath = baseDir + "/test." + typeToExtension.get( containerType );
+					final String n5RootPath = baseDir + "/test-" + metatype + "." + typeToExtension.get( containerType );
 					final String datasetBase = "/test_"+metatype+"_"+bitDepth;
 					final String dataset = datasetBase;
 
@@ -350,7 +350,7 @@ public class TestExportImports
 	@Test
 	public void testMultiChannel()
 	{
-		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
+		for( final String suffix : new String[] { "-mc.h5", "-mc.n5", "-mc.zarr" })
 		{
 			testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
 			testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
