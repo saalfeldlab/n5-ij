@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.IntStream;
 
+import org.codehaus.plexus.util.FileUtils;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.ij.N5IJUtils;
 import org.janelia.saalfeldlab.n5.metadata.imagej.CosemToImagePlus;
@@ -53,8 +54,9 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5ViewerMultiscaleMetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import ij.ImagePlus;
@@ -65,7 +67,7 @@ import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 public class MetadataIoTests
 {
-	static private String testDirPath = createTestDirPath("n5-test");
+	private static String testDirPath = createTestDirPath("n5-ij-metatest-");
 	private static String createTestDirPath(String dirName) {
 		try {
 			return Files.createTempDirectory(dirName).toString();
@@ -75,13 +77,13 @@ public class MetadataIoTests
 	}
 	static private String testBaseDatasetName = "/test/data";
 
-	private ImagePlus imp2d;
-	private ImagePlus imp3d;
-	private ImagePlus imp4d;
-	private ImagePlus imp5d;
+	private static ImagePlus imp2d;
+	private static ImagePlus imp3d;
+	private static ImagePlus imp4d;
+	private static ImagePlus imp5d;
 
-	@Before
-	public void setUp() throws IOException
+	@BeforeClass
+	public static void setUp() throws IOException
 	{
 		final ArrayImgFactory< UnsignedByteType > factory = new ArrayImgFactory<>( new UnsignedByteType() );
 
@@ -108,6 +110,18 @@ public class MetadataIoTests
 		imp5d.getCalibration().pixelDepth = 1.1;
 	}
 
+	@AfterClass
+	public static void tearDown() {
+
+		try {
+			final File d = new File(testDirPath);
+			FileUtils.deleteDirectory(d);
+			d.delete();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
 	@Test
 	public void testCustomMetadata()
 	{
@@ -117,7 +131,7 @@ public class MetadataIoTests
 		N5FSWriter n5 = null;
 		try
 		{
-			n5 = new N5FSWriter( testDirPath+ ".n5" );
+			n5 = new N5FSWriter(new File(testDirPath, "testCustom.n5").getAbsolutePath());
 			n5.createDataset( "/testpath",
 				new long[]{2,3,4}, new int[] {2,3,4}, DataType.UINT8 , new RawCompression() );
 
@@ -245,8 +259,9 @@ public class MetadataIoTests
 	@Test
 	public void testH5()
 	{
-		final N5HDF5Writer n5 = new N5HDF5Writer( testDirPath + ".h5", 32, 32, 32, 32, 32 );
-		testAllMetadataTypes( n5 );
+		final N5HDF5Writer h5 = new N5HDF5Writer( new File( testDirPath, "test.h5").getAbsolutePath(), 32, 32, 32, 32, 32 );
+		testAllMetadataTypes( h5 );
+		h5.close();
 	}
 
 	@Test
@@ -254,19 +269,21 @@ public class MetadataIoTests
 	{
 		try
 		{
-			final N5ZarrWriter n5 = new N5ZarrWriter( testDirPath+ ".zarr" );
-			testAllMetadataTypes( n5 );
+			final N5ZarrWriter zarr = new N5ZarrWriter(new File(testDirPath, "test.zarr").getAbsolutePath());
+			testAllMetadataTypes( zarr );
 
-			n5.remove(  testBaseDatasetName + "/imp2d" );
-			n5.remove(  testBaseDatasetName + "/imp2_cosemd" );
-			n5.remove(  testBaseDatasetName + "/imp2_n5v" );
+			zarr.remove(  testBaseDatasetName + "/imp2d" );
+			zarr.remove(  testBaseDatasetName + "/imp2_cosemd" );
+			zarr.remove(  testBaseDatasetName + "/imp2_n5v" );
 
-			n5.remove(  testBaseDatasetName + "/imp3d" );
-			n5.remove(  testBaseDatasetName + "/imp3d_cosem" );
-			n5.remove(  testBaseDatasetName + "/imp3d_n5v" );
+			zarr.remove(  testBaseDatasetName + "/imp3d" );
+			zarr.remove(  testBaseDatasetName + "/imp3d_cosem" );
+			zarr.remove(  testBaseDatasetName + "/imp3d_n5v" );
 
-			n5.remove(  testBaseDatasetName + "/imp4d" );
-			n5.remove(  testBaseDatasetName + "/imp5d" );
+			zarr.remove(  testBaseDatasetName + "/imp4d" );
+			zarr.remove(  testBaseDatasetName + "/imp5d" );
+
+			zarr.close();
 		}
 		catch ( final N5Exception e )
 		{
@@ -281,7 +298,7 @@ public class MetadataIoTests
 		N5FSWriter n5;
 		try
 		{
-			n5 = new N5FSWriter( testDirPath+ ".n5" );
+			n5 = new N5FSWriter(new File(testDirPath, "test.n5").getAbsolutePath());
 			testAllMetadataTypes( n5 );
 
 			n5.remove(  testBaseDatasetName + "/imp2d" );
@@ -294,6 +311,8 @@ public class MetadataIoTests
 
 			n5.remove(  testBaseDatasetName + "/imp4d" );
 			n5.remove(  testBaseDatasetName + "/imp5d" );
+
+			n5.close();
 		}
 		catch ( final N5Exception e )
 		{
