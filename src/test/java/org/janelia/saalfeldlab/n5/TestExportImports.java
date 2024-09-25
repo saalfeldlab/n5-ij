@@ -84,7 +84,7 @@ public class TestExportImports
 	}
 
 	@Test
-	public void testEmptyMeta()
+	public void testEmptyMeta() throws InterruptedException
 	{
 		final ImagePlus imp = NewImage.createImage("test", 8, 6, 2, 16, NewImage.FILL_NOISE);
 		final String metaType = N5Importer.MetadataDefaultKey;
@@ -133,7 +133,7 @@ public class TestExportImports
 	}
 
 	@Test
-	public void testReadWriteParse()
+	public void testReadWriteParse() throws InterruptedException
 	{
 		final HashMap<String,String> typeToExtension = new HashMap<>();
 		typeToExtension.put( "FILESYSTEM", "n5" );
@@ -163,6 +163,7 @@ public class TestExportImports
 					final String dataset = datasetBase;
 
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
+					Thread.sleep(25);
 				}
 			}
 		}
@@ -255,7 +256,7 @@ public class TestExportImports
 			final String blockSizeString,
 			final String metadataType,
 			final String compressionType,
-			final boolean testMeta )
+			final boolean testMeta ) throws InterruptedException
 	{
 		singleReadWriteParseTest( imp, outputPath, dataset, blockSizeString, metadataType, compressionType, testMeta, true);
 	}
@@ -268,7 +269,7 @@ public class TestExportImports
 			final String metadataType,
 			final String compressionType,
 			final boolean testMeta,
-			final boolean testData )
+			final boolean testData ) throws InterruptedException
 	{
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
@@ -292,6 +293,7 @@ public class TestExportImports
 		else
 			assertTrue("n5 or zarr root is not a directory:" + outputPath, n5RootWritten.isDirectory());
 
+		Thread.sleep(25);
 		final N5Importer reader = new N5Importer();
 		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
@@ -329,7 +331,7 @@ public class TestExportImports
 	}
 
 	@Test
-	public void testRgb()
+	public void testRgb() throws InterruptedException
 	{
 		final ImagePlus imp = NewImage.createRGBImage("test", 8, 6, 4, NewImage.FILL_NOISE);
 		final String metaType = N5Importer.MetadataImageJKey;
@@ -352,10 +354,14 @@ public class TestExportImports
 	{
 		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
 		{
-			testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
+			try {
+				testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -569,7 +575,7 @@ public class TestExportImports
 
 	}
 
-	public void testMultiChannelHelper( final String metatype, final String suffix )
+	public void testMultiChannelHelper( final String metatype, final String suffix ) throws InterruptedException
 	{
 		final int bitDepth = 8;
 		final String blockSizeString = "16";
@@ -599,6 +605,7 @@ public class TestExportImports
 					final String n5RootPath = baseDir + "/test_" + metatype + "_" + dimCode + suffix;
 					final String dataset = String.format("/%s", dimCode);
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
+					Thread.sleep(25);
 				}
 			}
 		}
