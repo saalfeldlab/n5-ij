@@ -2,6 +2,7 @@ package org.janelia.saalfeldlab.n5;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -28,9 +29,9 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5SpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import ij.ImagePlus;
@@ -49,10 +50,10 @@ import net.imglib2.view.Views;
 public class TestExportImports
 {
 
-	private File baseDir;
+	private static File baseDir;
 
-	@Before
-	public void before() {
+	@BeforeClass
+	public static void setup() {
 
 		final URL configUrl = RunImportExportTest.class.getResource("/plugins.config");
 		baseDir = new File(configUrl.getFile()).getParentFile();
@@ -65,20 +66,25 @@ public class TestExportImports
 		}
 	}
 
-	@After
-	public void after() {
+	@AfterClass
+	public static void tearDown() {
 
 		baseDir.delete();
 	}
 
-	private boolean deleteContainer(final String rootPath) {
+	private static boolean deleteContainer(final String rootPath) {
 
-		N5Writer n5w = new N5Factory().openWriter(rootPath);
-		return n5w.remove();
+		try ( final N5Writer n5w = new N5Factory().openWriter(rootPath) ) {
+			return n5w.remove();
+		} catch( N5Exception e ) {
+			e.printStackTrace();
+		}
+
+		return false;
 	}
 
 	@Test
-	public void testEmptyMeta()
+	public void testEmptyMeta() throws InterruptedException
 	{
 		final ImagePlus imp = NewImage.createImage("test", 8, 6, 2, 16, NewImage.FILL_NOISE);
 		final String metaType = N5Importer.MetadataDefaultKey;
@@ -127,7 +133,7 @@ public class TestExportImports
 	}
 
 	@Test
-	public void testReadWriteParse()
+	public void testReadWriteParse() throws InterruptedException
 	{
 		final HashMap<String,String> typeToExtension = new HashMap<>();
 		typeToExtension.put( "FILESYSTEM", "n5" );
@@ -152,11 +158,12 @@ public class TestExportImports
 			{
 				for( final String metatype : metadataTypes )
 				{
-					final String n5RootPath = baseDir + "/test." + typeToExtension.get( containerType );
+					final String n5RootPath = baseDir + "/test-" + metatype + "-" + bitDepth + "." + typeToExtension.get( containerType );
 					final String datasetBase = "/test_"+metatype+"_"+bitDepth;
 					final String dataset = datasetBase;
 
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
+					Thread.sleep(25);
 				}
 			}
 		}
@@ -249,12 +256,12 @@ public class TestExportImports
 			final String blockSizeString,
 			final String metadataType,
 			final String compressionType,
-			final boolean testMeta )
+			final boolean testMeta ) throws InterruptedException
 	{
 		singleReadWriteParseTest( imp, outputPath, dataset, blockSizeString, metadataType, compressionType, testMeta, true);
 	}
 
-	public void singleReadWriteParseTest(
+	public static void singleReadWriteParseTest(
 			final ImagePlus imp,
 			final String outputPath,
 			final String dataset,
@@ -262,7 +269,7 @@ public class TestExportImports
 			final String metadataType,
 			final String compressionType,
 			final boolean testMeta,
-			final boolean testData )
+			final boolean testData ) throws InterruptedException
 	{
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
@@ -279,10 +286,19 @@ public class TestExportImports
 
 		final String n5PathAndDataset = outputPath + readerDataset;
 
+		final File n5RootWritten = new File(outputPath);
+		assertTrue("root does not exist: " + outputPath, n5RootWritten.exists());
+		if (outputPath.endsWith(".h5"))
+			assertTrue("hdf5 file exists", n5RootWritten.exists());
+		else
+			assertTrue("n5 or zarr root is not a directory:" + outputPath, n5RootWritten.isDirectory());
+
+		Thread.sleep(25);
 		final N5Importer reader = new N5Importer();
 		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
 
+		assertNotNull(String.format( "Failed to open image: %s %s ", outputPath, dataset ), impList);
 		assertEquals( String.format( "%s %s one image opened ", outputPath, dataset ), 1, impList.size() );
 
 		final double EPS = 1e-9;
@@ -293,8 +309,7 @@ public class TestExportImports
 			assertEquals( String.format( "%s resolutions y", dataset ), imp.getCalibration().pixelHeight, impRead.getCalibration().pixelHeight, EPS );
 			assertEquals( String.format( "%s resolutions z", dataset ), imp.getCalibration().pixelDepth, impRead.getCalibration().pixelDepth, EPS );
 
-			final boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() );
-			assertTrue( String.format( "%s units ", dataset ), unitsEqual );
+			final boolean unitsEqual = impRead.getCalibration().getUnit().equals( imp.getCalibration().getUnit() ); assertTrue( String.format( "%s units ", dataset ), unitsEqual );
 		}
 
 		if( testData )
@@ -311,19 +326,12 @@ public class TestExportImports
 			assertTrue( String.format( "%s data ", dataset ), imagesEqual );
 		}
 
-		try {
-			final N5Writer n5w = new N5Factory().openWriter(outputPath);
-			n5w.remove();
-		} catch (final N5Exception e) {
-			e.printStackTrace();
-		}
-
 		impRead.close();
-
+		deleteContainer(outputPath);
 	}
 
 	@Test
-	public void testRgb()
+	public void testRgb() throws InterruptedException
 	{
 		final ImagePlus imp = NewImage.createRGBImage("test", 8, 6, 4, NewImage.FILL_NOISE);
 		final String metaType = N5Importer.MetadataImageJKey;
@@ -346,10 +354,14 @@ public class TestExportImports
 	{
 		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
 		{
-			testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
-			testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
+			try {
+				testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -563,11 +575,9 @@ public class TestExportImports
 
 	}
 
-	public void testMultiChannelHelper( final String metatype, final String suffix )
+	public void testMultiChannelHelper( final String metatype, final String suffix ) throws InterruptedException
 	{
 		final int bitDepth = 8;
-
-		final String n5RootPath = baseDir + "/test_"+ metatype+"_dimCombos" + suffix;
 		final String blockSizeString = "16";
 		final String compressionString = "raw";
 
@@ -591,8 +601,11 @@ public class TestExportImports
 					if( nz > 1 )
 						imp.getCalibration().pixelDepth = 0.7;
 
-					final String dataset = String.format("/c%dz%dt%d", nc, nz, nt);
+					final String dimCode = String.format("c%dz%dt%d", nc, nz, nt);
+					final String n5RootPath = baseDir + "/test_" + metatype + "_" + dimCode + suffix;
+					final String dataset = String.format("/%s", dimCode);
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
+					Thread.sleep(25);
 				}
 			}
 		}
