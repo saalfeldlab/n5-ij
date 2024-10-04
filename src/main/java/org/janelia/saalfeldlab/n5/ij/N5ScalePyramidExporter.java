@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -283,6 +284,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private final Map<String, N5MetadataWriter<?>> styles;
 
 	private final HashMap<Class<?>, N5MetadataWriter<?>> metadataWriters;
+
+	private ThreadPoolExecutor threadPool;
 
 	// consider something like this eventually
 	// private BiFunction<RandomAccessibleInterval<? extends
@@ -1201,14 +1204,16 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		// Here, either allowing overwrite, or not allowing, but the dataset does not exist.
 		// use threadPool even for single threaded execution for progress monitoring
-		final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
+		threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
 		N5Utils.save(image,
 				n5, dataset, chunkSize, compression,
-				Executors.newFixedThreadPool(nThreads));
+				threadPool);
 
 		writeMetadata(metadata, n5, dataset);
+		threadPool.shutdown();
+
 		return true;
 	}
 
