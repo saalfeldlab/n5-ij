@@ -1192,6 +1192,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return true;
 	}
 
+	public ExecutorService getExecutorService() {
+
+		return threadPool;
+	}
+
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	private <T extends RealType & NativeType, M extends N5Metadata> boolean write(
 			final RandomAccessibleInterval<T> image,
