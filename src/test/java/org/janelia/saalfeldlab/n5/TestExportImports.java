@@ -163,7 +163,7 @@ public class TestExportImports
 					final String dataset = datasetBase;
 
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true );
-					Thread.sleep(25);
+//					Thread.sleep(25);
 				}
 			}
 		}
@@ -293,7 +293,7 @@ public class TestExportImports
 		else
 			assertTrue("n5 or zarr root is not a directory:" + outputPath, n5RootWritten.isDirectory());
 
-		Thread.sleep(25);
+//		Thread.sleep(25);
 		final N5Importer reader = new N5Importer();
 		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
@@ -605,7 +605,7 @@ public class TestExportImports
 					final String n5RootPath = baseDir + "/test_" + metatype + "_" + dimCode + suffix;
 					final String dataset = String.format("/%s", dimCode);
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
-					Thread.sleep(25);
+//					Thread.sleep(25);
 				}
 			}
 		}
