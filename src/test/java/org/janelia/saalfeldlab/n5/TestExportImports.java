@@ -272,6 +272,7 @@ public class TestExportImports
 			final boolean testMeta,
 			final boolean testData ) throws InterruptedException
 	{
+		System.out.println("singleReadWriteParseTest : " + outputPath);
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
@@ -302,9 +303,11 @@ public class TestExportImports
 			assertTrue("n5 or zarr root is not a directory:" + outputPath, n5RootWritten.isDirectory());
 
 //		Thread.sleep(25);
+		System.out.println("start N5Importer");
 		final N5Importer reader = new N5Importer();
 		reader.setShow( false );
 		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
+		System.out.println("N5Importer returned");
 
 		assertNotNull(String.format( "Failed to open image: %s %s ", outputPath, dataset ), impList);
 		assertEquals( String.format( "%s %s one image opened ", outputPath, dataset ), 1, impList.size() );
@@ -336,6 +339,9 @@ public class TestExportImports
 
 		impRead.close();
 		deleteContainer(outputPath);
+		System.out.println("#############################################");
+		System.out.println("#############################################");
+		System.out.println("");
 	}
 
 	@Test
