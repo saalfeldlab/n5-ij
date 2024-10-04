@@ -275,10 +275,14 @@ public class TestExportImports
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
+
+		System.out.println("writer.run");
 		writer.run(); // run() closes the n5 writer
+		System.out.println("writer.run returned");
 
 		// wait
 		writer.getExecutorService().awaitTermination(1000, TimeUnit.MILLISECONDS);
+		System.out.println("executor service terminated");
 
 		final String readerDataset;
 		if (metadataType.equals(N5Importer.MetadataN5ViewerKey) || (metadataType.equals(N5Importer.MetadataN5CosemKey) && imp.getNChannels() > 1))

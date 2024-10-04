@@ -1212,12 +1212,16 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
+
+		System.out.println("N5Utils.save");
 		N5Utils.save(image,
 				n5, dataset, chunkSize, compression,
 				threadPool);
-
-		writeMetadata(metadata, n5, dataset);
+		System.out.println("N5Utils.save returned");
 		threadPool.shutdown();
+		System.out.println("writeMetadata");
+		writeMetadata(metadata, n5, dataset);
+		System.out.println("writeMetadata returned");
 
 		return true;
 	}
