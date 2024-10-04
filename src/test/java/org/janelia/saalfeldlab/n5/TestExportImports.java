@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
@@ -275,6 +276,9 @@ public class TestExportImports
 		writer.setOptions( imp, outputPath, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
 		writer.run(); // run() closes the n5 writer
+
+		// wait
+		writer.getExecutorService().awaitTermination(1000, TimeUnit.MILLISECONDS);
 
 		final String readerDataset;
 		if (metadataType.equals(N5Importer.MetadataN5ViewerKey) || (metadataType.equals(N5Importer.MetadataN5CosemKey) && imp.getNChannels() > 1))
