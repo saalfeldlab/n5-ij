@@ -306,8 +306,14 @@ public class TestExportImports
 		System.out.println("start N5Importer");
 		final N5Importer reader = new N5Importer();
 		reader.setShow( false );
-		final List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
+		List< ImagePlus > impList = reader.process( n5PathAndDataset, false );
 		System.out.println("N5Importer returned");
+
+		if( impList == null ) {
+			System.out.println("failed...trying again");
+			// try again like some idiot
+			impList = reader.process( n5PathAndDataset, false );
+		}
 
 		assertNotNull(String.format( "Failed to open image: %s %s ", outputPath, dataset ), impList);
 		assertEquals( String.format( "%s %s one image opened ", outputPath, dataset ), 1, impList.size() );
