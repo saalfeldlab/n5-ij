@@ -19,7 +19,7 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
-public class GithubActionsIssues {
+public class GithubActionsIssuesTests {
 
 	private static File baseDir;
 
@@ -73,7 +73,6 @@ public class GithubActionsIssues {
 	}
 	
 	@Test
-	@Ignore
 	public void n5WriteReadSameInstance() {
 
 		System.out.println("n5WriteReadSameInstance");
@@ -98,7 +97,6 @@ public class GithubActionsIssues {
 	}
 
 	@Test
-	@Ignore
 	public void n5WriteRead() {
 		
 		System.out.println("n5WriteRead");
