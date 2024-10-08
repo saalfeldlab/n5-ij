@@ -61,7 +61,6 @@ public class TestRunners {
 				Thread.sleep(waitTime);
 			} catch (InterruptedException e) {}
 
-			System.out.println("try again");
 			waitTime *= waitTimeMultiplier;
 			i++;
 		}
