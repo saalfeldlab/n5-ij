@@ -302,35 +302,18 @@ public class TestExportImports
 			readerDataset = dataset;
 
 		final String n5PathAndDataset = outputPath + readerDataset;
-
-//		 consider testing this files existence before trying to read?
-//		final File n5RootWritten = new File(outputPath);
-
-		int i = 0;
+		// consider testing this files existence before trying to read?
 		final N5Importer reader = new N5Importer();
 		reader.setShow(false);
-		List< ImagePlus > impList = null;
+		final Optional<List< ImagePlus >> impListOpt = TestRunners.tryWaitRepeat( () -> {
+			return reader.process(n5PathAndDataset, false);
+		});
 
-		while (i < nTries) {
-
-			if (i == nTries) {
-				break;
-			}
-
-			impList = reader.process(n5PathAndDataset, false);
-			if (impList != null)
-				break;
-
-			try {
-				Thread.sleep(50);
-			} catch (InterruptedException e) {}
-
-			System.err.println("trying again");
-			i++;
-		}
-
-		if( impList == null ) {
-			System.err.println( String.format("Skipping test for [ %s : %s ] due to intermittent error ", outputPath, dataset ));
+		List<ImagePlus> impList;
+		if (impListOpt.isPresent()) {
+			impList = impListOpt.get();
+		} else {
+			System.err.println(String.format("Skipping test for [ %s : %s ] due to intermittent error ", outputPath, dataset));
 			return;
 		}
 
