@@ -639,7 +639,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	protected boolean validateDataset() {
 
-		System.out.println("validateDataset");
 		if (dataset.isEmpty()) {
 			cancel("Please provide a name for the dataset");
 			return false;
@@ -1213,15 +1212,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
 
-		System.out.println("N5Utils.save");
 		N5Utils.save(image,
 				n5, dataset, chunkSize, compression,
 				threadPool);
-		System.out.println("N5Utils.save returned");
 		threadPool.shutdown();
-		System.out.println("writeMetadata");
 		writeMetadata(metadata, n5, dataset);
-		System.out.println("writeMetadata returned");
 
 		return true;
 	}
