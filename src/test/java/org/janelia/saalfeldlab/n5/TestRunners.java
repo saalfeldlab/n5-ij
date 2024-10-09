@@ -5,17 +5,17 @@ import java.util.function.Supplier;
 
 public class TestRunners {
 	
-	public static <T> Optional<T> tryWaitRepeat(Supplier<T> supplier) {
+	public static <T> Optional<T> tryWaitRepeat(Supplier<T> supplier) throws InterruptedException {
 
 		return tryWaitRepeat(supplier, 5, 50, 2);
 	}
 
-	public static <T> Optional<T> tryWaitRepeat(Supplier<T> supplier, int nTries) {
+	public static <T> Optional<T> tryWaitRepeat(Supplier<T> supplier, int nTries) throws InterruptedException {
 
 		return tryWaitRepeat(supplier, nTries, 50, 2);
 	}
 	
-	public static <T> Optional<T> tryWaitRepeat(Supplier<T> supplier, int nTries, long waitTimeMillis) {
+	public static <T> Optional<T> tryWaitRepeat(Supplier<T> supplier, int nTries, long waitTimeMillis) throws InterruptedException {
 
 		return tryWaitRepeat(supplier, nTries, waitTimeMillis, 2);
 	}
@@ -37,13 +37,14 @@ public class TestRunners {
 	 * @return an {@link Optional} containing the result from the supplier if a non-null result is returned 
 	 *         before the maximum number of tries, or an empty {@code Optional} if all attempts fail or 
 	 *         return null
+	 * @throws InterruptedException thrown if interrupted while waiting
 	 */
 	public static <T> Optional<T> tryWaitRepeat(
-			final Supplier<T> supplier, 
-			final int nTries, 
-			final long initialWaitTimeMillis, 
-			final int waitTimeMultiplier ) {
-		
+			final Supplier<T> supplier,
+			final int nTries,
+			final long initialWaitTimeMillis,
+			final int waitTimeMultiplier) throws InterruptedException {
+
 		int i = 0;
 		long waitTime = initialWaitTimeMillis;
 		while (i < nTries) {
@@ -57,10 +58,7 @@ public class TestRunners {
 					return Optional.of(result);
 			} catch (RuntimeException e) {}
 
-			try {
-				Thread.sleep(waitTime);
-			} catch (InterruptedException e) {}
-
+			Thread.sleep(waitTime);
 			waitTime *= waitTimeMultiplier;
 			i++;
 		}

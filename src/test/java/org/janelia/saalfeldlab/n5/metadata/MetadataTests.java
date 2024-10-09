@@ -44,7 +44,7 @@ public class MetadataTests {
 	}
 
 	@Test
-	public void testCosemMetadataMultiscale() {
+	public void testCosemMetadataMultiscale() throws InterruptedException {
 
 		final N5MetadataParser<?>[] parsers = new N5MetadataParser[]{new N5CosemMetadataParser()};
 		final N5MetadataParser<?>[] grpparsers = new N5MetadataParser[]{new N5CosemMultiScaleMetadata.CosemMultiScaleParser()};
@@ -85,7 +85,7 @@ public class MetadataTests {
 	}
 
 	@Test
-	public void testCosemMetadata() {
+	public void testCosemMetadata() throws InterruptedException {
 
 		final double eps = 1e-6;
 
@@ -96,7 +96,12 @@ public class MetadataTests {
 
 		TestRunners.tryWaitRepeat(() -> {
 			try {
-				return discoverer.discoverAndParseRecursive("/");
+				N5TreeNode node = discoverer.discoverAndParseRecursive("/");
+				if( node.childrenList().size() < 3 )
+					return null;
+				else
+					return node;
+
 			} catch (IOException e) {
 				return null; // so that the runner tries again
 			}
@@ -125,7 +130,7 @@ public class MetadataTests {
 	}
 
 	@Test
-	public void testN5ViewerMetadata() {
+	public void testN5ViewerMetadata() throws InterruptedException {
 
 		final double eps = 1e-6;
 
@@ -147,9 +152,11 @@ public class MetadataTests {
 			List<N5TreeNode> childrenWithMetadata = n5root.childrenList().stream()
 					.filter(x -> Objects.nonNull(x.getMetadata()))
 					.collect(Collectors.toList());
+
 			long childrenNoMetadataCount = n5root.childrenList().stream()
 					.filter(x -> Objects.isNull(x.getMetadata()))
 					.count();
+
 			Assert.assertEquals("discovery node count with single scale metadata", 4, childrenWithMetadata.size());
 			Assert.assertEquals("discovery node count without single scale metadata", 1, childrenNoMetadataCount);
 
@@ -182,7 +189,7 @@ public class MetadataTests {
 	}
 
 	@Test
-	public void testGenericMetadata() {
+	public void testGenericMetadata() throws InterruptedException {
 
 		final double eps = 1e-6;
 
