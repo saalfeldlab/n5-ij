@@ -49,7 +49,7 @@ each dimension.  In the example shown above, the resulting image will be of size
 
 ## Export HDF5/N5/Zarr/OME-NGFF
 
-Save images opened in Fiji as HDF5/N5/Zarr/OME-NGFF datasets with `File > Save As > Export HDF5/N5/Zarr/OME-NGFF ...`.
+Save full images opened in Fiji as HDF5/N5/Zarr/OME-NGFF datasets with `File > Save As > Export HDF5/N5/Zarr/OME-NGFF ...`, and patch images into an existing dataset using `File > Save As > Export HDF5/N5/Zarr/OME-NGFF (patch)`.  The patch export exports the current image into an existing dataset with a given offset.  This offset and the size of the image do not need to align with the block raster of the dataset.
 
 <img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/SaveN5Dialog.png width="280">
 
