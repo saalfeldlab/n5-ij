@@ -191,7 +191,7 @@ This plugin supports three types of image metadata:
 1) ImageJ-style metadata 
 2) [N5-viewer](https://github.com/saalfeldlab/n5-viewer) metadata
 3) [COSEM](https://github.com/janelia-cosem/schemas/blob/master/multiscale.md) metadata
-4) [OME-NGFF](https://ngff.openmicroscopy.org/latest/) metadata
+4) [OME-NGFF v0.4](https://ngff.openmicroscopy.org/0.4/) metadata
 5) Custom metadata. [Read details here](CustomMetadata.md)
 
 The metadata style for exported HDF5/N5/Zarr/OME-NGFF datasets is customizable, more detail coming soon.
