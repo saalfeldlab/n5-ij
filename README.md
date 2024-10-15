@@ -54,8 +54,10 @@ Save full images opened in Fiji as HDF5/N5/Zarr/OME-NGFF datasets with `File > S
 <img src=https://raw.githubusercontent.com/saalfeldlab/n5-ij/master/doc/SaveN5Dialog.png width="280">
 
 Parameters
-* `N5Root` - the root location of the n5 (see also [Container types](#container-types))
+* `Root url` - the root location of the n5 (see also [Container types](#container-types))
 * `Dataset` - the name of the dataset.
+* `Format` - the storage format to use: one of `Auto`, `Zarr`, `N5`, or `HDF5`
+    * `Auto` : try to infer the storage format from the url (see below)
 * `Chunk size` - chunk/block size as comma-separated list.  
   * ImageJ's axis order is X,Y,C,Z,T. The chunk size must be specified in this order. You must skip any axis whose size is `1`, e.g. a 2D time-series without channels may have a chunk size of `1024,1024,1` (X,Y,T).
   * You may provide fewer values than the data dimension. In that case, the list will be expanded to necessary size with the last value, for example `64`, will expand to `64,64,64` for 3D data.
@@ -63,24 +65,29 @@ Parameters
 * `Downsampling method` - The downsampling method to be used if a multiscale pyramid can be created. See below for details.
 * `Compression` - The compression method to be used for chucnks / blocks. 
 * `metadata type` - style and type of metadata to store (see also [Metadata](#metadata))
-* `thread count` - number of threads used for parallel writing (see also [Cloud writing benchmarks](#cloud-writing-benchmarks))
+* `Thread count` - number of threads used for parallel writing (see also [Cloud writing benchmarks](#cloud-writing-benchmarks))
 * `Overwrite` - If checked, existing data may be deleted and overwritten without warning.
 
-## Container types
+### Container types
 
-The export plugin infers container type from the file/directory path or url given as the n5 root:
+If the "Format" option is set to `Auto`, the export plugin infers the storage format from the given url given. First, it checks scheme
+of the URL, next it checks the directory or file extension. Note that URLs may have two schemes [(as in neuroglancer)](https://connectomics.readthedocs.io/en/latest/external/neuroglancer.html#basic-usage),
+for example: `zarr://s3://my-bucket/my-key`
 
 * Filesystem N5 
+    * Specify a URL starting with `n5:`
     * Specify a directory ending in `.n5` 
     * example `/path/to/my/data.n5`
 * Zarr
+    * Specify a URL starting with `zarr:`
     * Specify a directory ending in `.zarr` 
     * example `/Users/user/Documents/sample.zarr`
 * HDF5
+    * Specify a URL starting with `hdf5:`
     * Specify a file ending in `.h5` ,`.hdf5`, or `.hdf`
     * example `C:\user\docs\example.h5`
  
-## Backend
+### Backend
 
 Specify the backend by protocol, "file:" or not protocol indicate the local file system:
 
