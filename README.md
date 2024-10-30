@@ -63,7 +63,7 @@ Parameters
   * You may provide fewer values than the data dimension. In that case, the list will be expanded to necessary size with the last value, for example `64`, will expand to `64,64,64` for 3D data.
 * `Create Pyramid` - If checked, a multiscale pyramid will be created (if possible). See below for details.
 * `Downsampling method` - The downsampling method to be used if a multiscale pyramid can be created. See below for details.
-* `Compression` - The compression method to be used for chucnks / blocks. 
+* `Compression` - The compression method to be used for chunks / blocks. 
 * `metadata type` - style and type of metadata to store (see also [Metadata](#metadata))
 * `Thread count` - number of threads used for parallel writing (see also [Cloud writing benchmarks](#cloud-writing-benchmarks))
 * `Overwrite` - If checked, existing data may be deleted and overwritten without warning.
