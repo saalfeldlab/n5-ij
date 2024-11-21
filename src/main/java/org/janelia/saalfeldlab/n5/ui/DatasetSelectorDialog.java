@@ -799,6 +799,15 @@ public class DatasetSelectorDialog {
 		detectCalled = true;
 	}
 
+	public boolean waitUntilDiscoveryIsFinished(long maxWaitingMillis) {
+		final long waitingPeriodMillis = 100;
+		while (messageLabel.isVisible() && maxWaitingMillis > 0) {
+			try { Thread.sleep(waitingPeriodMillis); } catch (InterruptedException e) { throw new RuntimeException(e); }
+			maxWaitingMillis -= waitingPeriodMillis;
+		}
+		return !messageLabel.isVisible();
+	}
+
 	public void ok() {
 
 		// stop parsing things
