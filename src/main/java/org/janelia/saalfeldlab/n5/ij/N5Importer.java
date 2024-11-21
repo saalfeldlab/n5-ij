@@ -253,6 +253,17 @@ public class N5Importer implements PlugIn {
 		this.show = show;
 	}
 
+	public void runWithDialog(final String pathToContainer) {
+		lastOpenedContainer = pathToContainer;
+		selectionDialog = null;
+		run(null);
+		if (selectionDialog == null) {
+			throw new RuntimeException("The \"Open N5\" didn't come up when it should.");
+		} else {
+			selectionDialog.detectDatasets();
+		}
+	}
+
 	@Override
 	public void run(final String args) {
 
