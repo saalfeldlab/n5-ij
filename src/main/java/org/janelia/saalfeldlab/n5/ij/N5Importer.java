@@ -42,6 +42,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.swing.JTree;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
@@ -62,6 +63,7 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
+import org.janelia.saalfeldlab.n5.ui.N5SwingTreeNode;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
@@ -253,7 +255,7 @@ public class N5Importer implements PlugIn {
 		this.show = show;
 	}
 
-	public void runWithDialog(final String pathToContainer) {
+	public void runWithDialog(final String pathToContainer, final List<String> selectThisSubPath) {
 		lastOpenedContainer = pathToContainer;
 		selectionDialog = null;
 		run(null);
@@ -261,6 +263,26 @@ public class N5Importer implements PlugIn {
 			throw new RuntimeException("The \"Open N5\" didn't come up when it should.");
 		} else {
 			selectionDialog.detectDatasets();
+			if (selectThisSubPath != null) {
+				boolean isDiscoveryFinished = selectionDialog.waitUntilDiscoveryIsFinished(60000);
+				if (isDiscoveryFinished) selectTreeItem(selectThisSubPath);
+			}
+		}
+	}
+
+	private void selectTreeItem(final List<String> itemPath) {
+		final JTree t = selectionDialog.getJTree();
+		int currRow = 0;
+		for (String subPath : itemPath) {
+			for (int r = currRow; r < t.getRowCount(); ++r, ++currRow) {
+				N5SwingTreeNode n = (N5SwingTreeNode)t.getPathForRow(r).getLastPathComponent();
+				if (n.getNodeName().equals(subPath)) {
+					t.expandRow(r);
+					t.setSelectionRow(r);
+					++currRow;
+					break;
+				}
+			}
 		}
 	}
 
