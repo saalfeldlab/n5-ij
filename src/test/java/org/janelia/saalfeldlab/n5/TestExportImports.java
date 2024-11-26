@@ -617,6 +617,26 @@ public class TestExportImports
 		}
 	}
 
+	@Test
+	public void testNumDownsamplingLevels() {
+
+		final int bitDepth = 8;
+		final String dset = "scaleLevelsTest";
+
+		// the size of mitosis.tif sample image
+		final ImagePlus imp = NewImage.createImage("test", 171, 196, 2 * 5 * 51, bitDepth, NewImage.FILL_BLACK);
+		imp.setDimensions(2, 5, 51);
+
+		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
+		exp.setOptions(imp, baseDir.getAbsolutePath(), dset, "16", true, N5ScalePyramidExporter.DOWN_AVERAGE,
+				N5Importer.MetadataOmeZarrKey, N5ScalePyramidExporter.RAW_COMPRESSION);
+		exp.run();
+
+		try (final N5Reader n5 = new N5FSReader(baseDir.getAbsolutePath())) {
+			assertEquals("5 scale levels", 5, n5.list(dset).length);
+		}
+	}
+
 	public void pyramidReadWriteParseTest(
 			final ImagePlus imp,
 			final String outputPath,

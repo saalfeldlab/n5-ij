@@ -571,7 +571,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				Arrays.fill(relativeFactors, 1);
 
 				if (s > 0) {
-					relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
+					relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg, s, currentAbsoluteDownsampling);
 
 					// update absolute downsampling factors
 					for (int i = 0; i < nd; i++)
@@ -610,7 +610,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				anyScalesWritten = true;
 
 				// chunkSize variable is updated by the write method
-				if (lastScale(chunkSize, currentChannelImg))
+				if (lastScale(chunkSize, currentChannelImg, currentMetadata))
 					break;
 			}
 
@@ -720,13 +720,15 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return multiscaleMetadata;
 	}
 
-	protected boolean lastScale(final int[] chunkSize, final Interval imageDimensions) {
+	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
+
+		final Axis[] axes = getAxes(metadata, imageDimensions.numDimensions());
 
 		for (int i = 0; i < imageDimensions.numDimensions(); i++) {
-			if (imageDimensions.dimension(i) <= chunkSize[i])
-				return true;
+			if (axes[i].getType().equals(Axis.SPACE) && imageDimensions.dimension(i) > chunkSize[i])
+				return false;
 		}
-		return false;
+		return true;
 	}
 
 	protected <M extends N5DatasetMetadata> void fillResolution(final M baseMetadata, final double[] resolution) {
@@ -861,9 +863,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return factors;
 	}
 
-	protected <M extends N5Metadata> long[] getRelativeDownsampleFactors(final M metadata, final int nd, final int scale,
+	protected <M extends N5Metadata> long[] getRelativeDownsampleFactors(final M metadata, final Interval img, final int scale,
 			final long[] downsampleFactors) {
 
+		int nd = img.numDimensions();
 		final Axis[] axes = getAxes(metadata, nd);
 
 		// under what condisions is nd != axes.length
@@ -871,7 +874,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		for (int i = 0; i < nd; i++) {
 
 			// only downsample spatial dimensions
-			if (axes[i].getType().equals(Axis.SPACE))
+			if (axes[i].getType().equals(Axis.SPACE) && img.dimension(i) > 1)
 				factors[i] = 2;
 			else
 				factors[i] = 1;
