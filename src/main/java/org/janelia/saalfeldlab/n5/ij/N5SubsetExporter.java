@@ -306,7 +306,7 @@ public class N5SubsetExporter extends ContextCommand {
 	private static boolean zarrFOrder(final N5Reader n5, String path) {
 
 		if (n5 instanceof ZarrKeyValueReader) {
-			final ZarrDatasetAttributes zattrs = ((ZarrKeyValueReader)n5).getDatasetAttributes(path);
+			final ZarrDatasetAttributes zattrs = (ZarrDatasetAttributes) ((ZarrKeyValueReader)n5).getDatasetAttributes(path);
 			return !zattrs.isRowMajor();
 		}
 

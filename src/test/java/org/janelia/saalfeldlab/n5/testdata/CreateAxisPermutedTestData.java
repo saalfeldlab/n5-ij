@@ -149,7 +149,7 @@ public class CreateAxisPermutedTestData {
 		final String sourceScale = sourceDset + "/s0";
 		final String destinationScale = destinationDset + "/s0";
 
-		final ZarrDatasetAttributes attrs = zarr.getDatasetAttributes(sourceScale);
+		final DatasetAttributes attrs = zarr.getDatasetAttributes(sourceScale);
 		final int[] blockSize = ArrayUtils.clone( attrs.getBlockSize());
 		final int[] blockSizePermuted = AxisUtils.permute(blockSize, permutation);
 

@@ -611,7 +611,7 @@ public class N5Importer implements PlugIn {
 	private static boolean zarrFOrderAndEmptyMetadata(final N5Reader n5, N5Metadata meta) {
 
 		if (n5 instanceof ZarrKeyValueReader && meta instanceof N5DefaultSingleScaleMetadata) {
-			final ZarrDatasetAttributes zattrs = ((ZarrKeyValueReader)n5).getDatasetAttributes(meta.getPath());
+			final ZarrDatasetAttributes zattrs = (ZarrDatasetAttributes) ((ZarrKeyValueReader)n5).getDatasetAttributes(meta.getPath());
 			return !zattrs.isRowMajor();
 		}
 
