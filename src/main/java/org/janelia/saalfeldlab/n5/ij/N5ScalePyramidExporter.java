@@ -1361,16 +1361,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return BlockAlgoUtils.cellImg(blocks, dimensions, cellDimensions);
 	}
 
-	private int[] sliceBlockSize(final int exclude) {
-
-		return removeElement(chunkSize, exclude);
-	}
-
-	private long[] sliceDownsamplingFactors(final int exclude) {
-
-		return removeElement(currentAbsoluteDownsampling, exclude);
-	}
-
 	private static int[] removeElement(final int[] arr, final int excludeIndex) {
 
 		final int[] out = new int[arr.length - 1];
