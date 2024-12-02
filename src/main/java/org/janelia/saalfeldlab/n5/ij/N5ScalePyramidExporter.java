@@ -532,12 +532,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// get the image to save
 		final RandomAccessibleInterval<T> baseImg = getBaseImage();
 
-		final M baseMetadata;
-		if (impMeta != null)
-			baseMetadata = (M)impMeta.readMetadata(image);
-		else
-			baseMetadata = null;
-
+		final M baseMetadata = initializeBaseMetadata();
 		currentChannelMetadata = copyMetadata(baseMetadata);
 		M currentMetadata;
 
@@ -561,6 +556,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final double[] currentResolution = new double[nd];
 			System.arraycopy(baseResolution, 0, currentResolution, 0, nd);
 
+			// TODO here
 			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset);
 			currentTranslation = new double[nd];
 
@@ -627,6 +623,53 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 						channelDataset);
 		}
 		n5.close();
+	}
+
+	@SuppressWarnings("unchecked")
+	protected <M extends N5DatasetMetadata> M initializeBaseMetadata() {
+
+		M baseMetadata = null;
+		if (impMeta != null) {
+			try {
+				baseMetadata = (M) impMeta.readMetadata(image);
+			} catch (IOException e) {
+			}
+		}
+
+		if (impMeta instanceof NgffToImagePlus) {
+
+			/*
+			 * ImagePlus axes need to be permuted before conversion to ngff (i.e. from XYCZT
+			 * to XYZCT) The data are permuted elsewhere, here we ensure the metadata
+			 * reflect that chagnge
+			 */
+			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata) baseMetadata;
+			baseMetadata = (M) new NgffSingleScaleAxesMetadata(ngffMeta.getPath(), ngffMeta.getScale(),
+					ngffMeta.getTranslation(), permuteAxesForNgff(ngffMeta.getAxes()), ngffMeta.getAttributes());
+		}
+
+		return baseMetadata;
+	}
+
+	protected Axis[] permuteAxesForNgff(final Axis[] axes) {
+
+		boolean hasC = false;
+		boolean hasZ = false;
+		boolean hasT = false;
+		for (int i = 0; i < axes.length; i++) {
+			hasC = hasC || axes[i].getName().equals("c");
+			hasZ = hasZ || axes[i].getName().equals("z");
+			hasT = hasT || axes[i].getName().equals("t");
+		}
+
+		if (hasC && hasZ) {
+			if (hasT)
+				return new Axis[] { axes[0], axes[1], axes[3], axes[2], axes[4] };
+			else
+				return new Axis[] { axes[0], axes[1], axes[3], axes[2] };
+		}
+
+		return axes;
 	}
 
 	protected void initializeDataset() {
@@ -936,9 +979,15 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// some metadata styles never split channels, return input image in that
 		// case
 		if (metadataStyle.equals(NONE) || metadataStyle.equals(N5Importer.MetadataCustomKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
 				metadataStyle.equals(N5Importer.MetadataImageJKey)) {
 			return Collections.singletonList(img);
+		}
+		else if (metadataStyle.equals(N5Importer.MetadataOmeZarrKey)) {
+
+			if (image.getNChannels() > 1 && image.getNSlices() > 1)
+				return Collections.singletonList(Views.permute(img, 2, 3));
+			else
+				return Collections.singletonList(img);
 		}
 
 		// otherwise, split channels
@@ -962,6 +1011,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				// make a 4d image in order XYZT
 				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
 			}
+
 			channels.add(channelImg);
 		}
 
