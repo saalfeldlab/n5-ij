@@ -13,24 +13,25 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class NgffTests {
-	
+
 	private N5FSReader n5;
 
 	@Before
-	  public void setUp() throws IOException {
+	public void setUp() throws IOException {
 
 		final String n5Root = "src/test/resources/ngff.n5";
 		n5 = new N5FSReader(n5Root);
-	  }
+	}
 
-	  @Test
-	  public void testNgffGroupAttributeParsing() {
+	@Test
+	public void testNgffGroupAttributeParsing() {
 
-		  final double eps = 1e-9;
-		  try {
-			NgffMultiScaleGroupAttributes[] multiscales = n5.getAttribute("ngff_grpAttributes", "multiscales", NgffMultiScaleGroupAttributes[].class );
+		final double eps = 1e-9;
+		try {
+			NgffMultiScaleGroupAttributes[] multiscales = n5.getAttribute("ngff_grpAttributes", "multiscales",
+					NgffMultiScaleGroupAttributes[].class);
 			Assert.assertEquals("one set of multiscales", 1, multiscales.length);
-			
+
 			MultiscaleDataset[] datasets = multiscales[0].datasets;
 			Assert.assertEquals("num levels", 6, datasets.length);
 
@@ -48,6 +49,6 @@ public class NgffTests {
 			fail("Ngff parsing failed");
 			e.printStackTrace();
 		}
-	  }
+	}
 
 }
