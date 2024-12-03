@@ -2,17 +2,6 @@
 
 A Fiji plugin for loading and saving image data to N5 containers. Supports [HDF5](https://www.hdfgroup.org/solutions/hdf5/), [Zarr](https://zarr.readthedocs.io/en/stable/#), [Amazon S3](https://aws.amazon.com/s3/), and [Google cloud storage](https://cloud.google.com/storage).
 
-## Contents
-1. [Open HDF5/N5/Zarr/OME-NGFF](#open-n5)
-   1. [Virtual](#virtual)
-   2. [Cropping](#cropping)
-2. [Export N5](#export-n5)
-3. [Container types](#container-types)
-4. [Metadata](#metadata)
-5. [For developers](#for-developers)
-6. [Details](#details)
-   1. [Cloud writing benchmarks](#cloud-writing-benchmarks)
-
 ## Open HDF5/N5/Zarr/OME-NGFF
 
 Open HDF5/N5/Zarr/OME-NGFF datasets from Fiji with `File > Import > HDF5/N5/Zarr/OME-NGFF ... `. 
