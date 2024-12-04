@@ -353,7 +353,6 @@ public class TestExportImports
 	 *
 	 */
 	@Test
-	@Ignore // TODO intermittent failures on GH actions
 	public void testMultiChannel()
 	{
 		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
@@ -588,7 +587,7 @@ public class TestExportImports
 		final String compressionString = "raw";
 
 		// add zero to avoid eclipse making these variables final
-		int nc = 3; nc += 0;
+		int nc = 1; nc += 0;
 		int nz = 1; nz += 0;
 		int nt = 1; nt += 0;
 

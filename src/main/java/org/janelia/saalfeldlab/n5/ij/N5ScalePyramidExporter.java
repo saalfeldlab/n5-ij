@@ -643,16 +643,15 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			 * to XYZCT) The data are permuted elsewhere, here we ensure the metadata
 			 * reflect that chagnge
 			 */
-			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata) baseMetadata;
-			baseMetadata = (M) new NgffSingleScaleAxesMetadata(ngffMeta.getPath(), ngffMeta.getScale(),
-					ngffMeta.getTranslation(), permuteAxesForNgff(ngffMeta.getAxes()), ngffMeta.getAttributes());
+			baseMetadata = (M) permuteAxesForNgff((NgffSingleScaleAxesMetadata) baseMetadata);
 		}
 
 		return baseMetadata;
 	}
 
-	protected Axis[] permuteAxesForNgff(final Axis[] axes) {
+	protected NgffSingleScaleAxesMetadata permuteAxesForNgff(NgffSingleScaleAxesMetadata metadata) {
 
+		final Axis[] axes = metadata.getAxes();
 		boolean hasC = false;
 		boolean hasZ = false;
 		boolean hasT = false;
@@ -663,13 +662,27 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 
 		if (hasC && hasZ) {
-			if (hasT)
-				return new Axis[] { axes[0], axes[1], axes[3], axes[2], axes[4] };
-			else
-				return new Axis[] { axes[0], axes[1], axes[3], axes[2] };
+			final double[] scale = metadata.getScale();
+			final double[] translation = metadata.getTranslation();
+
+			Axis[] newAxes;
+			double[] newScale;
+			double[] newTranslation;
+			if (hasT) {
+				newAxes = new Axis[] { axes[0], axes[1], axes[3], axes[2], axes[4] };
+				newScale = new double[] { scale[0], scale[1], scale[3], scale[2], scale[4] };
+				newTranslation = new double[] { translation[0], translation[1], translation[3], translation[2], translation[4] };
+			} else {
+				newAxes = new Axis[] { axes[0], axes[1], axes[3], axes[2] };
+				newScale = new double[] { scale[0], scale[1], scale[3], scale[2] };
+				newTranslation = new double[] { translation[0], translation[1], translation[3], translation[2] };
+			}
+
+			return new NgffSingleScaleAxesMetadata(metadata.getPath(), newScale, newTranslation, newAxes,
+					metadata.getAttributes());
 		}
 
-		return axes;
+		return metadata;
 	}
 
 	protected void initializeDataset() {
@@ -770,9 +783,14 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
 
+		/*
+		 *  Note: Using N5Viewer metadata, will sometimes pass a 4D interval to this method, but
+		 *  will have the metadata provide 3 (spatial) axes. The 4D interval is ordered XYZT in this case,
+		 *  so downsampling factors will be calculated correctly if time dimensions are not downsampled.
+		 */
 		final Axis[] axes = getAxes(metadata, imageDimensions.numDimensions());
-
-		for (int i = 0; i < imageDimensions.numDimensions(); i++) {
+		final int nd = axes.length;
+		for (int i = 0; i < nd; i++) {
 			if (axes[i].getType().equals(Axis.SPACE) && imageDimensions.dimension(i) > chunkSize[i])
 				return false;
 		}
