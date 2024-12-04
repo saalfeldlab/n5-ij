@@ -723,8 +723,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
 
 		final Axis[] axes = getAxes(metadata, imageDimensions.numDimensions());
+		final int nd = axes.length;
 
-		for (int i = 0; i < imageDimensions.numDimensions(); i++) {
+		for (int i = 0; i < nd; i++) {
 			if (axes[i].getType().equals(Axis.SPACE) && imageDimensions.dimension(i) > chunkSize[i])
 				return false;
 		}

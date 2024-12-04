@@ -549,7 +549,7 @@ public class TestExportImports
 		final String compressionString = "raw";
 
 		// add zero to avoid eclipse making these variables final
-		int nc = 3; nc += 0;
+		int nc = 1; nc += 0;
 		int nz = 1; nz += 0;
 		int nt = 1; nt += 0;
 
@@ -621,19 +621,21 @@ public class TestExportImports
 	public void testNumDownsamplingLevels() {
 
 		final int bitDepth = 8;
+		final String n5RootPath = baseDir + "/test-pyramid-levels.n5";
 		final String dset = "scaleLevelsTest";
 
 		// the size of mitosis.tif sample image
-		final ImagePlus imp = NewImage.createImage("test", 171, 196, 2 * 5 * 51, bitDepth, NewImage.FILL_BLACK);
-		imp.setDimensions(2, 5, 51);
+		final ImagePlus imp = NewImage.createImage("test", 78, 25, 2 * 40 * 12, bitDepth, NewImage.FILL_BLACK);
+		imp.setDimensions(2, 40, 12);
 
+		System.out.println(baseDir);
 		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
-		exp.setOptions(imp, baseDir.getAbsolutePath(), dset, "16", true, N5ScalePyramidExporter.DOWN_AVERAGE,
+		exp.setOptions(imp, n5RootPath, dset, "16", true, N5ScalePyramidExporter.DOWN_AVERAGE,
 				N5Importer.MetadataOmeZarrKey, N5ScalePyramidExporter.RAW_COMPRESSION);
 		exp.run();
 
-		try (final N5Reader n5 = new N5FSReader(baseDir.getAbsolutePath())) {
-			assertEquals("5 scale levels", 5, n5.list(dset).length);
+		try (final N5Reader n5 = new N5FSReader(n5RootPath)) {
+			assertEquals("4 scale levels", 4, n5.list(dset).length);
 		}
 	}
 
