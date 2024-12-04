@@ -494,7 +494,7 @@ public class DatasetSelectorDialog {
 		cbot.anchor = GridBagConstraints.CENTER;
 		panel.add(messageLabel, cbot);
 
-		okBtn = new JButton("Open in Imagej");
+		okBtn = new JButton("OK");
 		cbot.gridx = 4;
 		cbot.ipadx = 20;
 		cbot.anchor = GridBagConstraints.EAST;
