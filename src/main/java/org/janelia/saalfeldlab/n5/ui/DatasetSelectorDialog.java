@@ -30,6 +30,7 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.net.URI;
 import java.nio.file.Paths;
@@ -49,6 +50,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import javax.swing.KeyStroke;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
@@ -94,6 +96,8 @@ import ij.ImageJ;
 import ij.gui.ProgressBar;
 import net.imglib2.util.Pair;
 import se.sawano.java.text.AlphanumericComparator;
+
+import static javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW;
 
 public class DatasetSelectorDialog {
 
@@ -342,6 +346,10 @@ public class DatasetSelectorDialog {
 
 		// ok and cancel buttons
 		okBtn.addActionListener(e -> ok());
+		okBtn.registerKeyboardAction(a -> ok(),
+				  "n5_open_button",
+				  KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,0,true),
+				  WHEN_IN_FOCUSED_WINDOW);
 		cancelBtn.addActionListener(e -> cancel());
 		dialog.setVisible(true);
 	}
@@ -486,7 +494,7 @@ public class DatasetSelectorDialog {
 		cbot.anchor = GridBagConstraints.CENTER;
 		panel.add(messageLabel, cbot);
 
-		okBtn = new JButton("OK");
+		okBtn = new JButton("Open in Imagej");
 		cbot.gridx = 4;
 		cbot.ipadx = 20;
 		cbot.anchor = GridBagConstraints.EAST;
@@ -503,6 +511,15 @@ public class DatasetSelectorDialog {
 		panel.add(cancelBtn, cbot);
 
 		containerTree.addMouseListener(new NodePopupMenu(this).getPopupListener());
+		containerTree.addTreeSelectionListener(tsl -> {
+			if (containerTree.getSelectionCount() == 0) {
+				okBtn.setEnabled( false );
+			} else {
+				int selectedRow = containerTree.getSelectionRows()[0];
+				N5SwingTreeNode n = (N5SwingTreeNode)containerTree.getPathForRow(selectedRow).getLastPathComponent();
+				okBtn.setEnabled( selectionFilter.test(n.getMetadata()) );
+			}
+		});
 
 		dialog.pack();
 		return dialog;
@@ -797,6 +814,15 @@ public class DatasetSelectorDialog {
 		}
 
 		detectCalled = true;
+	}
+
+	public boolean waitUntilDiscoveryIsFinished(long maxWaitingMillis) {
+		final long waitingPeriodMillis = 100;
+		while (messageLabel.isVisible() && maxWaitingMillis > 0) {
+			try { Thread.sleep(waitingPeriodMillis); } catch (InterruptedException e) { throw new RuntimeException(e); }
+			maxWaitingMillis -= waitingPeriodMillis;
+		}
+		return !messageLabel.isVisible();
 	}
 
 	public void ok() {
