@@ -151,6 +151,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public static final String N5_FORMAT = "N5";
 	public static final String ZARR_FORMAT = "Zarr";
 
+	public static final String IJ_PROPERTY_DOWNSAMPLE_POLICY = "N5-DOWNSAMPLE-POLICY";
+	private static final String IJ_PROPERTY_DO_NOT_WARN = "N5-SKIP-OVERWRITE-SKIP-WARNING";
+
+	public static enum DOWNSAMPLE_POLICY {
+		Conservative, Aggressive
+	};
+
 	public static enum DOWNSAMPLE_METHOD {
 		Sample, Average
 	};
@@ -159,8 +166,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public static final String DOWN_AVERAGE = "Average";
 
 	public static final String NONE = "None";
-
-	private static final String IJ_PROPERTY_DO_NOT_WARN = "N5-SKIP-OVERWRITE-SKIP-WARNING";
 
 	@Parameter
 	private LogService log;
@@ -783,6 +788,32 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
 
+		// null check for tests
+		final String downsamplePolicy = prefs != null ?
+				prefs.get(getClass(), IJ_PROPERTY_DOWNSAMPLE_POLICY, DOWNSAMPLE_POLICY.Conservative.toString()) : 
+				DOWNSAMPLE_POLICY.Conservative.toString();
+
+		switch( DOWNSAMPLE_POLICY.valueOf(downsamplePolicy)) {
+			case Aggressive:
+				return lastScaleAggressive(chunkSize, imageDimensions, metadata);
+			default:
+				return lastScaleConservative(chunkSize, imageDimensions, metadata);
+		}
+	}
+
+	/**
+	 * A policy that aggressively downsamples data. 
+	 * <p>
+	 * Stops downsampling if all spatial dimensions are smaller than its respective block size.
+	 * 
+	 * @param <M> metadata type 
+	 * @param chunkSize block size 
+	 * @param imageDimensions image interval
+	 * @param metadata metadata instance 
+	 * @return true if this should be the last scale level
+	 */
+	protected <M extends N5Metadata> boolean lastScaleAggressive(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
+
 		/*
 		 *  Note: Using N5Viewer metadata, will sometimes pass a 4D interval to this method, but
 		 *  will have the metadata provide 3 (spatial) axes. The 4D interval is ordered XYZT in this case,
@@ -795,6 +826,34 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				return false;
 		}
 		return true;
+	}
+
+	/**
+	 * A policy that conservatively downsamples data. 
+	 * <p>
+	 * Stops downsampling if any spatial dimension is smaller than its respective block size.
+	 * 
+	 * @param <M> metadata type 
+	 * @param chunkSize block size 
+	 * @param imageDimensions image interval
+	 * @param metadata metadata instance 
+	 * @return true if this should be the last scale level
+	 */
+	protected <M extends N5Metadata> boolean lastScaleConservative(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
+
+		/*
+		 *  Note: Using N5Viewer metadata, will sometimes pass a 4D interval to this method, but
+		 *  will have the metadata provide 3 (spatial) axes. The 4D interval is ordered XYZT in this case,
+		 *  so downsampling factors will be calculated correctly if time dimensions are not downsampled.
+		 */
+		final Axis[] axes = getAxes(metadata, imageDimensions.numDimensions());
+		final int nd = axes.length;
+		for (int i = 0; i < nd; i++) {
+			if (axes[i].getType().equals(Axis.SPACE) && imageDimensions.dimension(i) <= chunkSize[i])
+				return true;
+		}
+
+		return false;
 	}
 
 	protected <M extends N5DatasetMetadata> void fillResolution(final M baseMetadata, final double[] resolution) {
