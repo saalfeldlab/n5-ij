@@ -488,6 +488,8 @@ public class N5Importer implements PlugIn {
 	 *            the image data type
 	 * @param <M>
 	 *            the metadata type
+	 * @param <A>
+	 *            the axis metadata type
 	 * @param n5
 	 *            the n5Reader
 	 * @param exec

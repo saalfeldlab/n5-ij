@@ -117,6 +117,8 @@ public class N5IJUtils {
 	 *            the metadata type
 	 * @param <W>
 	 *            the metadata parser type
+	 * @param <I>
+	 *            the ImageplusMetadata type
 	 * @param n5
 	 *            the reader
 	 * @param dataset
@@ -611,7 +613,7 @@ public class N5IJUtils {
 	/**
 	 * Wraps an RGB image as a {@link Img} of type {@link UnsignedIntType}.
 	 *
-	 * @param imp
+	 * @param image
 	 *            the ImagePlus
 	 * @return the wrapped image
 	 */
