@@ -120,6 +120,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.VirtualStackAdapter;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
@@ -1288,7 +1289,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		// TODO clamping NLinearInterpFactory when relevant
 		// TODO record offset in metadata as (s-0.5)
-		final RealRandomAccessible<T> imgE = Views.interpolate(Views.extendBorder(img), new NLinearInterpolatorFactory());
+		final RealRandomAccessible<T> imgE = Views.interpolate(Views.extendBorder(img), new ClampingNLinearInterpolatorFactory());
 		return Views.interval(RealViews.transform(imgE, new ScaleAndTranslation(scale, translation)),
 				new FinalInterval(dims));
 	}
