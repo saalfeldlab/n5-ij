@@ -118,6 +118,7 @@ import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
+import net.imglib2.algorithm.lazy.Caches;
 import net.imglib2.img.VirtualStackAdapter;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
@@ -579,6 +580,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 						currentAbsoluteDownsampling[i] *= relativeFactors[i];
 
 					currentChannelImg = downsampleMethod((RandomAccessibleInterval<T>)getPreviousScaleImage(c, s), relativeFactors);
+					currentChannelImg = Caches.cache(currentChannelImg, chunkSize);
 
 					// update resolution
 					Arrays.setAll(currentResolution, i -> {
