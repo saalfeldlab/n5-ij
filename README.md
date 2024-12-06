@@ -65,16 +65,19 @@ for example: `zarr://s3://my-bucket/my-key`
 
 * Filesystem N5 
     * Specify a URL starting with `n5:`
+        * example `n5:/path/to/my/data.ext`
     * Specify a directory ending in `.n5` 
-    * example `/path/to/my/data.n5`
+        * example `/path/to/my/data.n5`
 * Zarr
     * Specify a URL starting with `zarr:`
+        * example `zarr:/Users/user/Documents/sample`
     * Specify a directory ending in `.zarr` 
-    * example `/Users/user/Documents/sample.zarr`
+        * example `/Users/user/Documents/sample.zarr`
 * HDF5
     * Specify a URL starting with `hdf5:`
+        * example `hdf5:C:\user\docs\example.ims`
     * Specify a file ending in `.h5` ,`.hdf5`, or `.hdf`
-    * example `C:\user\docs\example.h5`
+        * example `C:\user\docs\example.h5`
  
 ### Backend
 
