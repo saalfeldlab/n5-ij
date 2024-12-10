@@ -674,7 +674,7 @@ public class TestExportImports
 		exp.run();
 
 		try (final N5Reader n5 = new N5FSReader(baseDir.getAbsolutePath())) {
-			assertEquals("3 scale levels", 3, n5.list(dset).length);
+			assertEquals("5 scale levels", 5, n5.list(dset).length);
 		}
 	}
 

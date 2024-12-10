@@ -561,7 +561,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final double[] currentResolution = new double[nd];
 			System.arraycopy(baseResolution, 0, currentResolution, 0, nd);
 
-			// TODO here
 			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset);
 			currentTranslation = new double[nd];
 
@@ -791,7 +790,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// null check for tests
 		final String downsamplePolicy = prefs != null ?
 				prefs.get(getClass(), IJ_PROPERTY_DOWNSAMPLE_POLICY, DOWNSAMPLE_POLICY.Conservative.toString()) : 
-				DOWNSAMPLE_POLICY.Conservative.toString();
+				DOWNSAMPLE_POLICY.Aggressive.toString();
 
 		switch( DOWNSAMPLE_POLICY.valueOf(downsamplePolicy)) {
 			case Aggressive:
