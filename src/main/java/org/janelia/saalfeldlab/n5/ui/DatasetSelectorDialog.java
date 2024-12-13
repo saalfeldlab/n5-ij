@@ -744,7 +744,7 @@ public class DatasetSelectorDialog {
 		parseExec = Executors.newSingleThreadExecutor();
 		parseExec.submit(() -> {
 			try {
-				try {
+				String[] datasetPaths;
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.3);
@@ -754,14 +754,43 @@ public class DatasetSelectorDialog {
 						messageLabel.repaint();
 					});
 
-					// callback copies values from temporary tree into the ui
-					// when metadata is parsed
-					try {
-						datasetDiscoverer.discoverAndParseRecursive(tmpRootNode, callback);
-					} catch (IOException e) { }
+					datasetDiscoverer.discoverShallow(tmpRootNode, callback);
+					callback.accept(tmpRootNode);
+					sortRecursive(rootNode);
 
 					if (ijProgressBar != null)
-						ijProgressBar.show(0.8);
+						ijProgressBar.show(0.4);
+
+					SwingUtilities.invokeLater(() -> {
+						messageLabel.setText("Listing...");
+						messageLabel.repaint();
+					});
+
+					try { 
+						// build a temporary tree
+						datasetPaths = n5.deepList(rootPath, loaderExecutor);
+						N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
+						for (final String p : datasetPaths)
+							rootNode.addPath(rootPath + "/" + p);
+					} catch(ExecutionException ignore){ }
+
+					sortRecursive(rootNode);
+					containerTree.expandRow(0);
+
+					if (ijProgressBar != null)
+						ijProgressBar.show(0.6);
+
+					SwingUtilities.invokeLater(() -> {
+						messageLabel.setText("Parsing deep...");
+						messageLabel.repaint();
+					});
+
+					// callback copies values from temporary tree into the ui
+					// when metadata is parsed
+					datasetDiscoverer.parseMetadataRecursive(tmpRootNode, callback, true);
+
+					if (ijProgressBar != null)
+						ijProgressBar.show(0.9);
 
 					SwingUtilities.invokeLater(() -> {
 						messageLabel.setText("Done");
@@ -777,11 +806,9 @@ public class DatasetSelectorDialog {
 						messageLabel.setVisible(false);
 						messageLabel.repaint();
 					});
-				} catch (final InterruptedException e) {
-					// can ignore
-				}
-			} catch (final N5Exception e) {
-				e.printStackTrace();
+
+			} catch (final InterruptedException e) {
+				// can ignore
 			}
 		});
 
