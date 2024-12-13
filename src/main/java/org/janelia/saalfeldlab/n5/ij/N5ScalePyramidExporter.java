@@ -397,6 +397,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		this.compressionArg = compression;
 	}
 
+	public void setNumThreads(final int nThreads) {
+		this.nThreads = nThreads;
+	}
+
 	/**
 	 * Set the custom metadata mapper to use programmatically.
 	 *
