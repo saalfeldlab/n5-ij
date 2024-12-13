@@ -97,7 +97,13 @@
 		<imglib2.version>7.1.2</imglib2.version>
 		<scijava-common.version>2.99.0</scijava-common.version>
 		<scijava-ui-swing.version>1.0.2</scijava-ui-swing.version>
+
 		<n5-imglib2.version>7.0.2</n5-imglib2.version>
+		<n5-aws-s3.version>4.2.2-SNAPSHOT</n5-aws-s3.version>
+		<n5-google-cloud.version>4.1.2-SNAPSHOT</n5-google-cloud.version>
+		<n5-universe.version>1.7.0-SNAPSHOT</n5-universe.version>
+		<n5-zarr.version>1.3.6-SNAPSHOT</n5-zarr.version>
+
 	</properties>
 
 	<dependencies>

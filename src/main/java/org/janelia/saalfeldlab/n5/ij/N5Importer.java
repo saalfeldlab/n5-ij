@@ -66,8 +66,8 @@ import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
 import org.janelia.saalfeldlab.n5.ui.N5SwingTreeNode;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
@@ -883,8 +883,13 @@ public class N5Importer implements PlugIn {
 
 			final String d = normalPathName(datasetMeta.getPath(), n5.getGroupSeparator());
 			try {
+			
+				// TODO something like this should work, but it currently fails
+//				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(rootPathArg);
+//				final String fmtPrefix = fmtUri.getA().toString().toLowerCase();
+//				final String n5Url = fmtPrefix + ":" + N5URI.from(fmtUri.getB().toString(), d, null).toString();
 
-				final StorageFormat fmt = N5Factory.StorageFormat.guessStorageFromUri(URI.create(rootPathArg));
+				final StorageFormat fmt = StorageFormat.guessStorageFromUri(URI.create(rootPathArg));
 				final String fmtPrefix = fmt == null ? "" : fmt.toString().toLowerCase() + "://";
 
 				final String n5Url = fmtPrefix + N5URI.from(n5.getURI().toString(), d, null).toString();
@@ -1064,7 +1069,7 @@ public class N5Importer implements PlugIn {
 
 				try {
 					// need to strip off storage format for n5uri to correctly remove query;
-					final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(n5UriOrPath);
+					final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
 					final StorageFormat format = fmtUri.getA();
 
 					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
@@ -1133,7 +1138,7 @@ public class N5Importer implements PlugIn {
 				try {
 					// need to strip off storage format for n5uri to correctly remove query;
 					// but can ignore the format here
-					final Pair<StorageFormat, URI> fmtUri = N5Factory.StorageFormat.parseUri(n5UriOrPath);
+					final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
 					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
 					return n5uri.getGroupPath();
 				} catch (final URISyntaxException e) {}
