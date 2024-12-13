@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -162,6 +161,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public static enum DOWNSAMPLE_METHOD {
 		Sample, Average
 	};
+
+	public static final DOWNSAMPLE_POLICY DEFAULT_POLICY = DOWNSAMPLE_POLICY.Aggressive;
 
 	public static final String DOWN_SAMPLE = "Sample";
 	public static final String DOWN_AVERAGE = "Average";
@@ -791,18 +792,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return multiscaleMetadata;
 	}
 
-	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
+	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions,
+			final M metadata) {
 
 		// null check for tests
-		final String downsamplePolicy = prefs != null ?
-				prefs.get(getClass(), IJ_PROPERTY_DOWNSAMPLE_POLICY, DOWNSAMPLE_POLICY.Conservative.toString()) : 
-				DOWNSAMPLE_POLICY.Aggressive.toString();
+		final String downsamplePolicy = prefs != null
+				? prefs.get(getClass(), IJ_PROPERTY_DOWNSAMPLE_POLICY, DEFAULT_POLICY.toString())
+				: DEFAULT_POLICY.toString();
 
-		switch( DOWNSAMPLE_POLICY.valueOf(downsamplePolicy)) {
-			case Aggressive:
-				return lastScaleAggressive(chunkSize, imageDimensions, metadata);
-			default:
-				return lastScaleConservative(chunkSize, imageDimensions, metadata);
+		switch (DOWNSAMPLE_POLICY.valueOf(downsamplePolicy)) {
+		case Aggressive:
+			return lastScaleAggressive(chunkSize, imageDimensions, metadata);
+		default:
+			return lastScaleConservative(chunkSize, imageDimensions, metadata);
 		}
 	}
 
