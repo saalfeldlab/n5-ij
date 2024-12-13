@@ -518,7 +518,7 @@ public class DatasetSelectorDialog {
 			} else {
 				int selectedRow = containerTree.getSelectionRows()[0];
 				N5SwingTreeNode n = (N5SwingTreeNode)containerTree.getPathForRow(selectedRow).getLastPathComponent();
-				okBtn.setEnabled( selectionFilter.test(n.getMetadata()) );
+				okBtn.setEnabled(selectionFilter == null ? true : selectionFilter.test(n.getMetadata()));
 			}
 		});
 
