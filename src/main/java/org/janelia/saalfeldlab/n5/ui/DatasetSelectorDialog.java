@@ -744,31 +744,10 @@ public class DatasetSelectorDialog {
 		parseExec = Executors.newSingleThreadExecutor();
 		parseExec.submit(() -> {
 			try {
-				String[] datasetPaths;
 				try {
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.3);
-
-
-					SwingUtilities.invokeLater(() -> {
-						messageLabel.setText("Listing...");
-						messageLabel.repaint();
-					});
-
-					// build a temporary tree
-					datasetPaths = n5.deepList(rootPath, loaderExecutor);
-					N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
-					for (final String p : datasetPaths)
-						rootNode.addPath(rootPath + "/" + p);
-
-
-					sortRecursive(rootNode);
-					containerTree.expandRow(0);
-
-					if (ijProgressBar != null)
-						ijProgressBar.show(0.5);
-
 
 					SwingUtilities.invokeLater(() -> {
 						messageLabel.setText("Parsing...");
@@ -777,7 +756,9 @@ public class DatasetSelectorDialog {
 
 					// callback copies values from temporary tree into the ui
 					// when metadata is parsed
-					datasetDiscoverer.parseMetadataRecursive(tmpRootNode, callback);
+					try {
+						datasetDiscoverer.discoverAndParseRecursive(tmpRootNode, callback);
+					} catch (IOException e) { }
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.8);
@@ -797,8 +778,6 @@ public class DatasetSelectorDialog {
 						messageLabel.repaint();
 					});
 				} catch (final InterruptedException e) {
-					// can ignore
-				} catch (final ExecutionException e) {
 					// can ignore
 				}
 			} catch (final N5Exception e) {
