@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>38.0.1</version>
+		<version>40.0.0</version>
 		<relativePath />
 	</parent>
 
@@ -85,20 +85,7 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
-		<!-- TEMP: Until next pom-scijava release. -->
-		<imagej-common.version>2.1.1</imagej-common.version>
-		<imagej-mesh.version>0.8.2</imagej-mesh.version>
-		<imagej-ops.version>2.2.0</imagej-ops.version>
-		<imglib2-algorithm.version>0.16.0</imglib2-algorithm.version>
-		<imglib2-cache.version>1.0.0-beta-19</imglib2-cache.version>
-		<imglib2-ij.version>2.0.2</imglib2-ij.version>
-		<imglib2-realtransform.version>4.0.3</imglib2-realtransform.version>
-		<imglib2-roi.version>0.15.1</imglib2-roi.version>
-		<imglib2.version>7.1.2</imglib2.version>
-		<scijava-common.version>2.99.0</scijava-common.version>
-		<scijava-ui-swing.version>1.0.2</scijava-ui-swing.version>
-
-		<n5.version>3.3.1-SNAPSHOT</n5.version>
+		<n5.version>3.3.2-SNAPSHOT</n5.version>
 		<n5-aws-s3.version>4.2.2-SNAPSHOT</n5-aws-s3.version>
 		<n5-blosc.version>1.1.2-SNAPSHOT</n5-blosc.version>
 		<n5-ij.version>4.2.6-SNAPSHOT</n5-ij.version>
