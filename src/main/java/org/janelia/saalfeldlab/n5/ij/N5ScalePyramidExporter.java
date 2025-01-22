@@ -121,16 +121,21 @@ import ij.ImagePlus;
 import net.imagej.legacy.ui.LegacyApplicationFrame;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
+import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.VirtualStackAdapter;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.InterpolatorFactory;
+import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorARGBFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.ScaleAndTranslation;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.util.Intervals;
@@ -898,7 +903,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	// also extending NativeType causes build failures using maven, unclear why
 	@SuppressWarnings("unchecked")
 	protected <T extends NumericType<T>> RandomAccessibleInterval<T> getBaseImage() {
-		// TODO put logic checking for virtual image special cases here
 
 		// get the image
 		final RandomAccessibleInterval<T> baseImg;
@@ -1262,6 +1266,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 *            the factors
 	 * @return a downsampled image
 	 */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private static <T extends NumericType<T>> RandomAccessibleInterval<T> downsampleAvgBy2(
 			final RandomAccessibleInterval<T> img, final long[] downsampleFactors) {
 
@@ -1291,11 +1296,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			return downsampleAvgBy2NativeType((RandomAccessibleInterval) img, Util.long2int(downsampleFactors), dims);
 		}
 
-		// TODO clamping NLinearInterpFactory when relevant
 		// TODO record offset in metadata as (s-0.5)
-		final RealRandomAccessible<T> imgE = Views.interpolate(Views.extendBorder(img), new NLinearInterpolatorFactory());
+		final RealRandomAccessible<T> imgE = Views.interpolate(Views.extendBorder(img), getInterpolator(img.getType()));
 		return Views.interval(RealViews.transform(imgE, new ScaleAndTranslation(scale, translation)),
 				new FinalInterval(dims));
+	}
+
+	@SuppressWarnings("rawtypes")
+	private static <T extends NumericType<T>> InterpolatorFactory getInterpolator(final T type) {
+
+		if (type instanceof ARGBType)
+			return new NLinearInterpolatorARGBFactory();
+		else
+			return new ClampingNLinearInterpolatorFactory<T>();
 	}
 
 	private static <T extends NativeType<T>> RandomAccessibleInterval<T> downsampleAvgBy2NativeType(
@@ -1306,16 +1319,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				.of(img.view().extend(Extension.border()))
 				.andThen(Downsample.downsample(downsampleFactors));
 		return BlockAlgoUtils.cellImg(blocks, dimensions, cellDimensions);
-	}
-
-	private int[] sliceBlockSize(final int exclude) {
-
-		return removeElement(chunkSize, exclude);
-	}
-
-	private long[] sliceDownsamplingFactors(final int exclude) {
-
-		return removeElement(currentAbsoluteDownsampling, exclude);
 	}
 
 	private static int[] removeElement(final int[] arr, final int excludeIndex) {
