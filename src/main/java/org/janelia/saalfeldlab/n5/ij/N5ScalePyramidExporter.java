@@ -45,7 +45,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
+import javax.annotation.Nullable;
 import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -61,6 +63,7 @@ import net.imglib2.algorithm.blocks.BlockAlgoUtils;
 import net.imglib2.algorithm.blocks.BlockSupplier;
 import net.imglib2.algorithm.blocks.downsample.Downsample;
 import net.imglib2.util.Util;
+import net.imglib2.util.ValuePair;
 import net.imglib2.view.fluent.RandomAccessibleIntervalView.Extension;
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
@@ -106,6 +109,9 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataSingleScaleParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05MetadataParser;
+import org.janelia.saalfeldlab.n5.zarr.v3.ZarrV3KeyValueWriter;
 import org.janelia.scicomp.n5.zstandard.ZstandardCompression;
 import org.scijava.app.StatusService;
 import org.scijava.command.Command;
@@ -114,6 +120,7 @@ import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.prefs.PrefService;
+
 import org.scijava.ui.UIService;
 
 import ij.IJ;
@@ -121,7 +128,6 @@ import ij.ImagePlus;
 import net.imagej.legacy.ui.LegacyApplicationFrame;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
-import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.VirtualStackAdapter;
@@ -129,7 +135,6 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.InterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.ClampingNLinearInterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorARGBFactory;
-import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.RealViews;
@@ -210,13 +215,28 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@Parameter(
 			label = "Chunk size",
 			description = "The size of chunks. Comma separated, for example: \"64,32,16\".\n " +
+					"Provided values must be integers greater than or equal to 1.\n" +
 					"ImageJ's axis order is X,Y,C,Z,T. The chunk size must be specified in this order.\n" +
 					"You must skip any axis whose size is 1, e.g. a 2D time-series without channels\n" +
-					"may have a chunk size of 1024,1024,1 (X,Y,T).\n" +
+					"may have a chunk size of 64,64,1 (X,Y,T), but not 64,64,1,1,1 (X,Y,C,Z,T).\n" +
 					"You may provide fewer values than the data dimension. In that case, the size will\n" +
 					"be expanded to necessary size with the last value, for example \"64\", will expand\n" +
 					"to \"64,64,64\" for 3D data.")
-	private String chunkSizeArg;
+	private String chunkSizeArg = "64";
+
+	@Parameter(
+			label = "Shard size",
+			description = "The size of shards as a multiple of chunks. Comma separated, for example: \"4,3,2\"\n " +
+					"Contains 24=4x3x2 chunks per shard. Shard size must be specified in the same order as chunks.\n" +
+					"Provided values must be integers greater than or equal to 1.\n" +
+					"You must skip any axis whose size is 1, e.g. a 2D time-series without channels\n" +
+					"may have a shard size of 2,2,2 (X,Y,T), but not 2,2,1,2,1 (X,Y,C,Z,T).\n" +
+					"You may provide fewer values than the data dimension. In that case, the size will\n" +
+					"be expanded to necessary size with the last value, for example \"8\", will expand\n" +
+					"to \"8,8,8\" for 3D data. As a result, specified shard size and chunk size need not\n" +
+					"be the same length: e.g. chunkSize (64,32) and shard size (4) will expand to\n"+
+					"(64,32,32) and (4,4,4) for 3D data.")
+	private String shardSizeArg = "1";
 
 	@Parameter(
 			label = "Create Pyramid (if possible)",
@@ -249,7 +269,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					N5Importer.MetadataN5CosemKey,
 					N5Importer.MetadataCustomKey,
 					NONE})
-	private String metadataStyle = N5Importer.MetadataOmeZarrKey;
+	private String metadataStyleArg = N5Importer.MetadataOmeZarrKey;
 
 	@Parameter(
 			label = "Thread count",
@@ -268,6 +288,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private boolean overwriteSet = false;
 
 	private int[] chunkSize;
+
+	private int[] shardChunkFactors;
+
+	private int[] shardSize;
 
 	private long[] currentAbsoluteDownsampling;
 
@@ -288,10 +312,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private final Map<String, N5MetadataWriter<?>> styles;
 
 	private final HashMap<Class<?>, N5MetadataWriter<?>> metadataWriters;
-
-	// consider something like this eventually
-	// private BiFunction<RandomAccessibleInterval<? extends
-	// NumericType<?>>,long[],RandomAccessibleInterval<?>> downsampler;
+	
+	private String metadataStyle;
 
 	public N5ScalePyramidExporter() {
 
@@ -314,7 +336,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
 		impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
 		impMetaWriterTypes.put(OmeNgffMetadataParser.class, new NgffToImagePlus());
-
+		impMetaWriterTypes.put(OmeNgffV05MetadataParser.class, new NgffToImagePlus());
 	}
 
 	public N5ScalePyramidExporter(final ImagePlus image,
@@ -381,12 +403,29 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String metadataStyle,
 			final String compression) {
 
+		setOptions(image, containerRoot, dataset, AUTO_FORMAT, chunkSizeArg, "1", pyramidIfPossible,
+				downsampleMethod, metadataStyle, compression);
+	}
+
+	public void setOptions(
+			final ImagePlus image,
+			final String containerRoot,
+			final String dataset,
+			final String storageFormat,
+			final String chunkSizeArg,
+			final String shardSizeArg,
+			final boolean pyramidIfPossible,
+			final String downsampleMethod,
+			final String metadataStyle,
+			final String compression) {
+
 		this.image = image;
 		this.containerRoot = containerRoot;
 		this.storageFormat = storageFormat;
 
 		this.dataset = MetadataUtils.normalizeGroupPath(dataset);
 		this.chunkSizeArg = chunkSizeArg;
+		this.shardSizeArg = shardSizeArg;
 
 		this.createPyramidIfPossible = pyramidIfPossible;
 		this.downsampleMethod = downsampleMethod;
@@ -413,7 +452,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		final int[] chunkSize = new int[nd];
 		int i = 0;
 		while (i < chunkArgList.length && i < nd) {
-			chunkSize[i] = Integer.parseInt(chunkArgList[i]);
+			chunkSize[i] = Integer.parseInt(chunkArgList[i].trim());
 			i++;
 		}
 		final int N = chunkArgList.length - 1;
@@ -437,6 +476,89 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public void parseBlockSize() {
 
 		parseBlockSize(Intervals.dimensionsAsLongArray(ImageJFunctions.wrap(image)));
+	}
+
+	public boolean validate(final int[] blockShardSize) {
+
+		return !Arrays.stream(blockShardSize).anyMatch(x -> x <= 0);
+	}
+
+	private static int[] parseInteger( final int defaultValue, final String arg ) throws IllegalArgumentException {
+		if( arg == null || arg.isEmpty())
+			return new int[] {defaultValue};
+
+		final String[] chunkArgList = arg.split(",");	
+		return Arrays.stream(chunkArgList).mapToInt( s -> {
+			return Integer.parseInt(s.trim());
+		}).peek( i -> {
+			if( i <= 0 )
+				throw new IllegalArgumentException("Encountered integer " + i + " <=0");
+		}).toArray();
+	}
+
+	private static int[] expandToLength( int N, int[] arr) {
+
+		int[] out = new int[N];
+		int L = arr.length -1;
+		for( int i = 0; i < N; i++ ) {
+			if( i > L )
+				out[i] = arr[L];
+			else
+				out[i] = arr[i];
+		}
+
+		return out;
+	}
+
+	public static ValuePair<int[],int[]> parseShardAndBlockSize(
+			String chunkArg, 
+			String shardArg,
+			long[] dims) throws IllegalArgumentException {
+
+		final int nd = dims.length;
+		final int[] chunkSize = expandToLength(nd, parseInteger(64, chunkArg));
+		final int[] shardChunkFactors = expandToLength(nd, parseInteger(1, shardArg));
+
+		for( int i = 0; i < nd; i++ ) {
+			if (chunkSize[i] > dims[i]) {
+				chunkSize[i] = (int)dims[i];
+				shardChunkFactors[i] = 1;
+			}
+		}
+		return new ValuePair<>(chunkSize, shardChunkFactors);
+	}
+
+	public boolean parseShardAndBlockSizeValidate(final long[] dims) {
+
+		try { 
+			 final ValuePair<int[], int[]> res = parseShardAndBlockSize(chunkSizeArg, shardSizeArg, dims);
+			 chunkSize = res.getA();
+			 shardChunkFactors = res.getB();
+
+			 // only set shardSize if any factors are > 1
+			 // else, downstream tasks will not use sharding 
+			 if( Arrays.stream(shardChunkFactors).anyMatch( x -> x > 1))
+				 shardSize = IntStream.range(0, chunkSize.length).map( i -> {
+					 return shardChunkFactors[i] * chunkSize[i];
+				 }).toArray();
+
+		} catch ( IllegalArgumentException e) {
+			return false;
+		}
+		return true;
+	}
+
+	public static boolean validateShardBlockSizes(final int[] blockSize, final int[] shardSize) {
+
+		if( shardSize == null )
+			return true;
+
+		if( shardSize.length != blockSize.length )
+			return false;
+
+		return IntStream.range(0, blockSize.length).map( i -> {
+			return shardSize[i] % blockSize[i];
+		}).allMatch(x -> x == 0);
 	}
 
 	/**
@@ -520,30 +642,20 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				.openWriter(rootWithFormatPrefix);
 		final Compression compression = getCompression();
 
+		metadataStyle = metadataStyleArg.equals(N5Importer.MetadataOmeZarrV05Key) && (n5 instanceof ZarrV3KeyValueWriter) ?
+				N5Importer.MetadataOmeZarrV05Key : metadataStyle;
+
 		if( !promptOverwriteAndDelete(n5, dataset, doGroupExistsWarning))
 			return;
 
 		// TODO should have better behavior for chunk size parsing when splitting channels this might be done
 		final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
 
-		N5MetadataWriter<M> metadataWriter = null;
-		if (!metadataStyle.equals(NONE)) {
-			metadataWriter = (N5MetadataWriter<M>)styles.get(metadataStyle);
-			if (metadataWriter != null) {
-				impMeta = impMetaWriterTypes.get(metadataWriter.getClass());
-			}
-		}
-
 		// get the image to save
 		final RandomAccessibleInterval<T> baseImg = getBaseImage();
 
-		final M baseMetadata;
-		if (impMeta != null)
-			baseMetadata = (M)impMeta.readMetadata(image);
-		else
-			baseMetadata = null;
-
-		currentChannelMetadata = copyMetadata(baseMetadata);
+		M baseMetadata = setupMetadata();
+		M currentChannelMetadata = copyMetadata(baseMetadata);
 		M currentMetadata;
 
 		// channel splitting may modify currentBlockSize, currentAbsoluteDownsampling, and channelMetadata
@@ -666,7 +778,34 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		return metadataStyle.equals(N5Importer.MetadataN5ViewerKey) ||
 				metadataStyle.equals(N5Importer.MetadataN5CosemKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrKey);
+				metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
+	}
+
+	@SuppressWarnings("unchecked")
+	@Nullable
+	protected <M extends N5DatasetMetadata> M setupMetadata() {
+
+		if (metadataStyle.equals(NONE))
+			return null;
+
+		final N5MetadataWriter<M> metadataWriter; 
+		if( metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key))
+			metadataWriter = (N5MetadataWriter<M>)new OmeNgffV05MetadataParser();
+		else
+			metadataWriter = (N5MetadataWriter<M>)styles.get(metadataStyle);
+
+		if (metadataWriter != null) {
+			impMeta = impMetaWriterTypes.get(metadataWriter.getClass());
+		}
+
+		if (impMeta != null)
+			try {
+				return (M)impMeta.readMetadata(image);
+			} catch (IOException e) { }
+
+		return null;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -698,6 +837,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> void updateMultiscaleMetadata(final N multiscaleMetadata,
 			final M scaleMetadata) {
 
+		// TODO handle Ome-Zarr v0.5
 		if (!metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
 			return;
 
@@ -712,19 +852,33 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@SuppressWarnings("unchecked")
 	protected <N extends SpatialMetadataGroup<?>> N finalizeMultiscaleMetadata(final String path, final N multiscaleMetadata) {
 
-		if (!metadataStyle.equals(N5Importer.MetadataOmeZarrKey))
+		if (!(metadataStyle.equals(N5Importer.MetadataOmeZarrKey)
+				|| metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)))
 			return multiscaleMetadata;
 
 		if (multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable) {
 			final OmeNgffMultiScaleMetadataMutable ms = (OmeNgffMultiScaleMetadataMutable)multiscaleMetadata;
 
-			final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
-					path, path, downsampleMethod, "0.4",
-					ms.getAxes(),
-					ms.getDatasets(), null,
-					ms.coordinateTransformations, ms.metadata, true);
+			if( metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
+				final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
+						path, path, downsampleMethod, "0.4",
+						ms.getAxes(),
+						ms.getDatasets(), null,
+						ms.coordinateTransformations, ms.metadata, true);
 
-			return ((N)new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[]{meta}));
+				return ((N)new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[]{meta}));		
+			}
+			else { 
+
+				final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
+						path, path, downsampleMethod, "0.5",
+						ms.getAxes(),
+						ms.getDatasets(), null,
+						ms.coordinateTransformations, ms.metadata, true);
+
+				return ((N)new OmeNgffV05Metadata(path, new OmeNgffMultiScaleMetadata[]{meta}));	
+			}
+
 		}
 
 		return multiscaleMetadata;
@@ -975,7 +1129,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	@SuppressWarnings("unchecked")
-	protected <M extends N5DatasetMetadata> M copyMetadata(final M metadata) {
+	@Nullable
+	protected <M extends N5DatasetMetadata> M copyMetadata(@Nullable final M metadata) {
 
 		if (metadata == null)
 			return metadata;
@@ -1051,11 +1206,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	protected <M extends N5Metadata> void writeMetadata(final M metadata, final N5Writer n5, final String dataset) {
 
 		if (metadata != null) {
-			final N5MetadataWriter<?> writer = metadataWriters.get(metadata.getClass());
+
+			final N5MetadataWriter<?> writer;
+			if (n5 instanceof ZarrV3KeyValueWriter && metadata instanceof OmeNgffV05Metadata) {
+				writer = new OmeNgffV05MetadataParser();
+			} else
+				writer = metadataWriters.get(metadata.getClass());
+
 			if (writer != null)
 				try {
 					((N5MetadataWriter<M>)writer).writeMetadata(metadata, n5, dataset);
-				} catch (final Exception e) {}
+				} catch (final Exception e) {
+					e.printStackTrace();
+				}
 		}
 	}
 
@@ -1201,16 +1364,24 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final Compression compression, final M metadata)
 			throws IOException, InterruptedException, ExecutionException {
 
-		parseBlockSize(image.dimensionsAsLongArray());
+		parseShardAndBlockSizeValidate(image.dimensionsAsLongArray());
 
 		// Here, either allowing overwrite, or not allowing, but the dataset does not exist.
 		// use threadPool even for single threaded execution for progress monitoring
 		final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
-		N5Utils.save(image,
-				n5, dataset, chunkSize, compression,
-				Executors.newFixedThreadPool(nThreads));
+		
+		if( shardSize == null ) {
+			N5Utils.save(image,
+					n5, dataset, chunkSize, compression,
+					Executors.newFixedThreadPool(nThreads));
+		}
+		else {
+			N5Utils.save(image,
+					n5, dataset, shardSize, chunkSize, compression,
+					Executors.newFixedThreadPool(nThreads));
+		}
 
 		writeMetadata(metadata, n5, dataset);
 		return true;
