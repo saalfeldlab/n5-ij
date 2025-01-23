@@ -85,6 +85,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDa
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05MetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
@@ -143,6 +144,9 @@ public class N5Importer implements PlugIn {
 	public static final String MetadataCustomKey = "Custom";
 	public static final String MetadataDefaultKey = "Default";
 
+	public static final String MetadataOmeZarrV04Key = "OME-NGFF v0.4";
+	public static final String MetadataOmeZarrV05Key = "OME-NGFF v0.5";
+
 	public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 			new ImagePlusLegacyMetadataParser(),
 			new N5CosemMetadataParser(),
@@ -152,6 +156,7 @@ public class N5Importer implements PlugIn {
 	};
 
 	public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
+			new OmeNgffV05MetadataParser(),
 			new OmeNgffMetadataParser(),
 			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
 			new OmeNgffMetadataParser(),
@@ -759,6 +764,34 @@ public class N5Importer implements PlugIn {
 			return open(n5, uri, meta.get(), show);
 		} else {
 			System.err.println("No arrays matching criteria found in container at: " + uri);
+			return null;
+		}
+	}
+
+	public static ImagePlus open(final N5Reader n5, final String dataset, final boolean show) {
+
+		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
+		final Optional<N5TreeNode> requestedNodeOpt = node.getDescendant(N5URI.normalizeGroupPath(dataset));
+		if (requestedNodeOpt.isPresent()) {
+
+			N5TreeNode requestedNode = requestedNodeOpt.get();
+			if( requestedNode.getMetadata() != null && requestedNode.getMetadata() instanceof N5DatasetMetadata) {
+
+				String uri;
+				try {
+					uri = N5URI.from(n5.getURI().toString(), dataset, null).toString();
+				} catch (URISyntaxException e) {
+					e.printStackTrace();
+					return null;
+				}
+				return open(n5, uri, (N5DatasetMetadata) requestedNode.getMetadata(), show);
+
+			} else {
+				System.err.println("Could not find metadata at: " + dataset);
+				return null;
+			}
+		} else {
+			System.err.println("Could not find dataset: " + dataset);
 			return null;
 		}
 	}
