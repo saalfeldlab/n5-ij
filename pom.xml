@@ -85,6 +85,9 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
+		<jackson-jq.version>1.0.0-preview.20191208</jackson-jq.version>
+		<alphanumeric-comparator.version>1.4.1</alphanumeric-comparator.version>
+
 		<n5-aws-s3.version>4.2.2</n5-aws-s3.version>
 		<n5-google-cloud.version>4.1.2</n5-google-cloud.version>
 		<n5-universe.version>2.0.1</n5-universe.version>
@@ -108,6 +111,7 @@
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-hdf5</artifactId>
+			<scope>test</scope><!-- CTR -->
 		</dependency>
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
@@ -126,7 +130,27 @@
 		<!-- ImgLib2 dependencies -->
 		<dependency>
 			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-algorithm</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-cache</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
 			<artifactId>imglib2-ij</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-label-multisets</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-realtransform</artifactId>
 		</dependency>
 
 		<!-- ImageJ dependencies -->
@@ -136,7 +160,7 @@
 		</dependency>
 		<dependency>
 			<groupId>net.imagej</groupId>
-			<artifactId>imagej</artifactId>
+			<artifactId>imagej-common</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>net.imagej</groupId>
@@ -155,32 +179,57 @@
 			<artifactId>jackson-databind</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+		</dependency>
+		<!-- CTR
+		<dependency>
 			<groupId>com.google.cloud</groupId>
 			<artifactId>google-cloud-resourcemanager</artifactId>
 		</dependency>
+		-->
+		<!-- CTR
 		<dependency>
 			<groupId>com.google.cloud</groupId>
 			<artifactId>google-cloud-storage</artifactId>
 		</dependency>
+		-->
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
 			<artifactId>gson</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>commons-lang</groupId>
-			<artifactId>commons-lang</artifactId>
+			<groupId>com.formdev</groupId>
+			<artifactId>flatlaf</artifactId>
 		</dependency>
+		<!-- CTR
 		<dependency>
 			<groupId>com.google.api</groupId>
 			<artifactId>gax</artifactId>
+		</dependency>
+		-->
+		<dependency>
+			<groupId>commons-lang</groupId>
+			<artifactId>commons-lang</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>info.picocli</groupId>
 			<artifactId>picocli</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>com.formdev</groupId>
-			<artifactId>flatlaf</artifactId>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<scope>test</scope><!-- CTR -->
+		</dependency>
+		<dependency>
+			<groupId>net.thisptr</groupId>
+			<artifactId>jackson-jq</artifactId>
+			<version>${jackson-jq.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>se.sawano.java</groupId>
+			<artifactId>alphanumeric-comparator</artifactId>
+			<version>${alphanumeric-comparator.version}</version>
 		</dependency>
 
 
@@ -188,6 +237,11 @@
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.plexus</groupId>
+			<artifactId>plexus-utils</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
