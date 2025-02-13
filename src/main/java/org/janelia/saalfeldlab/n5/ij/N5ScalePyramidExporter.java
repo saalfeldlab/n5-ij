@@ -114,11 +114,12 @@ import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.prefs.PrefService;
+import org.scijava.ui.ApplicationFrame;
 import org.scijava.ui.UIService;
+import org.scijava.widget.UIComponent;
 
 import ij.IJ;
 import ij.ImagePlus;
-import net.imagej.legacy.ui.LegacyApplicationFrame;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -1577,13 +1578,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (skipWarning)
 			return true;
 
-		Frame parentFrame = null;
-		try {
-			final LegacyApplicationFrame appFrame = (LegacyApplicationFrame)ui.getDefaultUI().getApplicationFrame();
-			parentFrame = appFrame.getComponent();
-		} catch (final Exception e) {
-			parentFrame = new JFrame();
-		}
+		Frame parentFrame = getParentFrame();
 
 		// Not sure when this will be the case when running from a fiji instance.
 		// what should happen when calling this programmatically?
@@ -1599,6 +1594,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		parentFrame = null;
 		return warningDialog.doDelete();
+	}
+
+	private Frame getParentFrame() {
+		Frame parentFrame = null;
+		final ApplicationFrame appFrame = ui.getDefaultUI().getApplicationFrame();
+		Frame frame = null;
+		if (appFrame instanceof Frame)
+			frame = (Frame) appFrame;
+		else if (appFrame instanceof UIComponent) {
+			Object uic = ((UIComponent) appFrame).getComponent();
+			if (uic instanceof Frame) frame = (Frame) uic;
+		}
+		return frame == null ? new JFrame() : frame;
 	}
 
 	public static Compression getCompression(final String compressionArg) {
