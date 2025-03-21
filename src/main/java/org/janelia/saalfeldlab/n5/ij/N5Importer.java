@@ -25,7 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -72,7 +71,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5DefaultSingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
@@ -87,8 +85,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDa
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
-import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -640,16 +636,6 @@ public class N5Importer implements PlugIn {
 		return imp;
 	}
 
-	private static boolean zarrFOrderAndEmptyMetadata(final N5Reader n5, N5Metadata meta) {
-
-		if (n5 instanceof ZarrKeyValueReader && meta instanceof N5DefaultSingleScaleMetadata) {
-			final ZarrDatasetAttributes zattrs = ((ZarrKeyValueReader)n5).getDatasetAttributes(meta.getPath());
-			return !zattrs.isRowMajor();
-		}
-
-		return false;
-	}
-
 	public static RandomAccessibleInterval<FloatType> convertDouble(
 			final RandomAccessibleInterval<DoubleType> img) {
 
@@ -1114,15 +1100,6 @@ public class N5Importer implements PlugIn {
 			else
 				return "";
 		} else
-			return "";
-	}
-
-	private static String lastExtension(final String path) {
-
-		final int i = path.lastIndexOf('.');
-		if (i >= 0)
-			return path.substring(i);
-		else
 			return "";
 	}
 
