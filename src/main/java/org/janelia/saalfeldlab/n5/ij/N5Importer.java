@@ -120,7 +120,6 @@ import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn {
@@ -614,7 +613,7 @@ public class N5Importer implements PlugIn {
 		if (asVirtual) {
 			imp = ImageJFunctions.wrap(convImg, d, exec);
 		} else {
-			final ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(convImg);
+			final ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(convImg.getType()).create(convImg);
 			LoopBuilder.setImages(convImg, ipImg)
 					.multiThreaded(new DefaultTaskExecutor(exec))
 					.forEachPixel((x, y) -> y.set(x));
