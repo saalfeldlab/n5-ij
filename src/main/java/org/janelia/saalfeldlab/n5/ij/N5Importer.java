@@ -686,15 +686,15 @@ public class N5Importer implements PlugIn {
 	public void processWithCrops() {
 
 		asVirtual = selectionDialog.isVirtual();
-		final String rootPath = selectionDialog.getN5RootPath();
-		for (final N5Metadata datasetMeta : selection.metadata) {
-			// Macro.getOptions() does not return what I'd expect after this
-			// call. why?
-			// Macro.setOptions( String.format( "n5=%s", datasetMeta.getPath()
-			// ));
+		URI rootUri = selectionDialog.getN5Reader().getURI();
+		if (!rootUri.toString().endsWith("/")) {
+			rootUri = URI.create(rootUri.toString() + "/");
+		}
 
-			final String datasetPath = datasetMeta.getPath();
-			final String pathToN5Dataset = datasetPath.isEmpty() ? rootPath : rootPath + File.separator + datasetPath;
+		for (final N5Metadata datasetMeta : selection.metadata) {
+
+			final String datasetPath = N5URI.normalizeGroupPath(datasetMeta.getPath());
+			final String pathToN5Dataset = rootUri.resolve(datasetPath).toString();
 
 			numDimensionsForCrop = ((N5DatasetMetadata)datasetMeta).getAttributes().getNumDimensions();
 			initMaxValuesForCrop = Arrays.stream(((N5DatasetMetadata)datasetMeta).getAttributes().getDimensions())
