@@ -702,6 +702,7 @@ public class N5Importer implements PlugIn {
 					.toArray();
 
 			this.run("cropDialog " + generateAndStoreOptions(pathToN5Dataset, asVirtual, null, !show));
+
 		}
 	}
 
@@ -1052,15 +1053,13 @@ public class N5Importer implements PlugIn {
 			String rootPath = null;
 			if (n5UriOrPath.contains("?")) {
 
-				try {
-					// need to strip off storage format for n5uri to correctly remove query;
-					final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
-					final StorageFormat format = fmtUri.getA();
+				// need to strip off storage format for n5uri to correctly remove query;
+				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
+				final StorageFormat format = fmtUri.getA();
 
-					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
-					// add the format prefix back if it was present
-					rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
-				} catch (final URISyntaxException e) {}
+				final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
+				// add the format prefix back if it was present
+				rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
 			}
 
 			if (rootPath == null)
@@ -1111,13 +1110,11 @@ public class N5Importer implements PlugIn {
 		public String apply(final String n5UriOrPath) {
 
 			if (n5UriOrPath.contains("?")) {
-				try {
-					// need to strip off storage format for n5uri to correctly remove query;
-					// but can ignore the format here
-					final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
-					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
-					return n5uri.getGroupPath();
-				} catch (final URISyntaxException e) {}
+				// need to strip off storage format for n5uri to correctly remove query;
+				// but can ignore the format here
+				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
+				final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
+				return n5uri.getGroupPath();
 			}
 
 			if (n5UriOrPath.contains(".h5") || n5UriOrPath.contains(".hdf5") || n5UriOrPath.contains(".hdf"))

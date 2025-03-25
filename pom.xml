@@ -91,8 +91,8 @@
 		<n5.version>3.3.1</n5.version>
 		<n5-aws-s3.version>4.2.2</n5-aws-s3.version>
 		<n5-google-cloud.version>4.1.2</n5-google-cloud.version>
-		<n5-universe.version>2.0.2-SNAPSHOT</n5-universe.version>
-		<n5-zarr.version>1.4.1-SNAPSHOT</n5-zarr.version>
+		<n5-universe.version>2.1.0</n5-universe.version>
+		<n5-zarr.version>1.5.0</n5-zarr.version>
 	</properties>
 
 	<dependencies>
