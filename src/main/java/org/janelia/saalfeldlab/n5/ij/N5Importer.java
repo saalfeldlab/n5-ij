@@ -25,7 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -72,7 +71,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5DefaultSingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
@@ -87,8 +85,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDa
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
-import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
 import ij.IJ;
 import ij.ImagePlus;
@@ -120,7 +116,6 @@ import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn {
@@ -614,7 +609,7 @@ public class N5Importer implements PlugIn {
 		if (asVirtual) {
 			imp = ImageJFunctions.wrap(convImg, d, exec);
 		} else {
-			final ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(convImg);
+			final ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(convImg.getType()).create(convImg);
 			LoopBuilder.setImages(convImg, ipImg)
 					.multiThreaded(new DefaultTaskExecutor(exec))
 					.forEachPixel((x, y) -> y.set(x));
@@ -639,16 +634,6 @@ public class N5Importer implements PlugIn {
 		}
 
 		return imp;
-	}
-
-	private static boolean zarrFOrderAndEmptyMetadata(final N5Reader n5, N5Metadata meta) {
-
-		if (n5 instanceof ZarrKeyValueReader && meta instanceof N5DefaultSingleScaleMetadata) {
-			final ZarrDatasetAttributes zattrs = ((ZarrKeyValueReader)n5).getDatasetAttributes(meta.getPath());
-			return !zattrs.isRowMajor();
-		}
-
-		return false;
 	}
 
 	public static RandomAccessibleInterval<FloatType> convertDouble(
@@ -701,15 +686,15 @@ public class N5Importer implements PlugIn {
 	public void processWithCrops() {
 
 		asVirtual = selectionDialog.isVirtual();
-		final String rootPath = selectionDialog.getN5RootPath();
-		for (final N5Metadata datasetMeta : selection.metadata) {
-			// Macro.getOptions() does not return what I'd expect after this
-			// call. why?
-			// Macro.setOptions( String.format( "n5=%s", datasetMeta.getPath()
-			// ));
+		URI rootUri = selectionDialog.getN5Reader().getURI();
+		if (!rootUri.toString().endsWith("/")) {
+			rootUri = URI.create(rootUri.toString() + "/");
+		}
 
-			final String datasetPath = datasetMeta.getPath();
-			final String pathToN5Dataset = datasetPath.isEmpty() ? rootPath : rootPath + File.separator + datasetPath;
+		for (final N5Metadata datasetMeta : selection.metadata) {
+
+			final String datasetPath = N5URI.normalizeGroupPath(datasetMeta.getPath());
+			final String pathToN5Dataset = rootUri.resolve(datasetPath).toString();
 
 			numDimensionsForCrop = ((N5DatasetMetadata)datasetMeta).getAttributes().getNumDimensions();
 			initMaxValuesForCrop = Arrays.stream(((N5DatasetMetadata)datasetMeta).getAttributes().getDimensions())
@@ -717,6 +702,7 @@ public class N5Importer implements PlugIn {
 					.toArray();
 
 			this.run("cropDialog " + generateAndStoreOptions(pathToN5Dataset, asVirtual, null, !show));
+
 		}
 	}
 
@@ -1067,15 +1053,13 @@ public class N5Importer implements PlugIn {
 			String rootPath = null;
 			if (n5UriOrPath.contains("?")) {
 
-				try {
-					// need to strip off storage format for n5uri to correctly remove query;
-					final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
-					final StorageFormat format = fmtUri.getA();
+				// need to strip off storage format for n5uri to correctly remove query;
+				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
+				final StorageFormat format = fmtUri.getA();
 
-					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
-					// add the format prefix back if it was present
-					rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
-				} catch (final URISyntaxException e) {}
+				final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
+				// add the format prefix back if it was present
+				rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
 			}
 
 			if (rootPath == null)
@@ -1118,15 +1102,6 @@ public class N5Importer implements PlugIn {
 			return "";
 	}
 
-	private static String lastExtension(final String path) {
-
-		final int i = path.lastIndexOf('.');
-		if (i >= 0)
-			return path.substring(i);
-		else
-			return "";
-	}
-
 	public static class N5BasePathFun implements Function<String, String> {
 
 		public String message;
@@ -1135,13 +1110,11 @@ public class N5Importer implements PlugIn {
 		public String apply(final String n5UriOrPath) {
 
 			if (n5UriOrPath.contains("?")) {
-				try {
-					// need to strip off storage format for n5uri to correctly remove query;
-					// but can ignore the format here
-					final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
-					final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
-					return n5uri.getGroupPath();
-				} catch (final URISyntaxException e) {}
+				// need to strip off storage format for n5uri to correctly remove query;
+				// but can ignore the format here
+				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
+				final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
+				return n5uri.getGroupPath();
 			}
 
 			if (n5UriOrPath.contains(".h5") || n5UriOrPath.contains(".hdf5") || n5UriOrPath.contains(".hdf"))

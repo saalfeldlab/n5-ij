@@ -80,7 +80,6 @@ import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
-import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
@@ -323,6 +322,11 @@ public class DatasetSelectorDialog {
 	public boolean isVirtual() {
 
 		return (virtualBox != null) && virtualBox.isSelected();
+	}
+
+	public N5Reader getN5Reader() {
+
+		return n5;
 	}
 
 	public String getN5RootPath() {

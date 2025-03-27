@@ -5,6 +5,7 @@ import java.util.Arrays;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.Unit;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
@@ -29,6 +30,10 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 			if (axis.getType().equals(Axis.TIME)) {
 				numTimes = (int) t.getAttributes().getDimensions()[i];
 				tIdx = i;
+
+				final String timeUnit = axis.getUnit();
+				if( timeUnit != null && !timeUnit.isEmpty())
+					ip.getCalibration().setTimeUnit(axis.getUnit());
 			}
 
 			if (axis.getType().equals(Axis.CHANNEL)) {
@@ -39,6 +44,10 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 			if( axis.getType().equals(Axis.SPACE))
 			{
 				numSpace++;
+
+				final String spaceUnit = axis.getUnit();
+				if( spaceUnit != null && !spaceUnit.isEmpty())
+					ip.getCalibration().setUnit(spaceUnit);
 
 				if( numSpace == 1 )
 					xIdx = i;
@@ -101,8 +110,7 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		final double[] scale = new double[N];
 		final double[] offset = new double[N];
 
-		final String spaceUnit = ip.getCalibration().getUnit();
-
+		final String spaceUnit = parseUnitWithWarning(ip.getCalibration().getUnit());
 		axes[0] = new Axis(Axis.SPACE, "x", spaceUnit);
 		scale[0] = ip.getCalibration().pixelWidth;
 		offset[0] = ip.getCalibration().xOrigin;
@@ -114,7 +122,7 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		int k = 2;
 		// channels
 		if (nc > 1) {
-			axes[k] = new Axis(Axis.CHANNEL, "c", "" );
+			axes[k] = new Axis(Axis.CHANNEL, "c", null);
 			scale[k] = 1;
 			offset[k] = 0;
 			k++;
@@ -130,7 +138,8 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 
 		// time
 		if (nt > 1) {
-			axes[k] = new Axis(Axis.TIME, "t", ip.getCalibration().getTimeUnit());
+			final String timeUnit = parseUnitWithWarning(ip.getCalibration().getTimeUnit());
+			axes[k] = new Axis(Axis.TIME, "t", timeUnit);
 			scale[k] = ip.getCalibration().frameInterval;
 			if( scale[k] == 0.0 )
 				scale[k] = 1.0;
@@ -144,6 +153,20 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 			return new NgffSingleScaleAxesMetadata("", scale, null, axes, ImageplusMetadata.datasetAttributes(ip));
 		else
 			return new NgffSingleScaleAxesMetadata("", scale, offset, axes, ImageplusMetadata.datasetAttributes(ip));
+	}
+	
+	private String parseUnitWithWarning(final String unitString) {
+		final Unit unit = Unit.fromString(unitString);
+		final String normalUnit;
+		if( unit == null ) {
+			System.err.println("WARNING: could not infer unit from (" + unitString + 
+					"). Will use it as the unit directly, but may be invalid.");
+			normalUnit = unitString;
+		}
+		else {
+			normalUnit = unit.toString();
+		}	
+		return normalUnit;
 	}
 
 	public static OmeNgffMultiScaleMetadata buildMetadata(final ImagePlus image, final String path, final DatasetAttributes[] dsetAttrs,
