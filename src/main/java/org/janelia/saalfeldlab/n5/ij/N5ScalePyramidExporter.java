@@ -87,7 +87,7 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.N5ViewerToImagePlus;
 import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.AbstractN5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
@@ -785,7 +785,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	@SuppressWarnings("unchecked")
 	@Nullable
-	protected <M extends N5DatasetMetadata> M setupMetadata() {
+	protected <M extends N5Metadata> M setupMetadata() {
 
 		if (metadataStyle.equals(NONE))
 			return null;

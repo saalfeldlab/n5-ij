@@ -14,8 +14,8 @@ import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
@@ -175,13 +175,7 @@ public class CreateAxisPermutedTestData {
 
 		final CachedCellImg<T, ?> img = N5Utils.open(zarr, sourceScale);
 		final RandomAccessibleInterval<T> imgRev = AxisUtils.reverseDimensions(img);
-		try {
-			N5Utils.saveRegion(imgRev, zarr, destinationScale);
-		} catch (final InterruptedException e) {
-			e.printStackTrace();
-		} catch (final ExecutionException e) {
-			e.printStackTrace();
-		}
+		N5Utils.saveRegion(imgRev, zarr, destinationScale);
 
 		final JsonElement meta = zarr.getAttribute(sourceDset, "/", JsonElement.class);
 		zarr.setAttribute(destinationDset, "/", meta);

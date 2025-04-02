@@ -16,7 +16,7 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata.CosemTransform;
 import org.janelia.saalfeldlab.n5.universe.metadata.NgffTests;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
@@ -157,6 +157,7 @@ public class AxisPermutationTest {
 
 		// read
 		final ImagePlus imp = N5Importer.open(String.format("%s?%s", containerUri.toString(), dset + "/s0"), false);
+//		final ImagePlus imp = N5Importer.open(zarr, dset + "/s0", false);
 
 		// test
 		assertEquals("size x", NgffTests.NX, imp.getWidth());
