@@ -87,6 +87,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 
 import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
 import ij.Macro;
 import ij.Prefs;
@@ -1069,37 +1070,61 @@ public class N5Importer implements PlugIn {
 			try {
 				n5 = factory.openReader(rootPath);
 			} catch (final N5Exception e) {
-				IJ.handleException(e);
+				IJ.error(e.getMessage());
 				return null;
 			}
 			return n5;
 		}
 	}
 
-	private static String upToLastExtension(final String path) {
+	private static String upToLastExtension(final String pathArg) {
 
+		String scheme = null;
+		String host = null;
+		String path;
+		try {
+			URI uri = URI.create(pathArg);
+			path = uri.getPath();
+			scheme = uri.getScheme();
+			host = uri.getHost();
+		} catch (Exception e) {
+			path = pathArg;
+		}
+
+		String newPath = path;
 		final int i = path.lastIndexOf('.');
 		if (i >= 0) {
 			final int j = path.substring(i).indexOf('/');
 			if (j >= 0)
-				return path.substring(0, i + j);
-			else
-				return path;
-		} else
-			return path;
+				newPath = path.substring(0, i + j);
+		}
+
+		try {
+			return new URI(scheme, host, newPath, null).toString();
+		} catch (URISyntaxException e) {
+			return newPath;
+		}
 	}
 
-	private static String afterLastExtension(final String path) {
+	private static String afterLastExtension(final String pathArg) {
 
+		String path;
+		try {
+			URI uri = URI.create(pathArg);
+			path = uri.getPath();
+		} catch (Exception e) {
+			path = pathArg;
+		}
+
+		String group = "";
 		final int i = path.lastIndexOf('.');
 		if (i >= 0) {
 			final int j = path.substring(i).indexOf('/');
 			if (j >= 0)
-				return path.substring(i + j);
-			else
-				return "";
-		} else
-			return "";
+				group = path.substring(i + j);
+		}
+
+		return group;
 	}
 
 	public static class N5BasePathFun implements Function<String, String> {
