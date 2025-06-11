@@ -504,6 +504,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (rootWithFormatPrefix == null)
 			return;
 
+		if (!validateParameters())
+			return;
+
 		/**
 		 * If writing into the container root, prompt for an overwrite warning
 		 * only if the container exists before being created by the N5Writer below.
@@ -1330,6 +1333,34 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public ExecutorService getExecutorService() {
 
 		return threadPool;
+	}
+
+	private boolean validateParameters() {
+
+		String message = "";
+		boolean success = true;
+
+		if (chunkSizeArg == null || chunkSizeArg.isEmpty()) {
+			success = false;
+			message = "Chunk size argument is empty. Please provide a comma-separated list of numbers.";
+		} else {
+			try {
+				parseBlockSize();
+			} catch (Throwable t) {
+				success = false;
+				message = "Could not parse the chunk size:\n\"" +
+						chunkSizeArg + "\"\n" +
+						"Please provide a comma-separated list of numbers.";
+			}
+		}
+
+		if (!success)
+			if (ui != null)
+				ui.showDialog(message, MessageType.ERROR_MESSAGE);
+			else
+				System.err.println(message);
+
+		return success;
 	}
 
 	@SuppressWarnings({"rawtypes", "unchecked"})
