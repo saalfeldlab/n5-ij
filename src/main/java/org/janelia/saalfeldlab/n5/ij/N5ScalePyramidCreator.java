@@ -104,6 +104,10 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 					+ "on the selected metadata type.")
 	private String dataset = "";
 
+	@Option(names = {"-s", "--scale-pattern"}, description = "Scale level pattern")
+	@Parameter(label = "Pattern", required = false, persist = false)
+	private String pattern = "s%d";
+
 	@Parameter(label = "Downsampling method", style = "listBox",
 			choices = {N5ScalePyramidExporter.DOWN_SAMPLE, N5ScalePyramidExporter.DOWN_AVERAGE})
 	private String downsampleMethod = N5ScalePyramidExporter.DOWN_AVERAGE;
@@ -362,7 +366,7 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 	}
 	
 	protected String getScaleDatasetName(String channelGroupPath, int scale) {
-		return channelGroupPath + "/s" + scale;
+		return channelGroupPath + "/" + String.format(pattern, scale);
 	}
 
 	@SuppressWarnings("unchecked")
