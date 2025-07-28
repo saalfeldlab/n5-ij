@@ -204,11 +204,13 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 				RandomAccessibleInterval<T> baseImg = (RandomAccessibleInterval<T>)N5Utils.open(n5, datasetMeta.getPath());
 
 				if (baseImg == null) {
-					log.error("Failed to open dataset: " + datasetMeta.getPath());
+//					log.error("Failed to open dataset: " + datasetMeta.getPath());
+					System.out.println("Failed to open dataset: " + datasetMeta.getPath());
 					continue;
 				}
 
-				log.info("Processing dataset: " + datasetMeta.getPath());
+//				log.info("Processing dataset: " + datasetMeta.getPath());
+				System.out.println("Processing dataset: " + datasetMeta.getPath());
 
 				// Initialize multiscale metadata if applicable
 				String channelGroupPath = getChannelGroupPath(baseGroupPath, c, datasetsToProcess.size());
@@ -238,7 +240,8 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 
 				for (int s = 1; s < maxNumScales; s++) {
 
-					log.info("Creating scale level " + s + " for channel " + c);
+//					log.info("Creating scale level " + s + " for channel " + c);
+					System.out.println("Creating scale level " + s + " for channel " + c);
 
 					// Calculate relative downsampling factors
 					long[] relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentImg, s, currentAbsoluteDownsampling);
@@ -278,7 +281,8 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 
 					// Check if we should stop creating scales
 					if (lastScale(chunkSize, currentImg, currentMetadata)) {
-						log.info("Stopping at scale " + s + " - reached minimum size");
+//						log.info("Stopping at scale " + s + " - reached minimum size");
+						System.out.println("Stopping at scale " + s + " - reached minimum size");
 						break;
 					}
 				}
@@ -691,7 +695,7 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 				try {
 					((N5MetadataWriter<M>)writer).writeMetadata(metadata, n5, dataset);
 				} catch (final Exception e) {
-					log.error("Failed to write metadata for " + dataset, e);
+//					log.error("Failed to write metadata for " + dataset, e);
 				}
 			}
 		}
