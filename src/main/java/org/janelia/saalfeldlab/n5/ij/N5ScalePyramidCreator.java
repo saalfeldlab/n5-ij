@@ -170,20 +170,15 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 				throw new N5Exception("Failure to parse or find data at " + dataset, e);
 			}
 
-			if (!validateMetadata(meta))
-				throw new N5Exception("Invalid metadata structure at " + dataset);
-
 			// Determine if we have a multiscale group or a single dataset
 			List<N5DatasetMetadata> datasetsToProcess = new ArrayList<>();
+
 			String baseGroupPath = dataset;
 
 			if (meta instanceof SpatialMetadataGroup) {
-				SpatialMetadataGroup<?> grpMeta = (SpatialMetadataGroup<?>)meta;
-				for (N5Metadata child : grpMeta.getChildrenMetadata()) {
-					if (child instanceof N5DatasetMetadata) {
-						datasetsToProcess.add((N5DatasetMetadata)child);
-					}
-				}
+				final SpatialMetadataGroup<?> grpMeta = (SpatialMetadataGroup<?>)meta;
+				datasetsToProcess.add((N5DatasetMetadata)grpMeta.getChildrenMetadata()[0]);
+
 			} else if (meta instanceof N5DatasetMetadata) {
 				datasetsToProcess.add((N5DatasetMetadata)meta);
 				// For single dataset, use parent as base group
@@ -201,6 +196,7 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 
 			// Process each dataset (channel)
 			for (int c = 0; c < datasetsToProcess.size(); c++) {
+
 				N5DatasetMetadata datasetMeta = datasetsToProcess.get(c);
 				currentChannelMetadata = copyMetadata(datasetMeta);
 
@@ -244,6 +240,13 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 
 				for (int s = 1; s < maxNumScales; s++) {
 
+					// Create dataset path for this scale
+					String scaleDset = getScaleDatasetName(channelGroupPath, s);
+					if (n5.datasetExists(scaleDset)) {
+						System.out.println("scale level " + s + " for channel " + c + " exists. Continuing...");
+						continue;
+					}
+
 //					log.info("Creating scale level " + s + " for channel " + c);
 					System.out.println("Creating scale level " + s + " for channel " + c);
 
@@ -269,9 +272,6 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 								return 0.0;
 						});
 					}
-
-					// Create dataset path for this scale
-					String scaleDset = getScaleDatasetName(channelGroupPath, s);
 
 					// Update metadata for this scale
 					currentMetadata = metadataForThisScale(scaleDset, currentMetadata, downsampleMethod,
