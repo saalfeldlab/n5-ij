@@ -115,6 +115,7 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.prefs.PrefService;
 import org.scijava.ui.ApplicationFrame;
+import org.scijava.ui.DialogPrompt.MessageType;
 import org.scijava.ui.UIService;
 import org.scijava.widget.UIComponent;
 
