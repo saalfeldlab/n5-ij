@@ -108,6 +108,10 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 	@Parameter(label = "Pattern", required = false, persist = false)
 	private String pattern = "s%d";
 
+	@Option(names = {"-f", "--factors"}, description = "Downsampling factors per dimension")
+	@Parameter(label = "Downsampling factors", required = false, persist = false)
+	private String factors = "2";
+
 	@Parameter(label = "Downsampling method", style = "listBox",
 			choices = {N5ScalePyramidExporter.DOWN_SAMPLE, N5ScalePyramidExporter.DOWN_AVERAGE})
 	private String downsampleMethod = N5ScalePyramidExporter.DOWN_AVERAGE;
@@ -135,6 +139,8 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 	private RandomAccessibleInterval<?> previousScaleImg;
 
 	private N5DatasetMetadata currentChannelMetadata;
+
+	private long[] nominalDownsamplingFactors;
 
 	private ThreadPoolExecutor threadPool;
 
@@ -194,6 +200,7 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 				throw new N5Exception("No datasets found to process at " + dataset);
 			}
 
+
 			// Process each dataset (channel)
 			for (int c = 0; c < datasetsToProcess.size(); c++) {
 
@@ -208,6 +215,8 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 					System.out.println("Failed to open dataset: " + datasetMeta.getPath());
 					continue;
 				}
+
+				nominalDownsamplingFactors = parseFactors(baseImg.numDimensions(), factors);
 
 //				log.info("Processing dataset: " + datasetMeta.getPath());
 				System.out.println("Processing dataset: " + datasetMeta.getPath());
@@ -317,6 +326,20 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 			return true;
 
 		return true;
+	}
+
+	private long[] parseFactors( int nd, String str ) {
+
+		final long[] factors = new long[nd];
+		final long[] base = Arrays.stream(str.split(",")).mapToLong(Long::parseLong).toArray();
+		for( int i = 0; i < nd; i++ ) {
+			if (i < base.length)
+				factors[i] = base[i];
+			else
+				factors[i] = base[base.length - 1];
+		}
+
+		return factors;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -448,7 +471,7 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 		for (int i = 0; i < nd; i++) {
 			// only downsample spatial dimensions
 			if (axes[i].getType().equals(Axis.SPACE) && img.dimension(i) > 1)
-				factors[i] = 2;
+				factors[i] = nominalDownsamplingFactors[i];
 			else
 				factors[i] = 1;
 		}
