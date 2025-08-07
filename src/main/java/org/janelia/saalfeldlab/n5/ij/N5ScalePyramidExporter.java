@@ -115,6 +115,7 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.prefs.PrefService;
 import org.scijava.ui.ApplicationFrame;
+import org.scijava.ui.DialogPrompt.MessageType;
 import org.scijava.ui.UIService;
 import org.scijava.widget.UIComponent;
 
@@ -980,37 +981,22 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return factors;
 	}
 
-	protected <M extends N5Metadata> long[] getDownsampleFactors(final M metadata, final int nd, final int scale,
-			final long[] downsampleFactors) {
-
-		final Axis[] axes = getAxes(metadata, nd);
-
-		// under what condisions is nd != axes.length
-		final long[] factors = new long[axes.length];
-		for (int i = 0; i < nd; i++) {
-
-			// only downsample spatial dimensions
-			if (axes[i].getType().equals(Axis.SPACE))
-				factors[i] = 1 << scale; // 2 to the power of scale
-			else
-				factors[i] = 1;
-		}
-
-		return factors;
-	}
-
 	protected <M extends N5Metadata> long[] getRelativeDownsampleFactors(final M metadata, final Interval img, final int scale,
 			final long[] downsampleFactors) {
 
 		int nd = img.numDimensions();
 		final Axis[] axes = getAxes(metadata, nd);
 
-		// under what condisions is nd != axes.length
+		final double[] res = getSpatialResolutions(metadata, axes);
+		final double minSpatialRes = minSpatialResolution(res, axes);
+
+		// under what conditions is nd != axes.length
 		final long[] factors = new long[axes.length];
 		for (int i = 0; i < nd; i++) {
 
 			// only downsample spatial dimensions
-			if (axes[i].getType().equals(Axis.SPACE) && img.dimension(i) > 1)
+			// avoid downsampling spatial dimensions if not doing so would make the next scale level more isotropic
+			if (isSpatial(axes[i]) && downsamplingPreservesIsotropy(minSpatialRes, res[i]) && img.dimension(i) > 1)
 				factors[i] = 2;
 			else
 				factors[i] = 1;
@@ -1019,7 +1005,17 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return factors;
 	}
 
-	protected <M extends N5Metadata> Axis[] getAxes(final M metadata, final int nd) {
+	protected static boolean isSpatial(final Axis axis) {
+
+		return axis.getType().equals(Axis.SPACE);
+	}
+
+	protected static boolean downsamplingPreservesIsotropy(final double minResolution, final double thisResolution) {
+
+		return minResolution * 2 >= thisResolution;
+	}
+
+	protected static <M extends N5Metadata> Axis[] getAxes(final M metadata, final int nd) {
 
 		if (metadata instanceof AxisMetadata)
 			return ((AxisMetadata)metadata).getAxes();
@@ -1027,6 +1023,41 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			return AxisUtils.defaultN5ViewerAxes((N5SingleScaleMetadata)metadata).getAxes();
 		else
 			return AxisUtils.defaultAxes(nd);
+	}
+
+	/**
+	 * Get the spatial resolutions, for the purpose of determining downsampling factors.
+	 * Returned array has a length equal to the number of axes.  Non-spatial dimensions
+	 * will report a resolution of Double.MAX_VALUE
+	 *
+	 * @param <M> metadata type
+	 * @param metadata the metadata
+	 * @param nd number of dimensions
+	 * @return the resolutions per dimension.
+	 */
+	protected static <M extends N5Metadata> double[] getSpatialResolutions(final M metadata, Axis[] axes) {
+
+		final int nd = axes.length;
+		double[] res = null;
+		if (metadata instanceof N5SingleScaleMetadata)
+			res = ((N5SingleScaleMetadata)metadata).getPixelResolution();
+		else if( metadata instanceof NgffSingleScaleAxesMetadata )
+			res = ((NgffSingleScaleAxesMetadata)metadata).getScale();
+		else {
+			res = new double[nd];
+			Arrays.fill(res, 1);
+		}
+		return res;
+	}
+
+	protected static double minSpatialResolution(double[] resolution, Axis[] axes) {
+
+		double min = Double.POSITIVE_INFINITY;
+		for (int i = 0; i < axes.length; i++) {
+			if(isSpatial(axes[i]) && resolution[i] < min)
+				min = resolution[i];
+		}
+		return min;
 	}
 
 	// also extending NativeType causes build failures using maven, unclear why

@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -22,11 +23,16 @@ import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
+import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SpatialDatasetMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
@@ -43,6 +49,7 @@ import net.imglib2.RandomAccess;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.realtransform.AffineTransform;
+import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
@@ -743,6 +750,61 @@ public class TestExportImports
 		try (final N5Reader n5 = new N5FSReader(baseDir.getAbsolutePath())) {
 			assertEquals("5 scale levels", 5, n5.list(dset).length);
 		}
+	}
+
+	@Test
+	public void testDownsamplingIsotropy() throws IOException {
+
+		final int bitDepth = 8;
+		final String dset = "downsampleIsotropyTest";
+
+		final double EPS = 1E-9;
+		final double rx = 0.2;
+		final double ry = 0.41;
+		final double rz = 0.83;
+
+		// x should always be downsampled
+		// y should not be downsampled the first time
+		// z should not be downsampled the first two times
+		final double[] expectedXScales = {rx, 2 * rx, 4 * rx, 8 * rx};
+		final double[] expectedYScales = {ry, ry, 2 * ry, 4 * ry};
+		final double[] expectedZScales = {rz, rz, rz, 2 * rz};
+
+		// the size of mitosis.tif sample image
+		final ImagePlus imp = NewImage.createImage("test", 171, 196, 2 * 5 * 51, bitDepth, NewImage.FILL_BLACK);
+		imp.setDimensions(2, 5, 51);
+		imp.getCalibration().pixelWidth = rx;
+		imp.getCalibration().pixelHeight = ry;
+		imp.getCalibration().pixelDepth = rz;
+
+		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
+		exp.setOptions(imp, baseDir.getAbsolutePath(), dset, "16,16,1", true, N5ScalePyramidExporter.DOWN_AVERAGE,
+				N5Importer.MetadataOmeZarrKey, N5ScalePyramidExporter.RAW_COMPRESSION);
+		exp.run();
+
+		try (final N5Reader n5 = N5Factory.createReader(baseDir.getAbsolutePath())) {
+
+			N5DatasetDiscoverer disc = new N5DatasetDiscoverer(n5,
+					Arrays.asList(N5DatasetDiscoverer.DEFAULT_PARSERS),
+					Arrays.asList(N5DatasetDiscoverer.DEFAULT_GROUP_PARSERS));
+
+			final N5TreeNode root = disc.discoverAndParseRecursive("");
+			final Optional<N5TreeNode> node = root.getDescendant(dset);
+			assertTrue(node.isPresent());
+
+			final N5Metadata meta = node.get().getMetadata();
+			assertTrue(meta instanceof OmeNgffMetadata);
+
+			final OmeNgffMultiScaleMetadata msMeta = ((OmeNgffMetadata)meta).multiscales[0];
+			final AffineTransform3D[] tforms = msMeta.spatialTransforms3d();
+			final int N = expectedXScales.length;
+			for( int i = 0; i < N; i++ ) {
+				assertEquals( expectedXScales[i], tforms[i].get(0, 0), EPS);
+				assertEquals( expectedYScales[i], tforms[i].get(1, 1), EPS);
+				assertEquals( expectedZScales[i], tforms[i].get(2, 2), EPS);
+			}
+		}
+
 	}
 
 	public void pyramidReadWriteParseTest(
