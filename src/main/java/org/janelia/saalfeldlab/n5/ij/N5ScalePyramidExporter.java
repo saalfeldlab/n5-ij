@@ -1032,7 +1032,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 *
 	 * @param <M> metadata type
 	 * @param metadata the metadata
-	 * @param nd number of dimensions
+	 * @param axes the axes
 	 * @return the resolutions per dimension.
 	 */
 	protected static <M extends N5Metadata> double[] getSpatialResolutions(final M metadata, Axis[] axes) {
