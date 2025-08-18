@@ -132,7 +132,12 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 			max = "999")
 	private int nThreads = 1;
 
+	// make double eventually?
+	private long[][] absoluteDownsamplingFactors;
+
 	private long[] currentAbsoluteDownsampling;
+	
+	private long[] currentRelativeDownsampling;
 
 	private double[] currentTranslation;
 
@@ -216,7 +221,7 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 					continue;
 				}
 
-				nominalDownsamplingFactors = parseFactors(baseImg.numDimensions(), factors);
+				parseFactors(baseImg.numDimensions(), factors);
 
 //				log.info("Processing dataset: " + datasetMeta.getPath());
 				System.out.println("Processing dataset: " + datasetMeta.getPath());
@@ -259,16 +264,10 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 //					log.info("Creating scale level " + s + " for channel " + c);
 					System.out.println("Creating scale level " + s + " for channel " + c);
 
-					// Calculate relative downsampling factors
-					long[] relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentImg, s, currentAbsoluteDownsampling);
-
-					// Update absolute downsampling factors
-					for (int i = 0; i < nd; i++) {
-						currentAbsoluteDownsampling[i] *= relativeFactors[i];
-					}
+					updateDownsamplingFactors(currentMetadata, currentImg, s);
 
 					// Downsample the image
-					currentImg = downsampleMethod(currentImg, relativeFactors);
+					currentImg = downsampleMethod(currentImg, currentRelativeDownsampling);
 
 					// Update resolution
 					Arrays.setAll(currentResolution, i -> currentAbsoluteDownsampling[i] * baseResolution[i]);
@@ -293,13 +292,12 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 					updateMultiscaleMetadata(multiscaleMetadata, currentMetadata);
 
 					// Check if we should stop creating scales
-					if (lastScale(chunkSize, currentImg, currentMetadata)) {
+					if (lastScale(chunkSize, currentImg, currentMetadata, s)) {
 //						log.info("Stopping at scale " + s + " - reached minimum size");
 						System.out.println("Stopping at scale " + s + " - reached minimum size");
 						break;
 					}
 				}
-
 
 				// Write multiscale metadata if applicable
 				writeMetadata(finalizeMultiscaleMetadata(channelGroupPath, multiscaleMetadata), n5, channelGroupPath);
@@ -307,6 +305,31 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 
 		} catch (final IOException | InterruptedException | ExecutionException e) {
 			throw new N5Exception("Failed to process multiscale pyramid", e);
+		}
+	}
+	
+	private <M extends N5DatasetMetadata> void updateDownsamplingFactors(M currentMetadata, Interval interval, int sRel) {
+
+		final int nd = interval.numDimensions();
+		final int s = sRel - 1;
+		if( absoluteDownsamplingFactors != null ) {
+
+			currentAbsoluteDownsampling = absoluteDownsamplingFactors[s];
+			if( s == 0 )
+				currentRelativeDownsampling = currentAbsoluteDownsampling;
+			else
+				for (int i = 0; i < nd; i++)
+					currentRelativeDownsampling[i] = absoluteDownsamplingFactors[s][i] / absoluteDownsamplingFactors[s-1][i];
+
+			return;
+		}
+
+		// Calculate relative downsampling factors
+		currentRelativeDownsampling = getRelativeDownsampleFactors(currentMetadata, interval, s, currentAbsoluteDownsampling);
+
+		// Update absolute downsampling factors
+		for (int i = 0; i < nd; i++) {
+			currentAbsoluteDownsampling[i] *= currentRelativeDownsampling[i];
 		}
 	}
 
@@ -328,8 +351,14 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 		return true;
 	}
 
-	private long[] parseFactors( int nd, String str ) {
+	private void parseFactors(int nd, String str) {
+		if (str.contains(";"))
+			parseAbsoluteFactors(nd, str);
+		else
+			parseNominalFactors(nd, str);
+	}
 
+	private long[] parseNominalFactors( int nd, String str ) {
 		final long[] factors = new long[nd];
 		final long[] base = Arrays.stream(str.split(",")).mapToLong(Long::parseLong).toArray();
 		for( int i = 0; i < nd; i++ ) {
@@ -338,8 +367,27 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 			else
 				factors[i] = base[base.length - 1];
 		}
+		nominalDownsamplingFactors = factors;
+		return nominalDownsamplingFactors;
+	}
 
-		return factors;
+	private long[][] parseAbsoluteFactors( int nd, String str ) {
+
+		final String[] levels = str.split(";");
+		final int numLevels = levels.length;
+		final long[][] factors = new long[numLevels][nd];
+		for( int i = 0; i < numLevels; i++ ) {
+			
+			final long[] base = Arrays.stream(levels[i].split(",")).mapToLong(Long::parseLong).toArray();
+			for( int d = 0; d < nd; d++ ) {
+				if (i < base.length)
+					factors[i][d] = base[d];
+				else
+					factors[i][d] = base[base.length - 1];
+			}
+		}
+		absoluteDownsamplingFactors = factors;
+		return absoluteDownsamplingFactors;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -729,9 +777,16 @@ public class N5ScalePyramidCreator extends ContextCommand implements Runnable {
 	}
 
 	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions,
-			final M metadata) {
+			final M metadata, final int s) {
 
-		// Use aggressive policy by default
+		// if the factors are specified, we know the number of levels and when to stop
+		if( absoluteDownsamplingFactors != null ) {
+			final int numDownsamplings = absoluteDownsamplingFactors.length;
+			if (s == numDownsamplings)
+				return true;
+		}
+
+		// otherwise use aggressive policy by default
 		return lastScaleAggressive(chunkSize, imageDimensions, metadata);
 	}
 
