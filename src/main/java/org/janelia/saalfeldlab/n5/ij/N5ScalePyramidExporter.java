@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -111,6 +112,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiSca
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05MetadataParser;
+import org.janelia.saalfeldlab.n5.zarr.v3.ZarrV3DatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.v3.ZarrV3KeyValueWriter;
 import org.janelia.scicomp.n5.zstandard.ZstandardCompression;
 import org.scijava.app.StatusService;
@@ -120,7 +122,7 @@ import org.scijava.log.LogService;
 import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.prefs.PrefService;
-
+import org.scijava.ui.DialogPrompt.MessageType;
 import org.scijava.ui.UIService;
 
 import ij.IJ;
@@ -528,16 +530,28 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return new ValuePair<>(chunkSize, shardChunkFactors);
 	}
 
-	public boolean parseShardAndBlockSizeValidate(final long[] dims) {
+	public boolean parseShardAndBlockSizeValidate(N5Writer writer, final long[] dims) {
 
 		try { 
 			 final ValuePair<int[], int[]> res = parseShardAndBlockSize(chunkSizeArg, shardSizeArg, dims);
 			 chunkSize = res.getA();
 			 shardChunkFactors = res.getB();
 
+			 final boolean sharded = Arrays.stream(shardChunkFactors).anyMatch(x -> x > 1);
+			 if( sharded && !(writer instanceof ZarrV3KeyValueWriter)) {
+				 ui.showDialog("Shards can only be written when using zarr3", MessageType.ERROR_MESSAGE);
+				 return false;
+			 }
+
+			 shardSize = null;
 			 // only set shardSize if any factors are > 1
+			 // and if the chunks are smaller than the image
 			 // else, downstream tasks will not use sharding 
-			 if( Arrays.stream(shardChunkFactors).anyMatch( x -> x > 1))
+			 final boolean chunkSmallerThanImage = IntStream.range(0, dims.length).map( i -> {
+				 return (int)(dims[i] - chunkSize[i]);
+			 }).allMatch( x -> x > 0);
+
+			 if( chunkSmallerThanImage && Arrays.stream(shardChunkFactors).anyMatch( x -> x > 1))
 				 shardSize = IntStream.range(0, chunkSize.length).map( i -> {
 					 return shardChunkFactors[i] * chunkSize[i];
 				 }).toArray();
@@ -1364,23 +1378,31 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final Compression compression, final M metadata)
 			throws IOException, InterruptedException, ExecutionException {
 
-		parseShardAndBlockSizeValidate(image.dimensionsAsLongArray());
+		 if( !parseShardAndBlockSizeValidate(n5, image.dimensionsAsLongArray())) {
+			 return false;
+		 }
 
 		// Here, either allowing overwrite, or not allowing, but the dataset does not exist.
 		// use threadPool even for single threaded execution for progress monitoring
 		final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
-		
+
+		final ExecutorService exec = Executors.newFixedThreadPool(nThreads);
 		if( shardSize == null ) {
 			N5Utils.save(image,
 					n5, dataset, chunkSize, compression,
 					Executors.newFixedThreadPool(nThreads));
 		}
 		else {
-			N5Utils.save(image,
-					n5, dataset, shardSize, chunkSize, compression,
-					Executors.newFixedThreadPool(nThreads));
+			final ZarrV3DatasetAttributes datasetAttributes = new ZarrV3DatasetAttributes(
+					image.dimensionsAsLongArray(), shardSize, chunkSize,
+					N5Utils.dataType(image.getType()),
+					compression);
+
+			n5.createDataset(dataset, datasetAttributes);
+			N5Utils.saveNestedBlock(image, n5, dataset, datasetAttributes,
+					new long[image.numDimensions()], exec);
 		}
 
 		writeMetadata(metadata, n5, dataset);
