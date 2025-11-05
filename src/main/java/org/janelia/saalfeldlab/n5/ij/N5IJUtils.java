@@ -117,6 +117,8 @@ public class N5IJUtils {
 	 *            the metadata type
 	 * @param <W>
 	 *            the metadata parser type
+	 * @param <I>
+	 *            the ImageplusMetadata type
 	 * @param n5
 	 *            the reader
 	 * @param dataset

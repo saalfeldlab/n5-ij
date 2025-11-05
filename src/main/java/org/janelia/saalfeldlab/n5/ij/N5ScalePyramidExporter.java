@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -123,11 +122,12 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 import org.scijava.prefs.PrefService;
 import org.scijava.ui.DialogPrompt.MessageType;
+import org.scijava.ui.ApplicationFrame;
 import org.scijava.ui.UIService;
+import org.scijava.widget.UIComponent;
 
 import ij.IJ;
 import ij.ImagePlus;
-import net.imagej.legacy.ui.LegacyApplicationFrame;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
@@ -163,16 +163,23 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public static final String N5_FORMAT = "N5";
 	public static final String ZARR_FORMAT = "Zarr";
 
+	public static final String IJ_PROPERTY_DOWNSAMPLE_POLICY = "N5-DOWNSAMPLE-POLICY";
+	private static final String IJ_PROPERTY_DO_NOT_WARN = "N5-SKIP-OVERWRITE-SKIP-WARNING";
+
+	public static enum DOWNSAMPLE_POLICY {
+		Conservative, Aggressive
+	};
+
 	public static enum DOWNSAMPLE_METHOD {
 		Sample, Average
 	};
+
+	public static final DOWNSAMPLE_POLICY DEFAULT_POLICY = DOWNSAMPLE_POLICY.Aggressive;
 
 	public static final String DOWN_SAMPLE = "Sample";
 	public static final String DOWN_AVERAGE = "Average";
 
 	public static final String NONE = "None";
-
-	private static final String IJ_PROPERTY_DO_NOT_WARN = "N5-SKIP-OVERWRITE-SKIP-WARNING";
 
 	@Parameter
 	private LogService log;
@@ -317,6 +324,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	
 	private String metadataStyle;
 
+	private ThreadPoolExecutor threadPool;
+
+	// consider something like this eventually
+	// private BiFunction<RandomAccessibleInterval<? extends
+	// NumericType<?>>,long[],RandomAccessibleInterval<?>> downsampler;
+
 	public N5ScalePyramidExporter() {
 
 		styles = new HashMap<String, N5MetadataWriter<?>>();
@@ -433,6 +446,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		this.downsampleMethod = downsampleMethod;
 		this.metadataStyle = metadataStyle;
 		this.compressionArg = compression;
+	}
+
+	public void setNumThreads(final int nThreads) {
+		this.nThreads = nThreads;
 	}
 
 	/**
@@ -631,6 +648,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (rootWithFormatPrefix == null)
 			return;
 
+		if (!validateParameters())
+			return;
+
 		/**
 		 * If writing into the container root, prompt for an overwrite warning
 		 * only if the container exists before being created by the N5Writer below.
@@ -707,7 +727,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				Arrays.fill(relativeFactors, 1);
 
 				if (s > 0) {
-					relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg.numDimensions(), s, currentAbsoluteDownsampling);
+					relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg, s, currentAbsoluteDownsampling);
 
 					// update absolute downsampling factors
 					for (int i = 0; i < nd; i++)
@@ -746,7 +766,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				anyScalesWritten = true;
 
 				// chunkSize variable is updated by the write method
-				if (lastScale(chunkSize, currentChannelImg))
+				if (lastScale(chunkSize, currentChannelImg, currentMetadata))
 					break;
 			}
 
@@ -760,6 +780,66 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		n5.close();
 	}
 
+	@SuppressWarnings("unchecked")
+	protected <M extends N5DatasetMetadata> M initializeBaseMetadata() {
+
+		M baseMetadata = null;
+		if (impMeta != null) {
+			try {
+				baseMetadata = (M) impMeta.readMetadata(image);
+			} catch (IOException e) {
+			}
+		}
+
+		if (impMeta instanceof NgffToImagePlus) {
+
+			/*
+			 * ImagePlus axes need to be permuted before conversion to ngff (i.e. from XYCZT
+			 * to XYZCT) The data are permuted elsewhere, here we ensure the metadata
+			 * reflect that chagnge
+			 */
+			baseMetadata = (M) permuteAxesForNgff((NgffSingleScaleAxesMetadata) baseMetadata);
+		}
+
+		return baseMetadata;
+	}
+
+	protected NgffSingleScaleAxesMetadata permuteAxesForNgff(NgffSingleScaleAxesMetadata metadata) {
+
+		final Axis[] axes = metadata.getAxes();
+		boolean hasC = false;
+		boolean hasZ = false;
+		boolean hasT = false;
+		for (int i = 0; i < axes.length; i++) {
+			hasC = hasC || axes[i].getName().equals("c");
+			hasZ = hasZ || axes[i].getName().equals("z");
+			hasT = hasT || axes[i].getName().equals("t");
+		}
+
+		if (hasC && hasZ) {
+			final double[] scale = metadata.getScale();
+			final double[] translation = metadata.getTranslation();
+
+			Axis[] newAxes;
+			double[] newScale;
+			double[] newTranslation;
+			if (hasT) {
+				newAxes = new Axis[] { axes[0], axes[1], axes[3], axes[2], axes[4] };
+				newScale = new double[] { scale[0], scale[1], scale[3], scale[2], scale[4] };
+				newTranslation = new double[] { translation[0], translation[1], translation[3], translation[2], translation[4] };
+			} else {
+				newAxes = new Axis[] { axes[0], axes[1], axes[3], axes[2] };
+				newScale = new double[] { scale[0], scale[1], scale[3], scale[2] };
+				newTranslation = new double[] { translation[0], translation[1], translation[3], translation[2] };
+			}
+
+			return new NgffSingleScaleAxesMetadata(metadata.getPath(), newScale, newTranslation, newAxes,
+					metadata.getAttributes());
+		}
+
+		return metadata;
+	}
+
 	protected void initializeDataset() {
 
 		dataset = image.getShortTitle();
@@ -767,7 +847,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	protected boolean validateDataset() {
 
-		System.out.println("validateDataset");
 		if (dataset.isEmpty()) {
 			cancel("Please provide a name for the dataset");
 			return false;
@@ -898,12 +977,74 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return multiscaleMetadata;
 	}
 
-	protected boolean lastScale(final int[] chunkSize, final Interval imageDimensions) {
+	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions,
+			final M metadata) {
 
-		for (int i = 0; i < imageDimensions.numDimensions(); i++) {
-			if (imageDimensions.dimension(i) <= chunkSize[i])
+		// null check for tests
+		final String downsamplePolicy = prefs != null
+				? prefs.get(getClass(), IJ_PROPERTY_DOWNSAMPLE_POLICY, DEFAULT_POLICY.toString())
+				: DEFAULT_POLICY.toString();
+
+		switch (DOWNSAMPLE_POLICY.valueOf(downsamplePolicy)) {
+		case Aggressive:
+			return lastScaleAggressive(chunkSize, imageDimensions, metadata);
+		default:
+			return lastScaleConservative(chunkSize, imageDimensions, metadata);
+		}
+	}
+
+	/**
+	 * A policy that aggressively downsamples data. 
+	 * <p>
+	 * Stops downsampling if all spatial dimensions are smaller than its respective block size.
+	 * 
+	 * @param <M> metadata type 
+	 * @param chunkSize block size 
+	 * @param imageDimensions image interval
+	 * @param metadata metadata instance 
+	 * @return true if this should be the last scale level
+	 */
+	protected <M extends N5Metadata> boolean lastScaleAggressive(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
+
+		/*
+		 *  Note: Using N5Viewer metadata, will sometimes pass a 4D interval to this method, but
+		 *  will have the metadata provide 3 (spatial) axes. The 4D interval is ordered XYZT in this case,
+		 *  so downsampling factors will be calculated correctly if time dimensions are not downsampled.
+		 */
+		final Axis[] axes = getAxes(metadata, imageDimensions.numDimensions());
+		final int nd = axes.length;
+		for (int i = 0; i < nd; i++) {
+			if (axes[i].getType().equals(Axis.SPACE) && imageDimensions.dimension(i) > chunkSize[i])
+				return false;
+		}
+		return true;
+	}
+
+	/**
+	 * A policy that conservatively downsamples data. 
+	 * <p>
+	 * Stops downsampling if any spatial dimension is smaller than its respective block size.
+	 * 
+	 * @param <M> metadata type 
+	 * @param chunkSize block size 
+	 * @param imageDimensions image interval
+	 * @param metadata metadata instance 
+	 * @return true if this should be the last scale level
+	 */
+	protected <M extends N5Metadata> boolean lastScaleConservative(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
+
+		/*
+		 *  Note: Using N5Viewer metadata, will sometimes pass a 4D interval to this method, but
+		 *  will have the metadata provide 3 (spatial) axes. The 4D interval is ordered XYZT in this case,
+		 *  so downsampling factors will be calculated correctly if time dimensions are not downsampled.
+		 */
+		final Axis[] axes = getAxes(metadata, imageDimensions.numDimensions());
+		final int nd = axes.length;
+		for (int i = 0; i < nd; i++) {
+			if (axes[i].getType().equals(Axis.SPACE) && imageDimensions.dimension(i) <= chunkSize[i])
 				return true;
 		}
+
 		return false;
 	}
 
@@ -1020,36 +1161,22 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return factors;
 	}
 
-	protected <M extends N5Metadata> long[] getDownsampleFactors(final M metadata, final int nd, final int scale,
+	protected <M extends N5Metadata> long[] getRelativeDownsampleFactors(final M metadata, final Interval img, final int scale,
 			final long[] downsampleFactors) {
 
+		int nd = img.numDimensions();
 		final Axis[] axes = getAxes(metadata, nd);
 
-		// under what condisions is nd != axes.length
+		final double[] res = getSpatialResolutions(metadata, axes);
+		final double minSpatialRes = minSpatialResolution(res, axes);
+
+		// under what conditions is nd != axes.length
 		final long[] factors = new long[axes.length];
 		for (int i = 0; i < nd; i++) {
 
 			// only downsample spatial dimensions
-			if (axes[i].getType().equals(Axis.SPACE))
-				factors[i] = 1 << scale; // 2 to the power of scale
-			else
-				factors[i] = 1;
-		}
-
-		return factors;
-	}
-
-	protected <M extends N5Metadata> long[] getRelativeDownsampleFactors(final M metadata, final int nd, final int scale,
-			final long[] downsampleFactors) {
-
-		final Axis[] axes = getAxes(metadata, nd);
-
-		// under what condisions is nd != axes.length
-		final long[] factors = new long[axes.length];
-		for (int i = 0; i < nd; i++) {
-
-			// only downsample spatial dimensions
-			if (axes[i].getType().equals(Axis.SPACE))
+			// avoid downsampling spatial dimensions if not doing so would make the next scale level more isotropic
+			if (isSpatial(axes[i]) && downsamplingPreservesIsotropy(minSpatialRes, res[i]) && img.dimension(i) > 1)
 				factors[i] = 2;
 			else
 				factors[i] = 1;
@@ -1058,7 +1185,17 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return factors;
 	}
 
-	protected <M extends N5Metadata> Axis[] getAxes(final M metadata, final int nd) {
+	protected static boolean isSpatial(final Axis axis) {
+
+		return axis.getType().equals(Axis.SPACE);
+	}
+
+	protected static boolean downsamplingPreservesIsotropy(final double minResolution, final double thisResolution) {
+
+		return minResolution * 2 >= thisResolution;
+	}
+
+	protected static <M extends N5Metadata> Axis[] getAxes(final M metadata, final int nd) {
 
 		if (metadata instanceof AxisMetadata)
 			return ((AxisMetadata)metadata).getAxes();
@@ -1066,6 +1203,41 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			return AxisUtils.defaultN5ViewerAxes((N5SingleScaleMetadata)metadata).getAxes();
 		else
 			return AxisUtils.defaultAxes(nd);
+	}
+
+	/**
+	 * Get the spatial resolutions, for the purpose of determining downsampling factors.
+	 * Returned array has a length equal to the number of axes.  Non-spatial dimensions
+	 * will report a resolution of Double.MAX_VALUE
+	 *
+	 * @param <M> metadata type
+	 * @param metadata the metadata
+	 * @param axes the axes
+	 * @return the resolutions per dimension.
+	 */
+	protected static <M extends N5Metadata> double[] getSpatialResolutions(final M metadata, Axis[] axes) {
+
+		final int nd = axes.length;
+		double[] res = null;
+		if (metadata instanceof N5SingleScaleMetadata)
+			res = ((N5SingleScaleMetadata)metadata).getPixelResolution();
+		else if( metadata instanceof NgffSingleScaleAxesMetadata )
+			res = ((NgffSingleScaleAxesMetadata)metadata).getScale();
+		else {
+			res = new double[nd];
+			Arrays.fill(res, 1);
+		}
+		return res;
+	}
+
+	protected static double minSpatialResolution(double[] resolution, Axis[] axes) {
+
+		double min = Double.POSITIVE_INFINITY;
+		for (int i = 0; i < axes.length; i++) {
+			if(isSpatial(axes[i]) && resolution[i] < min)
+				min = resolution[i];
+		}
+		return min;
 	}
 
 	// also extending NativeType causes build failures using maven, unclear why
@@ -1105,9 +1277,15 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// some metadata styles never split channels, return input image in that
 		// case
 		if (metadataStyle.equals(NONE) || metadataStyle.equals(N5Importer.MetadataCustomKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
 				metadataStyle.equals(N5Importer.MetadataImageJKey)) {
 			return Collections.singletonList(img);
+		}
+		else if (metadataStyle.equals(N5Importer.MetadataOmeZarrKey)) {
+
+			if (image.getNChannels() > 1 && image.getNSlices() > 1)
+				return Collections.singletonList(Views.permute(img, 2, 3));
+			else
+				return Collections.singletonList(img);
 		}
 
 		// otherwise, split channels
@@ -1131,6 +1309,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				// make a 4d image in order XYZT
 				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
 			}
+
 			channels.add(channelImg);
 		}
 
@@ -1370,6 +1549,39 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return true;
 	}
 
+	public ExecutorService getExecutorService() {
+
+		return threadPool;
+	}
+
+	private boolean validateParameters() {
+
+		String message = "";
+		boolean success = true;
+
+		if (chunkSizeArg == null || chunkSizeArg.isEmpty()) {
+			success = false;
+			message = "Chunk size argument is empty. Please provide a comma-separated list of numbers.";
+		} else {
+			try {
+				parseBlockSize();
+			} catch (Throwable t) {
+				success = false;
+				message = "Could not parse the chunk size:\n\"" +
+						chunkSizeArg + "\"\n" +
+						"Please provide a comma-separated list of numbers.";
+			}
+		}
+
+		if (!success)
+			if (ui != null)
+				ui.showDialog(message, MessageType.ERROR_MESSAGE);
+			else
+				System.err.println(message);
+
+		return success;
+	}
+
 	@SuppressWarnings({"rawtypes", "unchecked"})
 	private <T extends RealType & NativeType, M extends N5Metadata> boolean write(
 			final RandomAccessibleInterval<T> image,
@@ -1384,15 +1596,14 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		// Here, either allowing overwrite, or not allowing, but the dataset does not exist.
 		// use threadPool even for single threaded execution for progress monitoring
-		final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
+		threadPool = new ThreadPoolExecutor(nThreads, nThreads, 0L, TimeUnit.MILLISECONDS,
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
 
-		final ExecutorService exec = Executors.newFixedThreadPool(nThreads);
 		if( shardSize == null ) {
 			N5Utils.save(image,
 					n5, dataset, chunkSize, compression,
-					Executors.newFixedThreadPool(nThreads));
+					threadPool);
 		}
 		else {
 			final ZarrV3DatasetAttributes datasetAttributes = new ZarrV3DatasetAttributes(
@@ -1402,10 +1613,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 			n5.createDataset(dataset, datasetAttributes);
 			N5Utils.saveNestedBlock(image, n5, dataset, datasetAttributes,
-					new long[image.numDimensions()], exec);
+					new long[image.numDimensions()], threadPool);
 		}
 
+		threadPool.shutdown();
 		writeMetadata(metadata, n5, dataset);
+
 		return true;
 	}
 
@@ -1639,13 +1852,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (skipWarning)
 			return true;
 
-		Frame parentFrame = null;
-		try {
-			final LegacyApplicationFrame appFrame = (LegacyApplicationFrame)ui.getDefaultUI().getApplicationFrame();
-			parentFrame = appFrame.getComponent();
-		} catch (final Exception e) {
-			parentFrame = new JFrame();
-		}
+		Frame parentFrame = getParentFrame();
 
 		// Not sure when this will be the case when running from a fiji instance.
 		// what should happen when calling this programmatically?
@@ -1661,6 +1868,19 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		parentFrame = null;
 		return warningDialog.doDelete();
+	}
+
+	private Frame getParentFrame() {
+		Frame parentFrame = null;
+		final ApplicationFrame appFrame = ui.getDefaultUI().getApplicationFrame();
+		Frame frame = null;
+		if (appFrame instanceof Frame)
+			frame = (Frame) appFrame;
+		else if (appFrame instanceof UIComponent) {
+			Object uic = ((UIComponent) appFrame).getComponent();
+			if (uic instanceof Frame) frame = (Frame) uic;
+		}
+		return frame == null ? new JFrame() : frame;
 	}
 
 	public static Compression getCompression(final String compressionArg) {

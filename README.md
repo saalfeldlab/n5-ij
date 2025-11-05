@@ -2,17 +2,6 @@
 
 A Fiji plugin for loading and saving image data to N5 containers. Supports [HDF5](https://www.hdfgroup.org/solutions/hdf5/), [Zarr](https://zarr.readthedocs.io/en/stable/#), [Amazon S3](https://aws.amazon.com/s3/), and [Google cloud storage](https://cloud.google.com/storage).
 
-## Contents
-1. [Open HDF5/N5/Zarr/OME-NGFF](#open-n5)
-   1. [Virtual](#virtual)
-   2. [Cropping](#cropping)
-2. [Export N5](#export-n5)
-3. [Container types](#container-types)
-4. [Metadata](#metadata)
-5. [For developers](#for-developers)
-6. [Details](#details)
-   1. [Cloud writing benchmarks](#cloud-writing-benchmarks)
-
 ## Open HDF5/N5/Zarr/OME-NGFF
 
 Open HDF5/N5/Zarr/OME-NGFF datasets from Fiji with `File > Import > HDF5/N5/Zarr/OME-NGFF ... `. 
@@ -63,7 +52,7 @@ Parameters
   * You may provide fewer values than the data dimension. In that case, the list will be expanded to necessary size with the last value, for example `64`, will expand to `64,64,64` for 3D data.
 * `Create Pyramid` - If checked, a multiscale pyramid will be created (if possible). See below for details.
 * `Downsampling method` - The downsampling method to be used if a multiscale pyramid can be created. See below for details.
-* `Compression` - The compression method to be used for chucnks / blocks. 
+* `Compression` - The compression method to be used for chunks / blocks. 
 * `metadata type` - style and type of metadata to store (see also [Metadata](#metadata))
 * `Thread count` - number of threads used for parallel writing (see also [Cloud writing benchmarks](#cloud-writing-benchmarks))
 * `Overwrite` - If checked, existing data may be deleted and overwritten without warning.
@@ -76,16 +65,19 @@ for example: `zarr://s3://my-bucket/my-key`
 
 * Filesystem N5 
     * Specify a URL starting with `n5:`
+        * example `n5:/path/to/my/data.ext`
     * Specify a directory ending in `.n5` 
-    * example `/path/to/my/data.n5`
+        * example `/path/to/my/data.n5`
 * Zarr
     * Specify a URL starting with `zarr:`
+        * example `zarr:/Users/user/Documents/sample`
     * Specify a directory ending in `.zarr` 
-    * example `/Users/user/Documents/sample.zarr`
+        * example `/Users/user/Documents/sample.zarr`
 * HDF5
     * Specify a URL starting with `hdf5:`
+        * example `hdf5:C:\user\docs\example.ims`
     * Specify a file ending in `.h5` ,`.hdf5`, or `.hdf`
-    * example `C:\user\docs\example.h5`
+        * example `C:\user\docs\example.h5`
  
 ### Backend
 

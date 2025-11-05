@@ -25,7 +25,6 @@
  */
 package org.janelia.saalfeldlab.n5.ij;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -42,6 +41,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import javax.swing.JTree;
 
 import org.apache.commons.lang.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
@@ -62,6 +62,7 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.NgffToImagePlus;
 import org.janelia.saalfeldlab.n5.ui.DataSelection;
 import org.janelia.saalfeldlab.n5.ui.DatasetSelectorDialog;
 import org.janelia.saalfeldlab.n5.ui.N5DatasetTreeCellRenderer;
+import org.janelia.saalfeldlab.n5.ui.N5SwingTreeNode;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
@@ -119,7 +120,6 @@ import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 public class N5Importer implements PlugIn {
@@ -256,6 +256,37 @@ public class N5Importer implements PlugIn {
 	public void setShow(final boolean show) {
 
 		this.show = show;
+	}
+
+	public void runWithDialog(final String pathToContainer, final List<String> selectThisSubPath) {
+		lastOpenedContainer = pathToContainer;
+		selectionDialog = null;
+		run(null);
+		if (selectionDialog == null) {
+			throw new RuntimeException("The \"Open N5\" didn't come up when it should.");
+		} else {
+			selectionDialog.detectDatasets();
+			if (selectThisSubPath != null) {
+				boolean isDiscoveryFinished = selectionDialog.waitUntilDiscoveryIsFinished(60000);
+				if (isDiscoveryFinished) selectTreeItem(selectThisSubPath);
+			}
+		}
+	}
+
+	private void selectTreeItem(final List<String> itemPath) {
+		final JTree t = selectionDialog.getJTree();
+		int currRow = 0;
+		for (String subPath : itemPath) {
+			for (int r = currRow; r < t.getRowCount(); ++r, ++currRow) {
+				N5SwingTreeNode n = (N5SwingTreeNode)t.getPathForRow(r).getLastPathComponent();
+				if (n.getNodeName().equals(subPath)) {
+					t.expandRow(r);
+					t.setSelectionRow(r);
+					++currRow;
+					break;
+				}
+			}
+		}
 	}
 
 	@Override
@@ -493,6 +524,8 @@ public class N5Importer implements PlugIn {
 	 *            the image data type
 	 * @param <M>
 	 *            the metadata type
+	 * @param <A>
+	 *            the axis metadata type
 	 * @param n5
 	 *            the n5Reader
 	 * @param exec
@@ -586,7 +619,7 @@ public class N5Importer implements PlugIn {
 		if (asVirtual) {
 			imp = ImageJFunctions.wrap(convImg, d, exec);
 		} else {
-			final ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(Util.getTypeFromInterval(convImg)).create(convImg);
+			final ImagePlusImg<T, ?> ipImg = new ImagePlusImgFactory<>(convImg.getType()).create(convImg);
 			LoopBuilder.setImages(convImg, ipImg)
 					.multiThreaded(new DefaultTaskExecutor(exec))
 					.forEachPixel((x, y) -> y.set(x));
@@ -673,15 +706,15 @@ public class N5Importer implements PlugIn {
 	public void processWithCrops() {
 
 		asVirtual = selectionDialog.isVirtual();
-		final String rootPath = selectionDialog.getN5RootPath();
-		for (final N5Metadata datasetMeta : selection.metadata) {
-			// Macro.getOptions() does not return what I'd expect after this
-			// call. why?
-			// Macro.setOptions( String.format( "n5=%s", datasetMeta.getPath()
-			// ));
+		URI rootUri = selectionDialog.getN5Reader().getURI();
+		if (!rootUri.toString().endsWith("/")) {
+			rootUri = URI.create(rootUri.toString() + "/");
+		}
 
-			final String datasetPath = datasetMeta.getPath();
-			final String pathToN5Dataset = datasetPath.isEmpty() ? rootPath : rootPath + File.separator + datasetPath;
+		for (final N5Metadata datasetMeta : selection.metadata) {
+
+			final String datasetPath = N5URI.normalizeGroupPath(datasetMeta.getPath());
+			final String pathToN5Dataset = rootUri.resolve(datasetPath).toString();
 
 			numDimensionsForCrop = ((N5DatasetMetadata)datasetMeta).getAttributes().getNumDimensions();
 			initMaxValuesForCrop = Arrays.stream(((N5DatasetMetadata)datasetMeta).getAttributes().getDimensions())
@@ -689,6 +722,7 @@ public class N5Importer implements PlugIn {
 					.toArray();
 
 			this.run("cropDialog " + generateAndStoreOptions(pathToN5Dataset, asVirtual, null, !show));
+
 		}
 	}
 
@@ -883,6 +917,11 @@ public class N5Importer implements PlugIn {
 
 			final String d = normalPathName(datasetMeta.getPath(), n5.getGroupSeparator());
 			try {
+			
+				// TODO something like this should work, but it currently fails
+//				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(rootPathArg);
+//				final String fmtPrefix = fmtUri.getA().toString().toLowerCase();
+//				final String n5Url = fmtPrefix + ":" + N5URI.from(fmtUri.getB().toString(), d, null).toString();
 
 				final StorageFormat fmt = StorageFormat.guessStorageFromUri(URI.create(rootPathArg));
 				final String fmtPrefix = fmt == null ? "" : fmt.toString().toLowerCase() + "://";
@@ -1078,46 +1117,61 @@ public class N5Importer implements PlugIn {
 			try {
 				n5 = factory.openReader(rootPath);
 			} catch (final N5Exception e) {
-				IJ.handleException(e);
+				IJ.error(e.getMessage());
 				return null;
 			}
 			return n5;
 		}
 	}
 
-	private static String upToLastExtension(final String path) {
+	private static String upToLastExtension(final String pathArg) {
 
+		String scheme = null;
+		String host = null;
+		String path;
+		try {
+			URI uri = URI.create(pathArg);
+			path = uri.getPath();
+			scheme = uri.getScheme();
+			host = uri.getHost();
+		} catch (Exception e) {
+			path = pathArg;
+		}
+
+		String newPath = path;
 		final int i = path.lastIndexOf('.');
 		if (i >= 0) {
 			final int j = path.substring(i).indexOf('/');
 			if (j >= 0)
-				return path.substring(0, i + j);
-			else
-				return path;
-		} else
-			return path;
+				newPath = path.substring(0, i + j);
+		}
+
+		try {
+			return new URI(scheme, host, newPath, null).toString();
+		} catch (URISyntaxException e) {
+			return newPath;
+		}
 	}
 
-	private static String afterLastExtension(final String path) {
+	private static String afterLastExtension(final String pathArg) {
 
+		String path;
+		try {
+			URI uri = URI.create(pathArg);
+			path = uri.getPath();
+		} catch (Exception e) {
+			path = pathArg;
+		}
+
+		String group = "";
 		final int i = path.lastIndexOf('.');
 		if (i >= 0) {
 			final int j = path.substring(i).indexOf('/');
 			if (j >= 0)
-				return path.substring(i + j);
-			else
-				return "";
-		} else
-			return "";
-	}
+				group = path.substring(i + j);
+		}
 
-	private static String lastExtension(final String path) {
-
-		final int i = path.lastIndexOf('.');
-		if (i >= 0)
-			return path.substring(i);
-		else
-			return "";
+		return group;
 	}
 
 	public static class N5BasePathFun implements Function<String, String> {

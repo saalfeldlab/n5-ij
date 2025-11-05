@@ -67,8 +67,9 @@ public class ImprovedFormattedTextField extends JFormattedTextField {
 	public ImprovedFormattedTextField(AbstractFormatter formatter, Object aValue) {
 
 		this(formatter);
+		String strValue = aValue instanceof String ? (String)aValue : "";
 		try {
-			setValue(new URI(""));
+			setValue(new URI(strValue));
 		} catch (URISyntaxException e) { 
 			e.printStackTrace();
 		}

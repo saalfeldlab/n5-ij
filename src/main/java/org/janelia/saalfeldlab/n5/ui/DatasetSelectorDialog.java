@@ -30,7 +30,9 @@ import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.KeyEvent;
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.text.Collator;
@@ -49,6 +51,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import javax.swing.KeyStroke;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
@@ -77,7 +80,6 @@ import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
-import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
@@ -94,6 +96,8 @@ import ij.ImageJ;
 import ij.gui.ProgressBar;
 import net.imglib2.util.Pair;
 import se.sawano.java.text.AlphanumericComparator;
+
+import static javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW;
 
 public class DatasetSelectorDialog {
 
@@ -320,6 +324,11 @@ public class DatasetSelectorDialog {
 		return (virtualBox != null) && virtualBox.isSelected();
 	}
 
+	public N5Reader getN5Reader() {
+
+		return n5;
+	}
+
 	public String getN5RootPath() {
 
 		return containerPathText.getText().trim();
@@ -342,6 +351,10 @@ public class DatasetSelectorDialog {
 
 		// ok and cancel buttons
 		okBtn.addActionListener(e -> ok());
+		okBtn.registerKeyboardAction(a -> ok(),
+				  "n5_open_button",
+				  KeyStroke.getKeyStroke(KeyEvent.VK_ENTER,0,true),
+				  WHEN_IN_FOCUSED_WINDOW);
 		cancelBtn.addActionListener(e -> cancel());
 		dialog.setVisible(true);
 	}
@@ -503,6 +516,15 @@ public class DatasetSelectorDialog {
 		panel.add(cancelBtn, cbot);
 
 		containerTree.addMouseListener(new NodePopupMenu(this).getPopupListener());
+		containerTree.addTreeSelectionListener(tsl -> {
+			if (containerTree.getSelectionCount() == 0) {
+				okBtn.setEnabled( false );
+			} else {
+				int selectedRow = containerTree.getSelectionRows()[0];
+				N5SwingTreeNode n = (N5SwingTreeNode)containerTree.getPathForRow(selectedRow).getLastPathComponent();
+				okBtn.setEnabled(selectionFilter == null ? true : selectionFilter.test(n.getMetadata()));
+			}
+		});
 
 		dialog.pack();
 		return dialog;
@@ -727,42 +749,52 @@ public class DatasetSelectorDialog {
 		parseExec.submit(() -> {
 			try {
 				String[] datasetPaths;
-				try {
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.3);
-
-
-					SwingUtilities.invokeLater(() -> {
-						messageLabel.setText("Listing...");
-						messageLabel.repaint();
-					});
-
-					// build a temporary tree
-					datasetPaths = n5.deepList(rootPath, loaderExecutor);
-					N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
-					for (final String p : datasetPaths)
-						rootNode.addPath(rootPath + "/" + p);
-
-
-					sortRecursive(rootNode);
-					containerTree.expandRow(0);
-
-					if (ijProgressBar != null)
-						ijProgressBar.show(0.5);
-
 
 					SwingUtilities.invokeLater(() -> {
 						messageLabel.setText("Parsing...");
 						messageLabel.repaint();
 					});
 
-					// callback copies values from temporary tree into the ui
-					// when metadata is parsed
-					datasetDiscoverer.parseMetadataRecursive(tmpRootNode, callback);
+					datasetDiscoverer.discoverShallow(tmpRootNode, callback);
+					callback.accept(tmpRootNode);
+					sortRecursive(rootNode);
 
 					if (ijProgressBar != null)
-						ijProgressBar.show(0.8);
+						ijProgressBar.show(0.4);
+
+					SwingUtilities.invokeLater(() -> {
+						messageLabel.setText("Listing...");
+						messageLabel.repaint();
+					});
+
+					try { 
+						// build a temporary tree
+						datasetPaths = n5.deepList(rootPath, loaderExecutor);
+						N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
+						for (final String p : datasetPaths)
+							rootNode.addPath(rootPath + "/" + p);
+					} catch(ExecutionException ignore){ }
+
+					sortRecursive(rootNode);
+					containerTree.expandRow(0);
+
+					if (ijProgressBar != null)
+						ijProgressBar.show(0.6);
+
+					SwingUtilities.invokeLater(() -> {
+						messageLabel.setText("Parsing deep...");
+						messageLabel.repaint();
+					});
+
+					// callback copies values from temporary tree into the ui
+					// when metadata is parsed
+					datasetDiscoverer.parseMetadataRecursive(tmpRootNode, callback, true);
+
+					if (ijProgressBar != null)
+						ijProgressBar.show(0.9);
 
 					SwingUtilities.invokeLater(() -> {
 						messageLabel.setText("Done");
@@ -778,13 +810,9 @@ public class DatasetSelectorDialog {
 						messageLabel.setVisible(false);
 						messageLabel.repaint();
 					});
-				} catch (final InterruptedException e) {
-					// can ignore
-				} catch (final ExecutionException e) {
-					// can ignore
-				}
-			} catch (final N5Exception e) {
-				e.printStackTrace();
+
+			} catch (final InterruptedException e) {
+				// can ignore
 			}
 		});
 
@@ -797,6 +825,15 @@ public class DatasetSelectorDialog {
 		}
 
 		detectCalled = true;
+	}
+
+	public boolean waitUntilDiscoveryIsFinished(long maxWaitingMillis) {
+		final long waitingPeriodMillis = 100;
+		while (messageLabel.isVisible() && maxWaitingMillis > 0) {
+			try { Thread.sleep(waitingPeriodMillis); } catch (InterruptedException e) { throw new RuntimeException(e); }
+			maxWaitingMillis -= waitingPeriodMillis;
+		}
+		return !messageLabel.isVisible();
 	}
 
 	public void ok() {
