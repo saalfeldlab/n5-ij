@@ -91,7 +91,7 @@
 		<n5-google-cloud.version>5.2.0-alpha-1-SNAPSHOT</n5-google-cloud.version>
 		<n5-imglib2.version>7.1.0-alpha-1-SNAPSHOT</n5-imglib2.version>
 		<n5-universe.version>2.4.0-alpha-1-SNAPSHOT</n5-universe.version>
-		<n5-zarr.version>2.0.0-SNAPSHOT</n5-zarr.version>
+		<n5-zarr.version>2.0.0-alpha-1-SNAPSHOT</n5-zarr.version>
 		<n5-zstandard.version>2.0.0-alpha-2-SNAPSHOT</n5-zstandard.version>
 	</properties>
 
