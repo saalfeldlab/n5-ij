@@ -1602,9 +1602,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		progressMonitor(threadPool);
 
 		if( shardSize == null ) {
-			N5Utils.save(image,
-					n5, dataset, chunkSize, compression,
-					threadPool);
+			N5Utils.save(image, n5, dataset, chunkSize, compression, threadPool);
 		}
 		else {
 			final ZarrV3DatasetAttributes datasetAttributes = new ZarrV3DatasetAttributes(
@@ -1612,9 +1610,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					N5Utils.dataType(image.getType()),
 					compression);
 
+			final int nd = image.numDimensions();
 			n5.createDataset(dataset, datasetAttributes);
-			N5Utils.saveNestedBlock(image, n5, dataset, datasetAttributes,
-					new long[image.numDimensions()], threadPool);
+			N5Utils.saveBlock(image, n5, dataset, datasetAttributes, new long[nd], threadPool);
 		}
 
 		threadPool.shutdown();
