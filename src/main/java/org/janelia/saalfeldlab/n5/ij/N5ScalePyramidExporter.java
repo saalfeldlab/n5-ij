@@ -272,13 +272,14 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			style = "listBox",
 			description = "The style for metadata to be stored in the exported N5.",
 			choices = {
-					N5Importer.MetadataOmeZarrKey,
+					N5Importer.MetadataOmeZarrV05Key,
+					N5Importer.MetadataOmeZarrV04Key,
 					N5Importer.MetadataImageJKey,
 					N5Importer.MetadataN5ViewerKey,
 					N5Importer.MetadataN5CosemKey,
 					N5Importer.MetadataCustomKey,
 					NONE})
-	private String metadataStyleArg = N5Importer.MetadataOmeZarrKey;
+	private String metadataStyleArg = N5Importer.MetadataOmeZarrV05Key;
 
 	@Parameter(
 			label = "Thread count",
