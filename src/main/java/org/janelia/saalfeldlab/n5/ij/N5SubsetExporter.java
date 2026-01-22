@@ -38,6 +38,7 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
@@ -66,7 +67,6 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.util.Intervals;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (patch)", description = "Insert the current image as a patch into an existing dataset at a user-defined offset. New datasets can be created and existing "
@@ -253,11 +253,11 @@ public class N5SubsetExporter extends ContextCommand {
 		// create an empty dataset if it one does not exist
 		if (!n5.datasetExists(dataset)) {
 			final long[] dimensions = outputInterval(rai).dimensionsAsLongArray();
-			final int[] blockSize = N5ScalePyramidExporter.parseBlockSize(chunkSizeArg, dimensions);
+			final int[] blockSize = new BlockSizeParsers.BlockSizeParser(dimensions).parse(chunkSizeArg);
 			final DatasetAttributes attributes = new DatasetAttributes(
 					dimensions,
 					blockSize,
-					N5Utils.dataType((T)Util.getTypeFromInterval(rai)),
+					N5Utils.dataType((T)rai.getType()),
 					N5ScalePyramidExporter.getCompression(compressionArg));
 
 			n5.createDataset(dataset, attributes);

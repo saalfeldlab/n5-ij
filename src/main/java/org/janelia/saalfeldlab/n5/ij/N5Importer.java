@@ -91,6 +91,7 @@ import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
 import ij.IJ;
+import ij.ImageJ;
 import ij.ImagePlus;
 import ij.Macro;
 import ij.Prefs;
@@ -273,7 +274,7 @@ public class N5Importer implements PlugIn {
 		}
 	}
 
-	private void selectTreeItem(final List<String> itemPath) {
+	void selectTreeItem(final List<String> itemPath) {
 		final JTree t = selectionDialog.getJTree();
 		int currRow = 0;
 		for (String subPath : itemPath) {
@@ -1237,5 +1238,14 @@ public class N5Importer implements PlugIn {
 
 		return fullPath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
 	}
+	
+	public static void main(final String[] args) throws InterruptedException {
+
+		new ImageJ();
+		new N5Importer().run("");
+
+		System.out.println( "done" );
+	}
+
 
 }

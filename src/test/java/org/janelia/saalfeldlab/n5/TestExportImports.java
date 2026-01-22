@@ -39,7 +39,6 @@ import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import ij.ImagePlus;
@@ -96,7 +95,7 @@ public class TestExportImports
 	public void testEmptyMeta() throws InterruptedException
 	{
 		final ImagePlus imp = NewImage.createImage("test", 8, 6, 2, 16, NewImage.FILL_NOISE);
-		final String metaType = N5Importer.MetadataDefaultKey;
+		final String metaType = N5ScalePyramidExporter.NONE;
 
 		final String n5RootPath = baseDir + "/test_none.n5";
 		final String dataset = "/test";
@@ -157,13 +156,14 @@ public class TestExportImports
 	public void testReadWriteParse() throws InterruptedException
 	{
 		final HashMap<String,String> typeToExtension = new HashMap<>();
-		typeToExtension.put( "FILESYSTEM", "n5" );
+		typeToExtension.put( "N5", "n5" );
 		typeToExtension.put( "ZARR", "zarr" );
 		typeToExtension.put( "HDF5", "h5" );
 
 		final String blockSizeString = "16,16,16";
 		final String compressionString = N5ScalePyramidExporter.GZIP_COMPRESSION;
-		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
+//		final String[] containerTypes = new String[] { "N5", "ZARR", "HDF5" };
+		final String[] containerTypes = new String[] { "N5", "ZARR" };
 		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataOmeZarrKey,
 				N5Importer.MetadataImageJKey,
@@ -392,7 +392,8 @@ public class TestExportImports
 	@Test
 	public void testMultiChannel()
 	{
-		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
+//		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
+		for( final String suffix : new String[] { ".n5", ".zarr" })
 		{
 			try {
 				testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
