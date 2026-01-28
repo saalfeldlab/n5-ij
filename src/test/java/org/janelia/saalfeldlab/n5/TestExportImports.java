@@ -893,13 +893,6 @@ public class TestExportImports
 			@SuppressWarnings("unchecked")
 			final Optional<N5SpatialDatasetMetadata> meta = (Optional<N5SpatialDatasetMetadata>)parser.parseMetadata(n5r,dsetPath);
 			assertTrue("metadata does not exist or not parsable", meta.isPresent());
-
-
-			System.out.println(metadataType);
-			System.out.println(Arrays.toString(flatAffine));
-			System.out.println(Arrays.toString( meta.get().spatialTransform().getRowPackedCopy()));
-			System.out.println("");
-
 			assertArrayEquals("affine", flatAffine, meta.get().spatialTransform().getRowPackedCopy(), EPS);
 		}
 
