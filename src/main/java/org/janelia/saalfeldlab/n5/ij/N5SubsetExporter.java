@@ -113,7 +113,8 @@ public class N5SubsetExporter extends ContextCommand {
 					N5ScalePyramidExporter.AUTO_FORMAT,
 					N5ScalePyramidExporter.HDF5_FORMAT,
 					N5ScalePyramidExporter.N5_FORMAT,
-					N5ScalePyramidExporter.ZARR_FORMAT})
+					N5ScalePyramidExporter.ZARR3_FORMAT,
+					N5ScalePyramidExporter.ZARR2_FORMAT })
 	private String storageFormat = N5ScalePyramidExporter.AUTO_FORMAT;
 
 	@Parameter(

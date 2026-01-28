@@ -145,8 +145,8 @@ public class N5Importer implements PlugIn {
 	public static final String MetadataCustomKey = "Custom";
 	public static final String MetadataDefaultKey = "Default";
 
-	public static final String MetadataOmeZarrV04Key = "OME-NGFF v0.4";
-	public static final String MetadataOmeZarrV05Key = "OME-NGFF v0.5";
+	public static final String MetadataOmeZarrV04Key = "OME-Zarr_V0.4";
+	public static final String MetadataOmeZarrV05Key = "OME-Zarr_V0.5";
 
 	public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 			new ImagePlusLegacyMetadataParser(),
@@ -1032,7 +1032,8 @@ public class N5Importer implements PlugIn {
 	public List<ImagePlus> process(final String n5FullPath, final boolean asVirtual, final Interval cropInterval,
 			final boolean parseAllMetadata) {
 
-		n5 = new N5ViewerReaderFun().apply(n5FullPath);
+//		n5 = new N5ViewerReaderFun().apply(n5FullPath);
+		final N5Reader n5 = new N5ViewerReaderFun().apply(n5FullPath);
 		final String dataset = new N5BasePathFun().apply(n5FullPath);
 		N5DatasetMetadata metadata;
 		N5TreeNode root;

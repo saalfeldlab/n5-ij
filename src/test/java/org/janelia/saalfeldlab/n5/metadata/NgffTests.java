@@ -104,7 +104,7 @@ public class NgffTests {
 		imp.setDimensions(nc, nz, nt);
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions(imp, baseDir.getAbsolutePath(), dataset, N5ScalePyramidExporter.ZARR_FORMAT, "64", false,
+		writer.setOptions(imp, baseDir.getAbsolutePath(), dataset, N5ScalePyramidExporter.ZARR2_FORMAT, "64", false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
 		writer.run();
 

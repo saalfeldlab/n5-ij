@@ -241,7 +241,7 @@ public class WriteAxesTests {
 		final String compression = N5ScalePyramidExporter.GZIP_COMPRESSION;
 
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-		writer.setOptions(imp, rootLocation, dataset, N5ScalePyramidExporter.ZARR_FORMAT, blockSizeArg, false,
+		writer.setOptions(imp, rootLocation, dataset, N5ScalePyramidExporter.ZARR2_FORMAT, blockSizeArg, false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrKey, compression);
 		writer.run(); // run() closes the n5 writer
 

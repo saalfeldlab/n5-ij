@@ -69,7 +69,7 @@ public class CreateAxisPermutedTestData {
 		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis.tif");
 
 		final N5ScalePyramidExporter exporter = new N5ScalePyramidExporter(imp, root, dset,
-				N5ScalePyramidExporter.ZARR_FORMAT, "128", true,
+				N5ScalePyramidExporter.ZARR2_FORMAT, "128", true,
 				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrKey,
 				N5ScalePyramidExporter.GZIP_COMPRESSION);
 		exporter.run();

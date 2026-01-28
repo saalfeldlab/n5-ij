@@ -635,4 +635,34 @@ public class N5IJUtils {
 				new UnsignedIntType());
 
 	}
+
+	public static <T extends NumericType<T>> RandomAccessibleInterval<T> toImgXYCZT(final ImagePlus imp) {
+
+		// get the image
+		RandomAccessibleInterval<T> img = (RandomAccessibleInterval<T>)VirtualStackAdapter.wrap(imp);
+
+		if (imp.getNChannels() < 2) {
+			final int nd = img.numDimensions();
+			img = Views.permute(Views.addDimension(img, 0, 0), nd, 2);
+
+			// if the initial image was 4d (XYZT)
+			// then img is now XYCTZ, so permute to XYCZT
+			if( img.numDimensions() == 5) {
+				img = Views.permute(img, 3, 4);
+			}
+		}
+
+		if (imp.getNSlices() < 2) {
+			final int nd = img.numDimensions();
+			img = Views.permute(Views.addDimension(img, 0, 0), nd, 3);
+		}
+
+		if (imp.getNFrames() < 2) {
+			final int nd = img.numDimensions();
+			img = Views.permute(Views.addDimension(img, 0, 0), nd, 4);
+		}
+
+		return img;
+	}
+
 }

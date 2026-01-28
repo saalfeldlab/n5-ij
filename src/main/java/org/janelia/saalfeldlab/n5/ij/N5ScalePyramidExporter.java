@@ -45,7 +45,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.IntStream;
+import java.util.function.Function;
 
 import javax.annotation.Nullable;
 import javax.swing.Icon;
@@ -62,6 +62,7 @@ import javax.swing.UIManager;
 import net.imglib2.algorithm.blocks.BlockAlgoUtils;
 import net.imglib2.algorithm.blocks.BlockSupplier;
 import net.imglib2.algorithm.blocks.downsample.Downsample;
+import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.fluent.RandomAccessibleIntervalView.Extension;
@@ -164,7 +165,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public static final String AUTO_FORMAT = "Auto";
 	public static final String HDF5_FORMAT = "HDF5";
 	public static final String N5_FORMAT = "N5";
-	public static final String ZARR_FORMAT = "Zarr";
+	public static final String ZARR2_FORMAT = "ZarrV2";
+	public static final String ZARR3_FORMAT = "ZarrV3";
 
 	public static final String IJ_PROPERTY_DOWNSAMPLE_POLICY = "N5-DOWNSAMPLE-POLICY";
 	private static final String IJ_PROPERTY_DO_NOT_WARN = "N5-SKIP-OVERWRITE-SKIP-WARNING";
@@ -217,7 +219,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			label = "Format",
 			style = "listBox",
 			description = "The storage format.",
-			choices = {AUTO_FORMAT, HDF5_FORMAT, N5_FORMAT, ZARR_FORMAT})
+			choices = {AUTO_FORMAT, HDF5_FORMAT, N5_FORMAT, ZARR3_FORMAT, ZARR2_FORMAT})
 	private String storageFormat = AUTO_FORMAT;
 
 	@Parameter(
@@ -296,13 +298,21 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	private boolean overwriteSet = false;
 
-	private int[][] blockSizes;
+	private int[][] baseBlockSizes;
+
+	private int[] currentBlockSize;
 
 	private int[] shardChunkFactors;
 
-	private int[][] shardSizes;
+	private int[][] baseShardSizes;
+
+	private int[] currentShardSize;
 
 	private long[] currentAbsoluteDownsampling;
+
+	private double[] baseResolution;
+
+	private double[] currentResolution;
 
 	// the translation introduced by the downsampling method at the current
 	// scale level
@@ -325,6 +335,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private String metadataStyle;
 
 	private ThreadPoolExecutor threadPool;
+
+	private Function<int[], int[]> blockSizeUpdate = null;
 
 	public N5ScalePyramidExporter() {
 
@@ -401,7 +413,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		exporter.setOptions(imp, 
 				rootPath,
 				"", 
-				ZARR_FORMAT, 
+				ZARR3_FORMAT,
 				"64",
 				"2", 
 				true, 
@@ -477,7 +489,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		this.createPyramidIfPossible = pyramidIfPossible;
 		this.downsampleMethod = downsampleMethod;
-//		this.metadataStyle = metadataStyle;
 		this.metadataStyleArg = metadataStyle;
 		this.compressionArg = compression;
 	}
@@ -598,13 +609,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		M currentMetadata;
 
 		// TODO should have better behavior for chunk size parsing when splitting channels this might be done
-		
 		final int totalNumDims = baseImg.numDimensions();
-		final double[] baseResolution = new double[totalNumDims];
+		baseResolution = new double[totalNumDims];
 		fillResolution(baseMetadata, baseResolution);
-
-		validateParameters(baseImg.dimensionsAsLongArray(), baseResolution);
-		final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
 
 		// channel splitting may modify currentBlockSize, currentAbsoluteDownsampling, and channelMetadata
 		final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(currentChannelMetadata, baseImg);
@@ -614,6 +621,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String channelDataset = getChannelDatasetName(c);
 			RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
 
+			final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
+			validateParameters(currentChannelImg.dimensionsAsLongArray(), baseResolution);
+
 			final int nd = currentChannelImg.numDimensions();
 
 			// every channel starts at the original scale level reset
@@ -621,16 +631,28 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			currentAbsoluteDownsampling = new long[nd];
 			Arrays.fill(currentAbsoluteDownsampling, 1);
 
-			final double[] currentResolution = new double[nd];
+			currentResolution = new double[nd];
+			Arrays.fill(currentResolution, 1.0); // Initialize with default
+//			final int numToCopy = Math.min(baseResolution.length, nd);
 			System.arraycopy(baseResolution, 0, currentResolution, 0, nd);
+
+			currentBlockSize = new int[nd];
+			if (baseShardSizes != null) {
+				currentShardSize = new int[nd];
+			}
 
 			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset);
 			currentTranslation = new double[nd];
 
 			// write scale levels
-			final int numScales = computeScales ? blockSizes.length : 1;
+			final int numScales = computeScales ? baseBlockSizes.length : 1;
 			boolean anyScalesWritten = false;
 			for (int s = 0; s < numScales; s++) {
+
+				System.arraycopy(baseBlockSizes[s], 0, currentBlockSize, 0, nd);
+				if (baseShardSizes != null) {
+					System.arraycopy(baseShardSizes[s], 0, currentShardSize, 0, nd);
+				}
 
 				final String dset = getScaleDatasetName(c, s);
 				// downsample when relevant
@@ -669,7 +691,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// write to the appropriate dataset
 				// if dataset exists and not overwritten, don't write metadata
-				if (!write(currentChannelImg, s, n5, dset, compression, currentMetadata))
+				if (!write(currentChannelImg, n5, dset, compression, currentMetadata))
 					continue;
 
 				storeScaleReference(c, s, currentChannelImg);
@@ -784,6 +806,23 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
 	}
 
+	protected boolean is5dMetadata() {
+
+		return metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
+	}
+
+	protected boolean isOmeZarr() {
+
+		// this method is largely for documentation purposes
+		// while the implementation is  currently exactly "is5dMetadata" the purpose of
+		// this method is different
+		return metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
+	}
+
 	@SuppressWarnings("unchecked")
 	@Nullable
 	protected <M extends N5Metadata> M setupMetadata() {
@@ -825,9 +864,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@SuppressWarnings("unchecked")
 	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> N initializeMultiscaleMetadata(final M baseMetadata, final String path) {
 
-		if (metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key))
+		if (isOmeZarr())
 			return ((N)new OmeNgffMultiScaleMetadataMutable(path));
 		else
 			return null;
@@ -836,10 +873,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	protected <M extends N5DatasetMetadata, N extends SpatialMetadataGroup<?>> void updateMultiscaleMetadata(final N multiscaleMetadata,
 			final M scaleMetadata) {
 
-		if (metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
-
+		if (isOmeZarr()) {
 			if (multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable &&
 					scaleMetadata instanceof NgffSingleScaleAxesMetadata) {
 
@@ -852,8 +886,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	@SuppressWarnings("unchecked")
 	protected <N extends SpatialMetadataGroup<?>> N finalizeMultiscaleMetadata(final String path, final N multiscaleMetadata) {
 
-		if (!(metadataStyle.equals(N5Importer.MetadataOmeZarrKey)
-				|| metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)))
+		if (!isOmeZarr())
 			return multiscaleMetadata;
 
 		if (multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable) {
@@ -881,77 +914,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 
 		return multiscaleMetadata;
-	}
-
-	protected <M extends N5Metadata> boolean lastScale(final int[] chunkSize, final Interval imageDimensions,
-			final M metadata) {
-
-		// null check for tests
-		final String downsamplePolicy = prefs != null
-				? prefs.get(getClass(), IJ_PROPERTY_DOWNSAMPLE_POLICY, DEFAULT_POLICY.toString())
-				: DEFAULT_POLICY.toString();
-
-		switch (DOWNSAMPLE_POLICY.valueOf(downsamplePolicy)) {
-		case Aggressive:
-			return lastScaleAggressive(chunkSize, imageDimensions, metadata);
-		default:
-			return lastScaleConservative(chunkSize, imageDimensions, metadata);
-		}
-	}
-
-	/**
-	 * A policy that aggressively downsamples data. 
-	 * <p>
-	 * Stops downsampling if all spatial dimensions are smaller than its respective block size.
-	 * 
-	 * @param <M> metadata type 
-	 * @param chunkSize block size 
-	 * @param imageDimensions image interval
-	 * @param metadata metadata instance 
-	 * @return true if this should be the last scale level
-	 */
-	protected <M extends N5Metadata> boolean lastScaleAggressive(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
-
-		/*
-		 *  Note: Using N5Viewer metadata, will sometimes pass a 4D interval to this method, but
-		 *  will have the metadata provide 3 (spatial) axes. The 4D interval is ordered XYZT in this case,
-		 *  so downsampling factors will be calculated correctly if time dimensions are not downsampled.
-		 */
-		final Axis[] axes = getAxes(metadata, imageDimensions.numDimensions());
-		final int nd = axes.length;
-		for (int i = 0; i < nd; i++) {
-			if (axes[i].getType().equals(Axis.SPACE) && imageDimensions.dimension(i) > chunkSize[i])
-				return false;
-		}
-		return true;
-	}
-
-	/**
-	 * A policy that conservatively downsamples data. 
-	 * <p>
-	 * Stops downsampling if any spatial dimension is smaller than its respective block size.
-	 * 
-	 * @param <M> metadata type 
-	 * @param chunkSize block size 
-	 * @param imageDimensions image interval
-	 * @param metadata metadata instance 
-	 * @return true if this should be the last scale level
-	 */
-	protected <M extends N5Metadata> boolean lastScaleConservative(final int[] chunkSize, final Interval imageDimensions, final M metadata) {
-
-		/*
-		 *  Note: Using N5Viewer metadata, will sometimes pass a 4D interval to this method, but
-		 *  will have the metadata provide 3 (spatial) axes. The 4D interval is ordered XYZT in this case,
-		 *  so downsampling factors will be calculated correctly if time dimensions are not downsampled.
-		 */
-		final Axis[] axes = getAxes(metadata, imageDimensions.numDimensions());
-		final int nd = axes.length;
-		for (int i = 0; i < nd; i++) {
-			if (axes[i].getType().equals(Axis.SPACE) && imageDimensions.dimension(i) <= chunkSize[i])
-				return true;
-		}
-
-		return false;
 	}
 
 	protected <M extends N5DatasetMetadata> void fillResolution(final M baseMetadata, final double[] resolution) {
@@ -1014,7 +976,17 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		 * this is using N5Viewer metadata which does not have an offset
 		 */
 		if (baseMetadata.getClass().equals(N5SingleScaleMetadata.class)) {
-			return (M)buildN5VMetadata(newPath, (N5SingleScaleMetadata)baseMetadata, downsampleMethod, baseResolution, absoluteDownsamplingFactors);
+			// N5Viewer
+			double[] resolution;
+			if( baseResolution.length == absoluteScale.length ) {
+				resolution = baseResolution;
+			}
+			else {
+				resolution = new double[absoluteScale.length];
+				System.arraycopy(baseResolution, 0, resolution, 0, absoluteScale.length);
+			}
+
+			return (M)buildN5VMetadata(newPath, (N5SingleScaleMetadata)baseMetadata, downsampleMethod, resolution, absoluteDownsamplingFactors);
 		} else if (baseMetadata instanceof N5CosemMetadata) {
 			return (M)buildCosemMetadata(newPath, (N5CosemMetadata)baseMetadata, absoluteScale, absoluteTranslation);
 
@@ -1151,22 +1123,37 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		// get the image
 		RandomAccessibleInterval<T> baseImg;
-		if (image.getType() == ImagePlus.COLOR_RGB)
+		if( isOmeZarr()) {
+			// OME-Zarr 0.4 and 0.5 require that images be 5d ordered XYZCT
+			// with singleton dimensions if necessary
+			baseImg = N5IJUtils.toImgXYCZT(image); 	// XYCZT
+			baseImg = Views.permute(baseImg, 2, 3); // XYZCT
+		}
+		else if (image.getType() == ImagePlus.COLOR_RGB)
 			baseImg = (RandomAccessibleInterval<T>)(N5IJUtils.wrapRgbAsInt(image));
 		else
 			baseImg = (RandomAccessibleInterval<T>)VirtualStackAdapter.wrap(image);
 
-		if (metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
-
-			// OME-Zarr 0.4 and 0.5 require that images be 5d
-			// with singleton dimensions if necessary
-			while (baseImg.numDimensions() < 5)
-				baseImg = Views.addDimension(baseImg, 0, 0);
-		}
-
 		return baseImg;
+	}
+
+	/**
+	 * Some metadata styles require updating specified block sizes. 
+	 * In particular, some versions of OME-Zarr fix the number of dimensions
+	 * and require that they be in a particular order.
+	 * <p>
+	 * In those cases, this method proves
+	 * 
+	 * 
+	 * @param size
+	 * @return
+	 */
+	protected int[] updateBlockShardSize(int[] size) {
+
+		if (blockSizeUpdate != null)
+			return blockSizeUpdate.apply(size);
+
+		return size;
 	}
 
 	/**
@@ -1229,6 +1216,12 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// make a 4d image in order XYZT
 				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
+				
+				// also need to update baseResoltuion
+				double[] resolutionWithT = new double[baseResolution.length + 1];
+				System.arraycopy(baseResolution, 0, resolutionWithT, 0, baseResolution.length);
+				resolutionWithT[baseResolution.length] = 1.0;
+				baseResolution = resolutionWithT;
 			}
 
 			channels.add(channelImg);
@@ -1240,6 +1233,48 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 
 		return channels;
+	}
+	
+	protected <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> Pair<RandomAccessibleInterval<T>,M> padTo5d(
+			RandomAccessibleInterval<T> img, M metadata) {
+
+
+
+		return new ValuePair<>(img, metadata);
+	}
+	
+	@SuppressWarnings("unchecked")
+	@Nullable
+	protected <M extends N5DatasetMetadata> M metadata5dCopy(@Nullable final M metadata) {
+		
+		if (metadata == null)
+			return metadata;
+
+		// Needs to be implemented for metadata types that split channels
+		if (
+				(metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
+					metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
+					metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) &&
+				metadata instanceof NgffSingleScaleAxesMetadata) {
+			
+			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata)metadata;
+			return (M)new NgffSingleScaleAxesMetadata(ngffMeta.getPath(),
+					ngffMeta.getScale(), ngffMeta.getTranslation(),
+					ngffMeta.getAxes(),
+					ngffMeta.getAttributes());
+
+		} else if (metadata instanceof NgffSingleScaleAxesMetadata) {
+			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata)metadata;
+			return (M)new NgffSingleScaleAxesMetadata(
+					ngffMeta.getPath(),
+					ngffMeta.getScale(),
+					ngffMeta.getTranslation(),
+					ngffMeta.getAxes(),
+					ngffMeta.getAttributes());
+		} else
+			System.err.println("Encountered metadata of unexpected type.");
+
+		return metadata;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1472,7 +1507,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				n5.remove(deleteThisPathToOverwrite);
 			} else {
 				return false; // data set exists but not overwriting
-			}
+		}
 		}
 
 		return true;
@@ -1488,17 +1523,37 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		String message = "";
 		boolean success = true;
 		
-		DownsampledBlockParser parser = new BlockSizeParsers.DownsampledBlockParser(dimensions, resolution);
-		BlockSizeParsers.BlockSizeParser shardParser = new BlockSizeParser(dimensions, null, null, null);
-		try {
-			blockSizes = parser.parse(chunkSizeArg);
-			shardChunkFactors = shardParser.parse(shardSizeArg);
+		int[] singletonDimensions = null;
+		boolean[] useIsotropicSizing = null;
+		if (isOmeZarr()) {
+			// OME-Zarr is the only such format now
+			// the channel dimension is a singleton at index 3
+			singletonDimensions = new int[]{3};
+			useIsotropicSizing = new boolean[]{true, true, true, false, false};
+		}
 
-			shardSizes = new int[blockSizes.length][blockSizes[0].length];
-			for (int i = 0; i < blockSizes.length; i++) {
-				for (int j = 0; j < blockSizes[0].length; j++) {
-					shardSizes[i][j] = blockSizes[i][j] * shardChunkFactors[j];
+		BlockSizeParser blkParser = new BlockSizeParser(dimensions, singletonDimensions, resolution, useIsotropicSizing);
+		DownsampledBlockParser parser = new BlockSizeParsers.DownsampledBlockParser(blkParser);
+		parser.setDownsamplingPolicy(DOWNSAMPLE_POLICY.Aggressive);
+
+		BlockSizeParsers.BlockSizeParser shardParser = new BlockSizeParser(dimensions, null, null, null);
+		
+		try {
+			baseBlockSizes = parser.parse(chunkSizeArg);
+
+			try {
+
+				shardChunkFactors = shardParser.parse(shardSizeArg);
+
+				baseShardSizes = new int[baseBlockSizes.length][baseBlockSizes[0].length];
+				for (int i = 0; i < baseBlockSizes.length; i++) {
+					for (int j = 0; j < baseBlockSizes[0].length; j++) {
+						baseShardSizes[i][j] = baseBlockSizes[i][j] * shardChunkFactors[j];
+					}
 				}
+
+			} catch( IllegalArgumentException e) {
+				// not sharded
 			}
 
 		} catch( Exception e ) {
@@ -1517,7 +1572,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> boolean write(
 			final RandomAccessibleInterval<T> imageArg,
-			final int level,
 			final N5Writer n5,
 			final String dataset,
 			final Compression compression, final M metadata)
@@ -1531,7 +1585,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				new LinkedBlockingQueue<Runnable>());
 		progressMonitor(threadPool);
 
-		if( shardSizes == null ) {
+		if( currentShardSize == null ) {
 
 			DatasetAttributes datasetAttributes;
 			if (n5 instanceof ZarrV3KeyValueWriter) {
@@ -1543,7 +1597,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				// make a special purpose ZarrV3DatasetAttributes
 				// so that the dimension names are set correctly
 				datasetAttributes = ZarrV3DatasetAttributes.builder(image.dimensionsAsLongArray(), N5Utils.dataType(image.getType()))
-						.blockSize(blockSizes[level])
+						.blockSize(currentBlockSize)
 						.dimensionNames(dimensionNames)
 						.compression(compression)
 						.build();
@@ -1551,7 +1605,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			} else {
 
 				datasetAttributes = new DatasetAttributes(image.dimensionsAsLongArray(),
-						blockSizes[level],
+						currentBlockSize,
 						N5Utils.dataType(image.getType()),
 						compression);
 			}
@@ -1567,8 +1621,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 			final ZarrV3DatasetAttributes datasetAttributes = new ZarrV3DatasetAttributes(
 					image.dimensionsAsLongArray(),
-					shardSizes[level],
-					blockSizes[level],
+					currentShardSize,
+					currentBlockSize,
 					N5Utils.dataType(image.getType()),
 					dimensionNames,
 					compression);
@@ -1584,16 +1638,14 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return true;
 	}
 	
+	
 	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> RandomAccessibleInterval<T> 
 		finalizeScaleImage(final RandomAccessibleInterval<T> image ) {
 		
 		RandomAccessibleInterval<T> out = image;
-		if (metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
-
-			while( out.numDimensions() < 5)
-				out = Views.addDimension(out,0,0);
+		if (is5dMetadata()) {
+			while (out.numDimensions() < 5)
+				out = Views.addDimension(out, 0, 0);
 		}
 
 		return out;
