@@ -301,7 +301,7 @@ public class BlockSizeParsers {
 		private void updateDimensions() {
 
 			for (int i = 0; i < currentDimensions.length; i++)
-				currentDimensions[i] /= downsamplingFactors[i];
+				currentDimensions[i] = Math.max(1, currentDimensions[i] / downsamplingFactors[i]);
 		}
 
 	}
