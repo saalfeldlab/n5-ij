@@ -28,8 +28,8 @@ public class BlockSizeParsers {
 		// optional resolution information for isotropic block sizing
 		private double[] resolution;
 		
-		// which dimensions should have isotropic sizing
-		private boolean[] useIsotropicSizing;
+		// which dimensions are downsampled and should have isotropic sizing
+		private boolean[] applyDownsampling;
 
 		public BlockSizeParser(long[] dimensions) {
 
@@ -41,7 +41,7 @@ public class BlockSizeParsers {
 			this(dimensions, singletonDimensions, null, null);
 		}
 
-		public BlockSizeParser(long[] dimensions, int[] singletonDimensions, double[] resolution, boolean[] useIsotropicSizing) {
+		public BlockSizeParser(long[] dimensions, int[] singletonDimensions, double[] resolution, boolean[] applyDownsampling) {
 
 			this.numDimensions = dimensions.length;
 			this.dimensions = dimensions;
@@ -51,7 +51,7 @@ public class BlockSizeParsers {
 				Arrays.stream(singletonDimensions).boxed().collect(Collectors.toSet());
 
 			this.resolution = resolution;
-			this.useIsotropicSizing = useIsotropicSizing;
+			this.applyDownsampling = applyDownsampling;
 		}
 
 		private static final int UNSET_VALUE = -1;
@@ -122,10 +122,10 @@ public class BlockSizeParsers {
 
 			// If using isotropic sizing, find a reference dimension with known size
 			Double targetPhysicalSize = null;
-			if (resolution != null && useIsotropicSizing != null && fillValue != UNSET_VALUE) {
+			if (resolution != null && applyDownsampling != null && fillValue != UNSET_VALUE) {
 				// Find first dimension that has a value and should use isotropic sizing
 				for (int i = 0; i < numDimensions; i++) {
-					if (result[i] != UNSET_VALUE && useIsotropicSizing[i]) {
+					if (result[i] != UNSET_VALUE && applyDownsampling[i]) {
 						targetPhysicalSize = result[i] * resolution[i];
 						break;
 					}
@@ -134,7 +134,7 @@ public class BlockSizeParsers {
 				if (targetPhysicalSize == null) {
 					// Find first dimension that should use isotropic sizing
 					for (int i = 0; i < numDimensions; i++) {
-						if (useIsotropicSizing[i]) {
+						if (applyDownsampling[i]) {
 							targetPhysicalSize = fillValue * resolution[i];
 							break;
 						}
@@ -149,7 +149,7 @@ public class BlockSizeParsers {
 					// Update fillValue to the last valid value we've seen
 					fillValue = result[i];
 					// Update target physical size if this dimension uses isotropic sizing
-					if (targetPhysicalSize != null && useIsotropicSizing != null && useIsotropicSizing[i]) {
+					if (targetPhysicalSize != null && applyDownsampling != null && applyDownsampling[i]) {
 						targetPhysicalSize = result[i] * resolution[i];
 					}
 				}
@@ -168,7 +168,7 @@ public class BlockSizeParsers {
 
 			if (singletonDimensionSet.contains(dimension)) {
 				return 1;
-			} else if (targetPhysicalSize != null && resolution != null && useIsotropicSizing != null && useIsotropicSizing[dimension]) {
+			} else if (targetPhysicalSize != null && resolution != null && applyDownsampling != null && applyDownsampling[dimension]) {
 				// Calculate isotropic block size
 				int isotropicSize = (int) Math.round(targetPhysicalSize / resolution[dimension]);
 				return Math.max(1, isotropicSize);
@@ -199,14 +199,17 @@ public class BlockSizeParsers {
 
 		private int[] currentBlockSize;
 
-		public DownsampledBlockParser(long[] dimensions, double[] resolution, boolean[] applyDownsampling) {
+		public DownsampledBlockParser(BlockSizeParser blockSizeParser) {
 
-			this.dimensions = dimensions;
-			this.applyDownsampling = applyDownsampling;
-			
+			this.dimensions = blockSizeParser.dimensions;
+			this.applyDownsampling = 
+					blockSizeParser.applyDownsampling != null ?
+					blockSizeParser.applyDownsampling :
+					trueArray(this.dimensions.length);
+
 			// Create BlockSizeParser with resolution info for isotropic sizing
 			// Use applyDownsampling to determine which dimensions should have isotropic sizing
-			blkParser = new BlockSizeParser(dimensions, new int[]{2}, resolution, applyDownsampling);
+			blkParser = blockSizeParser;
 
 			// init downsampling factors
 			downsamplingFactors = new int[dimensions.length];
@@ -217,11 +220,22 @@ public class BlockSizeParsers {
 					downsamplingFactors[i] = 1;
 		}
 
+		public DownsampledBlockParser(long[] dimensions, double[] resolution, boolean[] applyDownsampling) {
+
+			this(new BlockSizeParser(dimensions, new int[]{2}, resolution, applyDownsampling));
+		}
+
 		public DownsampledBlockParser(long[] dimensions, double[] resolution ) {
 
 			// assumes XYCZT dimension ordering
 			// do not downsample C or T
 			this(dimensions, resolution, new boolean[]{true, true, false, true, false});
+		}
+
+		private static boolean[] trueArray(int n) {
+			final boolean[] out = new boolean[n];
+			Arrays.fill(out, true);
+			return out;
 		}
 		
 		public void setDownsamplingPolicy(DOWNSAMPLE_POLICY policy) {
@@ -290,7 +304,7 @@ public class BlockSizeParsers {
 				// Stop if ALL dimensions that downsampling is applied to
 				// are less than or equal to the chunk size in that dimension
 				for (int i = 0; i < currentDimensions.length; i++) {
-					if (applyDownsampling[i] && currentDimensions[i] >= currentBlockSize[i]) {
+					if (applyDownsampling[i] && currentDimensions[i] > currentBlockSize[i]) {
 						return false;
 					}
 				}
