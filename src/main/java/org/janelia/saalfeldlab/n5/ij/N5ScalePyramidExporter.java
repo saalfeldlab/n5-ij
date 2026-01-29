@@ -463,7 +463,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String metadataStyle,
 			final String compression) {
 
-		setOptions(image, containerRoot, dataset, AUTO_FORMAT, chunkSizeArg, "", pyramidIfPossible,
+		setOptions(image, containerRoot, dataset, storageFormat, chunkSizeArg, "", pyramidIfPossible,
 				downsampleMethod, metadataStyle, compression);
 	}
 
@@ -491,6 +491,21 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		this.downsampleMethod = downsampleMethod;
 		this.metadataStyleArg = metadataStyle;
 		this.compressionArg = compression;
+	}
+
+	private static StorageFormat formatToEnum( String format ) {
+		switch(format) {
+			case(N5ScalePyramidExporter.ZARR3_FORMAT):
+				return StorageFormat.ZARR;
+			case(N5ScalePyramidExporter.ZARR2_FORMAT):
+				return StorageFormat.ZARR2;
+			case(N5ScalePyramidExporter.N5_FORMAT):
+				return StorageFormat.N5;
+			case(N5ScalePyramidExporter.HDF5_FORMAT):
+				return StorageFormat.HDF5;
+			default:
+				return null;
+		}
 	}
 
 	public void setNumThreads(final int nThreads) {
@@ -539,7 +554,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		} else {
 
 			// dropdown format will not be Auto
-			final StorageFormat dropdownFormat = StorageFormat.valueOf(storageFormat.toUpperCase());
+			final StorageFormat dropdownFormat = formatToEnum(storageFormat);
 			if (uriFormat == null) {
 				// add the format prefix to the uri
 				return dropdownFormat.toString().toLowerCase() + ":" + containerRoot;
@@ -549,9 +564,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			// warn and exit if not
 			if (uriFormat != null && !storageFormat.equals(AUTO_FORMAT) && uriFormat != dropdownFormat) {
 
-				if (showWarning)
-					IJ.showMessage("Warning", String.format("Selected format (%s) does not match format from url (%s)!",
-							dropdownFormat.toString(), uriFormat.toString()));
+				if (showWarning) {
+					final String message = String.format("Selected format (%s) does not match format from url (%s)!",
+							dropdownFormat.toString(), uriFormat.toString());
+
+					System.err.println(message);
+					IJ.showMessage("Warning", message);
+				}
 
 				return null;
 			}
@@ -633,7 +652,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 			currentResolution = new double[nd];
 			Arrays.fill(currentResolution, 1.0); // Initialize with default
-//			final int numToCopy = Math.min(baseResolution.length, nd);
 			System.arraycopy(baseResolution, 0, currentResolution, 0, nd);
 
 			currentBlockSize = new int[nd];
@@ -1178,22 +1196,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// TODO perhaps should return new metadata that is not
 		// some metadata styles never split channels, return input image in that
 		// case
-		if (metadataStyle.equals(NONE) || metadataStyle.equals(N5Importer.MetadataCustomKey) ||
-				metadataStyle.equals(N5Importer.MetadataImageJKey)) {
+		if (metadataStyle.equals(NONE) ||
+				metadataStyle.equals(N5Importer.MetadataCustomKey) ||
+				metadataStyle.equals(N5Importer.MetadataImageJKey) ||
+				isOmeZarr()) {
 			return Collections.singletonList(img);
-		}
-		else if (metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
-
-			RandomAccessibleInterval<T> resImg = img;
-
-
-			// convert from XYCZT (ImageJ) to XYZCT (OME-Zarr)
-			if (image.getNChannels() > 1 && image.getNSlices() > 1)
-				resImg = Views.permute(img, 2, 3);
-
-			return Collections.singletonList(resImg);
 		}
 
 		// otherwise, split channels
