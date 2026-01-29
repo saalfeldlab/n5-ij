@@ -536,88 +536,88 @@ public class TestExportImports
 		final ImagePlus imp = NewImage.createImage("test", (int)szBig[0], (int)szBig[1], (int)szBig[2], 8, NewImage.FILL_NOISE);
 
 		final String[] formats = new String[]{
-//				N5ScalePyramidExporter.HDF5_FORMAT,
+				N5ScalePyramidExporter.HDF5_FORMAT,
 				N5ScalePyramidExporter.N5_FORMAT,
 				N5ScalePyramidExporter.ZARR3_FORMAT,
 				N5ScalePyramidExporter.ZARR2_FORMAT
 		};
 
-//		for (final String format : formats) {
-//
-//			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-//			writer.setOptions(imp, n5Root, dataset, format, blockSizeString, false,
-//					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
-//			writer.run();
-//
-//			try {
-//				// ensure opening the correct container type works
-//				final N5Writer n5 = writerMap.get(format).apply(n5Root);
-//
-//				/*
-//				 * eventually test that other formats fail to open, but is
-//				 * complicated by the fact that it is possible to open a zarr
-//				 * container with an n5 reader. So ignore this for now
-//				 */
-//
-//				n5.remove();
-//				n5.close();
-//			} catch (final Exception e) {
-//				fail("option only: " + format);
-//			}
-//		}
+		for (final String format : formats) {
 
-//		// repeat the above using uri format prefixes instead of the explicit option
-//		for (final String format : formats) {
-//
-//			final String n5RootWithFormatPrefix = formatToScheme(format) + ":" + n5Root;
-//			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-//			writer.setOptions(imp, n5RootWithFormatPrefix, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
-//					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
-//			writer.run();
-//
-//			try {
-//				// ensure opening the correct container type works
-//				final N5Writer n5 = writerMap.get(format).apply(n5Root);
-//
-//				/*
-//				 * eventually test that other formats fail to open, but is
-//				 * complicated by the fact that it is possible to open a zarr
-//				 * container with an n5 reader. So ignore this for now
-//				 */
-//
-//				n5.remove();
-//				n5.close();
-//			} catch (final Exception e) {
-//				fail("prefix only " + format);
-//			}
-//		}
+			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+			writer.setOptions(imp, n5Root, dataset, format, blockSizeString, false,
+					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+			writer.run();
 
-//		// repeat the above using uri format prefixes AND a the same explicit option
-//		for (final String format : formats) {
-//
-//			final String n5RootWithFormatPrefix = formatToScheme(format) + ":" + n5Root;
-//
-//			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
-//			writer.setOptions(imp, n5RootWithFormatPrefix, dataset, format, blockSizeString, false,
-//					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
-//			writer.run();
-//
-//			try {
-//				// ensure opening the correct container type works
-//				final N5Writer n5 = writerMap.get(format).apply(n5Root);
-//
-//				/*
-//				 * eventually test that other formats fail to open, but is
-//				 * complicated by the fact that it is possible to open a zarr
-//				 * container with an n5 reader. So ignore this for now
-//				 */
-//
-//				n5.remove();
-//				n5.close();
-//			} catch (final Exception e) {
-//				fail("consistent prefix and option: " + format);
-//			}
-//		}
+			try {
+				// ensure opening the correct container type works
+				final N5Writer n5 = writerMap.get(format).apply(n5Root);
+
+				/*
+				 * eventually test that other formats fail to open, but is
+				 * complicated by the fact that it is possible to open a zarr
+				 * container with an n5 reader. So ignore this for now
+				 */
+
+				n5.remove();
+				n5.close();
+			} catch (final Exception e) {
+				fail("option only: " + format);
+			}
+		}
+
+		// repeat the above using uri format prefixes instead of the explicit option
+		for (final String format : formats) {
+
+			final String n5RootWithFormatPrefix = formatToScheme(format) + ":" + n5Root;
+			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+			writer.setOptions(imp, n5RootWithFormatPrefix, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
+					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+			writer.run();
+
+			try {
+				// ensure opening the correct container type works
+				final N5Writer n5 = writerMap.get(format).apply(n5Root);
+
+				/*
+				 * eventually test that other formats fail to open, but is
+				 * complicated by the fact that it is possible to open a zarr
+				 * container with an n5 reader. So ignore this for now
+				 */
+
+				n5.remove();
+				n5.close();
+			} catch (final Exception e) {
+				fail("prefix only " + format);
+			}
+		}
+
+		// repeat the above using uri format prefixes AND a the same explicit option
+		for (final String format : formats) {
+
+			final String n5RootWithFormatPrefix = formatToScheme(format) + ":" + n5Root;
+
+			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+			writer.setOptions(imp, n5RootWithFormatPrefix, dataset, format, blockSizeString, false,
+					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
+			writer.run();
+
+			try {
+				// ensure opening the correct container type works
+				final N5Writer n5 = writerMap.get(format).apply(n5Root);
+
+				/*
+				 * eventually test that other formats fail to open, but is
+				 * complicated by the fact that it is possible to open a zarr
+				 * container with an n5 reader. So ignore this for now
+				 */
+
+				n5.remove();
+				n5.close();
+			} catch (final Exception e) {
+				fail("consistent prefix and option: " + format);
+			}
+		}
 
 		/*
 		 * the plugin will print errors for the below test, which will create noise
@@ -672,7 +672,6 @@ public class TestExportImports
 			default:
 				return null;
 		}
-		
 	}
 
 	private static class TriggerOutputStream extends OutputStream {
@@ -786,7 +785,7 @@ public class TestExportImports
 
 		// the size of mitosis.tif sample image
 		final ImagePlus imp = NewImage.createImage("test", 171, 196, 2 * 5 * 51, bitDepth, NewImage.FILL_BLACK);
-		imp.setDimensions(2, 5, 51);
+		imp.setDimensions(2, 5, 51); // nc = 2, nz = 5, nt = 51
 
 		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
 		exp.setOptions(imp, baseDir.getAbsolutePath(), dset, "16,16,1,5,51", true, N5ScalePyramidExporter.DOWN_AVERAGE,
@@ -794,7 +793,7 @@ public class TestExportImports
 		exp.run();
 
 		try (final N5Reader n5 = new N5FSReader(baseDir.getAbsolutePath())) {
-			assertEquals("4 scale levels", 4, n5.list(dset).length);
+			assertEquals("5 scale levels", 5, n5.list(dset).length);
 		}
 	}
 

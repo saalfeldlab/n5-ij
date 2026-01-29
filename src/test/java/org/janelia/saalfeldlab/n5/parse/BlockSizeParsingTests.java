@@ -4,8 +4,6 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
-import java.util.Arrays;
-
 import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers.BlockSizeParser;
 import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers.DOWNSAMPLE_POLICY;
 import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers.DownsampledBlockParser;
@@ -45,9 +43,6 @@ public class BlockSizeParsingTests {
 		BlockSizeParser parserClamping = new BlockSizeParser(dimensionsSmall);
 
 		assertArrayEquals(new int[]{64, 32, 1, 64, 64}, parserClamping.parse(autoFill));
-		
-//		BlockSizeParser p = new BlockSizeParser(new long[]{171, 196, 5, 2, 51});
-//		System.out.println(Arrays.toString(p.parse("64")));
 	}
 
 	@Test
@@ -131,17 +126,6 @@ public class BlockSizeParsingTests {
 		assertArray2dEquals(
 				new int[][]{{128, 128, 1, 32, 32}, {64, 64, 1, 32, 32}},
 				parserAniso.parse("128"));
-		
-		
-		DownsampledBlockParser p = new DownsampledBlockParser(
-				new long[]{171, 196, 5, 2, 51},
-				new double[]{0.0885000, 0.0885000, 1, 1, 0.14});
-
-		int[][] blks = p.parse("64");
-		for( int[] b : blks )
-			System.out.println(Arrays.toString(b));
-
-//		System.out.println(Arrays.toString(p.parse("64")));
 	}
 
 	@Test
@@ -152,10 +136,9 @@ public class BlockSizeParsingTests {
 				new double[]{0.0885000, 0.0885000, 1, 1, 0.14});
 
 		int[][] blks = p.parse("64");
-		for( int[] b : blks )
-			System.out.println(Arrays.toString(b));
-
-//		System.out.println(Arrays.toString(p.parse("64")));
+		assertArray2dEquals(
+				new int[][]{{64, 64, 1, 5, 51}, {64, 64, 1, 2, 51}, {42, 49, 1, 1, 51}},
+				blks);
 	}
 
 	public static void assertArray2dEquals(int[][] expected, int[][] result) {

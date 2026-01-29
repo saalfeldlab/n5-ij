@@ -108,7 +108,7 @@ public class NgffTests {
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
 		writer.run();
 
-		final long[] expectedDims = Arrays.stream(new long[] { nx, ny, nz, nc, nt }).filter(x -> x > 1).toArray();
+		final long[] expectedDims = Arrays.stream(new long[] { nx, ny, nz, nc, nt }).toArray();
 
 		try (final N5Reader n5 = new N5Factory().openReader(baseDir.getAbsolutePath())) {
 
@@ -118,20 +118,13 @@ public class NgffTests {
 			final DatasetAttributes dsetAttrs = n5.getDatasetAttributes(dataset + "/s0");
 			assertArrayEquals("dimensions", expectedDims, dsetAttrs.getDimensions());
 
-			int i = 0;
 			final Axis[] axes = n5.getAttribute(dataset, "multiscales[0]/axes", Axis[].class);
 
-			if (nt > 1)
-				assertEquals("t", axes[i++].getName());
-
-			if (nc > 1)
-				assertEquals("c", axes[i++].getName());
-
-			if (nz > 1)
-				assertEquals("z", axes[i++].getName());
-
-			assertEquals("y", axes[i++].getName());
-			assertEquals("x", axes[i++].getName());
+			assertEquals("t", axes[0].getName());
+			assertEquals("c", axes[1].getName());
+			assertEquals("z", axes[2].getName());
+			assertEquals("y", axes[3].getName());
+			assertEquals("x", axes[4].getName());
 		}
 
 	}
