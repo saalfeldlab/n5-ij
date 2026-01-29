@@ -253,10 +253,14 @@ public class BlockSizeParsers {
 
 			int i = 0;
 			int max = 20;
-			while( !stop() && i < max ) {
+			while( i < max ) {
 
 				parseBlockSize(i, blockSizeParams);
 				blockSizes.add(Arrays.copyOf(currentBlockSize, currentBlockSize.length));
+				if (stop()) {
+					break;
+				}
+
 				updateDimensions(); // downsample
 				i++;
 			}
@@ -295,7 +299,7 @@ public class BlockSizeParsers {
 				// Stop if ANY dimension that downsampling is applied to
 				// is less than or equal to the chunk size in that dimension
 				for (int i = 0; i < currentDimensions.length; i++) {
-					if (applyDownsampling[i] && currentDimensions[i] < currentBlockSize[i]) {
+					if (applyDownsampling[i] && currentDimensions[i] <= currentBlockSize[i]) {
 						return true;
 					}
 				}
