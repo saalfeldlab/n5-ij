@@ -570,7 +570,8 @@ public class DatasetSelectorDialog {
 		lastBrowsePath = path;
 
 		// callback after browse as well
-		containerPathUpdateCallback.accept(path);
+		containerPathUpdateCallback.accept( path );
+		containerPathText.validateAndUpdate();
 
 		return path;
 	}
