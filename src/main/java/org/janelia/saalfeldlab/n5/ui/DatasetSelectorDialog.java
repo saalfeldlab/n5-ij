@@ -79,6 +79,7 @@ import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5URI;
+import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.StorageFormat;
@@ -630,7 +631,13 @@ public class DatasetSelectorDialog {
 		return n5;
 	}
 
-	private void openContainer(final Function<String, N5Reader> n5Fun, final Supplier<String> opener) {
+	public void openContainer( final String initialPath )
+	{
+		this.openContainer( new N5Importer.N5ViewerReaderFun(), () -> initialPath );
+	}
+
+	private void openContainer( final Function< String, N5Reader > n5Fun, final Supplier< String > opener )
+	{
 
 		openContainer(n5Fun, opener, pathFun);
 	}
