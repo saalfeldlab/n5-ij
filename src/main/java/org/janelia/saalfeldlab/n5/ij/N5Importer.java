@@ -274,7 +274,16 @@ public class N5Importer implements PlugIn {
 		}
 	}
 
-	void selectTreeItem(final List<String> itemPath) {
+	public void runWithDialog( final String pathToContainer )
+	{
+		lastOpenedContainer = pathToContainer;
+		selectionDialog = null;
+		run( "" );
+		selectionDialog.openContainer( pathToContainer );
+	}
+
+	void selectTreeItem( final List< String > itemPath )
+	{
 		final JTree t = selectionDialog.getJTree();
 		int currRow = 0;
 		for (String subPath : itemPath) {
