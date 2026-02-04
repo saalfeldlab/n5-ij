@@ -4,6 +4,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
+import java.util.Arrays;
+
 import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers.BlockSizeParser;
 import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers.DOWNSAMPLE_POLICY;
 import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers.DownsampledBlockParser;
@@ -126,6 +128,30 @@ public class BlockSizeParsingTests {
 		assertArray2dEquals(
 				new int[][]{{128, 128, 1, 32, 32}, {64, 64, 1, 32, 32}},
 				parserAniso.parse("128"));
+	}
+
+	@Test
+	public void testDownsampledBlockParsingIsotropy() {
+
+		final long[] dimensions = new long[] {128,128,3,64,32};
+		final double[] resolutions = new double[] {1, 1, 1, 4, 0.1};
+		final DownsampledBlockParser parser = new DownsampledBlockParser(dimensions, resolutions);
+		parser.setDownsamplingPolicy(DOWNSAMPLE_POLICY.Aggressive);
+
+		int[][] res = parser.parse("64");
+		for (int[] lvl : res)
+			System.out.println(Arrays.toString(lvl));
+
+		// here the XY dimensions are not downsampled for the second level due to the resolution.
+		// the block size for Z at level two is reduced so that the blocks are isotropically sized
+		assertArray2dEquals(
+				new int[][]{{64, 64, 3, 64, 32}, {64, 64, 3, 32, 32}},
+				parser.parse("64,64,3,64,64"));
+
+		// the Z dimension is 4 times smaller due to resolution
+		assertArray2dEquals(
+				new int[][]{{64, 64, 1, 16, 32}, {64, 64, 1, 16, 32}, {32, 32, 1, 16, 32}},
+				parser.parse("64"));
 	}
 
 	@Test
