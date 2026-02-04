@@ -138,10 +138,6 @@ public class BlockSizeParsingTests {
 		final DownsampledBlockParser parser = new DownsampledBlockParser(dimensions, resolutions);
 		parser.setDownsamplingPolicy(DOWNSAMPLE_POLICY.Aggressive);
 
-		int[][] res = parser.parse("64");
-		for (int[] lvl : res)
-			System.out.println(Arrays.toString(lvl));
-
 		// here the XY dimensions are not downsampled for the second level due to the resolution.
 		// the block size for Z at level two is reduced so that the blocks are isotropically sized
 		assertArray2dEquals(
