@@ -657,7 +657,7 @@ public class DatasetSelectorDialog {
 		// validate and update input
 		containerPathText.validateAndUpdate();
 
-		final String n5Path = opener.get();
+		final String n5Path = removeTrailingSlash( opener.get() );
 		containerPathUpdateCallback.accept(n5Path);
 
 		if (n5Path == null) {
@@ -991,6 +991,34 @@ public class DatasetSelectorDialog {
 	private static boolean pathsEqual(final String a, final String b) {
 
 		return normalDatasetName(a, "/").equals(normalDatasetName(b, "/"));
+	}
+
+	/**
+	 * Removes a single trailing forward slash ('/') from the given string.
+	 * <p>
+	 * If the string ends with one forward slash, that slash is removed.
+	 * If the string does not end with a slash, it is returned unchanged.
+	 * This method does not remove multiple trailing slashes.
+	 *
+	 * <h3>Examples</h3>
+	 * <pre>
+	 * "/"        → ""
+	 * "abc/"     → "abc"
+	 * "abc///"   → "abc//"
+	 * "abc"      → "abc"
+	 * null       → null
+	 * </pre>
+	 *
+	 * @param s the input string, may be {@code null}
+	 * @return the input string without a single trailing slash, or {@code null} if input was null
+	 */
+	private static String removeTrailingSlash( String s )
+	{
+		if ( s != null && s.endsWith( "/" ) )
+		{
+			return s.substring( 0, s.length() - 1 );
+		}
+		return s;
 	}
 
 	public static class UriValidator extends AbstractFormatter {
