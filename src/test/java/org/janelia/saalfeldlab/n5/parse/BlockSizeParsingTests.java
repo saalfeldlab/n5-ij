@@ -24,10 +24,10 @@ public class BlockSizeParsingTests {
 		assertArrayEquals(new int[]{64, 32, 1, 64, 16}, parser.parse(simple));
 
 		final String autoFill = "64";
-		assertArrayEquals(new int[]{64, 64, 1, 64, 64}, parser.parse(autoFill));
+		assertArrayEquals(new int[]{64, 64, 1, 64, 1}, parser.parse(autoFill));
 
 		final String partiallyComplete = "64,32";
-		assertArrayEquals(new int[]{64, 32, 1, 32, 32}, parser.parse(partiallyComplete));
+		assertArrayEquals(new int[]{64, 32, 1, 32, 1}, parser.parse(partiallyComplete));
 
 		final String fillEmpty = "64,,,,16";
 		assertArrayEquals(new int[]{64, 64, 1, 64, 16}, parser.parse(fillEmpty));
@@ -41,10 +41,10 @@ public class BlockSizeParsingTests {
 		final String invalid2 = "64,0";
 		assertThrows(IllegalArgumentException.class, () -> parser.parse(invalid2));
 
-		long[] dimensionsSmall = new long[]{256, 32, 2, 256, 256};
-		BlockSizeParser parserClamping = new BlockSizeParser(dimensionsSmall);
 
-		assertArrayEquals(new int[]{64, 32, 1, 64, 64}, parserClamping.parse(autoFill));
+		final long[] dimensionsSmall = new long[]{256, 32, 2, 256, 256};
+		final BlockSizeParser parserClamping = new BlockSizeParser(dimensionsSmall);
+		assertArrayEquals(new int[]{64, 32, 1, 64, 1}, parserClamping.parse(autoFill));
 	}
 
 	@Test

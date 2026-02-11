@@ -33,7 +33,7 @@ public class BlockSizeParsers {
 
 		public BlockSizeParser(long[] dimensions) {
 
-			this(dimensions, new int[]{2} );
+			this(dimensions, new int[]{2, 4}); // singleton C and T
 		}
 
 		public BlockSizeParser(long[] dimensions, int[] singletonDimensions) {
