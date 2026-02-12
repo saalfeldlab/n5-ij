@@ -68,6 +68,7 @@ import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF (patch)", description = "Insert the current image as a patch into an existing dataset at a user-defined offset. New datasets can be created and existing "
 		+ "datsets can be extended.")
@@ -203,7 +204,10 @@ public class N5SubsetExporter extends ContextCommand {
 
 		final N5Writer n5 = new N5Factory()
 				.zarrDimensionSeparator("/")
-				.s3UseCredentials()
+				.s3Configuration(builder -> {
+					// need credentials if writing to s3
+					builder.credentialsProvider(DefaultCredentialsProvider.create());
+				})
 				.openWriter(containerRoot);
 		write(n5);
 		n5.close();

@@ -66,6 +66,8 @@ import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.fluent.RandomAccessibleIntervalView.Extension;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+
 import org.janelia.saalfeldlab.n5.Compression;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
@@ -231,7 +233,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					"may have a chunk size of 64,64,1 (X,Y,T), but not 64,64,1,1,1 (X,Y,C,Z,T).\n" +
 					"You may provide fewer values than the data dimension. In that case, the size will\n" +
 					"be expanded to necessary size with the last value, for example \"64\", will expand\n" +
-					"to \"64,64,64\" for 3D data.")
+					"to \"64,64,64\" for 3D data. Sizes for T and C dimensions will expand to 1.")
 	private String chunkSizeArg = "64";
 
 	@Parameter(
@@ -245,7 +247,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					"be expanded to necessary size with the last value, for example \"8\", will expand\n" +
 					"to \"8,8,8\" for 3D data. As a result, specified shard size and chunk size need not\n" +
 					"be the same length: e.g. chunkSize (64,32) and shard size (4) will expand to\n"+
-					"(64,32,32) and (4,4,4) for 3D data.")
+					"(64,32,32) and (4,4,4) for 3D data. Sizes for T and C dimensions will expand to 1.")
 	private String shardSizeArg = "";
 
 	@Parameter(
@@ -391,40 +393,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		this();
 		setOptions(image, n5RootLocation, n5Dataset, storageFormat, chunkSizeArg, pyramidIfPossible, downsampleMethod.name(), metadataStyle, compression);
-	}
-	
-	public static void main(String[] args) {
-		
-		
-//		ImagePlus imp = IJ.openImage("/home/john/Downloads/communityCall.jpg");
-//		IJ.run(imp, "8-bit", "");
-
-		ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis.tif");
-		imp.show();
-
-		final String rootPath = "/home/john/hackathons/Zurich2025/mitosis.zarr";
-//		final String rootPath = "s3://demo-n5-zarr/mitosis.ome.zarr";
-//		final String rootPath = "/home/john/hackathons/Zurich2025/communityCall.zarr";
-		
-//		String compression = RAW_COMPRESSION;
-		String compression = ZSTD_COMPRESSION;
-
-		N5ScalePyramidExporter exporter = new N5ScalePyramidExporter();
-		exporter.setOptions(imp, 
-				rootPath,
-				"", 
-				ZARR3_FORMAT,
-				"64",
-				"2", 
-				true, 
-				DOWN_AVERAGE, 
-				// consider something like this eventually
-				// private BiFunction<RandomAccessibleInterval<? extends
-				// NumericType<?>>,long[],RandomAccessibleInterval<?>> downsampler;
-				N5Importer.MetadataOmeZarrV05Key, 
-				compression);
-
-		exporter.run();
 	}
 
 	public void setOverwrite(final boolean overwrite) {
@@ -610,7 +578,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		final N5Writer n5 = new N5Factory()
 				.zarrDimensionSeparator("/")
-				.s3UseCredentials() // need credentials if writing to s3
+				.s3Configuration(builder -> {
+					// need credentials if writing to s3
+					builder.credentialsProvider(DefaultCredentialsProvider.create());
+				})
 				.openWriter(rootWithFormatPrefix);
 		final Compression compression = getCompression();
 
@@ -913,7 +884,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			if (metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
 				final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
 						path, path, downsampleMethod, "0.5",
-						OmeNgffMultiScaleMetadata.defaultAxes(),
+						AxisUtils.defaultAxes("x", "y", "z", "c", "t"),
 						ms.getDatasets(), null,
 						ms.coordinateTransformations, ms.metadata, true);
 

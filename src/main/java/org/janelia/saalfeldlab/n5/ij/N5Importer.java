@@ -162,7 +162,7 @@ public class N5Importer implements PlugIn {
 			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
 			new OmeNgffMetadataParser(),
 			new N5ViewerMultiscaleMetadataParser(),
-			new CanonicalMetadataParser(),
+			new CanonicalMetadataParser()
 	};
 
 	private static final Predicate<N5Metadata> ALL_PASS = x -> { return true; };
