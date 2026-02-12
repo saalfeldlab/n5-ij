@@ -47,7 +47,7 @@ Parameters
 * `Dataset` - the name of the dataset.
 * `Format` - the storage format to use: one of `Auto`, `Zarr`, `N5`, or `HDF5`
     * `Auto` : try to infer the storage format from the url (see below)
-* `Chunk size` - chunk/block size as comma-separated list.  
+* `Chunk size` - chunk/block size as comma-separated list.  Chunk sizes can be customized per pyramid level using a semicolon-separated list of comma-separated lists, see below.
   * ImageJ's axis order is X,Y,C,Z,T. The chunk size must be specified in this order. You must skip any axis whose size is `1`, e.g. a 2D time-series without channels may have a chunk size of `1024,1024,1` (X,Y,T).
   * You may provide fewer values than the data dimension. In that case, the list will be expanded to necessary size with the last value, for example `64`, will expand to `64,64,64` for 3D data.
 * `Create Pyramid` - If checked, a multiscale pyramid will be created (if possible). See below for details.
@@ -91,6 +91,43 @@ Specify the backend by protocol, "file:" or not protocol indicate the local file
     * Specify one of two url styles:
     * `gs://bucket-name/path/inside/bucket/root.n5`
     * `https://bucket-name.s3.amazonaws.com/path/to/root.n5`
+
+### Specifying Chunk / Shard sizes
+
+Chunk and shard sizes are specified using a comma-separated list, for example: `64,32,16`.
+Values must be integers greater than or equal to `1`.
+
+The chunk size must be specified using ImageJ's axis order: `X,Y,C,Z,T`, but skipping any axis whose size is 1, e.g. a 2D
+time-series without channels or z-slices may have a chunk size of `64,64,1 (X,Y,T)`, but not `64,64,1,1,1 (X,Y,C,Z,T)`.
+
+You may provide fewer values than the data dimension. In that case, the size will be expanded to necessary size with the last
+value, for example `64`, will expand to `64,64,64` for isotropic 3D data. Expanded spatial dimensions will consider the
+resolution of the underlying image, choosing a size that matches the *physical* size of the last specified spatial dimension.
+
+Sizes for `T` and `C` dimensions will expand to `1`.
+
+Examples:
+
+* `64` →  `64,64` (for a 2D image of size `[128,128]`)
+* `64` →  `64,51` (for a 2D image of size `[128,51]`)
+* `64` →  `64,32` (for a 2D image with resolutions `[1,2]`)
+* `64` →  `64,64,1,1` (for an XYCT image)
+
+Chunk sizes can be customized per pyramid level using a semicolon-separated list of the single scale level specifications
+described above. The last specified chunk size will be used for all subsequent pyramid levels.
+
+Examples:
+
+* `128;64` →  `128,128;64,64;64,64` (for a 2D image with 3 pyramid levels)
+* `128,64;64,64` →  `128,64;64,64;64,64` (for a 2D image with 3 pyramid levels)
+
+This exmple shows how block sizes are expanded for a 3D image with anisotropic resolution `[1,1,8]`:
+
+* `64` → 
+    * `64,64,8`     (level 0, resolution `[1,1,8]`)
+    * `64,64,16`    (level 1, resolution `[2,2,8]`)
+    * `64,64,32`    (level 2, resolution `[4,4,8]`)
+    * `64,64,64`    (level 3, resolution `[8,8,8]`)
  
 ## Multi-scale pyramids
 
@@ -120,7 +157,17 @@ smaller than the third dimension of the block.
 
 ### Downsampling
 
-The N5 exporter always downsamples images by factors of two in all dimensions.
+The N5 exporter always downsamples images by factors of two in spatial dimensions.
+In downsampling, it attempts to make subsequent scale levels "more isotropic", and will only downsample dimensions if their
+spacing is half than of the dimension with the highest spacing (or lower).
+
+For example, a 3D image with resolution `[1,1,4]`:
+
+* level 0 is the raw image data (resolution `[1,1,4]`)
+* level 1 downsamples X and Y only (resolution `[2,2,4]`)
+* level 2 downsamples X and Y only (resolution `[4,4,4]`)
+* level 3 downsamples all dimensions (resolution `[8,8,8]`)
+
 There are two downsampling methods:
 
 #### Sample
