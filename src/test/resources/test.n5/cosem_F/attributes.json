@@ -15,7 +15,7 @@
     129
   ],
   "transform": {
-    "order": "F",
+    "ordering": "F",
     "axes": [
       "x",
       "y",
