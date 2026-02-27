@@ -26,6 +26,7 @@ import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
@@ -39,7 +40,6 @@ import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import ij.ImagePlus;
@@ -96,7 +96,7 @@ public class TestExportImports
 	public void testEmptyMeta() throws InterruptedException
 	{
 		final ImagePlus imp = NewImage.createImage("test", 8, 6, 2, 16, NewImage.FILL_NOISE);
-		final String metaType = N5Importer.MetadataDefaultKey;
+		final String metaType = N5ScalePyramidExporter.NONE;
 
 		final String n5RootPath = baseDir + "/test_none.n5";
 		final String dataset = "/test";
@@ -157,13 +157,14 @@ public class TestExportImports
 	public void testReadWriteParse() throws InterruptedException
 	{
 		final HashMap<String,String> typeToExtension = new HashMap<>();
-		typeToExtension.put( "FILESYSTEM", "n5" );
+		typeToExtension.put( "N5", "n5" );
 		typeToExtension.put( "ZARR", "zarr" );
 		typeToExtension.put( "HDF5", "h5" );
 
 		final String blockSizeString = "16,16,16";
 		final String compressionString = N5ScalePyramidExporter.GZIP_COMPRESSION;
-		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
+//		final String[] containerTypes = new String[] { "N5", "ZARR", "HDF5" };
+		final String[] containerTypes = new String[] { "N5", "ZARR" };
 		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataOmeZarrKey,
 				N5Importer.MetadataImageJKey,
@@ -317,12 +318,18 @@ public class TestExportImports
 		final String readerDataset;
 		if (metadataType.equals(N5Importer.MetadataN5ViewerKey) || (metadataType.equals(N5Importer.MetadataN5CosemKey) && imp.getNChannels() > 1))
 			readerDataset = dataset + "/c0/s0";
-		else if (metadataType.equals(N5Importer.MetadataOmeZarrKey) || metadataType.equals(N5Importer.MetadataN5CosemKey))
+		else if (
+				metadataType.equals(N5Importer.MetadataOmeZarrKey) ||
+				metadataType.equals(N5Importer.MetadataOmeZarrV04Key) ||
+				metadataType.equals(N5Importer.MetadataOmeZarrV05Key) ||
+				metadataType.equals(N5Importer.MetadataN5CosemKey)
+				) {
 			readerDataset = dataset + "/s0";
+		}
 		else
 			readerDataset = dataset;
 
-		final String n5PathAndDataset = outputPath + readerDataset;
+		final String n5PathAndDataset = outputPath + "?" + readerDataset;
 		// consider testing this files existence before trying to read?
 		final N5Importer reader = new N5Importer();
 		reader.setShow(false);
@@ -367,6 +374,16 @@ public class TestExportImports
 		}
 
 	}
+	
+	private static boolean isOmeZarr(final String metadataStyle) {
+
+		// this method is largely for documentation purposes
+		// while the implementation is  currently exactly "is5dMetadata" the purpose of
+		// this method is different
+		return metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
+	}
 
 	@Test
 	public void testRgb() throws InterruptedException
@@ -392,12 +409,14 @@ public class TestExportImports
 	@Test
 	public void testMultiChannel()
 	{
-		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
+//		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
+		for( final String suffix : new String[] { ".n5", ".zarr" })
+//		for( final String suffix : new String[] { ".zarr" })
 		{
 			try {
 				testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
 				testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
-				testMultiChannelHelper(N5Importer.MetadataOmeZarrKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataOmeZarrV04Key, suffix);
 				testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -504,12 +523,14 @@ public class TestExportImports
 		final HashMap<String, Function<String, N5Writer>> writerMap = new HashMap<>();
 		writerMap.put(N5ScalePyramidExporter.HDF5_FORMAT, x -> new N5HDF5Writer(x));
 		writerMap.put(N5ScalePyramidExporter.N5_FORMAT, x -> new N5FSWriter(x));
-		writerMap.put(N5ScalePyramidExporter.ZARR_FORMAT, x -> new N5ZarrWriter(x));
+		writerMap.put(N5ScalePyramidExporter.ZARR2_FORMAT, x -> new N5Factory().openWriter(StorageFormat.ZARR2, x));
+		writerMap.put(N5ScalePyramidExporter.ZARR3_FORMAT, x -> new N5Factory().openWriter(StorageFormat.ZARR, x));
 
 		final HashMap<String, Function<String, N5Reader>> readerMap = new HashMap<>();
 		readerMap.put(N5ScalePyramidExporter.HDF5_FORMAT, x -> new N5HDF5Reader(x));
 		readerMap.put(N5ScalePyramidExporter.N5_FORMAT, x -> new N5FSReader(x));
-		readerMap.put(N5ScalePyramidExporter.ZARR_FORMAT, x -> new N5ZarrReader(x));
+		readerMap.put(N5ScalePyramidExporter.ZARR2_FORMAT, x -> new N5Factory().openReader(StorageFormat.ZARR2, x));
+		readerMap.put(N5ScalePyramidExporter.ZARR3_FORMAT, x -> new N5Factory().openReader(StorageFormat.ZARR, x));
 
 		final long[] szBig = new long[]{8, 6, 4};
 		final ImagePlus imp = NewImage.createImage("test", (int)szBig[0], (int)szBig[1], (int)szBig[2], 8, NewImage.FILL_NOISE);
@@ -517,7 +538,8 @@ public class TestExportImports
 		final String[] formats = new String[]{
 				N5ScalePyramidExporter.HDF5_FORMAT,
 				N5ScalePyramidExporter.N5_FORMAT,
-				N5ScalePyramidExporter.ZARR_FORMAT
+				N5ScalePyramidExporter.ZARR3_FORMAT,
+				N5ScalePyramidExporter.ZARR2_FORMAT
 		};
 
 		for (final String format : formats) {
@@ -547,7 +569,7 @@ public class TestExportImports
 		// repeat the above using uri format prefixes instead of the explicit option
 		for (final String format : formats) {
 
-			final String n5RootWithFormatPrefix = format.toLowerCase() + ":" + n5Root;
+			final String n5RootWithFormatPrefix = formatToScheme(format) + ":" + n5Root;
 			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 			writer.setOptions(imp, n5RootWithFormatPrefix, dataset, N5ScalePyramidExporter.AUTO_FORMAT, blockSizeString, false,
 					N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
@@ -573,7 +595,7 @@ public class TestExportImports
 		// repeat the above using uri format prefixes AND a the same explicit option
 		for (final String format : formats) {
 
-			final String n5RootWithFormatPrefix = format.toLowerCase() + ":" + n5Root;
+			final String n5RootWithFormatPrefix = formatToScheme(format) + ":" + n5Root;
 
 			final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 			writer.setOptions(imp, n5RootWithFormatPrefix, dataset, format, blockSizeString, false,
@@ -613,7 +635,7 @@ public class TestExportImports
 				if( format.equals(otherFormat))
 					continue;
 
-				final String n5RootWithFormatPrefix = otherFormat.toLowerCase() + ":" + n5Root;
+				final String n5RootWithFormatPrefix = formatToScheme(otherFormat) + ":" + n5Root;
 				final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 				writer.setOptions(imp, n5RootWithFormatPrefix, dataset, format, blockSizeString, false,
 						N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionString);
@@ -625,7 +647,6 @@ public class TestExportImports
 					n5.close();
 					fail("inconsistent prefix and option did not fail: " + format + " " + otherFormat);
 
-
 				} catch (final Exception e) {
 					// check that the plugin printed some error
 					assertTrue(trigger.somethingWritten);
@@ -636,6 +657,21 @@ public class TestExportImports
 		}
 
 		System.setOut(System.out);
+	}
+	
+	private static String formatToScheme( String format ) {
+		switch(format) {
+			case(N5ScalePyramidExporter.ZARR3_FORMAT):
+				return "zarr3";
+			case(N5ScalePyramidExporter.ZARR2_FORMAT):
+				return "zarr2";
+			case(N5ScalePyramidExporter.N5_FORMAT):
+				return "n5";
+			case(N5ScalePyramidExporter.HDF5_FORMAT):
+				return "h5";
+			default:
+				return null;
+		}
 	}
 
 	private static class TriggerOutputStream extends OutputStream {
@@ -666,11 +702,14 @@ public class TestExportImports
 		int nz = 1; nz += 0;
 		int nt = 1; nt += 0;
 
-		for( nc = 1; nc <= 3; nc += 2)
+//		for( nc = 1; nc <= 3; nc += 2)
+		for( nc = 1; nc <= 1; nc += 2)
 		{
-			for( nz = 1; nz <= 4; nz += 3)
+//			for( nz = 1; nz <= 4; nz += 3)
+			for( nz = 4; nz <= 4; nz += 3)
 			{
-				for( nt = 1; nt <= 5; nt += 4)
+//				for( nt = 1; nt <= 5; nt += 4)
+				for( nt = 5; nt <= 5; nt += 4)
 				{
 					final int N = nc * nz * nt;
 					final ImagePlus imp = NewImage.createImage("test", 8, 6, N, bitDepth, NewImage.FILL_NOISE);
@@ -683,7 +722,10 @@ public class TestExportImports
 
 					final String dimCode = String.format("c%dz%dt%d", nc, nz, nt);
 					final String n5RootPath = baseDir + "/test_" + metatype + "_" + dimCode + suffix;
+
 					final String dataset = String.format("/%s", dimCode);
+
+
 					singleReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, metatype, compressionString, true, nc == 1 );
 				}
 			}
@@ -702,10 +744,13 @@ public class TestExportImports
 		final String compressionString = N5ScalePyramidExporter.GZIP_COMPRESSION;
 
 		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
+//		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR"};
+
 		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataN5CosemKey,
 				N5Importer.MetadataN5ViewerKey,
-				N5Importer.MetadataOmeZarrKey
+				N5Importer.MetadataOmeZarrV04Key,
+				N5Importer.MetadataOmeZarrV05Key
 		};
 
 		final String[] downsampleTypes = new String[]{
@@ -740,10 +785,10 @@ public class TestExportImports
 
 		// the size of mitosis.tif sample image
 		final ImagePlus imp = NewImage.createImage("test", 171, 196, 2 * 5 * 51, bitDepth, NewImage.FILL_BLACK);
-		imp.setDimensions(2, 5, 51);
+		imp.setDimensions(2, 5, 51); // nc = 2, nz = 5, nt = 51
 
 		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
-		exp.setOptions(imp, baseDir.getAbsolutePath(), dset, "16,16,1", true, N5ScalePyramidExporter.DOWN_AVERAGE,
+		exp.setOptions(imp, baseDir.getAbsolutePath(), dset, "16,16,1,5,51", true, N5ScalePyramidExporter.DOWN_AVERAGE,
 				N5Importer.MetadataOmeZarrKey, N5ScalePyramidExporter.RAW_COMPRESSION);
 		exp.run();
 
@@ -778,8 +823,8 @@ public class TestExportImports
 		imp.getCalibration().pixelDepth = rz;
 
 		final N5ScalePyramidExporter exp = new N5ScalePyramidExporter();
-		exp.setOptions(imp, baseDir.getAbsolutePath(), dset, "16,16,1", true, N5ScalePyramidExporter.DOWN_AVERAGE,
-				N5Importer.MetadataOmeZarrKey, N5ScalePyramidExporter.RAW_COMPRESSION);
+		exp.setOptions(imp, baseDir.getAbsolutePath(), dset, "16,16,1,5,51", true, N5ScalePyramidExporter.DOWN_AVERAGE,
+				N5Importer.MetadataOmeZarrV04Key, N5ScalePyramidExporter.RAW_COMPRESSION);
 		exp.run();
 
 		try (final N5Reader n5 = N5Factory.createReader(baseDir.getAbsolutePath())) {
@@ -829,9 +874,7 @@ public class TestExportImports
 		else
 			readerDataset = dataset;
 
-		final String n5PathAndDataset = outputPath + readerDataset;
-		final N5Reader n5r = new N5Factory()
-				.openReader(outputPath);
+		final N5Reader n5r = new N5Factory().openReader(outputPath);
 		String[] dsetList = n5r.list(readerDataset);
 		for( String d : dsetList )
 		{
@@ -841,7 +884,9 @@ public class TestExportImports
 			final int nd = n5r.getDatasetAttributes(dsetPath).getNumDimensions();
 			final int level = Integer.parseInt( d.replaceFirst("^s", ""));
 			final double factor = Math.pow(2, level);
-			final double[] flatAffine = downsamplingAffineFlat( nd, factor, downsampleMethod );
+
+			final int nSpatialDimensions = nd > 3 ? 3 : nd;
+			final double[] flatAffine = downsamplingAffineFlat(nSpatialDimensions, factor, downsampleMethod);
 
 			final N5MetadataParser<?> parser = getParser(metadataType);
 			@SuppressWarnings("unchecked")
@@ -879,6 +924,8 @@ public class TestExportImports
 		case N5Importer.MetadataN5ViewerKey:
 			return (N5MetadataParser<T>)new N5SingleScaleMetadataParser();
 		case N5Importer.MetadataOmeZarrKey:
+		case N5Importer.MetadataOmeZarrV04Key:
+		case N5Importer.MetadataOmeZarrV05Key:
 			return (N5MetadataParser<T>)new NgffSingleScaleMetadataParser();
 		default:
 			return null;

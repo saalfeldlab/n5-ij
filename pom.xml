@@ -5,13 +5,13 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>40.0.0</version>
+		<version>43.0.0</version>
 		<relativePath />
 	</parent>
 
 	<groupId>org.janelia.saalfeldlab</groupId>
 	<artifactId>n5-ij</artifactId>
-	<version>4.4.2-SNAPSHOT</version>
+	<version>4.5.0-alpha-6-SNAPSHOT</version>
 
 	<name>N5 ImageJ Bindings</name>
 	<description>ImageJ convenience layer for N5</description>
@@ -85,17 +85,26 @@
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 
+		<n5.version>4.0.0-alpha-10</n5.version>
+		<n5-aws-s3.version>4.4.0-alpha-7</n5-aws-s3.version>
+		<n5-blosc.version>2.0.0-alpha-4</n5-blosc.version>
+		<n5-google-cloud.version>5.2.0-alpha-6</n5-google-cloud.version>
+		<n5-hdf5.version>2.3.0-alpha-6</n5-hdf5.version>
+		<n5-imglib2.version>7.1.0-alpha-7</n5-imglib2.version>
+		<n5-universe.version>2.4.0-alpha-7</n5-universe.version>
+		<n5-zarr.version>2.0.0-alpha-7</n5-zarr.version>
+		<n5-zstandard.version>2.0.0-alpha-4</n5-zstandard.version>
+
 		<jackson-jq.version>1.0.0-preview.20191208</jackson-jq.version>
 		<alphanumeric-comparator.version>1.4.1</alphanumeric-comparator.version>
 
-		<n5.version>3.4.1</n5.version>
-		<n5-aws-s3.version>4.2.2</n5-aws-s3.version>
-		<n5-google-cloud.version>5.0.0</n5-google-cloud.version>
-		<n5-universe.version>2.1.0</n5-universe.version>
-		<n5-zarr.version>1.5.0</n5-zarr.version>
 	</properties>
 
 	<dependencies>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+		</dependency>
 		<!-- N5 dependencies -->
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
@@ -112,7 +121,6 @@
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
 			<artifactId>n5-hdf5</artifactId>
-			<scope>test</scope><!-- CTR -->
 		</dependency>
 		<dependency>
 			<groupId>org.janelia.saalfeldlab</groupId>
@@ -125,7 +133,6 @@
 		<dependency>
 			<groupId>org.janelia</groupId>
 			<artifactId>n5-zstandard</artifactId>
-			<version>${n5-zstandard.version}</version> <!-- TEMP: Until next pom-scijava release. -->
 		</dependency>
 
 		<!-- ImgLib2 dependencies -->
@@ -210,13 +217,12 @@
 			<artifactId>commons-lang</artifactId>
 		</dependency>
 		<dependency>
-			<groupId>info.picocli</groupId>
-			<artifactId>picocli</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
-			<scope>test</scope><!-- CTR -->
+		</dependency>
+		<dependency>
+			<groupId>info.picocli</groupId>
+			<artifactId>picocli</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>net.thisptr</groupId>

@@ -108,7 +108,7 @@ public class MetadataTests {
 		}).ifPresent(n5root -> {
 
 			List<N5TreeNode> children = n5root.childrenList();
-			Assert.assertEquals("discovery node count", 3, children.size());
+			Assert.assertEquals("discovery node count", 4, children.size());
 
 			children.stream().filter(x -> x.getPath().equals("/cosem")).forEach(n -> {
 				String dname = n.getPath();
@@ -118,12 +118,66 @@ public class MetadataTests {
 				Assert.assertTrue("is cosem", n.getMetadata() instanceof N5CosemMetadata);
 
 				N5CosemMetadata m = (N5CosemMetadata)n.getMetadata();
+
+				Assert.assertArrayEquals("axis order", m.getAxisLabels(), new String[]{"x", "y", "z"});
 				AffineTransform3D xfm = m.spatialTransform3d();
 				final double s = xfm.get(0, 0); // scale
 				final double t = xfm.get(0, 3); // translation / offset
 
 				Assert.assertEquals("cosem scale", 64, s, eps);
 				Assert.assertEquals("cosem offset", 28, t, eps);
+			});
+
+		});
+	}
+
+	@Test
+	public void testCosemMetadataFOrder() throws InterruptedException {
+
+		final double eps = 1e-6;
+
+		final List<N5MetadataParser<?>> parsers = Collections.singletonList(new N5CosemMetadataParser());
+
+		final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(
+				n5, parsers, new ArrayList<>());
+
+		TestRunners.tryWaitRepeat(() -> {
+			try {
+				N5TreeNode node = discoverer.discoverAndParseRecursive("/");
+				if( node.childrenList().size() < 3 )
+					return null;
+				else
+					return node;
+
+			} catch (IOException e) {
+				return null; // so that the runner tries again
+			}
+		}).ifPresent(n5root -> {
+
+			List<N5TreeNode> children = n5root.childrenList();
+			Assert.assertEquals("discovery node count", 4, children.size());
+
+			children.stream().filter(x -> x.getPath().equals("/cosem_F")).forEach(n -> {
+				String dname = n.getPath();
+
+				Assert.assertNotNull(dname, n.getMetadata());
+
+				Assert.assertTrue("is cosem", n.getMetadata() instanceof N5CosemMetadata);
+				N5CosemMetadata m = (N5CosemMetadata)n.getMetadata();
+
+				Assert.assertArrayEquals("axis order", m.getAxisLabels(), new String[]{"x", "y", "z"});
+
+				AffineTransform3D xfm = m.spatialTransform3d();
+				final double t = xfm.get(0, 3); // translation / offset
+
+				Assert.assertEquals("cosem scale x", 32, xfm.get(0, 0), eps);
+				Assert.assertEquals("cosem scale y", 64, xfm.get(1, 1), eps);
+				Assert.assertEquals("cosem scale z", 128, xfm.get(2, 2), eps);
+
+				Assert.assertEquals("cosem scale x", 28, xfm.get(0, 3), eps);
+				Assert.assertEquals("cosem scale y", 29, xfm.get(1, 3), eps);
+				Assert.assertEquals("cosem scale z", 30, xfm.get(2, 3), eps);
+
 			});
 
 		});

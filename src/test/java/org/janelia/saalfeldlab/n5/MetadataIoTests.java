@@ -57,6 +57,7 @@ import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import ij.ImagePlus;
@@ -257,6 +258,7 @@ public class MetadataIoTests
 	}
 
 	@Test
+	@Ignore("tmp until n5-hdf5 is released")
 	public void testH5()
 	{
 		final N5HDF5Writer h5 = new N5HDF5Writer( new File( testDirPath, "test.h5").getAbsolutePath(), 32, 32, 32, 32, 32 );

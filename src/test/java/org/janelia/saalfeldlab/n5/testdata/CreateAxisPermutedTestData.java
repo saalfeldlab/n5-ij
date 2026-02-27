@@ -69,7 +69,7 @@ public class CreateAxisPermutedTestData {
 		final ImagePlus imp = IJ.openImage("/home/john/tmp/mitosis.tif");
 
 		final N5ScalePyramidExporter exporter = new N5ScalePyramidExporter(imp, root, dset,
-				N5ScalePyramidExporter.ZARR_FORMAT, "128", true,
+				N5ScalePyramidExporter.ZARR2_FORMAT, "128", true,
 				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrKey,
 				N5ScalePyramidExporter.GZIP_COMPRESSION);
 		exporter.run();
@@ -149,7 +149,7 @@ public class CreateAxisPermutedTestData {
 		final String sourceScale = sourceDset + "/s0";
 		final String destinationScale = destinationDset + "/s0";
 
-		final ZarrDatasetAttributes attrs = zarr.getDatasetAttributes(sourceScale);
+		final DatasetAttributes attrs = zarr.getDatasetAttributes(sourceScale);
 		final int[] blockSize = ArrayUtils.clone( attrs.getBlockSize());
 		final int[] blockSizePermuted = AxisUtils.permute(blockSize, permutation);
 
@@ -175,13 +175,7 @@ public class CreateAxisPermutedTestData {
 
 		final CachedCellImg<T, ?> img = N5Utils.open(zarr, sourceScale);
 		final RandomAccessibleInterval<T> imgRev = AxisUtils.reverseDimensions(img);
-		try {
-			N5Utils.saveRegion(imgRev, zarr, destinationScale);
-		} catch (final InterruptedException e) {
-			e.printStackTrace();
-		} catch (final ExecutionException e) {
-			e.printStackTrace();
-		}
+		N5Utils.saveRegion(imgRev, zarr, destinationScale);
 
 		final JsonElement meta = zarr.getAttribute(sourceDset, "/", JsonElement.class);
 		zarr.setAttribute(destinationDset, "/", meta);

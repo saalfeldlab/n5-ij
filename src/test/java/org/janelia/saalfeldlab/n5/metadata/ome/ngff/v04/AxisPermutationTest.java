@@ -82,9 +82,9 @@ public class AxisPermutationTest {
 	 * for both c- and f-order zarr arrays.
 	 */
 	@Test
-	public void testZarrDimensionReversal() {
+	public void testZarr2DimensionReversal() {
 
-		final N5Writer zarr = new N5Factory().openWriter(StorageFormat.ZARR, containerUri.toString());
+		final N5Writer zarr = new N5Factory().openWriter(StorageFormat.ZARR2, containerUri.toString());
 
 		final long[] dims = new long[]{6, 5, 4}; // x y z
 		final int[] blkSize = new int[]{6, 5, 4};
@@ -106,15 +106,47 @@ public class AxisPermutationTest {
 
 		final String uriF = containerUri.toString() + "?" + dset;
 		final ImagePlus impF = N5Importer.open(uriF, false);
+		// should be read out as [6,5,4]
 		assertEquals("nx F", 6, impF.getWidth());
 		assertEquals("ny F", 5, impF.getHeight());
 		assertEquals("nz F", 4, impF.getNChannels());
 	}
 
 	@Test
-	public void testNgffPermutations() {
+	public void testZarr3Transpose() {
 
 		final N5Writer zarr = new N5Factory().openWriter(StorageFormat.ZARR, containerUri.toString());
+
+		final long[] dims = new long[]{6, 5, 4}; // x y z
+		final int[] blkSize = new int[]{6, 5, 4};
+		final RawCompression compression = new RawCompression();
+		final DataType type = DataType.UINT8;
+
+		String dset = "COrder";
+		// writes a c-order zarr array with shape [4,5,6] "ZYX"
+		NgffTests.createDataset(zarr, C_ORDER, dset, dims, blkSize, type, compression);
+		final String uriC = containerUri.toString() + "?" + dset;
+		final ImagePlus impC = N5Importer.open(uriC, false);
+		assertEquals("nx C", 6, impC.getWidth());
+		assertEquals("ny C", 5, impC.getHeight());
+		assertEquals("nz C", 4, impC.getNChannels());
+
+		dset = "FOrder";
+		// writes a f-order zarr array with shape [4,5,6] "ZYX"
+		NgffTests.createDataset(zarr, F_ORDER, dset, dims, blkSize, type, compression);
+
+		// but should be read out with the same size [4,5,6]
+		final String uriF = containerUri.toString() + "?" + dset;
+		final ImagePlus impF = N5Importer.open(uriF, false);
+		assertEquals("nx F", 4, impF.getWidth());
+		assertEquals("ny F", 5, impF.getHeight());
+		assertEquals("nz F", 6, impF.getNChannels());
+	}
+
+	@Test
+	public void testNgffPermutations() {
+
+		final N5Writer zarr = new N5Factory().openWriter(StorageFormat.ZARR2, containerUri.toString());
 		// don't check every axis permutation, but some relevant ones, and some strange ones
 		// check both c- and f-order storage
 		for (final String axes : AXIS_PERMUTATIONS) {
@@ -133,7 +165,7 @@ public class AxisPermutationTest {
 	@Test
 	public void testCosemAxisPermutations() {
 
-		final N5Writer zarr = new N5Factory().openWriter(StorageFormat.ZARR, containerUri.toString());
+		final N5Writer zarr = new N5Factory().openWriter(StorageFormat.ZARR2, containerUri.toString());
 		// don't check every axis permutation, but some relevant ones, and some strange ones
 		// check both c- and f-order storage
 		for (final String axes : AXIS_PERMUTATIONS) {
@@ -157,6 +189,7 @@ public class AxisPermutationTest {
 
 		// read
 		final ImagePlus imp = N5Importer.open(String.format("%s?%s", containerUri.toString(), dset + "/s0"), false);
+//		final ImagePlus imp = N5Importer.open(zarr, dset + "/s0", false);
 
 		// test
 		assertEquals("size x", NgffTests.NX, imp.getWidth());
