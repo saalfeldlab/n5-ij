@@ -316,15 +316,14 @@ public class N5Importer implements PlugIn {
 					new N5ViewerReaderFun(),
 					new N5BasePathFun(),
 					lastOpenedContainer,
-					new N5MetadataParser[]{ new OmeNgffMetadataParser() }, // need the ngff parser because it's where the metadata are
+					// need the ngff parser because it's where the metadata are
+					new N5MetadataParser[]{new OmeNgffV05MetadataParser(), new OmeNgffMetadataParser()},
 					PARSERS);
 
 			selectionDialog.setLoaderExecutor(exec);
 			selectionDialog.setTreeRenderer(new N5DatasetTreeCellRenderer(true));
 
-			// restrict canonical metadata to those with spatial metadata, but
-			// without
-			// multiscale
+			// restrict canonical metadata to those with spatial metadata, but without multiscale
 			selectionDialog.getTranslationPanel().setFilter(
 					x -> (x instanceof CanonicalDatasetMetadata));
 
