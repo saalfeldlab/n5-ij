@@ -928,11 +928,6 @@ public class N5Importer implements PlugIn {
 			final String d = normalPathName(datasetMeta.getPath(), n5.getGroupSeparator());
 			try {
 			
-				// TODO something like this should work, but it currently fails
-//				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(rootPathArg);
-//				final String fmtPrefix = fmtUri.getA().toString().toLowerCase();
-//				final String n5Url = fmtPrefix + ":" + N5URI.from(fmtUri.getB().toString(), d, null).toString();
-
 				final StorageFormat fmt = StorageFormat.guessStorageFromUri(URI.create(rootPathArg));
 				final String fmtPrefix = fmt == null ? "" : fmt.toString().toLowerCase() + "://";
 
@@ -1041,7 +1036,6 @@ public class N5Importer implements PlugIn {
 	public List<ImagePlus> process(final String n5FullPath, final boolean asVirtual, final Interval cropInterval,
 			final boolean parseAllMetadata) {
 
-//		n5 = new N5ViewerReaderFun().apply(n5FullPath);
 		final N5Reader n5 = new N5ViewerReaderFun().apply(n5FullPath);
 		final String dataset = new N5BasePathFun().apply(n5FullPath);
 		N5DatasetMetadata metadata;
@@ -1121,8 +1115,9 @@ public class N5Importer implements PlugIn {
 				rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
 			}
 
-			if (rootPath == null)
-				rootPath = upToLastExtension(n5UriOrPath);
+			if (rootPath == null) {
+				rootPath = n5UriOrPath;
+			}
 
 			final N5Factory factory = new N5Factory().cacheAttributes(true);
 			try {
@@ -1133,56 +1128,6 @@ public class N5Importer implements PlugIn {
 			}
 			return n5;
 		}
-	}
-
-	private static String upToLastExtension(final String pathArg) {
-
-		String scheme = null;
-		String host = null;
-		String path;
-		try {
-			URI uri = URI.create(pathArg);
-			path = uri.getPath();
-			scheme = uri.getScheme();
-			host = uri.getHost();
-		} catch (Exception e) {
-			path = pathArg;
-		}
-
-		String newPath = path;
-		final int i = path.lastIndexOf('.');
-		if (i >= 0) {
-			final int j = path.substring(i).indexOf('/');
-			if (j >= 0)
-				newPath = path.substring(0, i + j);
-		}
-
-		try {
-			return new URI(scheme, host, newPath, null).toString();
-		} catch (URISyntaxException e) {
-			return newPath;
-		}
-	}
-
-	private static String afterLastExtension(final String pathArg) {
-
-		String path;
-		try {
-			URI uri = URI.create(pathArg);
-			path = uri.getPath();
-		} catch (Exception e) {
-			path = pathArg;
-		}
-
-		String group = "";
-		final int i = path.lastIndexOf('.');
-		if (i >= 0) {
-			final int j = path.substring(i).indexOf('/');
-			if (j >= 0)
-				group = path.substring(i + j);
-		}
-
-		return group;
 	}
 
 	public static class N5BasePathFun implements Function<String, String> {
@@ -1202,8 +1147,9 @@ public class N5Importer implements PlugIn {
 
 			if (n5UriOrPath.contains(".h5") || n5UriOrPath.contains(".hdf5") || n5UriOrPath.contains(".hdf"))
 				return h5DatasetPath(n5UriOrPath);
-			else
-				return afterLastExtension(n5UriOrPath);
+			else {
+				return "";
+			}
 		}
 	}
 
