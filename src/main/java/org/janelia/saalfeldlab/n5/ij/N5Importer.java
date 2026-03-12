@@ -559,15 +559,7 @@ public class N5Importer implements PlugIn {
 			final ImageplusMetadata<M> ipMeta) throws IOException {
 
 		final String d = datasetMetaArg.getPath();
-		final CachedCellImg imgRaw = N5Utils.open(n5, d);
-
-		RandomAccessibleInterval imgNorm;
-		if (OmeNgffMultiScaleMetadata.fOrder(datasetMetaArg.getAttributes())) {
-			imgNorm = AxisUtils.reverseDimensions(imgRaw);
-			ArrayUtils.reverse(datasetMetaArg.getAttributes().getDimensions());
-		}
-		else
-			imgNorm = imgRaw;
+		final CachedCellImg imgNorm = N5Utils.open(n5, d);
 
 		// crop if necessary
 		final RandomAccessibleInterval imgC;

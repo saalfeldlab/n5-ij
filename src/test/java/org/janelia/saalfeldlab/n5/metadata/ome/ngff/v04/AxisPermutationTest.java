@@ -101,9 +101,8 @@ public class AxisPermutationTest {
 		assertEquals("nz C", 4, impC.getNChannels());
 
 		dset = "FOrder";
-		// writes a f-order zarr array with shape [4,5,6] "ZYX"
+		// writes a f-order zarr array with shape [6,5,4] "XYZ"
 		NgffTests.createDataset(zarr, F_ORDER, dset, dims, blkSize, type, compression);
-
 		final String uriF = containerUri.toString() + "?" + dset;
 		final ImagePlus impF = N5Importer.open(uriF, false);
 		// should be read out as [6,5,4]
@@ -189,7 +188,6 @@ public class AxisPermutationTest {
 
 		// read
 		final ImagePlus imp = N5Importer.open(String.format("%s?%s", containerUri.toString(), dset + "/s0"), false);
-//		final ImagePlus imp = N5Importer.open(zarr, dset + "/s0", false);
 
 		// test
 		assertEquals("size x", NgffTests.NX, imp.getWidth());
@@ -239,7 +237,7 @@ public class AxisPermutationTest {
 
 		final DatasetAttributes dsetAttrs = zarr.getDatasetAttributes(dsetPath);
 
-		final CosemTransform cosemTform = NgffTests.buildPermutedAxesCosemMetadata(permutation, true, dsetAttrs);
+		final CosemTransform cosemTform = NgffTests.buildPermutedAxesCosemMetadata(permutation, cOrder, dsetAttrs);
 		zarr.setAttribute(dsetPath, "transform", cosemTform);
 	}
 
