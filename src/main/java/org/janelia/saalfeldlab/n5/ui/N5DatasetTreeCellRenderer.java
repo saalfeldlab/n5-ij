@@ -15,7 +15,7 @@ import org.janelia.saalfeldlab.n5.metadata.imagej.N5ImagePlusMetadata;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata;
 
 import ij.ImagePlus;
 
@@ -126,7 +126,7 @@ public class N5DatasetTreeCellRenderer extends DefaultTreeCellRenderer
 		final DatasetAttributes attributes = ((N5DatasetMetadata)node.getMetadata()).getAttributes();
 		final String[] dimStrArr = Arrays.stream(attributes.getDimensions()).mapToObj(d -> Long.toString(d)).toArray(n -> new String[n]);
 
-		if (OmeNgffMultiScaleMetadata.fOrder(attributes))
+		if (OmeNgffV04MultiScaleMetadata.fOrder(attributes))
 			ArrayUtils.reverse(dimStrArr);
 
 		return String.join(dimDelimeter, dimStrArr) + ", " + attributes.getDataType();

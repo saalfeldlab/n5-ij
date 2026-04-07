@@ -115,7 +115,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScale
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataSingleScaleParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05MetadataParser;
@@ -882,22 +882,22 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final OmeNgffMultiScaleMetadataMutable ms = (OmeNgffMultiScaleMetadataMutable)multiscaleMetadata;
 
 			if (metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
-				final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
+				final OmeNgffV04MultiScaleMetadata meta = new OmeNgffV04MultiScaleMetadata(ms.getAxes().length,
 						path, path, downsampleMethod, "0.5",
 						AxisUtils.defaultAxes("x", "y", "z", "c", "t"),
 						ms.getDatasets(), null,
 						ms.coordinateTransformations, ms.metadata, true);
 
-				return ((N)new OmeNgffV05Metadata(path, new OmeNgffMultiScaleMetadata[]{meta}));
+				return ((N)new OmeNgffV05Metadata(path, new OmeNgffV04MultiScaleMetadata[]{meta}));
 			} else {
 
-				final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
+				final OmeNgffV04MultiScaleMetadata meta = new OmeNgffV04MultiScaleMetadata(ms.getAxes().length,
 						path, path, downsampleMethod, "0.4",
 						ms.getAxes(), // TODO validate and pad axes
 						ms.getDatasets(), null,
 						ms.coordinateTransformations, ms.metadata, true);
 
-				return ((N)new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[]{meta}));
+				return ((N)new OmeNgffMetadata(path, new OmeNgffV04MultiScaleMetadata[]{meta}));
 
 			}
 		}

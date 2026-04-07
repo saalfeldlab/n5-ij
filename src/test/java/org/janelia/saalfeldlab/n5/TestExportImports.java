@@ -33,7 +33,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
 import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
@@ -840,7 +840,7 @@ public class TestExportImports
 			final N5Metadata meta = node.get().getMetadata();
 			assertTrue(meta instanceof OmeNgffMetadata);
 
-			final OmeNgffMultiScaleMetadata msMeta = ((OmeNgffMetadata)meta).multiscales[0];
+			final OmeNgffV04MultiScaleMetadata msMeta = ((OmeNgffMetadata)meta).multiscales[0];
 			final AffineTransform3D[] tforms = msMeta.spatialTransforms3d();
 			final int N = expectedXScales.length;
 			for( int i = 0; i < N; i++ ) {

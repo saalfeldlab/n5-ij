@@ -7,8 +7,8 @@ import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Unit;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata.OmeNgffDataset;
 
 import ij.ImagePlus;
 
@@ -104,7 +104,7 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 		return normalUnit;
 	}
 
-	public static OmeNgffMultiScaleMetadata buildMetadata(final ImagePlus image, final String path, final DatasetAttributes[] dsetAttrs,
+	public static OmeNgffV04MultiScaleMetadata buildMetadata(final ImagePlus image, final String path, final DatasetAttributes[] dsetAttrs,
 			final OmeNgffDataset[] datasets) {
 
 		final int nc = image.getNChannels();
@@ -153,7 +153,7 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 		// need to reverse the axes if the arrays are in C order
 		final Axis[] axesToWrite;
 		if( dsetAttrs != null )
-			axesToWrite = OmeNgffMultiScaleMetadata.reverseIfCorder( dsetAttrs[0], axes );
+			axesToWrite = OmeNgffV04MultiScaleMetadata.reverseIfCorder( dsetAttrs[0], axes );
 		else
 			axesToWrite = axes;
 
@@ -161,13 +161,13 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 		final String type = "sampling";
 		final String version = "0.4";
 
-		return new OmeNgffMultiScaleMetadata(
+		return new OmeNgffV04MultiScaleMetadata(
 			N, path, name, type, version, axesToWrite,
 			datasets, dsetAttrs,
 			null, null); // no global coordinate transforms of downsampling metadata
 	}
 
-	public static OmeNgffMultiScaleMetadata buildMetadata(final NgffSingleScaleAxesMetadata meta, final String name, final String path, final DatasetAttributes[] dsetAttrs,
+	public static OmeNgffV04MultiScaleMetadata buildMetadata(final NgffSingleScaleAxesMetadata meta, final String name, final String path, final DatasetAttributes[] dsetAttrs,
 			final OmeNgffDataset[] datasets) {
 
 		final int N = meta.getScale().length;
@@ -176,7 +176,7 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 		final String type = "sampling";
 		final String version = "0.4";
 
-		return new OmeNgffMultiScaleMetadata(
+		return new OmeNgffV04MultiScaleMetadata(
 			N, path, name, type, version, meta.getAxes(),
 			datasets, dsetAttrs,
 			null, null); // no global coordinate transforms of downsampling metadata

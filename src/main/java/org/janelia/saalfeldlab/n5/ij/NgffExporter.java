@@ -63,8 +63,8 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata.OmeNgffDataset;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.coordinateTransformations.CoordinateTransformation;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.coordinateTransformations.ScaleCoordinateTransformation;
 import org.scijava.ItemVisibility;
@@ -275,8 +275,8 @@ public class NgffExporter implements WindowListener {
 
 		}
 
-		final OmeNgffMultiScaleMetadata ms = buildMetadata(dataset, dsetAttrs, msDatasets);
-		final OmeNgffMultiScaleMetadata[] msList = new OmeNgffMultiScaleMetadata[]{ms};
+		final OmeNgffV04MultiScaleMetadata ms = buildMetadata(dataset, dsetAttrs, msDatasets);
+		final OmeNgffV04MultiScaleMetadata[] msList = new OmeNgffV04MultiScaleMetadata[]{ms};
 
 		final OmeNgffMetadata meta = new OmeNgffMetadata(dataset, msList);
 		try {
@@ -294,9 +294,9 @@ public class NgffExporter implements WindowListener {
 		return Views.subsample(img, downsampleFactor);
 	}
 
-	public OmeNgffMultiScaleMetadata buildMetadata(final String path, final DatasetAttributes[] dsetAttrs, final OmeNgffDataset[] datasets) {
+	public OmeNgffV04MultiScaleMetadata buildMetadata(final String path, final DatasetAttributes[] dsetAttrs, final OmeNgffDataset[] datasets) {
 
-		if (!OmeNgffMultiScaleMetadata.allSameAxisOrder(dsetAttrs))
+		if (!OmeNgffV04MultiScaleMetadata.allSameAxisOrder(dsetAttrs))
 			throw new RuntimeException("All ome-zarr arrays must have same array order");
 
 		final int nc = image.getNChannels();
@@ -343,13 +343,13 @@ public class NgffExporter implements WindowListener {
 		}
 
 		// need to reverse the axes if the arrays are in C order
-		final Axis[] axesToWrite = OmeNgffMultiScaleMetadata.reverseIfCorder(dsetAttrs[0], axes);
+		final Axis[] axesToWrite = OmeNgffV04MultiScaleMetadata.reverseIfCorder(dsetAttrs[0], axes);
 
 		final String name = image.getTitle();
 		final String type = "sampling";
 		final String version = "0.4";
 
-		return new OmeNgffMultiScaleMetadata(
+		return new OmeNgffV04MultiScaleMetadata(
 				N, path, name, type, version, axesToWrite,
 				datasets, dsetAttrs,
 				null, null); // no global coordinate transforms of downsampling

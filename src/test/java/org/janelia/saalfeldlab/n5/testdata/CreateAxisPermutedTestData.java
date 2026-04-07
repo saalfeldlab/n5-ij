@@ -19,8 +19,8 @@ import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata.OmeNgffDataset;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata.OmeNgffDataset;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.coordinateTransformations.ScaleCoordinateTransformation;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.coordinateTransformations.TranslationCoordinateTransformation;
 import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
@@ -93,7 +93,7 @@ public class CreateAxisPermutedTestData {
 		final Optional<N5TreeNode> node = N5DatasetDiscoverer.discover(zarr).getDescendant(sourceDset);
 		final OmeNgffMetadata meta = (OmeNgffMetadata)node.get().getMetadata();
 
-		final OmeNgffMultiScaleMetadata ms = meta.multiscales[0];
+		final OmeNgffV04MultiScaleMetadata ms = meta.multiscales[0];
 
 		final Axis[] axesOrig = ms.axes;
 		final Axis[] axesNew = new Axis[permutation.length];

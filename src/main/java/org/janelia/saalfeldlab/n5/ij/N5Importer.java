@@ -85,7 +85,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataP
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffV04MultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05MetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
