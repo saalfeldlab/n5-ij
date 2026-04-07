@@ -128,10 +128,7 @@ public class TestExportImports
 			{
 				final String n5PathAndDataset = String.format("%s/%s/c%d/s0", n5RootPath, dataset, i);
 
-				final Optional<List<ImagePlus>> impListOpt = TestRunners.tryWaitRepeat(() -> {
-					return reader.process(n5PathAndDataset, false);
-				});
-
+				final Optional<List<ImagePlus>> impListOpt = Optional.of(reader.process(n5PathAndDataset, false));
 				List<ImagePlus> impList;
 				if (impListOpt.isPresent()) {
 					impList = impListOpt.get();
@@ -333,10 +330,7 @@ public class TestExportImports
 		// consider testing this files existence before trying to read?
 		final N5Importer reader = new N5Importer();
 		reader.setShow(false);
-		final Optional<List< ImagePlus >> impListOpt = TestRunners.tryWaitRepeat( () -> {
-			return reader.process(n5PathAndDataset, false);
-		});
-
+		Optional<List<ImagePlus>> impListOpt = Optional.of(reader.process(n5PathAndDataset, false));
 		List<ImagePlus> impList;
 		if (impListOpt.isPresent()) {
 			impList = impListOpt.get();
@@ -447,9 +441,7 @@ public class TestExportImports
 
 		try (final N5Writer n5 = new N5FSWriter(n5Root)) {
 
-			Optional<DatasetAttributes> dsetAttrsOpt = TestRunners.tryWaitRepeat(() -> {
-				return n5.getDatasetAttributes(dataset);
-			});
+			Optional<DatasetAttributes> dsetAttrsOpt = Optional.of( n5.getDatasetAttributes(dataset));
 
 			DatasetAttributes dsetAttrs;
 			if (dsetAttrsOpt.isPresent()) {
@@ -469,10 +461,7 @@ public class TestExportImports
 			writerNoOverride.setOverwrite(false);
 			writerNoOverride.run();
 			
-			dsetAttrsOpt = TestRunners.tryWaitRepeat(() -> {
-				return n5.getDatasetAttributes(dataset);
-			});
-
+			dsetAttrsOpt = Optional.of(n5.getDatasetAttributes(dataset));
 			if (dsetAttrsOpt.isPresent()) {
 				dsetAttrs = dsetAttrsOpt.get();
 				assertArrayEquals("size after no overwrite", szBig, dsetAttrs.getDimensions());
@@ -490,10 +479,7 @@ public class TestExportImports
 			writerOverride.setOverwrite(true);
 			writerOverride.run();
 
-			dsetAttrsOpt = TestRunners.tryWaitRepeat(() -> {
-				return n5.getDatasetAttributes(dataset);
-			});
-
+			dsetAttrsOpt = Optional.of(n5.getDatasetAttributes(dataset));
 			if (dsetAttrsOpt.isPresent()) {
 				dsetAttrs = dsetAttrsOpt.get();
 				assertArrayEquals("size after overwrite", szSmall, dsetAttrs.getDimensions());
