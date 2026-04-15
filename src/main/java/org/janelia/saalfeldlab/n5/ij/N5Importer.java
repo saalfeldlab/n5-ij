@@ -43,7 +43,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.swing.JTree;
 
-import org.apache.commons.lang.ArrayUtils;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -83,10 +82,8 @@ import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.NgffSingleScaleAxesMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
@@ -157,10 +154,8 @@ public class N5Importer implements PlugIn {
 	};
 
 	public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
-			new OmeNgffV05MetadataParser(),
 			new OmeNgffMetadataParser(),
 			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
-			new OmeNgffMetadataParser(),
 			new N5ViewerMultiscaleMetadataParser(),
 			new CanonicalMetadataParser()
 	};
@@ -317,7 +312,7 @@ public class N5Importer implements PlugIn {
 					new N5BasePathFun(),
 					lastOpenedContainer,
 					// need the ngff parser because it's where the metadata are
-					new N5MetadataParser[]{new OmeNgffV05MetadataParser(), new OmeNgffMetadataParser()},
+					new N5MetadataParser[]{new OmeNgffMetadataParser()},
 					PARSERS);
 
 			selectionDialog.setLoaderExecutor(exec);

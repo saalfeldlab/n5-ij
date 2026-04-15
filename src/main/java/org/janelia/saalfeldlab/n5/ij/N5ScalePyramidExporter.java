@@ -111,14 +111,11 @@ import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadataGroup;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.NgffSingleScaleAxesMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMetadataSingleScaleParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v04.OmeNgffMultiScaleMetadataMutable;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05Metadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.v05.OmeNgffV05MetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.NgffSingleScaleAxesMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMultiScaleMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMultiScaleMetadataMutable;
 import org.janelia.saalfeldlab.n5.zarr.v3.ZarrV3DatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.v3.ZarrV3KeyValueWriter;
 import org.janelia.scicomp.n5.zstandard.ZstandardCompression;
@@ -333,7 +330,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private final Map<String, N5MetadataWriter<?>> styles;
 
 	private final HashMap<Class<?>, N5MetadataWriter<?>> metadataWriters;
-	
+
 	private String metadataStyle;
 
 	private ThreadPoolExecutor threadPool;
@@ -345,17 +342,16 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		styles = new HashMap<String, N5MetadataWriter<?>>();
 		styles.put(N5Importer.MetadataOmeZarrKey, new OmeNgffMetadataParser());
 		styles.put(N5Importer.MetadataOmeZarrV04Key, new OmeNgffMetadataParser());
-		styles.put(N5Importer.MetadataOmeZarrV05Key, new OmeNgffV05MetadataParser());
+		styles.put(N5Importer.MetadataOmeZarrV05Key, new OmeNgffMetadataParser());
 		styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadataParser());
 		styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadataParser());
 		styles.put(N5Importer.MetadataImageJKey, new ImagePlusLegacyMetadataParser());
 
 		metadataWriters = new HashMap<Class<?>, N5MetadataWriter<?>>();
 		metadataWriters.put(OmeNgffMetadata.class, new OmeNgffMetadataParser());
-		metadataWriters.put(OmeNgffV05Metadata.class, new OmeNgffV05MetadataParser());
 		metadataWriters.put(N5SingleScaleMetadata.class, new N5SingleScaleMetadataParser());
 		metadataWriters.put(N5CosemMetadata.class, new N5CosemMetadataParser());
-		metadataWriters.put(NgffSingleScaleAxesMetadata.class, new OmeNgffMetadataSingleScaleParser());
+//		metadataWriters.put(NgffSingleScaleAxesMetadata.class, new OmeNgffMetadataSingleScaleParser());
 		metadataWriters.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 
 		// default image plus metadata writers
@@ -364,7 +360,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		impMetaWriterTypes.put(N5CosemMetadataParser.class, new CosemToImagePlus());
 		impMetaWriterTypes.put(N5SingleScaleMetadataParser.class, new N5ViewerToImagePlus());
 		impMetaWriterTypes.put(OmeNgffMetadataParser.class, new Ngff5dToImagePlus());
-		impMetaWriterTypes.put(OmeNgffV05MetadataParser.class, new Ngff5dToImagePlus());
 	}
 
 	public N5ScalePyramidExporter(final ImagePlus image,
@@ -881,25 +876,18 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable) {
 			final OmeNgffMultiScaleMetadataMutable ms = (OmeNgffMultiScaleMetadataMutable)multiscaleMetadata;
 
+			String version = "0.4";
 			if (metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
-				final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
-						path, path, downsampleMethod, "0.5",
-						AxisUtils.defaultAxes("x", "y", "z", "c", "t"),
-						ms.getDatasets(), null,
-						ms.coordinateTransformations, ms.metadata, true);
-
-				return ((N)new OmeNgffV05Metadata(path, new OmeNgffMultiScaleMetadata[]{meta}));
-			} else {
-
-				final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
-						path, path, downsampleMethod, "0.4",
-						ms.getAxes(), // TODO validate and pad axes
-						ms.getDatasets(), null,
-						ms.coordinateTransformations, ms.metadata, true);
-
-				return ((N)new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[]{meta}));
-
+				version = "0.5";
 			}
+
+			final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
+					path, path, downsampleMethod, version,
+					ms.getAxes(), // TODO validate and pad axes
+					ms.getDatasets(), ms.coordinateTransformations, null, ms.metadata);
+
+			return ((N)new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[]{meta}));
+
 		}
 
 		return multiscaleMetadata;
