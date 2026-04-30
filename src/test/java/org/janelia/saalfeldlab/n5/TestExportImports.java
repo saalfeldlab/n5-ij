@@ -766,7 +766,6 @@ public class TestExportImports
 					final String n5RootPath = baseDir + "/test." + typeToExtension.get( containerType );
 					final String datasetBase = "/test_"+metatype+"_"+downsampleMethod+"_"+bitDepth;
 					final String dataset = datasetBase;
-
 					pyramidReadWriteParseTest( imp, n5RootPath, dataset, blockSizeString, downsampleMethod, metatype, compressionString, true, true );
 				}
 			}
@@ -884,11 +883,23 @@ public class TestExportImports
 			final int nSpatialDimensions = nd > 3 ? 3 : nd;
 			final double[] flatAffine = downsamplingAffineFlat(nSpatialDimensions, factor, downsampleMethod);
 
-			final N5MetadataParser<?> parser = getParser(metadataType);
-			@SuppressWarnings("unchecked")
-			final Optional<N5SpatialDatasetMetadata> meta = (Optional<N5SpatialDatasetMetadata>)parser.parseMetadata(n5r,dsetPath);
+			Optional<? extends N5Metadata> meta; 
+			if( isOmeZarr(metadataType)) {
+				final N5DatasetDiscoverer disc = new N5DatasetDiscoverer(n5r, 
+						Collections.singletonList(new N5GenericSingleScaleMetadataParser()),
+						Collections.singletonList(new OmeNgffMetadataParser()));
+				try {
+					meta = disc.discoverAndParseRecursive("").getDescendant(dsetPath).map(N5TreeNode::getMetadata);
+				} catch (IOException e) {
+					meta = Optional.empty();
+				}
+			} else {
+				meta = getParser(metadataType).parseMetadata(n5r,dsetPath);
+			}
+
 			assertTrue("metadata does not exist or not parsable", meta.isPresent());
-			assertArrayEquals("affine", flatAffine, meta.get().spatialTransform().getRowPackedCopy(), EPS);
+			assertTrue("metadata not instance of N5SpatialDatasetMetadata", meta.get() instanceof N5SpatialDatasetMetadata );
+			assertArrayEquals("affine", flatAffine, ((N5SpatialDatasetMetadata)meta.get()).spatialTransform().getRowPackedCopy(), EPS);
 		}
 
 		n5r.close();
