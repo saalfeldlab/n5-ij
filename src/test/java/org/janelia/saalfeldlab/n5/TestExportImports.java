@@ -13,6 +13,7 @@ import java.io.PrintStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -28,14 +29,15 @@ import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.zarr.N5ZarrReader;
-import org.janelia.saalfeldlab.n5.zarr.N5ZarrWriter;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.NgffSingleScaleMetadataParser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -162,8 +164,7 @@ public class TestExportImports
 
 		final String blockSizeString = "16,16,16";
 		final String compressionString = N5ScalePyramidExporter.GZIP_COMPRESSION;
-//		final String[] containerTypes = new String[] { "N5", "ZARR", "HDF5" };
-		final String[] containerTypes = new String[] { "N5", "ZARR" };
+		final String[] containerTypes = new String[] { "N5", "ZARR", "HDF5" };
 		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataOmeZarrKey,
 				N5Importer.MetadataImageJKey,
@@ -408,14 +409,15 @@ public class TestExportImports
 	@Test
 	public void testMultiChannel()
 	{
-//		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
-		for( final String suffix : new String[] { ".n5", ".zarr" })
+		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
+//		for( final String suffix : new String[] { ".n5", ".zarr" })
 //		for( final String suffix : new String[] { ".zarr" })
 		{
 			try {
 				testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
 				testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
 				testMultiChannelHelper(N5Importer.MetadataOmeZarrV04Key, suffix);
+				testMultiChannelHelper(N5Importer.MetadataOmeZarrV05Key, suffix);
 				testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -701,14 +703,11 @@ public class TestExportImports
 		int nz = 1; nz += 0;
 		int nt = 1; nt += 0;
 
-//		for( nc = 1; nc <= 3; nc += 2)
-		for( nc = 1; nc <= 1; nc += 2)
+		for( nc = 1; nc <= 3; nc += 2)
 		{
-//			for( nz = 1; nz <= 4; nz += 3)
-			for( nz = 4; nz <= 4; nz += 3)
+			for( nz = 1; nz <= 4; nz += 3)
 			{
-//				for( nt = 1; nt <= 5; nt += 4)
-				for( nt = 5; nt <= 5; nt += 4)
+				for( nt = 1; nt <= 5; nt += 4)
 				{
 					final int N = nc * nz * nt;
 					final ImagePlus imp = NewImage.createImage("test", 8, 6, N, bitDepth, NewImage.FILL_NOISE);
@@ -743,8 +742,6 @@ public class TestExportImports
 		final String compressionString = N5ScalePyramidExporter.GZIP_COMPRESSION;
 
 		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR", "HDF5" };
-//		final String[] containerTypes = new String[] { "FILESYSTEM", "ZARR"};
-
 		final String[] metadataTypes = new String[]{
 				N5Importer.MetadataN5CosemKey,
 				N5Importer.MetadataN5ViewerKey,
