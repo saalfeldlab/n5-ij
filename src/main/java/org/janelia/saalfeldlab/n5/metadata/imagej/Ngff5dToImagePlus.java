@@ -150,19 +150,12 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 			d++;
 		}
 
-		// need to reverse the axes if the arrays are in C order
-		final Axis[] axesToWrite;
-		if( dsetAttrs != null )
-			axesToWrite = OmeNgffMultiScaleMetadata.reverseIfCorder( dsetAttrs[0], axes );
-		else
-			axesToWrite = axes;
-
 		final String name = image.getTitle();
 		final String type = "sampling";
 		final String version = "0.4";
 
 		return new OmeNgffMultiScaleMetadata(
-			N, path, name, type, version, axesToWrite,
+			N, path, name, type, version, axes,
 			datasets, null, dsetAttrs,
 			null); // no global coordinate transforms of downsampling metadata
 	}

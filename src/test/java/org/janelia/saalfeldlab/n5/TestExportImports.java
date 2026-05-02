@@ -12,11 +12,11 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URL;
 import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
@@ -37,7 +37,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.N5SpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMultiScaleMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.NgffSingleScaleMetadataParser;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -824,10 +823,7 @@ public class TestExportImports
 
 		try (final N5Reader n5 = N5Factory.createReader(baseDir.getAbsolutePath())) {
 
-			N5DatasetDiscoverer disc = new N5DatasetDiscoverer(n5,
-					Arrays.asList(N5DatasetDiscoverer.DEFAULT_PARSERS),
-					Arrays.asList(N5DatasetDiscoverer.DEFAULT_GROUP_PARSERS));
-
+			N5DatasetDiscoverer disc = new N5DatasetDiscoverer(n5, Executors.newSingleThreadExecutor());
 			final N5TreeNode root = disc.discoverAndParseRecursive("");
 			final Optional<N5TreeNode> node = root.getDescendant(dset);
 			assertTrue(node.isPresent());
@@ -844,7 +840,6 @@ public class TestExportImports
 				assertEquals( expectedZScales[i], tforms[i].get(2, 2), EPS);
 			}
 		}
-
 	}
 
 	public void pyramidReadWriteParseTest(
@@ -930,10 +925,6 @@ public class TestExportImports
 			return (N5MetadataParser<T>)new N5CosemMetadataParser();
 		case N5Importer.MetadataN5ViewerKey:
 			return (N5MetadataParser<T>)new N5SingleScaleMetadataParser();
-		case N5Importer.MetadataOmeZarrKey:
-		case N5Importer.MetadataOmeZarrV04Key:
-		case N5Importer.MetadataOmeZarrV05Key:
-			return (N5MetadataParser<T>)new NgffSingleScaleMetadataParser();
 		default:
 			return null;
 		}

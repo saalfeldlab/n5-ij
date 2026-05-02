@@ -23,9 +23,7 @@ public class MultiThreadedParsingBenchmark {
 	final String n5Dataset = args[1];
 
 	final N5Reader n5 = new N5Factory().openReader(n5RootPath);
-	List<N5MetadataParser<?>> metadataParsers = Arrays.asList(N5Importer.PARSERS);
-	List<N5MetadataParser<?>> groupParsers = Arrays.asList(N5Importer.GROUP_PARSERS);
-	final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5, executor, metadataParsers, groupParsers);
+	final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5, executor);
 
 	long start = System.currentTimeMillis();
 	System.out.println("discover");

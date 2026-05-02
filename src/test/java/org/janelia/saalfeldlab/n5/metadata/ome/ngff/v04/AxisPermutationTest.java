@@ -110,6 +110,27 @@ public class AxisPermutationTest {
 		assertEquals("ny F", 5, impF.getHeight());
 		assertEquals("nz F", 4, impF.getNChannels());
 	}
+//
+//	@Test
+//	public void testN5Dimension() {
+//
+//		final N5Writer n5 = new N5Factory().openWriter(StorageFormat.N5, containerUri.toString());
+//
+//		final long[] dims = new long[]{6, 5, 4}; // x y z
+//		final int[] blkSize = new int[]{6, 5, 4};	
+//		final RawCompression compression = new RawCompression();
+//		final DataType type = DataType.UINT8;
+//
+//		String dset = "n5 ngff dataset";
+//		// writes a c-order zarr array with shape [4,5,6] "ZYX"
+//		n5.createDataset(dset, new DatasetAttributes(dims, blkSize, type, compression));
+//
+//		final String uriC = containerUri.toString() + "?" + dset;
+//		final ImagePlus impC = N5Importer.open(uriC, false);
+//		assertEquals("nx C", 6, impC.getWidth());
+//		assertEquals("ny C", 5, impC.getHeight());
+//		assertEquals("nz C", 4, impC.getNChannels());
+//	}
 
 	@Test
 	public void testZarr3Transpose() {

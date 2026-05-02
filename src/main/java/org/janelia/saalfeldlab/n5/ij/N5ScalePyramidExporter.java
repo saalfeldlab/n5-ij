@@ -351,7 +351,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		metadataWriters.put(OmeNgffMetadata.class, new OmeNgffMetadataParser());
 		metadataWriters.put(N5SingleScaleMetadata.class, new N5SingleScaleMetadataParser());
 		metadataWriters.put(N5CosemMetadata.class, new N5CosemMetadataParser());
-//		metadataWriters.put(NgffSingleScaleAxesMetadata.class, new OmeNgffMetadataSingleScaleParser());
 		metadataWriters.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 
 		// default image plus metadata writers
@@ -1334,7 +1333,18 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		if (metadata != null) {
 
-			final N5MetadataWriter<?> writer = metadataWriters.get(metadata.getClass());
+			// NGFF scale levels do not have metadata
+			if( metadata instanceof NgffSingleScaleAxesMetadata )
+				return;
+
+			final N5MetadataWriter<?> writer;
+			if( isOmeZarr()) {
+				// will need editting if this class ever can write zarr2 data with F-order
+				writer = new OmeNgffMetadataParser(n5);
+			}
+			else {
+				writer = metadataWriters.get(metadata.getClass());
+			}
 
 			if (writer != null)
 				try {
@@ -1344,6 +1354,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				}
 		}
 	}
+	
 
 	protected N5SingleScaleMetadata buildN5VMetadata(
 			final String path,

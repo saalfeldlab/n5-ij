@@ -68,15 +68,12 @@ import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMultiScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5DefaultSingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
-import org.janelia.saalfeldlab.n5.universe.metadata.N5ViewerMultiscaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalDatasetMetadata;
@@ -84,8 +81,6 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataP
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadataParser;
-import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
-import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 
 import ij.IJ;
 import ij.ImageJ;
@@ -151,13 +146,6 @@ public class N5Importer implements PlugIn {
 			new N5SingleScaleMetadataParser(),
 			new CanonicalMetadataParser(),
 			new N5GenericSingleScaleMetadataParser()
-	};
-
-	public static final N5MetadataParser<?>[] GROUP_PARSERS = new N5MetadataParser[]{
-			new OmeNgffMetadataParser(),
-			new N5CosemMultiScaleMetadata.CosemMultiScaleParser(),
-			new N5ViewerMultiscaleMetadataParser(),
-			new CanonicalMetadataParser()
 	};
 
 	private static final Predicate<N5Metadata> ALL_PASS = x -> { return true; };
@@ -642,16 +630,6 @@ public class N5Importer implements PlugIn {
 		return imp;
 	}
 
-	private static boolean zarrFOrderAndEmptyMetadata(final N5Reader n5, N5Metadata meta) {
-
-		if (n5 instanceof ZarrKeyValueReader && meta instanceof N5DefaultSingleScaleMetadata) {
-			final ZarrDatasetAttributes zattrs = (ZarrDatasetAttributes) ((ZarrKeyValueReader)n5).getDatasetAttributes(meta.getPath());
-			return !zattrs.isRowMajor();
-		}
-
-		return false;
-	}
-
 	public static RandomAccessibleInterval<FloatType> convertDouble(
 			final RandomAccessibleInterval<DoubleType> img) {
 
@@ -995,10 +973,8 @@ public class N5Importer implements PlugIn {
 			if (cumulativeHistogram[i] <= percentile * total)
 				return i + 1;
 		}
-
 		return 0;
 	}
-
 
 	/*
 	 * Convenience method to process using the current state of this object. Can
@@ -1029,7 +1005,7 @@ public class N5Importer implements PlugIn {
 		try {
 			final N5DatasetDiscoverer discoverer = new N5DatasetDiscoverer(n5,
 					N5DatasetDiscoverer.fromParsers(PARSERS),
-					Collections.singletonList(new OmeNgffMetadataParser()));
+					Collections.singletonList(new OmeNgffMetadataParser(n5)));
 			if( parseAllMetadata )
 			{
 				root = discoverer.discoverAndParseRecursive("");
