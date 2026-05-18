@@ -122,7 +122,7 @@ public class CreateAxisPermutedTestData {
 			newTranslations[s] = permuteAndReverse(translationOrig, permutation);
 		}
 
-		final OmeNgffMetadata newMeta = OmeNgffMetadata.buildForWriting(nd, destinationDset, axesNew, scalePaths, newScales, newTranslations);
+		final OmeNgffMetadata newMeta = OmeNgffMetadata.buildForWriting(nd, destinationDset, "0.4", axesNew, scalePaths, newScales, newTranslations);
 		zarr.setAttribute(destinationDset, "multiscales", newMeta.multiscales);
 	}
 

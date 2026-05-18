@@ -557,10 +557,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		 */
 		boolean doGroupExistsWarning = true;
 		if( N5URI.normalizeGroupPath(dataset).isEmpty()) {
-			try {
-				final N5Reader n5Reader = new N5Factory()
-						.zarrDimensionSeparator("/")
-						.openReader(rootWithFormatPrefix);
+
+			try (final N5Reader n5Reader = new N5Factory().openReader(rootWithFormatPrefix)) {
+
 				doGroupExistsWarning = n5Reader.exists("");
 			} catch (final N5Exception e) {
 				// an exception may be thrown if the container does not exist
@@ -570,126 +569,130 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			}
 		}
 
-		final N5Writer n5 = new N5Factory()
-				.zarrDimensionSeparator("/")
+		try ( final N5Writer n5 = new N5Factory().options(c -> {
+					c.cacheAttributes(true);
+					c.zarr2(z2 -> z2.dimensionSeparator("/"));
+					c.zarr3(z3 -> z3.dimensionSeparator("/"));
+				})
 				.s3Configuration(builder -> {
 					// need credentials if writing to s3
 					builder.credentialsProvider(DefaultCredentialsProvider.create());
 				})
-				.openWriter(rootWithFormatPrefix);
-		final Compression compression = getCompression();
+				.openWriter(rootWithFormatPrefix)) {
 
-		metadataStyle = metadataStyleArg.equals(N5Importer.MetadataOmeZarrKey) && (n5 instanceof ZarrV3KeyValueWriter) ?
-				N5Importer.MetadataOmeZarrV05Key : metadataStyle;
+			final Compression compression = getCompression();
 
-		if( !promptOverwriteAndDelete(n5, dataset, doGroupExistsWarning))
-			return;
+			metadataStyle = metadataStyleArg.equals(N5Importer.MetadataOmeZarrKey) && (n5 instanceof ZarrV3KeyValueWriter) ?
+					N5Importer.MetadataOmeZarrV05Key : metadataStyle;
 
-		// get the image to save
-		final RandomAccessibleInterval<T> baseImg = getBaseImage();
+			if( !promptOverwriteAndDelete(n5, dataset, doGroupExistsWarning))
+				return;
 
-		M baseMetadata = setupMetadata();
-		M currentChannelMetadata = copyMetadata(baseMetadata);
-		M currentMetadata;
+			// get the image to save
+			final RandomAccessibleInterval<T> baseImg = getBaseImage();
 
-		// TODO should have better behavior for chunk size parsing when splitting channels this might be done
-		final int totalNumDims = baseImg.numDimensions();
-		baseResolution = new double[totalNumDims];
-		fillResolution(baseMetadata, baseResolution);
+			M baseMetadata = setupMetadata();
+			M currentChannelMetadata = copyMetadata(baseMetadata);
+			M currentMetadata;
 
-		// channel splitting may modify currentBlockSize, currentAbsoluteDownsampling, and channelMetadata
-		final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(currentChannelMetadata, baseImg);
-		for (int c = 0; c < channelImgs.size(); c++) {
+			// TODO should have better behavior for chunk size parsing when splitting channels this might be done
+			final int totalNumDims = baseImg.numDimensions();
+			baseResolution = new double[totalNumDims];
+			fillResolution(baseMetadata, baseResolution);
 
-			currentMetadata = copyMetadata((M)currentChannelMetadata);
-			final String channelDataset = getChannelDatasetName(c);
-			RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
+			// channel splitting may modify currentBlockSize, currentAbsoluteDownsampling, and channelMetadata
+			final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(currentChannelMetadata, baseImg);
+			for (int c = 0; c < channelImgs.size(); c++) {
 
-			final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
-			validateParameters(currentChannelImg.dimensionsAsLongArray(), baseResolution);
+				currentMetadata = copyMetadata((M)currentChannelMetadata);
+				final String channelDataset = getChannelDatasetName(c);
+				RandomAccessibleInterval<T> currentChannelImg = channelImgs.get(c);
 
-			final int nd = currentChannelImg.numDimensions();
+				final boolean computeScales = createPyramidIfPossible && metadataSupportsScales();
+				validateParameters(currentChannelImg.dimensionsAsLongArray(), baseResolution);
 
-			// every channel starts at the original scale level reset
-			// downsampling factors to 1
-			currentAbsoluteDownsampling = new long[nd];
-			Arrays.fill(currentAbsoluteDownsampling, 1);
+				final int nd = currentChannelImg.numDimensions();
 
-			currentResolution = new double[nd];
-			Arrays.fill(currentResolution, 1.0); // Initialize with default
-			System.arraycopy(baseResolution, 0, currentResolution, 0, nd);
+				// every channel starts at the original scale level reset
+				// downsampling factors to 1
+				currentAbsoluteDownsampling = new long[nd];
+				Arrays.fill(currentAbsoluteDownsampling, 1);
 
-			currentBlockSize = new int[nd];
-			if (baseShardSizes != null) {
-				currentShardSize = new int[nd];
-			}
+				currentResolution = new double[nd];
+				Arrays.fill(currentResolution, 1.0); // Initialize with default
+				System.arraycopy(baseResolution, 0, currentResolution, 0, nd);
 
-			final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset);
-			currentTranslation = new double[nd];
-
-			// write scale levels
-			final int numScales = computeScales ? baseBlockSizes.length : 1;
-			boolean anyScalesWritten = false;
-			for (int s = 0; s < numScales; s++) {
-
-				System.arraycopy(baseBlockSizes[s], 0, currentBlockSize, 0, nd);
+				currentBlockSize = new int[nd];
 				if (baseShardSizes != null) {
-					System.arraycopy(baseShardSizes[s], 0, currentShardSize, 0, nd);
+					currentShardSize = new int[nd];
 				}
 
-				final String dset = getScaleDatasetName(c, s);
-				// downsample when relevant
-				long[] relativeFactors = new long[nd];
-				Arrays.fill(relativeFactors, 1);
+				final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset);
+				currentTranslation = new double[nd];
 
-				if (s > 0) {
-					relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg, s, currentAbsoluteDownsampling);
+				// write scale levels
+				final int numScales = computeScales ? baseBlockSizes.length : 1;
+				boolean anyScalesWritten = false;
+				for (int s = 0; s < numScales; s++) {
 
-					// update absolute downsampling factors
-					for (int i = 0; i < nd; i++)
-						currentAbsoluteDownsampling[i] *= relativeFactors[i];
+					System.arraycopy(baseBlockSizes[s], 0, currentBlockSize, 0, nd);
+					if (baseShardSizes != null) {
+						System.arraycopy(baseShardSizes[s], 0, currentShardSize, 0, nd);
+					}
 
-					currentChannelImg = downsampleMethod((RandomAccessibleInterval<T>)getPreviousScaleImage(c, s), relativeFactors);
+					final String dset = getScaleDatasetName(c, s);
+					// downsample when relevant
+					long[] relativeFactors = new long[nd];
+					Arrays.fill(relativeFactors, 1);
 
-					// update resolution
-					Arrays.setAll(currentResolution, i -> {
-						return currentAbsoluteDownsampling[i] * baseResolution[i];
-					});
+					if (s > 0) {
+						relativeFactors = getRelativeDownsampleFactors(currentMetadata, currentChannelImg, s, currentAbsoluteDownsampling);
 
-					if (downsampleMethod.equals(DOWN_AVERAGE))
-						Arrays.setAll(currentTranslation, i -> {
-							if (currentAbsoluteDownsampling[i] > 1)
-								return baseResolution[i] * (0.5 * currentAbsoluteDownsampling[i] - 0.5);
-							else
-								return 0.0;
+						// update absolute downsampling factors
+						for (int i = 0; i < nd; i++)
+							currentAbsoluteDownsampling[i] *= relativeFactors[i];
+
+						currentChannelImg = downsampleMethod((RandomAccessibleInterval<T>)getPreviousScaleImage(c, s), relativeFactors);
+
+						// update resolution
+						Arrays.setAll(currentResolution, i -> {
+							return currentAbsoluteDownsampling[i] * baseResolution[i];
 						});
+
+						if (downsampleMethod.equals(DOWN_AVERAGE))
+							Arrays.setAll(currentTranslation, i -> {
+								if (currentAbsoluteDownsampling[i] > 1)
+									return baseResolution[i] * (0.5 * currentAbsoluteDownsampling[i] - 0.5);
+								else
+									return 0.0;
+							});
+					}
+
+					// update metadata to reflect this scale level, returns new metadata instance
+					currentMetadata = (M)metadataForThisScale(dset, currentMetadata, downsampleMethod,
+							baseResolution,
+							currentAbsoluteDownsampling,
+							currentResolution,
+							currentTranslation);
+
+					// write to the appropriate dataset
+					// if dataset exists and not overwritten, don't write metadata
+					if (!write(currentChannelImg, n5, dset, compression, currentMetadata))
+						continue;
+
+					storeScaleReference(c, s, currentChannelImg);
+					updateMultiscaleMetadata(multiscaleMetadata, currentMetadata);
+					anyScalesWritten = true;
 				}
 
-				// update metadata to reflect this scale level, returns new metadata instance
-				currentMetadata = (M)metadataForThisScale(dset, currentMetadata, downsampleMethod,
-						baseResolution,
-						currentAbsoluteDownsampling,
-						currentResolution,
-						currentTranslation);
-
-				// write to the appropriate dataset
-				// if dataset exists and not overwritten, don't write metadata
-				if (!write(currentChannelImg, n5, dset, compression, currentMetadata))
-					continue;
-
-				storeScaleReference(c, s, currentChannelImg);
-				updateMultiscaleMetadata(multiscaleMetadata, currentMetadata);
-				anyScalesWritten = true;
+				if (anyScalesWritten)
+					writeMetadata(
+							// this returns null when not multiscale
+							finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata),
+							n5,
+							channelDataset);
 			}
-
-			if (anyScalesWritten)
-				writeMetadata(
-						// this returns null when not multiscale
-						finalizeMultiscaleMetadata(channelDataset, multiscaleMetadata),
-						n5,
-						channelDataset);
 		}
-		n5.close();
 	}
 
 
