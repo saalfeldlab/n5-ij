@@ -820,6 +820,126 @@ public class N5Importer implements PlugIn {
 				false, show, null).get(0);
 	}
 
+	public static ImagePlus openVirtual(final String uri) {
+
+		return openVirtual(uri, true);
+	}
+
+	public static ImagePlus openVirtual(final String uri, final boolean show) {
+
+		try {
+			final N5URI n5uri = new N5URI(uri);
+			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
+			if (!grp.isEmpty()) {
+				return openVirtual(uri, grp, show);
+			}
+		} catch (final URISyntaxException e) {}
+
+		return openVirtual(uri, ALL_PASS);
+	}
+
+	public static ImagePlus openVirtual(final String uri, final String dataset) {
+
+		return openVirtual(uri, dataset, true);
+	}
+
+	public static ImagePlus openVirtual(final String uri, final String dataset, final boolean show) {
+
+		return openVirtual(uri,
+				x -> {
+					return norm(x.getPath()).equals(norm(dataset));
+				},
+				show);
+	}
+
+	public static ImagePlus openVirtual(final String uri, final Predicate<N5Metadata> filter ) {
+
+		return openVirtual(uri, filter, true);
+	}
+
+	public static ImagePlus openVirtual(final String uri, final Predicate<N5Metadata> filter, final boolean show) {
+
+		final N5Reader n5;
+		try {
+			n5 = new N5ViewerReaderFun().apply(uri);
+		} catch (final Exception e) {
+			e.printStackTrace();
+			return null;
+		}
+		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
+
+		final Predicate<N5Metadata> datasetFilter = x -> { return x instanceof N5DatasetMetadata; };
+		final Predicate<N5Metadata> totalFilter = filter == null || filter == ALL_PASS
+				? datasetFilter : datasetFilter.and(filter);
+
+		Stream<N5DatasetMetadata> metaStream = N5TreeNode.flattenN5Tree(node)
+			.filter( x -> totalFilter.test(x.getMetadata()) )
+				.map(x -> {
+					return (N5DatasetMetadata)x.getMetadata();
+				});
+
+		N5URI n5uri;
+		try {
+			n5uri = new N5URI(uri);
+			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
+			if (!grp.isEmpty()) {
+				metaStream = metaStream.filter(x -> N5URI.normalizeGroupPath(x.getPath()).equals(grp));
+			}
+		} catch (final URISyntaxException e) {}
+
+		final Optional<N5DatasetMetadata> meta = metaStream.findFirst();
+		if (meta.isPresent()) {
+			return openVirtual(n5, uri, meta.get(), show);
+		} else {
+			System.err.println("No arrays matching criteria found in container at: " + uri);
+			return null;
+		}
+	}
+
+	public static ImagePlus openVirtual(final N5Reader n5, final String dataset, final boolean show) {
+
+		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
+		final Optional<N5TreeNode> requestedNodeOpt = node.getDescendant(N5URI.normalizeGroupPath(dataset));
+		if (requestedNodeOpt.isPresent()) {
+
+			N5TreeNode requestedNode = requestedNodeOpt.get();
+			if( requestedNode.getMetadata() != null && requestedNode.getMetadata() instanceof N5DatasetMetadata) {
+
+				String uri;
+				try {
+					uri = N5URI.from(n5.getURI().toString(), dataset, null).toString();
+				} catch (URISyntaxException e) {
+					e.printStackTrace();
+					return null;
+				}
+				return open(n5, uri, (N5DatasetMetadata) requestedNode.getMetadata(), show);
+
+			} else {
+				System.err.println("Could not find metadata at: " + dataset);
+				return null;
+			}
+		} else {
+			System.err.println("Could not find dataset: " + dataset);
+			return null;
+		}
+	}
+
+	public static ImagePlus openVirtual(final N5Reader n5, final String uri, final N5DatasetMetadata metadata) {
+
+		return open(n5, uri, metadata, true);
+	}
+
+	public static ImagePlus openVirtual(final N5Reader n5, final String uri, final N5DatasetMetadata metadata, final boolean show) {
+
+		final ExecutorService exec = Executors.newFixedThreadPool(
+				Runtime.getRuntime().availableProcessors() / 2);
+
+		return N5Importer.process(n5, uri,
+				exec,
+				Collections.singletonList(metadata),
+				true, show, null).get(0);
+	}
+
 	private static String norm(final String groupPath) {
 
 		return groupPath.equals("/") ? groupPath : groupPath.replaceAll("^/", "");
