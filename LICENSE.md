@@ -1,6 +1,7 @@
-BSD 2-Clause License
+## BSD 2-Clause License
 
-Copyright (c) 2018--2021, Saalfeld Lab
+Copyright (c) 2017-2026, Saalfeld Lab
+
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
