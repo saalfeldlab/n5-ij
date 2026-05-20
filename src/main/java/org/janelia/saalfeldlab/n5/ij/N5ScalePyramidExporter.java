@@ -292,6 +292,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	// scale level
 	private double[] currentTranslation;
 
+	private boolean singletonZ;
+
 	private N5DatasetMetadata currentChannelMetadata;
 
 	private RandomAccessibleInterval<?> previousScaleImg;
@@ -1007,6 +1009,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 			// only downsample spatial dimensions
 			// avoid downsampling spatial dimensions if not doing so would make the next scale level more isotropic
+			// ignore the z dimension (always index 3 when relevant) resolution when it is a singleton
 			if (isSpatial(axes[i]) && downsamplingPreservesIsotropy(minSpatialRes, res[i]) && img.dimension(i) > 1)
 				factors[i] = 2;
 			else
@@ -1061,11 +1064,15 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return res;
 	}
 
-	protected static double minSpatialResolution(double[] resolution, Axis[] axes) {
+	protected double minSpatialResolution(double[] resolution, Axis[] axes) {
 
 		double min = Double.POSITIVE_INFINITY;
 		for (int i = 0; i < axes.length; i++) {
-			if(isSpatial(axes[i]) && resolution[i] < min)
+
+			// ignore z when it is a singleton
+			if (axes[i].getName().equals("z") && singletonZ)
+				continue;
+			else if (isSpatial(axes[i]) && resolution[i] < min)
 				min = resolution[i];
 		}
 		return min;
@@ -1081,6 +1088,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			// OME-Zarr 0.4 and 0.5 require that images be 5d ordered XYZCT
 			// with singleton dimensions if necessary
 			baseImg = N5IJUtils.toImgXYCZT(image); 	// XYCZT
+			singletonZ = baseImg.dimension(3) <= 1;
 			baseImg = Views.permute(baseImg, 2, 3); // XYZCT
 		}
 		else if (image.getType() == ImagePlus.COLOR_RGB)
