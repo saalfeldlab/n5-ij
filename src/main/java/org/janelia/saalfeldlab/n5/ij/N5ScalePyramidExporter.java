@@ -209,8 +209,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private String chunkSizeArg = "64";
 
 	@Parameter(
-			label = "Shard size",
-			description = "The size of shards as a multiple of chunks. Comma separated, for example: \"4,3,2\"\n " +
+			label = "Chunks per shard",
+			description = "The number of chunks per shard. Comma separated, for example: \"4,3,2\"\n " +
 					"Contains 24=4x3x2 chunks per shard. Shard size must be specified in the same order as chunks.\n" +
 					"Provided values must be integers greater than or equal to 1.\n" +
 					"You must skip any axis whose size is 1, e.g. a 2D time-series without channels\n" +
@@ -1558,7 +1558,6 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 						.build();
 
 			} else {
-
 				datasetAttributes = new DatasetAttributes(image.dimensionsAsLongArray(),
 						currentBlockSize,
 						N5Utils.dataType(image.getType()),
