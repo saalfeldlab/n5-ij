@@ -45,10 +45,13 @@ Save full images opened in Fiji as HDF5/N5/Zarr/OME-NGFF datasets with `File > S
 Parameters
 * `Root url` - the root location of the n5 (see also [Container types](#container-types))
 * `Dataset` - the name of the dataset.
-* `Format` - the storage format to use: one of `Auto`, `Zarr`, `N5`, or `HDF5`
+* `Format` - the storage format to use: one of `Auto`, `ZarrV3`, `ZarrV3`, `N5`, or `HDF5`
     * `Auto` : try to infer the storage format from the url (see below)
 * `Chunk size` - chunk/block size as comma-separated list.  Chunk sizes can be customized per pyramid level using a semicolon-separated list of comma-separated lists, see below.
   * ImageJ's axis order is X,Y,C,Z,T. The chunk size must be specified in this order. You must skip any axis whose size is `1`, e.g. a 2D time-series without channels may have a chunk size of `1024,1024,1` (X,Y,T).
+  * You may provide fewer values than the data dimension. In that case, the list will be expanded to necessary size with the last value, for example `64`, will expand to `64,64,64` for 3D data.
+* `Chunks per shard` - the number of chunks per shard. Providing a value for this option will created sharded datasets. This option is only applicable for Zarr v3.
+  * ImageJ's axis order is X,Y,C,Z,T. The chunks per shard must be specified in this order. You must skip any axis whose size is `1`, e.g. a 2D time-series without channels may have a chunk size of `1024,1024,1` (X,Y,T).
   * You may provide fewer values than the data dimension. In that case, the list will be expanded to necessary size with the last value, for example `64`, will expand to `64,64,64` for 3D data.
 * `Create Pyramid` - If checked, a multiscale pyramid will be created (if possible). See below for details.
 * `Downsampling method` - The downsampling method to be used if a multiscale pyramid can be created. See below for details.
@@ -57,40 +60,42 @@ Parameters
 * `Thread count` - number of threads used for parallel writing (see also [Cloud writing benchmarks](#cloud-writing-benchmarks))
 * `Overwrite` - If checked, existing data may be deleted and overwritten without warning.
 
-### Container types
+### Storage formats
 
 If the "Format" option is set to `Auto`, the export plugin infers the storage format from the given url given. First, it checks scheme
 of the URL, next it checks the directory or file extension. Note that URLs may have two schemes [(as in neuroglancer)](https://connectomics.readthedocs.io/en/latest/external/neuroglancer.html#basic-usage),
 for example: `zarr://s3://my-bucket/my-key`
 
-* Filesystem N5 
+* N5
     * Specify a URL starting with `n5:`
         * example `n5:/path/to/my/data.ext`
     * Specify a directory ending in `.n5` 
         * example `/path/to/my/data.n5`
-* Zarr
-    * Specify a URL starting with `zarr:`
-        * example `zarr:/Users/user/Documents/sample`
-    * Specify a directory ending in `.zarr` 
-        * example `/Users/user/Documents/sample.zarr`
 * HDF5
     * Specify a URL starting with `hdf5:`
         * example `hdf5:C:\user\docs\example.ims`
     * Specify a file ending in `.h5` ,`.hdf5`, or `.hdf`
         * example `C:\user\docs\example.h5`
+* Zarr v2
+    * Specify a URL starting with `zarr2:`
+        * example `zarr:/Users/user/Documents/sample`
+    * Specify a directory already containing Zarr v2 metadata (e.g. `.zgroup`)
+* Zarr v3
+    * Specify a URL starting with `zarr:` or `zarr3:`
+        * example `zarr:/Users/user/Documents/sample`
+    * Specify a directory already containing Zarr v3 metadata (e.g. `zarr.json`)
  
 ### Backend
 
-Specify the backend by protocol, "file:" or not protocol indicate the local file system:
-
+* Filesystem
+    * Specify "file:" or no protocol indicates the local file system will be used as the backend
+* HTTP (read only)
 * Amazon S3 
     * Specify one of two url styles:
     * `s3://bucket-name/path/to/root.n5`
     * `https://bucket-name.s3.amazonaws.com/path/to/root.n5`
 * Google cloud storage (one of two url styles)
-    * Specify one of two url styles:
-    * `gs://bucket-name/path/inside/bucket/root.n5`
-    * `https://bucket-name.s3.amazonaws.com/path/to/root.n5`
+    * example: `gs://bucket-name/path/inside/bucket/root.n5`
 
 ### Specifying Chunk / Shard sizes
 
@@ -226,11 +231,12 @@ removed before writing the new data to `/image/channel0`.
 
 ## Metadata 
 
-This plugin supports three types of image metadata:
-1) ImageJ-style metadata 
-2) [N5-viewer](https://github.com/saalfeldlab/n5-viewer) metadata
-3) [COSEM](https://github.com/janelia-cosem/schemas/blob/master/multiscale.md) metadata
-4) [OME-NGFF v0.4](https://ngff.openmicroscopy.org/0.4/) metadata
+This plugin supports several types of image metadata:
+1) [OME-NGFF v0.4](https://ngff.openmicroscopy.org/0.4/) metadata
+1) [OME-NGFF v0.5](https://ngff.openmicroscopy.org/0.5/) metadata
+2) ImageJ-style metadata 
+3) [N5-viewer](https://github.com/saalfeldlab/n5-viewer) metadata
+4) [COSEM](https://github.com/janelia-cosem/schemas/blob/master/multiscale.md) metadata
 5) Custom metadata. [Read details here](CustomMetadata.md)
 
 The metadata style for exported HDF5/N5/Zarr/OME-NGFF datasets is customizable, more detail coming soon.
