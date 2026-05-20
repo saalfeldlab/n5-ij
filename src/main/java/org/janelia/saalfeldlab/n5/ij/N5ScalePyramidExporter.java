@@ -1568,18 +1568,18 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			N5Utils.saveBlock(image, n5, dataset, attrs);
 		}
 		else {
-	
+
 			final String[] dimensionNames = Arrays.stream(getAxes(metadata, image.numDimensions()))
 					.map(ax -> ax.getName())
 					.toArray(n -> new String[n]);
 
-			final ZarrV3DatasetAttributes datasetAttributes = new ZarrV3DatasetAttributes(
-					image.dimensionsAsLongArray(),
-					currentShardSize,
-					currentBlockSize,
-					N5Utils.dataType(image.getType()),
-					dimensionNames,
-					compression);
+			final ZarrV3DatasetAttributes datasetAttributes = ZarrV3DatasetAttributes
+					.builder( image.dimensionsAsLongArray(), N5Utils.dataType(image.getType()))
+					.blockSize(currentShardSize)
+					.chunkSize(currentBlockSize)
+					.dimensionNames(dimensionNames)
+					.compression(compression)
+					.build();
 
 			final int nd = image.numDimensions();
 			final DatasetAttributes attributes = n5.createDataset(dataset, datasetAttributes);
