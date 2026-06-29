@@ -88,6 +88,15 @@ public class NgffTests {
 		}
 	}
 
+	/**
+	 * Tests that {@link N5ScalePyramidExporter} writes OME-Zarr datasets with
+	 * correct dimensions and axis metadata when {@code force5d} is enabled.
+	 * <p>
+	 * With {@code force5d=true}, singleton C/Z/T dimensions are always written
+	 * as size-1 array axes so the output is consistently 5D (XYZCT). Covers all
+	 * combinations of present and absent C, Z, and T axes, for both OME-NGFF
+	 * v0.4 and v0.5 metadata styles.
+	 */
 	@Test
 	public void testNgffExportAxisOrder() {
 
@@ -123,6 +132,7 @@ public class NgffTests {
 		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
 		writer.setOptions(imp, baseDir.getAbsolutePath(), dataset, N5ScalePyramidExporter.ZARR2_FORMAT, "64", false,
 				N5ScalePyramidExporter.DOWN_SAMPLE, metadataType, compressionType);
+		writer.setForce5d(true);
 		writer.setOverwrite(true);
 		writer.run();
 
@@ -149,6 +159,75 @@ public class NgffTests {
 			assertEquals("x", axes[4].getName());
 		}
 
+	}
+
+	/**
+	 * Tests that {@link N5ScalePyramidExporter} writes OME-Zarr datasets with
+	 * correct dimensions and axis metadata when {@code force5d} is disabled.
+	 * <p>
+	 * With {@code force5d=false}, singleton C/Z/T dimensions are omitted from
+	 * the output: the array shape and the axes list in the metadata contain only
+	 * the axes whose size is greater than one (plus the always-present X and Y).
+	 * Covers all combinations of present and absent C, Z, and T axes, for both
+	 * OME-NGFF v0.4 and v0.5 metadata styles.
+	 */
+	@Test
+	public void testNgffExportAxisOrderReducedDims() {
+
+		for (String metadataType : new String[]{
+				N5Importer.MetadataOmeZarrV04Key,
+				N5Importer.MetadataOmeZarrV05Key
+		}) {
+			testNgfffAxisOrderReducedDims("xyczt_rd", metadataType, new int[]{10, 8, 6, 4, 2},
+					new long[]{10, 8, 4, 6, 2}, new String[]{"t","c","z","y","x"});
+
+			testNgfffAxisOrderReducedDims("xyzt_rd",  metadataType, new int[]{10, 8, 1, 4, 2},
+					new long[]{10, 8, 4, 2},    new String[]{"t","z","y","x"});
+			testNgfffAxisOrderReducedDims("xyct_rd",  metadataType, new int[]{10, 8, 6, 1, 2},
+					new long[]{10, 8, 6, 2},    new String[]{"t","c","y","x"});
+			testNgfffAxisOrderReducedDims("xycz_rd",  metadataType, new int[]{10, 8, 6, 4, 1},
+					new long[]{10, 8, 4, 6},    new String[]{"c","z","y","x"});
+
+			testNgfffAxisOrderReducedDims("xyc_rd",   metadataType, new int[]{10, 8, 6, 1, 1},
+					new long[]{10, 8, 6},       new String[]{"c","y","x"});
+			testNgfffAxisOrderReducedDims("xyz_rd",   metadataType, new int[]{10, 8, 1, 4, 1},
+					new long[]{10, 8, 4},       new String[]{"z","y","x"});
+			testNgfffAxisOrderReducedDims("xyt_rd",   metadataType, new int[]{10, 8, 1, 1, 2},
+					new long[]{10, 8, 2},       new String[]{"t","y","x"});
+		}
+	}
+
+	public void testNgfffAxisOrderReducedDims(final String dataset, String metadataType,
+			int[] size, long[] expectedDims, String[] expectedAxesNames) {
+
+		final int nx = size[0], ny = size[1], nc = size[2], nz = size[3], nt = size[4];
+
+		final ImagePlus imp = NewImage.createImage("test", nx, ny, nz * nc * nt, 8, NewImage.FILL_BLACK);
+		imp.setDimensions(nc, nz, nt);
+
+		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+		writer.setOptions(imp, baseDir.getAbsolutePath(), dataset, N5ScalePyramidExporter.ZARR2_FORMAT,
+				"64", false, N5ScalePyramidExporter.DOWN_SAMPLE, metadataType,
+				N5ScalePyramidExporter.RAW_COMPRESSION);
+		writer.setForce5d(false);
+		writer.setOverwrite(true);
+		writer.run();
+
+		final String axesKey = versionToAxesKey.get(metadataType);
+
+		try (final N5Reader n5 = new N5Factory().openReader(baseDir.getAbsolutePath())) {
+
+			assertTrue(n5.exists(dataset));
+			assertTrue(n5.datasetExists(dataset + "/s0"));
+
+			final DatasetAttributes dsetAttrs = n5.getDatasetAttributes(dataset + "/s0");
+			assertArrayEquals("dimensions", expectedDims, dsetAttrs.getDimensions());
+
+			final Axis[] axes = n5.getAttribute(dataset, axesKey, Axis[].class);
+			assertEquals("num axes", expectedAxesNames.length, axes.length);
+			for (int i = 0; i < expectedAxesNames.length; i++)
+				assertEquals("axes[" + i + "]", expectedAxesNames[i], axes[i].getName());
+		}
 	}
 
 	@Test
