@@ -227,6 +227,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			description = "Writes multiple resolutions if allowed by the choice of metadata (ImageJ and None do not).")
 	private boolean createPyramidIfPossible = true;
 
+	@Parameter(label = "Force 5D OME-Zarr",
+			description = "Always writes 5D arrays, adding singleton dimensions if needed. Used only for OME-Zarr metadata, ignored otherwise.")
+	private boolean force5d = false;
+
 	@Parameter(label = "Downsampling method", style = "listBox", choices = {DOWN_SAMPLE, DOWN_AVERAGE})
 	private String downsampleMethod = DOWN_SAMPLE;
 
@@ -430,6 +434,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		this.downsampleMethod = downsampleMethod;
 		this.metadataStyleArg = metadataStyle;
 		this.compressionArg = compression;
+	}
+
+	public void setForce5d(boolean force5d) {
+
+		this.force5d = force5d;
 	}
 
 	private static StorageFormat formatToEnum( String format ) {
@@ -801,8 +810,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		if (impMeta != null)
 			try {
+				if (impMeta instanceof Ngff5dToImagePlus)
+					((Ngff5dToImagePlus)impMeta).setForce5d(force5d);
 				return (M)impMeta.readMetadata(image);
-			} catch (IOException e) { }
+			} catch (IOException e) {}
 
 		return null;
 	}
@@ -1084,14 +1095,20 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		// get the image
 		RandomAccessibleInterval<T> baseImg;
-		if( isOmeZarr()) {
-			// OME-Zarr 0.4 and 0.5 require that images be 5d ordered XYZCT
-			// with singleton dimensions if necessary
-			baseImg = N5IJUtils.toImgXYCZT(image); 	// XYCZT
-			singletonZ = baseImg.dimension(3) <= 1;
-			baseImg = Views.permute(baseImg, 2, 3); // XYZCT
-		}
-		else if (image.getType() == ImagePlus.COLOR_RGB)
+		if (isOmeZarr()) {
+			singletonZ = image.getNSlices() <= 1;
+			if (force5d) {
+				// OME-Zarr requires 5D XYZCT with singleton dims padded in
+				baseImg = N5IJUtils.toImgXYCZT(image); // XYCZT
+				baseImg = Views.permute(baseImg, 2, 3); // XYZCT
+			} else {
+				// Reduced-dim path: VirtualStackAdapter gives XYCZ when both c and z are present;
+				// permute dims 2 and 3 to get XYZC so axis order matches the metadata.
+				baseImg = (RandomAccessibleInterval<T>)VirtualStackAdapter.wrap(image);
+				if (image.getNChannels() > 1 && image.getNSlices() > 1)
+					baseImg = Views.permute(baseImg, 2, 3); // XYCZ → XYZC
+			}
+		} else if (image.getType() == ImagePlus.COLOR_RGB)
 			baseImg = (RandomAccessibleInterval<T>)(N5IJUtils.wrapRgbAsInt(image));
 		else
 			baseImg = (RandomAccessibleInterval<T>)VirtualStackAdapter.wrap(image);
@@ -1605,7 +1622,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		finalizeScaleImage(final RandomAccessibleInterval<T> image ) {
 		
 		RandomAccessibleInterval<T> out = image;
-		if (is5dMetadata()) {
+		if (force5d && is5dMetadata()) {
 			while (out.numDimensions() < 5)
 				out = Views.addDimension(out, 0, 0);
 		}
