@@ -1,6 +1,6 @@
 package org.janelia.saalfeldlab.n5.testdata;
+
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.ArrayUtils;
@@ -23,8 +23,8 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMultiScaleMe
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMultiScaleMetadata.OmeNgffDataset;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.coordinateTransformations.ScaleCoordinateTransformation;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.coordinateTransformations.TranslationCoordinateTransformation;
-import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueWriter;
+import org.janelia.saalfeldlab.n5.zarr.v3.ZarrV3KeyValueWriter;
 
 import com.google.gson.JsonElement;
 
@@ -70,7 +70,7 @@ public class CreateAxisPermutedTestData {
 
 		final N5ScalePyramidExporter exporter = new N5ScalePyramidExporter(imp, root, dset,
 				N5ScalePyramidExporter.ZARR2_FORMAT, "128", true,
-				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrKey,
+				N5ScalePyramidExporter.DOWN_SAMPLE, N5Importer.MetadataOmeZarrV04Key,
 				N5ScalePyramidExporter.GZIP_COMPRESSION);
 		exporter.run();
 	}
@@ -144,7 +144,7 @@ public class CreateAxisPermutedTestData {
 	public static <T extends NumericType<T> & NativeType<T>> void permute(final String root, final String sourceDset, final String destinationDset,
 			final int[] permutation) {
 
-		final ZarrKeyValueWriter zarr = (ZarrKeyValueWriter)new N5Factory().openWriter(StorageFormat.ZARR, root);
+		final ZarrKeyValueWriter zarr = (ZarrKeyValueWriter)new N5Factory().openWriter(StorageFormat.ZARR2, root);
 
 		final String sourceScale = sourceDset + "/s0";
 		final String destinationScale = destinationDset + "/s0";
@@ -170,7 +170,7 @@ public class CreateAxisPermutedTestData {
 		final String sourceScale = sourceDset + "/s0";
 		final String destinationScale = destinationDset + "/s0";
 
-		final ZarrKeyValueWriter zarr = (ZarrKeyValueWriter)new N5Factory().openWriter(StorageFormat.ZARR, root);
+		final ZarrKeyValueWriter zarr = (ZarrKeyValueWriter)new N5Factory().openWriter(StorageFormat.ZARR2, root);
 		createDataset(zarr, false, destinationScale, zarr.getDatasetAttributes(sourceScale));
 
 		final CachedCellImg<T, ?> img = N5Utils.open(zarr, sourceScale);
@@ -200,8 +200,6 @@ public class CreateAxisPermutedTestData {
 			final int[] blockSize,
 			final DataType dataType,
 			final Compression compression) throws N5Exception {
-
-		assert zarr instanceof ZarrKeyValueWriter;
 
 		if (cOrder) {
 			zarr.createDataset(datasetPath, dimensions, blockSize, dataType, compression);
