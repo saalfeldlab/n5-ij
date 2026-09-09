@@ -292,6 +292,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	private double[] currentResolution;
 
+	private double[] baseTranslation;
+
 	// the translation introduced by the downsampling method at the current
 	// scale level
 	private double[] currentTranslation;
@@ -586,6 +588,9 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			baseResolution = new double[totalNumDims];
 			fillResolution(baseMetadata, baseResolution);
 
+			baseTranslation = new double[totalNumDims];
+			fillTranslation(baseMetadata, baseTranslation);
+
 			// channel splitting may modify currentBlockSize, currentAbsoluteDownsampling, and channelMetadata
 			final List<RandomAccessibleInterval<T>> channelImgs = splitChannels(currentChannelMetadata, baseImg);
 			for (int c = 0; c < channelImgs.size(); c++) {
@@ -608,13 +613,15 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				Arrays.fill(currentResolution, 1.0); // Initialize with default
 				System.arraycopy(baseResolution, 0, currentResolution, 0, nd);
 
+				currentTranslation = new double[nd];
+				System.arraycopy(baseTranslation, 0, currentTranslation, 0, nd);
+
 				currentBlockSize = new int[nd];
 				if (baseShardSizes != null) {
 					currentShardSize = new int[nd];
 				}
 
 				final N multiscaleMetadata = initializeMultiscaleMetadata((M)currentMetadata, channelDataset);
-				currentTranslation = new double[nd];
 
 				// write scale levels
 				final int numScales = computeScales ? baseBlockSizes.length : 1;
@@ -891,24 +898,50 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		}
 
 		if (baseMetadata.getClass().equals(N5SingleScaleMetadata.class)) {
-			final double[] res = ((N5SingleScaleMetadata)baseMetadata).getPixelResolution();
-			final int nd = res.length < resolution.length ? res.length : resolution.length;
-			System.arraycopy(res, 0, resolution, 0, nd);
+			safeCopy(((N5SingleScaleMetadata)baseMetadata).getPixelResolution(), resolution);
 		} else if (baseMetadata instanceof N5CosemMetadata) {
-			final double[] res = ((N5CosemMetadata)baseMetadata).getCosemTransform().scale;
-			final int nd = res.length < resolution.length ? res.length : resolution.length;
-			System.arraycopy(res, 0, resolution, 0, nd);
+			safeCopy(((N5CosemMetadata)baseMetadata).getCosemTransform().scale, resolution);
 		} else if (baseMetadata instanceof NgffSingleScaleAxesMetadata) {
-			final double[] res = ((NgffSingleScaleAxesMetadata)baseMetadata).getScale();
-			final int nd = res.length < resolution.length ? res.length : resolution.length;
-			System.arraycopy(res, 0, resolution, 0, nd);
+			safeCopy(((NgffSingleScaleAxesMetadata)baseMetadata).getScale(), resolution);
 		} else if (baseMetadata instanceof SpatialMetadata) {
 			final AffineGet affine = ((SpatialMetadata)baseMetadata).spatialTransform();
 			final int nd = affine.numTargetDimensions();
 			for (int i = 0; i < nd; i++)
 				resolution[i] = affine.get(i, i);
-		} else
-			Arrays.fill(resolution, 1);
+		}
+	}
+
+	protected <M extends N5DatasetMetadata> void fillTranslation(final M baseMetadata, final double[] translation) {
+
+		Arrays.fill(translation, 0);
+		if (baseMetadata == null) {
+			return;
+		}
+
+		if (baseMetadata.getClass().equals(N5SingleScaleMetadata.class)) {
+			safeCopy(((N5SingleScaleMetadata)baseMetadata).getOffset(), translation);
+		} else if (baseMetadata instanceof N5CosemMetadata) {
+			safeCopy(((N5CosemMetadata)baseMetadata).getCosemTransform().translate, translation);
+		} else if (baseMetadata instanceof NgffSingleScaleAxesMetadata) {
+			safeCopy(((NgffSingleScaleAxesMetadata)baseMetadata).getTranslation(), translation);
+		} else if (baseMetadata instanceof SpatialMetadata) {
+			final AffineGet affine = ((SpatialMetadata)baseMetadata).spatialTransform();
+			final int nd = affine.numTargetDimensions();
+			for (int i = 0; i < nd; i++)
+				translation[i] = affine.get(i, i+1);
+		}
+	}
+
+	/**
+	 * Copies src to dest, taking a number of elements equal to the smaller of the
+	 * two arrays.
+	 *
+	 * @param src  source array
+	 * @param dest destination array
+	 */
+	protected void safeCopy(double[] src, double[] dest) {
+		final int nd = src.length < dest.length ? src.length : dest.length;
+		System.arraycopy(src, 0, dest, 0, nd);
 	}
 
 	protected <M extends N5DatasetMetadata> M metadataForThisScale(final String newPath,
@@ -1184,12 +1217,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// make a 4d image in order XYZT
 				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
-				
-				// also need to update baseResoltuion
-				double[] resolutionWithT = new double[baseResolution.length + 1];
-				System.arraycopy(baseResolution, 0, resolutionWithT, 0, baseResolution.length);
-				resolutionWithT[baseResolution.length] = 1.0;
-				baseResolution = resolutionWithT;
+
+				// also need to update baseResolution and baseTranslation
+				baseResolution = addDimension( baseResolution, 1.0 );
+				baseTranslation = addDimension( baseTranslation, 0.0 );
 			}
 
 			channels.add(channelImg);
@@ -1202,7 +1233,21 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		return channels;
 	}
-	
+
+	/**
+	 * Returns a new array containing the values in params
+	 *
+	 * @param params original array
+	 * @param value  to be appended
+	 * @return new array
+	 */
+	private static double[] addDimension( double[] params, double value ) {
+		double[] paramsNewDim = new double[params.length + 1];
+		System.arraycopy(params, 0, paramsNewDim, 0, params.length);
+		paramsNewDim[params.length] = value;
+		return paramsNewDim;
+	}
+
 	protected <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> Pair<RandomAccessibleInterval<T>,M> padTo5d(
 			RandomAccessibleInterval<T> img, M metadata) {
 

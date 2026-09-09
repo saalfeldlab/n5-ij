@@ -37,6 +37,7 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 		final Axis[] axes = t.getAxes();
 		final double[] scale = t.getScale();
 		final double[] translation = t.getTranslation();
+		final double[] origin = NgffToImagePlus.originFromTranslation(translation, scale);
 
 		for (int i = 0; i < axes.length; i++) {
 			switch (axes[i].getName()) {
@@ -45,15 +46,15 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 				if (spaceUnit != null && !spaceUnit.isEmpty())
 					ip.getCalibration().setUnit(spaceUnit);
 				ip.getCalibration().pixelWidth = scale[i];
-				ip.getCalibration().xOrigin = translation[i];
+				ip.getCalibration().xOrigin = origin[i];
 				break;
 			case "y":
 				ip.getCalibration().pixelHeight = scale[i];
-				ip.getCalibration().yOrigin = translation[i];
+				ip.getCalibration().yOrigin = origin[i];
 				break;
 			case "z":
 				ip.getCalibration().pixelDepth = scale[i];
-				ip.getCalibration().zOrigin = translation[i];
+				ip.getCalibration().zOrigin = origin[i];
 				break;
 			case "t":
 				ip.getCalibration().frameInterval = scale[i];
@@ -77,37 +78,40 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 		final int N = 5;
 		final Axis[] axes = new Axis[N];
 		final double[] scale = new double[N];
-		final double[] offset = new double[N];
+		final double[] origin = new double[N];
 
 		final String spaceUnit = parseUnitWithWarning(ip.getCalibration().getUnit());
 		axes[X] = new Axis(Axis.SPACE, "x", spaceUnit);
 		scale[X] = ip.getCalibration().pixelWidth;
-		offset[X] = ip.getCalibration().xOrigin;
+		origin[X] = ip.getCalibration().xOrigin;
 
 		axes[Y] = new Axis(Axis.SPACE, "y", spaceUnit);
 		scale[Y] = ip.getCalibration().pixelHeight;
-		offset[Y] = ip.getCalibration().yOrigin;
+		origin[Y] = ip.getCalibration().yOrigin;
 
 		axes[Z] = new Axis(Axis.SPACE, "z", spaceUnit);
 		scale[Z] = ip.getCalibration().pixelDepth;
-		offset[Z] = ip.getCalibration().zOrigin;
+		origin[Z] = ip.getCalibration().zOrigin;
 
 		axes[C] = new Axis(Axis.CHANNEL, "c", null);
 		scale[C] = 1;
-		offset[C] = 0;
+		origin[C] = 0;
 
 		final String timeUnit = parseUnitWithWarning(ip.getCalibration().getTimeUnit());
 		axes[T] = new Axis(Axis.TIME, "t", timeUnit);
 		scale[T] = ip.getCalibration().frameInterval;
 		if (scale[T] == 0.0)
 			scale[T] = 1.0;
-		offset[T] = 0;
+		origin[T] = 0;
 
-		final boolean noOffset = Arrays.stream(offset).allMatch(x -> x == 0.0);
+		final boolean noOffset = Arrays.stream(origin).allMatch(x -> x == 0.0);
+
 		if (noOffset)
 			return new NgffSingleScaleAxesMetadata("", scale, null, axes, ImageplusMetadata.datasetAttributes(ip));
-		else
-			return new NgffSingleScaleAxesMetadata("", scale, offset, axes, ImageplusMetadata.datasetAttributes(ip));
+		else {
+			final double[] translation = NgffToImagePlus.translationFromOrigin(origin, scale);
+			return new NgffSingleScaleAxesMetadata("", scale, translation, axes, ImageplusMetadata.datasetAttributes(ip));
+		}
 	}
 
 	// Produces metadata whose axes and scale only include non-singleton C/Z/T dims.
@@ -122,29 +126,29 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 		final int N = 2 + (hasC ? 1 : 0) + (hasZ ? 1 : 0) + (hasT ? 1 : 0);
 		final Axis[] axes = new Axis[N];
 		final double[] scale = new double[N];
-		final double[] offset = new double[N];
+		final double[] origin = new double[N];
 
 		// We write OME-Zarr metadata in XYZCT order
 		// as recommended by the specification (v0.4 and v0.5)
 		axes[0] = new Axis(Axis.SPACE, "x", spaceUnit);
 		scale[0] = ip.getCalibration().pixelWidth;
-		offset[0] = ip.getCalibration().xOrigin;
+		origin[0] = ip.getCalibration().xOrigin;
 
 		axes[1] = new Axis(Axis.SPACE, "y", spaceUnit);
 		scale[1] = ip.getCalibration().pixelHeight;
-		offset[1] = ip.getCalibration().yOrigin;
+		origin[1] = ip.getCalibration().yOrigin;
 
 		int d = 2;
 		if (hasZ) {
 			axes[d] = new Axis(Axis.SPACE, "z", spaceUnit);
 			scale[d] = ip.getCalibration().pixelDepth;
-			offset[d] = ip.getCalibration().zOrigin;
+			origin[d] = ip.getCalibration().zOrigin;
 			d++;
 		}
 		if (hasC) {
 			axes[d] = new Axis(Axis.CHANNEL, "c", null);
 			scale[d] = 1;
-			offset[d] = 0;
+			origin[d] = 0;
 			d++;
 		}
 		if (hasT) {
@@ -152,14 +156,16 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 			scale[d] = ip.getCalibration().frameInterval;
 			if (scale[d] == 0.0)
 				scale[d] = 1.0;
-			offset[d] = 0;
+			origin[d] = 0;
 		}
 
-		final boolean noOffset = Arrays.stream(offset).allMatch(x -> x == 0.0);
+		final boolean noOffset = Arrays.stream(origin).allMatch(x -> x == 0.0);
 		if (noOffset)
 			return new NgffSingleScaleAxesMetadata("", scale, null, axes, ImageplusMetadata.datasetAttributes(ip));
-		else
-			return new NgffSingleScaleAxesMetadata("", scale, offset, axes, ImageplusMetadata.datasetAttributes(ip));
+		else {
+			final double[] translation = NgffToImagePlus.translationFromOrigin(origin, scale);
+			return new NgffSingleScaleAxesMetadata("", scale, translation, axes, ImageplusMetadata.datasetAttributes(ip));
+		}
 	}
 	
 	private String parseUnitWithWarning(final String unitString) {
@@ -178,7 +184,7 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 
 	public static OmeNgffMultiScaleMetadata buildMetadata(final ImagePlus image, final String path, final DatasetAttributes[] dsetAttrs,
 			final OmeNgffDataset[] datasets) {
-
+		
 		final int nc = image.getNChannels();
 		final int nz = image.getNSlices();
 		final int nt = image.getNFrames();

@@ -12,6 +12,24 @@ import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMultiScaleMe
 
 import ij.ImagePlus;
 
+/**
+ * The implementation of {@link ImageplusMetadata} for Ngff (i.e. OME-Zarr).
+ * <p>
+ * An important implementation detail is that this class converts between the
+ * "pixel origin" and the "physical translation" representations used by ImageJ
+ * and OME-Zarr respectively.
+ * <p>
+ * The origin reported by ImageJ should be interpreted as "which pixel maps to
+ * the origin", or the pixel coordinate that corresponds to origin of the
+ * physical coordinate system. Given pixel width/height/depth in s, and the
+ * origin as o, physical = s * (pixel - o) where physical and pixel are
+ * coordinates in their respective coordinate systems.
+ * <p>
+ * OME-Zarr reports a translation, which should be interpreted as the
+ * translation in physical units of the origin pixel. Or equivalently, the
+ * position in physical units of the origin pixel. Given pixel
+ * width/height/depth in s, and the translation as t, physical = s * pixel + t
+ */
 public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleAxesMetadata> {
 
 	@Override
@@ -64,24 +82,28 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 
 		// permuting data if axes are in non-standard order
 		// must happen before calling this method
-
+		
+		double[] scale = t.getScale();
+		double[] translation = t.getTranslation();
+		double[] origin = originFromTranslation(translation, scale);
+		System.out.println(Arrays.toString(origin));
 		// setDimensions can't handle zeros, so set these to one if they're zero
 		numChannels = numChannels == 0 ? 1 : numChannels;
 		numZ = numZ == 0 ? 1 : numZ;
 		numTimes = numTimes == 0 ? 1 : numTimes;
 		if( xIdx >= 0 ) {
 			ip.getCalibration().pixelWidth = t.getScale()[xIdx];
-			ip.getCalibration().xOrigin = t.getTranslation()[xIdx];
+			ip.getCalibration().xOrigin = origin[xIdx];
 		}
 
 		if( yIdx >= 0 ) {
 			ip.getCalibration().pixelHeight = t.getScale()[yIdx];
-			ip.getCalibration().yOrigin = t.getTranslation()[yIdx];
+			ip.getCalibration().yOrigin = origin[yIdx];
 		}
 
 		if( zIdx >= 0 ) {
 			ip.getCalibration().pixelDepth = t.getScale()[zIdx];
-			ip.getCalibration().zOrigin = t.getTranslation()[zIdx];
+			ip.getCalibration().zOrigin = origin[zIdx];
 		}
 
 		if( tIdx > 0 )
@@ -108,23 +130,23 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 
 		final Axis[] axes = new Axis[N];
 		final double[] scale = new double[N];
-		final double[] offset = new double[N];
+		final double[] origin = new double[N];
 
 		final String spaceUnit = parseUnitWithWarning(ip.getCalibration().getUnit());
 		axes[0] = new Axis(Axis.SPACE, "x", spaceUnit);
 		scale[0] = ip.getCalibration().pixelWidth;
-		offset[0] = ip.getCalibration().xOrigin;
+		origin[0] = ip.getCalibration().xOrigin;
 
 		axes[1] = new Axis(Axis.SPACE, "y", spaceUnit);
 		scale[1] = ip.getCalibration().pixelHeight;
-		offset[1] = ip.getCalibration().yOrigin;
+		origin[1] = ip.getCalibration().yOrigin;
 
 		int k = 2;
 		// channels
 		if (nc > 1) {
 			axes[k] = new Axis(Axis.CHANNEL, "c", null);
 			scale[k] = 1;
-			offset[k] = 0;
+			origin[k] = 0;
 			k++;
 		}
 
@@ -132,7 +154,7 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		if (nz > 1) {
 			axes[k] = new Axis(Axis.SPACE, "z", spaceUnit);
 			scale[k] = ip.getCalibration().pixelDepth;
-			offset[k] = ip.getCalibration().zOrigin;
+			origin[k] = ip.getCalibration().zOrigin;
 			k++;
 		}
 
@@ -144,15 +166,17 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 			if( scale[k] == 0.0 )
 				scale[k] = 1.0;
 
-			offset[k] = 0;
+			origin[k] = 0;
 			k++;
 		}
 
-		final boolean noOffset = Arrays.stream(offset).allMatch( x -> x == 0.0 );
+		final double[] translation =  translationFromOrigin(origin, scale);
+		System.out.println(Arrays.toString(translation));
+		final boolean noOffset = Arrays.stream(origin).allMatch( x -> x == 0.0 );
 		if( noOffset )
 			return new NgffSingleScaleAxesMetadata("", scale, null, axes, ImageplusMetadata.datasetAttributes(ip));
 		else
-			return new NgffSingleScaleAxesMetadata("", scale, offset, axes, ImageplusMetadata.datasetAttributes(ip));
+			return new NgffSingleScaleAxesMetadata("", scale, translation, axes, ImageplusMetadata.datasetAttributes(ip));
 	}
 	
 	private String parseUnitWithWarning(final String unitString) {
@@ -238,6 +262,42 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 			N, path, name, type, version, meta.getAxes(),
 			datasets, null,  dsetAttrs,
 			null); // no global coordinate transforms of downsampling metadata
+	}
+
+	/**
+	 * Returns a pixel origin from a physical translation.
+	 * <p>
+	 * See class level javadoc for details.
+	 * 
+	 * @param translation the physical translation (NGFF)
+	 * @param scale       the pixel scale
+	 * @return the pixel origin (ImageJ)
+	 */
+	public static double[] originFromTranslation(double[] translation, double[] scale) {
+
+		final double[] origin = new double[translation.length];
+		for (int i = 0; i < translation.length; i++) {
+			origin[i] = -translation[i] / scale[i];
+		}
+		return origin;
+	}
+
+	/**
+	 * Returns a physical translation from a pixel origin.
+	 * <p>
+	 * See class level javadoc for details.
+	 * 
+	 * @param origin the pixel origin (ImageJ)
+	 * @param scale  the pixel scale
+	 * @return the physical translation (NGFF)
+	 */
+	public static double[] translationFromOrigin(double[] origin, double[] scale) {
+		
+		final double[] translation = new double[origin.length];
+		for (int i = 0; i < origin.length; i++) {
+			translation[i] = -(scale[i] * origin[i]);
+		}
+		return translation;
 	}
 
 }
