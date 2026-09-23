@@ -114,6 +114,7 @@ public class N5Importer implements PlugIn {
 
 	public static final String MetadataOmeZarrV04Key = "OME-Zarr_V0.4";
 	public static final String MetadataOmeZarrV05Key = "OME-Zarr_V0.5";
+	public static final String MetadataOmeZarrV06Key = "OME-Zarr_V0.6";
 
 	public static final N5MetadataParser<?>[] PARSERS = new N5MetadataParser[]{
 			new ImagePlusLegacyMetadataParser(),

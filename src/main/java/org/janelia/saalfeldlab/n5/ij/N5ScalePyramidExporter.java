@@ -86,6 +86,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.SpatialMetadataGroup;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.Axis;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.axes.AxisUtils;
+import org.janelia.saalfeldlab.n5.universe.metadata.axes.CoordinateSystem;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.NgffSingleScaleAxesMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadataParser;
@@ -120,10 +121,12 @@ import net.imglib2.realtransform.AffineGet;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.ScaleAndTranslation;
+import net.imglib2.converter.Converters;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.NumericType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.view.Views;
 
 @Plugin(type = Command.class, menuPath = "File>Save As>HDF5/N5/Zarr/OME-NGFF ...", description = "Save the current image as a new dataset or multi-scale pyramid.")
@@ -155,6 +158,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	public static final String DOWN_AVERAGE = "Average";
 
 	public static final String NONE = "None";
+
+	/**
+	 * Name of the coordinate system that OME-Zarr 0.6 multiscales datasets are
+	 * transformed into. Versions before 0.6 have no named spaces and store their
+	 * axes in a top-level "axes" array instead.
+	 */
+	public static final String OME_NGFF_OUTPUT_SPACE = "physical";
 
 	@Parameter
 	private LogService log;
@@ -251,6 +261,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			style = "listBox",
 			description = "The style for metadata to be stored in the exported N5.",
 			choices = {
+					N5Importer.MetadataOmeZarrV06Key,
 					N5Importer.MetadataOmeZarrV05Key,
 					N5Importer.MetadataOmeZarrV04Key,
 					N5Importer.MetadataImageJKey,
@@ -326,6 +337,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		styles.put(N5Importer.MetadataOmeZarrKey, new OmeNgffMetadataParser());
 		styles.put(N5Importer.MetadataOmeZarrV04Key, new OmeNgffMetadataParser());
 		styles.put(N5Importer.MetadataOmeZarrV05Key, new OmeNgffMetadataParser());
+		styles.put(N5Importer.MetadataOmeZarrV06Key, new OmeNgffMetadataParser());
 		styles.put(N5Importer.MetadataN5ViewerKey, new N5SingleScaleMetadataParser());
 		styles.put(N5Importer.MetadataN5CosemKey, new N5CosemMetadataParser());
 		styles.put(N5Importer.MetadataImageJKey, new ImagePlusLegacyMetadataParser());
@@ -782,14 +794,16 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				metadataStyle.equals(N5Importer.MetadataN5CosemKey) ||
 				metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
 				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV06Key);
 	}
 
 	protected boolean is5dMetadata() {
 
 		return metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
 				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV06Key);
 	}
 
 	protected boolean isOmeZarr() {
@@ -799,7 +813,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		// this method is different
 		return metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
 				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV06Key);
+	}
+
+	protected boolean isRgb() {
+
+		return image != null && image.getType() == ImagePlus.COLOR_RGB;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -877,11 +897,24 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			if (metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
 				version = "0.5";
 			}
+			else if (metadataStyle.equals(N5Importer.MetadataOmeZarrV06Key)) {
+				version = "0.6";
+			}
 
-			final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(ms.getAxes().length,
+			final Axis[] axes = ms.getAxes(); // TODO validate and pad axes
+
+			// 0.6 carries the axes in a named coordinate system rather than in a
+			// top-level "axes" array. MultiscalesAdapter only serializes
+			// "coordinateSystems" when this is non-null, so earlier versions must
+			// leave it unset.
+			final CoordinateSystem[] coordinateSystems = version.equals("0.6")
+					? new CoordinateSystem[]{new CoordinateSystem(OME_NGFF_OUTPUT_SPACE, axes)}
+					: null;
+
+			final OmeNgffMultiScaleMetadata meta = new OmeNgffMultiScaleMetadata(axes.length,
 					path, path, downsampleMethod, version,
-					ms.getAxes(), // TODO validate and pad axes
-					ms.getDatasets(), ms.coordinateTransformations, null, ms.metadata);
+					axes,
+					ms.getDatasets(), coordinateSystems, ms.coordinateTransformations, null, ms.metadata);
 
 			return ((N)new OmeNgffMetadata(path, new OmeNgffMultiScaleMetadata[]{meta}));
 
@@ -1130,7 +1163,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		RandomAccessibleInterval<T> baseImg;
 		if (isOmeZarr()) {
 			singletonZ = image.getNSlices() <= 1;
-			if (force5d) {
+			if (isRgb()) {
+				// OME-Zarr has no packed-RGB type, so the components become a channel axis
+				baseImg = (RandomAccessibleInterval<T>)rgbChannelImage();
+			} else if (force5d) {
 				// OME-Zarr requires 5D XYZCT with singleton dims padded in
 				baseImg = N5IJUtils.toImgXYCZT(image); // XYCZT
 				baseImg = Views.permute(baseImg, 2, 3); // XYZCT
@@ -1147,6 +1183,48 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			baseImg = (RandomAccessibleInterval<T>)VirtualStackAdapter.wrap(image);
 
 		return baseImg;
+	}
+
+	/**
+	 * Splits this exporter's RGB {@link ImagePlus} into one {@link UnsignedByteType}
+	 * dimension per colour component, in the axis order the OME-Zarr metadata uses.
+	 * <p>
+	 * ImageJ stores an RGB image as a single packed 32-bit channel, which
+	 * {@link VirtualStackAdapter#wrap} surfaces as {@link ARGBType} with
+	 * {@code getNChannels() == 1} - so the wrapped image has no channel dimension at
+	 * all. OME-Zarr has no packed-RGB data type, so the components are split out onto
+	 * a real channel axis instead. Alpha is dropped: ImageJ RGB images carry no
+	 * meaningful alpha, and a constant fourth channel only adds noise.
+	 *
+	 * @return the image as XY[Z]C[T], or XYZCT when {@code force5d} is set
+	 */
+	protected RandomAccessibleInterval<UnsignedByteType> rgbChannelImage() {
+
+		// VirtualStackAdapter drops singleton C/Z/T, and C is always singleton for RGB,
+		// so this is XY[Z][T].
+		final RandomAccessibleInterval<ARGBType> argb = VirtualStackAdapter.wrapRGBA(image);
+
+		// argbChannels appends the channel dimension last, giving XY[Z][T]C ...
+		RandomAccessibleInterval<UnsignedByteType> img = Converters.argbChannels(argb, ImageplusMetadata.RGB_CHANNELS);
+
+		// ... so when there is a time axis the channel has to move ahead of it: XY[Z]CT
+		if (image.getNFrames() > 1) {
+			final int nd = img.numDimensions();
+			img = Views.permute(img, nd - 2, nd - 1);
+		}
+
+		if (force5d) {
+			// pad the singletons that VirtualStackAdapter dropped, into their XYZCT slots
+			if (image.getNSlices() < 2) {
+				final int nd = img.numDimensions();
+				img = Views.moveAxis(Views.addDimension(img, 0, 0), nd, 2);
+			}
+
+			if (image.getNFrames() < 2)
+				img = Views.addDimension(img, 0, 0); // t is last in XYZCT already
+		}
+
+		return img;
 	}
 
 	/**
@@ -1543,6 +1621,18 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		return threadPool;
 	}
 
+	private boolean reportWriteTime() {
+
+		// only set if set method was not called
+		if( reportWriteTime == null ) {
+			if( prefs != null )
+				reportWriteTime = prefs.getBoolean( N5ScalePyramidExporter.class, IJ_PROPERTY_REPORT_WRITE_TIME, false );
+			else
+				reportWriteTime = false;
+		}
+		return reportWriteTime;
+	}
+
 	private boolean validateParameters(long[] dimensions, double[] resolution) {
 
 		String message = "";
@@ -1551,10 +1641,33 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		int[] singletonDimensions = null;
 		boolean[] useIsotropicSizing = null;
 		if (isOmeZarr()) {
-			// OME-Zarr is the only such format now
-			// the channel dimension is a singleton at index 3
-			singletonDimensions = new int[]{3};
-			useIsotropicSizing = new boolean[]{true, true, true, false, false};
+			// OME-Zarr is the only such format now.
+			// The axis order written is x, y, [z], [c], [t] - force5d keeps every axis,
+			// otherwise singletons are dropped (see Ngff5dToImagePlus). So the channel
+			// is not always at index 3: a 2d multi-channel image is xyc, and an RGB
+			// photo split into colour components is the common case of that. Only the
+			// spatial axes are downsampled; the channel chunk is a singleton.
+			final boolean hasZ = force5d || image.getNSlices() > 1;
+			final boolean hasC = force5d || ImageplusMetadata.numChannels(image) > 1;
+			final boolean hasT = force5d || image.getNFrames() > 1;
+
+			final int nd = 2 + (hasZ ? 1 : 0) + (hasC ? 1 : 0) + (hasT ? 1 : 0);
+			if (nd == dimensions.length) {
+				useIsotropicSizing = new boolean[nd];
+				int d = 0;
+				useIsotropicSizing[d++] = true; // x
+				useIsotropicSizing[d++] = true; // y
+				if (hasZ)
+					useIsotropicSizing[d++] = true; // z
+
+				if (hasC) {
+					singletonDimensions = new int[]{d};
+					useIsotropicSizing[d++] = false; // c
+				}
+
+				if (hasT)
+					useIsotropicSizing[d] = false; // t
+			}
 		}
 
 		BlockSizeParser blkParser = new BlockSizeParser(dimensions, singletonDimensions, resolution, useIsotropicSizing);

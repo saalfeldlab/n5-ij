@@ -119,7 +119,9 @@ public class Ngff5dToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScal
 
 		final String spaceUnit = parseUnitWithWarning(ip.getCalibration().getUnit());
 		final String timeUnit = parseUnitWithWarning(ip.getCalibration().getTimeUnit());
-		final boolean hasC = ip.getNChannels() > 1;
+		// counts the colour components of an RGB image, which are split onto a real
+		// channel axis on write - see ImageplusMetadata.numChannels
+		final boolean hasC = ImageplusMetadata.numChannels(ip) > 1;
 		final boolean hasZ = ip.getNSlices() > 1;
 		final boolean hasT = ip.getNFrames() > 1;
 
