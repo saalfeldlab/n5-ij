@@ -147,6 +147,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 	public static final String IJ_PROPERTY_DOWNSAMPLE_POLICY = "N5-DOWNSAMPLE-POLICY";
 	private static final String IJ_PROPERTY_DO_NOT_WARN = "N5-SKIP-OVERWRITE-SKIP-WARNING";
+	private static final String IJ_PROPERTY_REPORT_WRITE_TIME = "N5-REPORT-WRITE-TIME";
 
 	public static enum DOWNSAMPLE_METHOD {
 		Sample, Average
@@ -310,6 +311,8 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private double[] currentTranslation;
 
 	private boolean singletonZ;
+	
+	private Boolean reportWriteTime = null;
 
 	private N5DatasetMetadata currentChannelMetadata;
 
@@ -455,6 +458,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		this.force5d = force5d;
 	}
 
+	public void setReportTime(boolean reportWriteTime) {
+
+		this.reportWriteTime = reportWriteTime;
+	}
+
 	private static StorageFormat formatToEnum( String format ) {
 		switch(format) {
 			case(N5ScalePyramidExporter.ZARR3_FORMAT):
@@ -550,6 +558,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		final String rootWithFormatPrefix = containerRootWithFormatPrefix(containerRoot, storageFormat, true);
 		if (rootWithFormatPrefix == null)
 			return;
+
+		// report the write time?
+		// sets the field
+		reportWriteTime();
 
 		/**
 		 * If writing into the container root, prompt for an overwrite warning
@@ -1748,7 +1760,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			}
 
 			final DatasetAttributes attrs = n5.createDataset(dataset, datasetAttributes);
+
+			final long startTime = System.currentTimeMillis();
 			N5Utils.saveBlock(image, n5, dataset, attrs);
+			reportWriteTime(startTime, attrs);
 		}
 		else {
 
@@ -1766,7 +1781,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 			final int nd = image.numDimensions();
 			final DatasetAttributes attributes = n5.createDataset(dataset, datasetAttributes);
+
+			final long startTime = System.currentTimeMillis();
 			N5Utils.saveBlock(image, n5, dataset, attributes, new long[nd], threadPool);
+			reportWriteTime(startTime, attributes);
 		}
 
 		threadPool.shutdown();
@@ -1774,8 +1792,17 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		return true;
 	}
-	
-	
+
+	private void reportWriteTime(long startTime, final DatasetAttributes attrs) {
+
+		if (reportWriteTime) {
+			final long endTime = System.currentTimeMillis();
+			System.out.format("Wrote %s in %d ms\n",
+					Arrays.toString(attrs.getDimensions()),
+					(endTime - startTime));
+		}
+	}
+
 	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> RandomAccessibleInterval<T> 
 		finalizeScaleImage(final RandomAccessibleInterval<T> image ) {
 		
