@@ -258,7 +258,7 @@ public class N5SubsetExporter extends ContextCommand {
 
 				final N5DatasetMetadata meta = (N5DatasetMetadata)metaOpt.get();
 				if (meta instanceof AxisMetadata) {
-					final int[] impPerm = AxisUtils.findImagePlusPermutation((AxisMetadata)meta);
+					final int[] impPerm = AxisUtils.findPermutationByName((AxisMetadata)meta, N5IJUtils.imagePlusAxisOrder);
 					final int[] p = Arrays.stream(impPerm).filter(x -> x >= 0).toArray();
 					if (!AxisUtils.isIdentityPermutation(p))
 						axisPermutedImg = AxisUtils.permute(rai, p);

@@ -42,6 +42,8 @@ import net.imglib2.view.Views;
  * @author John Bogovic &lt;bogovicj@janelia.hhmi.org&gt;
  */
 public class N5IJUtils {
+	
+	static final String[] imagePlusAxisOrder = new String[] {"x", "y", "c", "z", "t" };
 
 	public static <T extends NativeType<T> & NumericType<T>> ImagePlus load(
 			final N5Reader n5,
@@ -128,9 +130,9 @@ public class N5IJUtils {
 
 					// this permutation will be applied to the image whose dimensions
 					// are padded to 5d with a canoni
-					final int[] p = AxisUtils.findImagePlusPermutation((AxisMetadata)metadata);
+					final int[] p = AxisUtils.findPermutationByName((AxisMetadata)metadata, imagePlusAxisOrder);
 
-					final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadataForImagePlus(p, rai, metadata);
+					final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadata(p, rai, metadata);
 					rai = res.getA();
 					dimensions = rai.dimensionsAsLongArray();
 					metadata = res.getB();

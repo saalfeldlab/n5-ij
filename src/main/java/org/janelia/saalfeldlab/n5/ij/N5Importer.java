@@ -534,9 +534,9 @@ public class N5Importer implements PlugIn {
 
 			// this permutation will be applied to the image whose dimensions
 			// are padded to 5d with a canonical axis order
-			final int[] p = AxisUtils.findImagePlusPermutation((AxisMetadata)datasetMetaArg);
+			final int[] p = AxisUtils.findPermutationByName((AxisMetadata)datasetMetaArg, N5IJUtils.imagePlusAxisOrder);
 
-			final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadataForImagePlus(p, imgC, datasetMetaArg);
+			final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadata(p, imgC, datasetMetaArg);
 			img = res.getA();
 			datasetMeta = res.getB();
 		} else {
