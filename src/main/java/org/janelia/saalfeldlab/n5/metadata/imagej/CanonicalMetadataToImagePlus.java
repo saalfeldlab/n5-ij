@@ -128,12 +128,12 @@ public class CanonicalMetadataToImagePlus implements ImageplusMetadata<Canonical
 		int nd = imp.getNDimensions();
 		Axis[] axes = new Axis[ nd ];
 
-		axes[ 0 ] = new Axis( "X", "space", imp.getCalibration().getXUnit());
-		axes[ 1 ] = new Axis( "Y", "space", imp.getCalibration().getYUnit());
+		axes[ 0 ] = new Axis( Axis.SPACE, "X", imp.getCalibration().getXUnit());
+		axes[ 1 ] = new Axis( Axis.SPACE, "Y", imp.getCalibration().getYUnit());
 
 		int i = 2;
 		if( imp.getNChannels() > 1 )
-			axes[ i++ ] = new Axis( "channels", "C", "null" );
+			axes[ i++ ] = new Axis( Axis.CHANNEL, "C", "" );
 
 		if( imp.getNSlices() > 1 )
 			axes[ i++ ] = new Axis( "space", "Z", imp.getCalibration().getZUnit());
