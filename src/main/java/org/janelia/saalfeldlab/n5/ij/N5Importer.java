@@ -2,7 +2,6 @@ package org.janelia.saalfeldlab.n5.ij;
 
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -20,8 +19,8 @@ import javax.swing.JTree;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
+import org.janelia.saalfeldlab.n5.N5Path.N5DirectoryPath;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.converters.LabelMultisetLongConverter;
 import org.janelia.saalfeldlab.n5.converters.UnsignedShortLUTConverter;
 import org.janelia.saalfeldlab.n5.imglib2.N5LabelMultisets;
@@ -40,7 +39,9 @@ import org.janelia.saalfeldlab.n5.ui.N5SwingTreeNode;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
-import org.janelia.saalfeldlab.n5.universe.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.factory.N5Location;
+import org.janelia.saalfeldlab.n5.universe.factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
@@ -662,7 +663,7 @@ public class N5Importer implements PlugIn {
 
 		for (final N5Metadata datasetMeta : selection.metadata) {
 
-			final String datasetPath = N5URI.normalizeGroupPath(datasetMeta.getPath());
+			final String datasetPath = MetadataUtils.normalizeGroupPath(datasetMeta.getPath());
 			final String pathToN5Dataset = rootUri.resolve(datasetPath).toString();
 
 			numDimensionsForCrop = ((N5DatasetMetadata)datasetMeta).getAttributes().getNumDimensions();
@@ -683,12 +684,11 @@ public class N5Importer implements PlugIn {
 	public static ImagePlus open(final String uri, final boolean show) {
 
 		try {
-			final N5URI n5uri = new N5URI(uri);
-			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
+			final String grp = N5Location.of(uri).groupPathOrRoot().normalPath();
 			if (!grp.isEmpty()) {
 				return open(uri, grp, show);
 			}
-		} catch (final URISyntaxException e) {}
+		} catch (N5Exception e) {}
 
 		return open(uri, ALL_PASS);
 	}
@@ -723,24 +723,18 @@ public class N5Importer implements PlugIn {
 		}
 		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
 
-		final Predicate<N5Metadata> datasetFilter = x -> { return x instanceof N5DatasetMetadata; };
+		final Predicate<N5Metadata> datasetFilter = x -> x instanceof N5DatasetMetadata;
 		final Predicate<N5Metadata> totalFilter = filter == null || filter == ALL_PASS
 				? datasetFilter : datasetFilter.and(filter);
 
 		Stream<N5DatasetMetadata> metaStream = N5TreeNode.flattenN5Tree(node)
 			.filter( x -> totalFilter.test(x.getMetadata()) )
-				.map(x -> {
-					return (N5DatasetMetadata)x.getMetadata();
-				});
+				.map(x -> (N5DatasetMetadata)x.getMetadata());
 
-		N5URI n5uri;
-		try {
-			n5uri = new N5URI(uri);
-			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
-			if (!grp.isEmpty()) {
-				metaStream = metaStream.filter(x -> N5URI.normalizeGroupPath(x.getPath()).equals(grp));
-			}
-		} catch (final URISyntaxException e) {}
+		final N5DirectoryPath grp = N5Location.of(uri).groupPathOrRoot();
+		if (!grp.normalPath().isEmpty()) {
+			metaStream = metaStream.filter(x -> N5DirectoryPath.of(x.getPath()).equals(grp));
+		}
 
 		final Optional<N5DatasetMetadata> meta = metaStream.findFirst();
 		if (meta.isPresent()) {
@@ -754,19 +748,13 @@ public class N5Importer implements PlugIn {
 	public static ImagePlus open(final N5Reader n5, final String dataset, final boolean show) {
 
 		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
-		final Optional<N5TreeNode> requestedNodeOpt = node.getDescendant(N5URI.normalizeGroupPath(dataset));
+		final Optional<N5TreeNode> requestedNodeOpt = node.getDescendant(MetadataUtils.normalizeGroupPath(dataset));
 		if (requestedNodeOpt.isPresent()) {
 
 			N5TreeNode requestedNode = requestedNodeOpt.get();
 			if( requestedNode.getMetadata() != null && requestedNode.getMetadata() instanceof N5DatasetMetadata) {
 
-				String uri;
-				try {
-					uri = N5URI.from(n5.getURI().toString(), dataset, null).toString();
-				} catch (URISyntaxException e) {
-					e.printStackTrace();
-					return null;
-				}
+				final String uri = N5Location.ofContainer(n5.getURI()).withGroup(dataset).toString();
 				return open(n5, uri, (N5DatasetMetadata) requestedNode.getMetadata(), show);
 
 			} else {
@@ -803,12 +791,11 @@ public class N5Importer implements PlugIn {
 	public static ImagePlus openVirtual(final String uri, final boolean show) {
 
 		try {
-			final N5URI n5uri = new N5URI(uri);
-			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
+			final String grp = N5Location.of(uri).groupPathOrRoot().normalPath();
 			if (!grp.isEmpty()) {
 				return openVirtual(uri, grp, show);
 			}
-		} catch (final URISyntaxException e) {}
+		} catch (N5Exception e) {}
 
 		return openVirtual(uri, ALL_PASS);
 	}
@@ -848,19 +835,13 @@ public class N5Importer implements PlugIn {
 				? datasetFilter : datasetFilter.and(filter);
 
 		Stream<N5DatasetMetadata> metaStream = N5TreeNode.flattenN5Tree(node)
-			.filter( x -> totalFilter.test(x.getMetadata()) )
-				.map(x -> {
-					return (N5DatasetMetadata)x.getMetadata();
-				});
+				.filter(x -> totalFilter.test(x.getMetadata()))
+				.map(x -> (N5DatasetMetadata) x.getMetadata());
 
-		N5URI n5uri;
-		try {
-			n5uri = new N5URI(uri);
-			final String grp = N5URI.normalizeGroupPath(n5uri.getGroupPath());
-			if (!grp.isEmpty()) {
-				metaStream = metaStream.filter(x -> N5URI.normalizeGroupPath(x.getPath()).equals(grp));
-			}
-		} catch (final URISyntaxException e) {}
+		final N5DirectoryPath grp = N5Location.of(uri).groupPathOrRoot();
+		if (!grp.normalPath().isEmpty()) {
+			metaStream = metaStream.filter(x -> N5DirectoryPath.of(x.getPath()).equals(grp));
+		}
 
 		final Optional<N5DatasetMetadata> meta = metaStream.findFirst();
 		if (meta.isPresent()) {
@@ -874,19 +855,13 @@ public class N5Importer implements PlugIn {
 	public static ImagePlus openVirtual(final N5Reader n5, final String dataset, final boolean show) {
 
 		final N5TreeNode node = N5DatasetDiscoverer.discover(n5);
-		final Optional<N5TreeNode> requestedNodeOpt = node.getDescendant(N5URI.normalizeGroupPath(dataset));
+		final Optional<N5TreeNode> requestedNodeOpt = node.getDescendant(MetadataUtils.normalizeGroupPath(dataset));
 		if (requestedNodeOpt.isPresent()) {
 
 			N5TreeNode requestedNode = requestedNodeOpt.get();
 			if( requestedNode.getMetadata() != null && requestedNode.getMetadata() instanceof N5DatasetMetadata) {
 
-				String uri;
-				try {
-					uri = N5URI.from(n5.getURI().toString(), dataset, null).toString();
-				} catch (URISyntaxException e) {
-					e.printStackTrace();
-					return null;
-				}
+				final String uri = N5Location.ofContainer(n5.getURI()).withGroup(dataset).toString();
 				return open(n5, uri, (N5DatasetMetadata) requestedNode.getMetadata(), show);
 
 			} else {
@@ -968,7 +943,7 @@ public class N5Importer implements PlugIn {
 	 * requested.
 	 */
 	public static List<ImagePlus> process(final N5Reader n5,
-			final String rootPathArg,
+			final String rootPath,
 			final ExecutorService exec,
 			final List<N5DatasetMetadata> datasetMetadataList,
 			final boolean asVirtual,
@@ -976,8 +951,12 @@ public class N5Importer implements PlugIn {
 			final boolean show,
 			final Map<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes) {
 
+		StorageFormat fmt = null;
+		try {
+			fmt = N5Location.of(rootPath).explicitFormat();
+		} catch (N5Exception e) {}
+
 		// determine if the root path contains a query
-		final String rootPath = rootPathArg;
 		final ArrayList<ImagePlus> imgList = new ArrayList<>();
 		for (final N5DatasetMetadata datasetMeta : datasetMetadataList) {
 			// is this check necessary?
@@ -985,12 +964,9 @@ public class N5Importer implements PlugIn {
 				continue;
 
 			final String d = normalPathName(datasetMeta.getPath(), n5.getGroupSeparator());
+			final String n5Url = N5Location.ofContainer(n5.getURI()).withFormat(fmt).withGroup(d).toString();
 			try {
-			
-				final StorageFormat fmt = StorageFormat.guessStorageFromUri(URI.create(rootPathArg));
-				final String fmtPrefix = fmt == null ? "" : fmt.toString().toLowerCase() + "://";
 
-				final String n5Url = fmtPrefix + N5URI.from(n5.getURI().toString(), d, null).toString();
 				final ImageplusMetadata<?> impMeta = impMetaWriterTypes.get(datasetMeta.getClass());
 
 				// datasetMeta must have absolute path
@@ -1021,8 +997,6 @@ public class N5Importer implements PlugIn {
 
 			} catch (final IOException e) {
 				IJ.error("failed to read n5");
-			} catch (final URISyntaxException e1) {
-				IJ.error("unable to parse url: " + rootPath + "?" + d );
 			}
 		}
 		return imgList;
@@ -1160,25 +1134,9 @@ public class N5Importer implements PlugIn {
 			if (n5UriOrPath == null || n5UriOrPath.isEmpty())
 				return null;
 
-			String rootPath = null;
-			if (n5UriOrPath.contains("?")) {
-
-				// need to strip off storage format for n5uri to correctly remove query;
-				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
-				final StorageFormat format = fmtUri.getA();
-
-				final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
-				// add the format prefix back if it was present
-				rootPath = format == null ? n5uri.getContainerPath() : format.toString().toLowerCase() + ":" + n5uri.getContainerPath();
-			}
-
-			if (rootPath == null) {
-				rootPath = n5UriOrPath;
-			}
-
 			final N5Factory factory = new N5Factory().cacheAttributes(true);
 			try {
-				n5 = factory.openReader(rootPath);
+				n5 = factory.openReader(n5UriOrPath);
 			} catch (final N5Exception e) {
 				IJ.error(e.getMessage());
 				return null;
@@ -1194,13 +1152,9 @@ public class N5Importer implements PlugIn {
 		@Override
 		public String apply(final String n5UriOrPath) {
 
-			if (n5UriOrPath.contains("?")) {
-				// need to strip off storage format for n5uri to correctly remove query;
-				// but can ignore the format here
-				final Pair<StorageFormat, URI> fmtUri = StorageFormat.parseUri(n5UriOrPath);
-				final N5URI n5uri = new N5URI(URI.create(fmtUri.getB().toString()));
-				return n5uri.getGroupPath();
-			}
+			final N5DirectoryPath group = N5Location.of(n5UriOrPath).groupPath();
+			if (group != null)
+				return group.normalPath();
 
 			if (n5UriOrPath.contains(".h5") || n5UriOrPath.contains(".hdf5") || n5UriOrPath.contains(".hdf"))
 				return h5DatasetPath(n5UriOrPath);
@@ -1251,7 +1205,7 @@ public class N5Importer implements PlugIn {
 
 		return fullPath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
 	}
-	
+
 	public static void main(final String[] args) throws InterruptedException {
 
 		new ImageJ();

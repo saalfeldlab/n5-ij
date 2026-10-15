@@ -10,13 +10,13 @@ import java.util.concurrent.TimeUnit;
 
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
+import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DefaultSingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
@@ -183,7 +183,7 @@ public class N5SubsetExporter extends ContextCommand {
 					// need credentials if writing to s3
 					builder.credentialsProvider(DefaultCredentialsProvider.create());
 				})
-				.openWriter(containerRoot);
+				.openWriter(rootWithFormatPrefix);
 		write(n5);
 		n5.close();
 	}
@@ -248,7 +248,7 @@ public class N5SubsetExporter extends ContextCommand {
 			// based on existing metadata
 			// first detect any metadata
 			final N5TreeNode root = N5DatasetDiscoverer.discover(n5);
-			final Optional<N5Metadata> metaOpt = root.getDescendant(N5URI.normalizeGroupPath(dataset))
+			final Optional<N5Metadata> metaOpt = root.getDescendant(MetadataUtils.normalizeGroupPath(dataset))
 					.filter(x -> {
 						final N5Metadata m = x.getMetadata();
 						return m != null && m instanceof N5DatasetMetadata;
