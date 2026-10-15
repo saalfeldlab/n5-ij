@@ -10,18 +10,17 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
+import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadata;
 import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
-
-import com.google.gson.Gson;
 
 public class N5MetadataTranslationPanel {
 
 	private static final String DEFAULT_TEXT = "include \"n5\";";
 
 	private float fontScale = 1.0f;
-	
+
 	private JTextArea textArea;
 
 	private Predicate<CanonicalMetadata> filter;
@@ -37,26 +36,26 @@ public class N5MetadataTranslationPanel {
 		this.filter = filter;
 	}
 
-	public TranslatedN5Reader getTranslatedN5( final N5Reader n5, final Gson gson ) {
-		
-		final TranslatedN5Reader translatedN5 = new TranslatedN5Reader(n5, gson, textArea.getText(), ".");
-		if( translatedN5.getTranslation().getTranslationFunction().isValid())
-			return translatedN5;
-		else 
+	public TranslatedN5Reader getTranslatedN5(final N5Reader n5) {
+
+		try {
+			return new TranslatedN5Reader(n5, textArea.getText(), ".");
+		} catch (final N5Exception e) {
+			// the translation does not compile, or fails on this container
 			return null;
+		}
 	}
 
 	/**
 	 * Returns an optional containing the parser if any fields are non empty.
-	 * 
+	 *
 	 * @param n5 the {@link N5Reader}
-	 * @param gson the {@link Gson}
 	 * @return the parser optional
 	 */
-	public Optional<TranslatedN5Reader> getTranslatedN5Optional( final N5Reader n5, final Gson gson ) {
+	public Optional<TranslatedN5Reader> getTranslatedN5Optional(final N5Reader n5) {
 
 		if (isTranslationProvided())
-			return Optional.ofNullable(getTranslatedN5( n5, gson ));
+			return Optional.ofNullable(getTranslatedN5(n5));
 		else
 			return Optional.empty();
 	}
@@ -80,7 +79,7 @@ public class N5MetadataTranslationPanel {
 	{
 		final JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		
+
 		panel.add( new JLabel("Translation specification"));
 
 		textArea = new JTextArea();

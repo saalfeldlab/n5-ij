@@ -1,7 +1,6 @@
 package org.janelia.saalfeldlab.n5.ui;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.net.URI;
@@ -24,21 +23,26 @@ public class TestUriValidation {
 		final String[] names = new String[]{"b", "c"};
 		final Path p = Paths.get("a", names);
 
+		// both windows and not: p is "a\b\c" on windows, "a/b/c" otherwise
+		assertIsPathGetQuery("relative path, query", p.toString(), "?d/e", urival);
+		assertIsPathGetQuery("relative path, query, fragment", p.toString(), "?d/e#/f/g", urival);
+
 		if (os.contains("windows")) {
 			// windows only
+			assertIsPathGet("drive letter", "C:\\a\\b", urival);
+			// what URI.getPath() returns for a file URI on windows
+			assertEquals("slash, drive letter", Paths.get("C:\\a\\b").toUri().normalize(), urival.stringToValue("/C:/a/b"));
 
-			assertThrows(ParseException.class, () -> {
-				urival.stringToValue(p.toString() + "?d/e");
-			});
-			assertThrows(ParseException.class, () -> {
-				urival.stringToValue(p.toString() + "?d/e#/f/g");
-			});
 		} else {
 			// not windows
 			assertIsPathGet("relative path", p.normalize().toString(), urival);
 
 			// test some weird strings that can technically be interpreted as
 			// paths or uris
+			// NB: Unix only. On windows neither is a valid path, so Paths.get
+			// throws InvalidPathException, both here and in the validator: "\\"
+			// is the start of a UNC path with no server and share, and ":" is
+			// not allowed in a windows file name (only after a drive letter).
 			assertIsPathGet("weird", "\\\\", urival);
 			assertIsPathGet("weird 2", "::", urival);
 		}
@@ -102,6 +106,14 @@ public class TestUriValidation {
 	private void assertIsPathGet(String message, String s, UriValidator urival) throws ParseException {
 
 		assertEquals(message, Paths.get(s).toUri().normalize(), urival.stringToValue(s));
+	}
+
+	private void assertIsPathGetQuery(String message, String path, String queryAndFragment, UriValidator urival) throws ParseException {
+
+		// NB: Concatenation is fine: Paths.get(…).toUri() is encoded, and the
+		// query and fragment used here need no encoding.
+		final URI expected = URI.create(Paths.get(path).toUri().normalize() + queryAndFragment);
+		assertEquals(message, expected, urival.stringToValue(path + queryAndFragment));
 	}
 
 	private void assertIsPathGetType(String message, String typeScheme, String s, UriValidator urival) throws ParseException {
