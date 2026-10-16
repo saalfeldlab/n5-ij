@@ -2,8 +2,10 @@ package org.janelia.saalfeldlab.n5.ui;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -19,6 +21,12 @@ public class N5SwingTreeNode extends N5TreeNode implements MutableTreeNode {
 
 	private DefaultTreeModel treeModel;
 
+	/**
+	 * Orders children by node name. If set, {@link #addPath} inserts new
+	 * children at their sorted position; otherwise it appends them.
+	 */
+	private Comparator<? super String> nameComparator;
+
 	public N5SwingTreeNode( final String path ) {
 		super( path );
 	}
@@ -26,6 +34,17 @@ public class N5SwingTreeNode extends N5TreeNode implements MutableTreeNode {
 	public N5SwingTreeNode( final String path, final DefaultTreeModel model ) {
 		super( path );
 		this.treeModel = model;
+	}
+
+	/**
+	 * @param nameComparator
+	 *            if not null, {@link #addPath} keeps the children of this node
+	 *            and of all nodes it creates sorted by node name
+	 */
+	public N5SwingTreeNode( final String path, final DefaultTreeModel model, final Comparator<? super String> nameComparator ) {
+		super( path );
+		this.treeModel = model;
+		this.nameComparator = nameComparator;
 	}
 
 	public N5SwingTreeNode( final String path, final N5SwingTreeNode parent ) {
@@ -77,16 +96,34 @@ public class N5SwingTreeNode extends N5TreeNode implements MutableTreeNode {
 		if (copt.isPresent())
 			child = copt.get();
 		else {
-			child = new N5SwingTreeNode(
+			final N5SwingTreeNode newChild = new N5SwingTreeNode(
 					getPath().isEmpty() ? childName : getPath() + "/" + childName,
 					this, treeModel);
+			newChild.nameComparator = nameComparator;
 
-			add(child);
+			// Insert at the sorted position. That is a fine-grained insert event,
+			// so the JTree keeps its expansion state (a re-sort would have to fire
+			// nodeStructureChanged, which collapses everything below this node).
+			final int index = insertionIndex(childName);
+			childrenList().add(index, newChild);
+			child = newChild;
 
 			if (treeModel != null)
-				treeModel.nodesWereInserted(this, new int[]{childrenList().size() - 1});
+				treeModel.nodesWereInserted(this, new int[]{index});
 		}
 		return (N5SwingTreeNode)child.addPath(normPath);
+	}
+
+	private int insertionIndex(final String childName) {
+
+		final List<N5TreeNode> children = childrenList();
+		if (nameComparator == null)
+			return children.size();
+
+		int index = children.size();
+		while (index > 0 && nameComparator.compare(childName, children.get(index - 1).getNodeName()) < 0)
+			--index;
+		return index;
 	}
 
 	@Override
