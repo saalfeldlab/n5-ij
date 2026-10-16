@@ -12,7 +12,6 @@ import java.text.Collator;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -646,7 +645,7 @@ public class DatasetSelectorDialog {
 			((N5DatasetTreeCellRenderer)treeRenderer).setRootName(treeRootName);
 
 		final N5TreeNode tmpRootNode = new N5TreeNode(rootPath);
-		rootNode = new N5SwingTreeNode(rootPath, treeModel);
+		rootNode = new N5SwingTreeNode(rootPath, treeModel, comp);
 		treeModel.setRoot(rootNode);
 
 		containerTree.setEnabled(true);
@@ -670,12 +669,8 @@ public class DatasetSelectorDialog {
 					// update the node's metadata
 					if (node != null) {
 						// set metadata, update ui
+						// (no re-sort: the order is by name, which metadata does not change)
 						node.setMetadata(x.getMetadata());
-
-						// sort children, update ui
-						final N5SwingTreeNode parent = (N5SwingTreeNode)node.getParent();
-						sortRecursive(parent);
-
 						treeModel.nodeChanged(node);
 					}
 				} else {
@@ -706,7 +701,6 @@ public class DatasetSelectorDialog {
 
 					datasetDiscoverer.discoverShallow(tmpRootNode, callback);
 					callback.accept(tmpRootNode);
-					sortRecursive(rootNode);
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.4);
@@ -720,12 +714,15 @@ public class DatasetSelectorDialog {
 						// build a temporary tree
 						datasetPaths = n5.deepList(rootPath, loaderExecutor);
 						N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
-						for (final String p : datasetPaths)
-							rootNode.addPath(rootPath + "/" + p);
+						// on the EDT, like the callback: both add to the tree model,
+						// and the sorted insertion index must not race
+						final String[] paths = datasetPaths;
+						SwingUtilities.invokeLater(() -> {
+							for (final String p : paths)
+								rootNode.addPath(rootPath + "/" + p);
+							containerTree.expandRow(0);
+						});
 					} catch(ExecutionException ignore){ }
-
-					sortRecursive(rootNode);
-					containerTree.expandRow(0);
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.6);
@@ -905,19 +902,6 @@ public class DatasetSelectorDialog {
 				}
 				i++;
 			}
-		}
-	}
-
-	private void sortRecursive(final N5SwingTreeNode node) {
-
-		if (node != null) {
-			final List<N5TreeNode> children = node.childrenList();
-			if (!children.isEmpty()) {
-				children.sort(Comparator.comparing(N5TreeNode::toString, comp));
-			}
-			treeModel.nodeStructureChanged(node);
-			for (final N5TreeNode child : children)
-				sortRecursive((N5SwingTreeNode)child);
 		}
 	}
 
