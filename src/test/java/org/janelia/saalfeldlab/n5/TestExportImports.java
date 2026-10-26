@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.URL;
 import java.nio.file.Files;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -24,6 +25,7 @@ import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Reader;
 import org.janelia.saalfeldlab.n5.hdf5.N5HDF5Writer;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.ij.N5ScalePyramidExporter;
+import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
@@ -46,6 +48,7 @@ import ij.ImagePlus;
 import ij.gui.NewImage;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.realtransform.AffineTransform;
@@ -53,6 +56,7 @@ import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
@@ -381,7 +385,8 @@ public class TestExportImports
 		// this method is different
 		return metadataStyle.equals(N5Importer.MetadataOmeZarrKey) ||
 				metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
-				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key);
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key) ||
+				metadataStyle.equals(N5Importer.MetadataOmeZarrV06Key);
 	}
 
 	@Test
@@ -401,6 +406,91 @@ public class TestExportImports
 	}
 
 	/**
+	 * OME-Zarr has no packed-RGB data type, so an RGB {@link ImagePlus} is split into
+	 * one uint8 channel per colour component on a real channel axis, rather than
+	 * stored as packed int32 the way the other metadata styles do it.
+	 * <p>
+	 * The single-slice case matters on its own: with no z the channel lands at array
+	 * index 2 rather than 3, which the chunk-size parser has to account for.
+	 */
+	@Test
+	public void testRgbOmeZarr() throws InterruptedException
+	{
+		for (final String metaType : new String[]{N5Importer.MetadataOmeZarrV05Key, N5Importer.MetadataOmeZarrV06Key}) {
+			rgbOmeZarrHelper(metaType, 1, false); // xyc
+			rgbOmeZarrHelper(metaType, 4, false); // xyzc
+			rgbOmeZarrHelper(metaType, 1, true);  // xyzct, singletons padded
+			rgbOmeZarrHelper(metaType, 4, true);
+		}
+	}
+
+	private void rgbOmeZarrHelper(final String metaType, final int nSlices, final boolean force5d)
+			throws InterruptedException
+	{
+		final int w = 8;
+		final int h = 6;
+		final int nc = 3;
+
+		final ImagePlus imp = NewImage.createRGBImage("test", w, h, nSlices, NewImage.FILL_NOISE);
+		imp.setDimensions(1, nSlices, 1);
+
+		final String root = baseDir + "/test_rgb_ngff_" + nSlices + "_" + force5d + ".zarr";
+		final String dataset = "/rgb";
+
+		final N5ScalePyramidExporter writer = new N5ScalePyramidExporter();
+		writer.setOptions(imp, root, dataset, N5ScalePyramidExporter.ZARR3_FORMAT, "16", false,
+				N5ScalePyramidExporter.DOWN_SAMPLE, metaType, N5ScalePyramidExporter.RAW_COMPRESSION);
+		writer.setForce5d(force5d);
+		writer.setOverwrite(true);
+		writer.run(); // run() closes the n5 writer
+		writer.getExecutorService().awaitTermination(1000, TimeUnit.MILLISECONDS);
+
+		final String msg = metaType + " " + nSlices + "z force5d=" + force5d;
+		try (final N5Reader n5 = new N5Factory().openReader(root)) {
+
+			final DatasetAttributes attrs = n5.getDatasetAttributes(dataset + "/s0");
+			assertNotNull(msg + " dataset exists", attrs);
+			assertEquals(msg + " stored as uint8", DataType.UINT8, attrs.getDataType());
+
+			// imglib2 order: x, y, [z], c, [t] - force5d pads the singletons back in
+			final long[] expectedDims;
+			if (force5d)
+				expectedDims = new long[]{w, h, nSlices, nc, 1};
+			else if (nSlices > 1)
+				expectedDims = new long[]{w, h, nSlices, nc};
+			else
+				expectedDims = new long[]{w, h, nc};
+
+			assertArrayEquals(msg + " dimensions", expectedDims, attrs.getDimensions());
+
+			// every colour component must land in its own channel, unshuffled
+			final RandomAccessibleInterval<UnsignedByteType> img = N5Utils.open(n5, dataset + "/s0");
+			final RandomAccess<UnsignedByteType> out = img.randomAccess();
+
+			// c is last unless force5d padded a trailing singleton t
+			final int cIdx = force5d ? 3 : expectedDims.length - 1;
+
+			final Img<ARGBType> src = ImageJFunctions.wrapRGBA(imp);
+			final Cursor<ARGBType> c = src.localizingCursor();
+			final long[] p = new long[expectedDims.length];
+			while (c.hasNext()) {
+				c.fwd();
+				c.localize(p); // fills x, y[, z]; any padded axis stays at 0
+
+				final int argb = c.get().get();
+				final int[] rgb = new int[]{ARGBType.red(argb), ARGBType.green(argb), ARGBType.blue(argb)};
+				for (int i = 0; i < nc; i++) {
+					p[cIdx] = i;
+					out.setPosition(p);
+					assertEquals(msg + " channel " + i + " at " + Arrays.toString(p), rgb[i], out.get().get());
+				}
+			}
+		}
+
+		deleteContainer(root);
+	}
+
+	/**
 	 * A test if we ever expand n5-viewer style metadata to be able
 	 * to describe arrays of more than 3 dimensions.
 	 *
@@ -409,14 +499,13 @@ public class TestExportImports
 	public void testMultiChannel()
 	{
 		for( final String suffix : new String[] { ".h5", ".n5", ".zarr" })
-//		for( final String suffix : new String[] { ".n5", ".zarr" })
-//		for( final String suffix : new String[] { ".zarr" })
 		{
 			try {
 				testMultiChannelHelper(N5Importer.MetadataN5ViewerKey, suffix);
+				testMultiChannelHelper(N5Importer.MetadataOmeZarrV05Key, suffix);
+				testMultiChannelHelper(N5Importer.MetadataOmeZarrV06Key, suffix);
 				testMultiChannelHelper(N5Importer.MetadataN5CosemKey, suffix);
 				testMultiChannelHelper(N5Importer.MetadataOmeZarrV04Key, suffix);
-				testMultiChannelHelper(N5Importer.MetadataOmeZarrV05Key, suffix);
 				testMultiChannelHelper(N5Importer.MetadataImageJKey, suffix);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -894,6 +983,7 @@ public class TestExportImports
 
 			assertTrue("metadata does not exist or not parsable", meta.isPresent());
 			assertTrue("metadata not instance of N5SpatialDatasetMetadata", meta.get() instanceof N5SpatialDatasetMetadata );
+
 			assertArrayEquals("affine", flatAffine, ((N5SpatialDatasetMetadata)meta.get()).spatialTransform().getRowPackedCopy(), EPS);
 		}
 
