@@ -829,6 +829,28 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				metadataStyle.equals(N5Importer.MetadataOmeZarrV06Key);
 	}
 
+	/**
+	 * The OME-NGFF version the current {@link #metadataStyle} writes.
+	 * <p>
+	 * The multiscales group and the per-scale datasets below it are built at
+	 * different times - the scales while they are written, the group once they all
+	 * are - but must agree on the version, since it determines both how the group
+	 * stores its axes and how each dataset stores its transformations. Both derive
+	 * it here so they cannot disagree.
+	 *
+	 * @return the version string, "0.4" for any style that is not OME-Zarr
+	 */
+	protected String ngffVersion() {
+
+		if (metadataStyle.equals(N5Importer.MetadataOmeZarrV06Key))
+			return "0.6";
+
+		if (metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key))
+			return "0.5";
+
+		return "0.4";
+	}
+
 	protected boolean isRgb() {
 
 		return image != null && image.getType() == ImagePlus.COLOR_RGB;
@@ -905,13 +927,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		if (multiscaleMetadata instanceof OmeNgffMultiScaleMetadataMutable) {
 			final OmeNgffMultiScaleMetadataMutable ms = (OmeNgffMultiScaleMetadataMutable)multiscaleMetadata;
 
-			String version = "0.4";
-			if (metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) {
-				version = "0.5";
-			}
-			else if (metadataStyle.equals(N5Importer.MetadataOmeZarrV06Key)) {
-				version = "0.6";
-			}
+			final String version = ngffVersion();
 
 			final Axis[] axes = ms.getAxes(); // TODO validate and pad axes
 
@@ -985,6 +1001,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 * @param dest destination array
 	 */
 	protected void safeCopy(double[] src, double[] dest) {
+
+		if (src == null)
+			return;
+
 		final int nd = src.length < dest.length ? src.length : dest.length;
 		System.arraycopy(src, 0, dest, 0, nd);
 	}
@@ -1579,8 +1599,10 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				path,
 				resolution,
 				translation,
+				ngffVersion(),
 				baseMetadata.getAxes(),
-				baseMetadata.getAttributes());
+				baseMetadata.getAttributes(),
+				null);
 	}
 
 	/**
