@@ -41,6 +41,7 @@ import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.fluent.RandomAccessibleIntervalView.Extension;
+import org.janelia.saalfeldlab.n5.universe.factory.N5Location;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
 import org.janelia.saalfeldlab.n5.Compression;
@@ -49,7 +50,6 @@ import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.Lz4Compression;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.RawCompression;
 import org.janelia.saalfeldlab.n5.XzCompression;
@@ -70,7 +70,7 @@ import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers.DOWNSAMPLE_POLICY;
 import org.janelia.saalfeldlab.n5.parse.BlockSizeParsers.DownsampledBlockParser;
 import org.janelia.saalfeldlab.n5.ui.N5MetadataSpecDialog;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.AbstractN5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
@@ -435,7 +435,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	private static StorageFormat formatToEnum( String format ) {
 		switch(format) {
 			case(N5ScalePyramidExporter.ZARR3_FORMAT):
-				return StorageFormat.ZARR;
+				return StorageFormat.ZARR3;
 			case(N5ScalePyramidExporter.ZARR2_FORMAT):
 				return StorageFormat.ZARR2;
 			case(N5ScalePyramidExporter.N5_FORMAT):
@@ -486,7 +486,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	 */
 	public static String containerRootWithFormatPrefix(final String containerRoot, final String storageFormat, final boolean showWarning) {
 
-		final StorageFormat uriFormat = StorageFormat.getStorageFromNestedScheme(containerRoot).getA();
+		final StorageFormat uriFormat = N5Location.of(containerRoot).explicitFormat();
 		if (storageFormat.equals(AUTO_FORMAT)) {
 			// "Auto" in dropdown means infer from uri, so return the uri as is
 			return containerRoot;
@@ -496,7 +496,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final StorageFormat dropdownFormat = formatToEnum(storageFormat);
 			if (uriFormat == null) {
 				// add the format prefix to the uri
-				return dropdownFormat.toString().toLowerCase() + ":" + containerRoot;
+				return dropdownFormat.scheme() + ":" + containerRoot;
 			}
 
 			// check that uri format and dropdown format are consistent.
@@ -533,7 +533,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		 * only if the container exists before being created by the N5Writer below.
 		 */
 		boolean doGroupExistsWarning = true;
-		if( N5URI.normalizeGroupPath(dataset).isEmpty()) {
+		if( MetadataUtils.normalizeGroupPath(dataset).isEmpty()) {
 
 			try (final N5Reader n5Reader = new N5Factory().openReader(rootWithFormatPrefix)) {
 
@@ -1100,13 +1100,13 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 	}
 
 	/**
-	 * Some metadata styles require updating specified block sizes. 
+	 * Some metadata styles require updating specified block sizes.
 	 * In particular, some versions of OME-Zarr fix the number of dimensions
 	 * and require that they be in a particular order.
 	 * <p>
 	 * In those cases, this method proves
-	 * 
-	 * 
+	 *
+	 *
 	 * @param size
 	 * @return
 	 */
@@ -1167,7 +1167,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 				// make a 4d image in order XYZT
 				channelImg = Views.permute(Views.addDimension(channelImg, 0, 0), 2, 3);
-				
+
 				// also need to update baseResoltuion
 				double[] resolutionWithT = new double[baseResolution.length + 1];
 				System.arraycopy(baseResolution, 0, resolutionWithT, 0, baseResolution.length);
@@ -1185,7 +1185,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		return channels;
 	}
-	
+
 	protected <T extends RealType<T> & NativeType<T>, M extends N5DatasetMetadata> Pair<RandomAccessibleInterval<T>,M> padTo5d(
 			RandomAccessibleInterval<T> img, M metadata) {
 
@@ -1193,11 +1193,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		return new ValuePair<>(img, metadata);
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	@Nullable
 	protected <M extends N5DatasetMetadata> M metadata5dCopy(@Nullable final M metadata) {
-		
+
 		if (metadata == null)
 			return metadata;
 
@@ -1207,7 +1207,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
 					metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) &&
 				metadata instanceof NgffSingleScaleAxesMetadata) {
-			
+
 			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata)metadata;
 			return (M)new NgffSingleScaleAxesMetadata(ngffMeta.getPath(),
 					ngffMeta.getScale(), ngffMeta.getTranslation(),
@@ -1253,7 +1253,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 					metadataStyle.equals(N5Importer.MetadataOmeZarrV04Key) ||
 					metadataStyle.equals(N5Importer.MetadataOmeZarrV05Key)) &&
 				metadata instanceof NgffSingleScaleAxesMetadata) {
-			
+
 			final NgffSingleScaleAxesMetadata ngffMeta = (NgffSingleScaleAxesMetadata)metadata;
 			return (M)new NgffSingleScaleAxesMetadata(ngffMeta.getPath(),
 					ngffMeta.getScale(), ngffMeta.getTranslation(),
@@ -1340,7 +1340,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 				}
 		}
 	}
-	
+
 
 	protected N5SingleScaleMetadata buildN5VMetadata(
 			final String path,
@@ -1485,7 +1485,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		String message = "";
 		boolean success = true;
-		
+
 		int[] singletonDimensions = null;
 		boolean[] useIsotropicSizing = null;
 		if (isOmeZarr()) {
@@ -1500,7 +1500,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 		parser.setDownsamplingPolicy(DOWNSAMPLE_POLICY.Aggressive);
 
 		BlockSizeParsers.BlockSizeParser shardParser = new BlockSizeParser(dimensions, null, null, null);
-		
+
 		try {
 			baseBlockSizes = parser.parse(chunkSizeArg);
 
@@ -1539,7 +1539,7 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 			final String dataset,
 			final Compression compression, final M metadata)
 			throws IOException, InterruptedException, ExecutionException {
-		
+
 		final RandomAccessibleInterval<T> image = finalizeScaleImage(imageArg);
 
 		// Here, either allowing overwrite, or not allowing, but the dataset does not exist.
@@ -1599,11 +1599,11 @@ public class N5ScalePyramidExporter extends ContextCommand implements WindowList
 
 		return true;
 	}
-	
-	
-	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> RandomAccessibleInterval<T> 
+
+
+	private <T extends RealType<T> & NativeType<T>, M extends N5Metadata> RandomAccessibleInterval<T>
 		finalizeScaleImage(final RandomAccessibleInterval<T> image ) {
-		
+
 		RandomAccessibleInterval<T> out = image;
 		if (is5dMetadata()) {
 			while (out.numDimensions() < 5)

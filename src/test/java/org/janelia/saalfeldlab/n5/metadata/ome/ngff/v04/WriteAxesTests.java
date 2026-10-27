@@ -275,15 +275,7 @@ public class WriteAxesTests {
 
 	private ImagePlus readImage(final String rootLocationArg) {
 
-		final UriValidator validator = new DatasetSelectorDialog.UriValidator();
-		String rootLocation = rootLocationArg;
-		try {
-			rootLocation = ((URI)validator.stringToValue(rootLocation)).toString();
-		} catch (final ParseException e) {
-			e.printStackTrace();
-		}
-
-		final N5Reader zarr = new N5Factory().openReader(rootLocation);
+		final N5Reader zarr = new N5Factory().openReader(rootLocationArg);
 		final N5TreeNode node = N5DatasetDiscoverer.discover(zarr,
 				Collections.singletonList(new N5GenericSingleScaleMetadataParser()),
 				Collections.singletonList(new OmeNgffMetadataParser()));
@@ -293,7 +285,7 @@ public class WriteAxesTests {
 
 			final N5DatasetMetadata dsetmeta = (N5DatasetMetadata)meta;
 			final List<N5DatasetMetadata> metaList = Collections.singletonList(dsetmeta);
-			final List<ImagePlus> impList = N5Importer.process(zarr, rootLocation, Executors.newFixedThreadPool(1), metaList, false, null, false, impWriters);
+			final List<ImagePlus> impList = N5Importer.process(zarr, rootLocationArg, Executors.newFixedThreadPool(1), metaList, false, null, false, impWriters);
 			return impList.size() == 0 ? null : impList.get(0);
 		}
 		return null;

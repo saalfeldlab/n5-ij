@@ -7,14 +7,11 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.KeyEvent;
 import java.io.File;
-import java.io.IOException;
 import java.net.URI;
-import java.nio.file.Paths;
 import java.text.Collator;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
@@ -47,30 +44,22 @@ import javax.swing.tree.TreeCellRenderer;
 import javax.swing.tree.TreePath;
 import javax.swing.tree.TreeSelectionModel;
 
-import org.janelia.saalfeldlab.n5.CachedGsonKeyValueN5Reader;
-import org.janelia.saalfeldlab.n5.Compression;
-import org.janelia.saalfeldlab.n5.CompressionAdapter;
-import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.ij.N5Importer;
 import org.janelia.saalfeldlab.n5.universe.N5DatasetDiscoverer;
 import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
-import org.janelia.saalfeldlab.n5.universe.StorageFormat;
+import org.janelia.saalfeldlab.n5.universe.factory.N5Location;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
 
 import com.formdev.flatlaf.util.UIScale;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import ij.IJ;
 import ij.ImageJ;
 import ij.gui.ProgressBar;
-import net.imglib2.util.Pair;
 import se.sawano.java.text.AlphanumericComparator;
 
 import static javax.swing.JComponent.WHEN_IN_FOCUSED_WINDOW;
@@ -250,9 +239,9 @@ public class DatasetSelectorDialog {
 	}
 
 	/**
-	 * Sets a selection filter. A {@link N5TreeNode} will not be selectable if the 
+	 * Sets a selection filter. A {@link N5TreeNode} will not be selectable if the
 	 * selection filter returns false for its metadata.
-	 * 
+	 *
 	 * @param selectionFilter the predicate
 	 */
 	public void setSelectionFilter(final Predicate<N5Metadata> selectionFilter) {
@@ -582,25 +571,9 @@ public class DatasetSelectorDialog {
 			return null;
 		}
 
-		// copy list
-		final ArrayList<N5MetadataParser<?>> parserList = new ArrayList<>();
-
-		final Gson gson;
-		if (n5 instanceof CachedGsonKeyValueN5Reader)
-			gson = ((CachedGsonKeyValueN5Reader)n5).getGson();
-		else {
-			final GsonBuilder gsonBuilder = new GsonBuilder();
-			gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
-			gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
-			gsonBuilder.disableHtmlEscaping();
-			gson = gsonBuilder.create();
-		}
-
-		boolean isTranslated = false;
-		final Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
+		final Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5);
 		if (translatedN5.isPresent()) {
 			n5 = translatedN5.get();
-			isTranslated = true;
 		}
 
 		return n5;
@@ -657,19 +630,8 @@ public class DatasetSelectorDialog {
 		// copy list
 		final ArrayList<N5MetadataParser<?>> parserList = new ArrayList<>();
 
-		final Gson gson;
-		if (n5 instanceof CachedGsonKeyValueN5Reader)
-			gson = ((CachedGsonKeyValueN5Reader)n5).getGson();
-		else {
-			final GsonBuilder gsonBuilder = new GsonBuilder();
-			gsonBuilder.registerTypeAdapter(DataType.class, new DataType.JsonAdapter());
-			gsonBuilder.registerTypeHierarchyAdapter(Compression.class, CompressionAdapter.getJsonAdapter());
-			gsonBuilder.disableHtmlEscaping();
-			gson = gsonBuilder.create();
-		}
-
 		boolean isTranslated = false;
-		final Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5, gson);
+		final Optional<TranslatedN5Reader> translatedN5 = translationPanel.getTranslatedN5Optional(n5);
 		if (translatedN5.isPresent()) {
 			n5 = translatedN5.get();
 			isTranslated = true;
@@ -683,7 +645,7 @@ public class DatasetSelectorDialog {
 			((N5DatasetTreeCellRenderer)treeRenderer).setRootName(treeRootName);
 
 		final N5TreeNode tmpRootNode = new N5TreeNode(rootPath);
-		rootNode = new N5SwingTreeNode(rootPath, treeModel);
+		rootNode = new N5SwingTreeNode(rootPath, treeModel, comp);
 		treeModel.setRoot(rootNode);
 
 		containerTree.setEnabled(true);
@@ -707,12 +669,8 @@ public class DatasetSelectorDialog {
 					// update the node's metadata
 					if (node != null) {
 						// set metadata, update ui
+						// (no re-sort: the order is by name, which metadata does not change)
 						node.setMetadata(x.getMetadata());
-
-						// sort children, update ui
-						final N5SwingTreeNode parent = (N5SwingTreeNode)node.getParent();
-						sortRecursive(parent);
-
 						treeModel.nodeChanged(node);
 					}
 				} else {
@@ -743,7 +701,6 @@ public class DatasetSelectorDialog {
 
 					datasetDiscoverer.discoverShallow(tmpRootNode, callback);
 					callback.accept(tmpRootNode);
-					sortRecursive(rootNode);
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.4);
@@ -753,16 +710,19 @@ public class DatasetSelectorDialog {
 						messageLabel.repaint();
 					});
 
-					try { 
+					try {
 						// build a temporary tree
 						datasetPaths = n5.deepList(rootPath, loaderExecutor);
 						N5SwingTreeNode.fromFlatList(tmpRootNode, datasetPaths, "/");
-						for (final String p : datasetPaths)
-							rootNode.addPath(rootPath + "/" + p);
+						// on the EDT, like the callback: both add to the tree model,
+						// and the sorted insertion index must not race
+						final String[] paths = datasetPaths;
+						SwingUtilities.invokeLater(() -> {
+							for (final String p : paths)
+								rootNode.addPath(rootPath + "/" + p);
+							containerTree.expandRow(0);
+						});
 					} catch(ExecutionException ignore){ }
-
-					sortRecursive(rootNode);
-					containerTree.expandRow(0);
 
 					if (ijProgressBar != null)
 						ijProgressBar.show(0.6);
@@ -803,8 +763,8 @@ public class DatasetSelectorDialog {
 			final TranslatedN5Reader xlatedN5 = (TranslatedN5Reader)n5;
 			translationResultPanel.set(
 					xlatedN5.getGson(),
-					xlatedN5.getTranslation().getOrig(),
-					xlatedN5.getTranslation().getTranslated());
+					xlatedN5.getOriginalHierarchy(),
+					xlatedN5.getTranslatedHierarchy());
 		}
 
 		detectCalled = true;
@@ -945,19 +905,6 @@ public class DatasetSelectorDialog {
 		}
 	}
 
-	private void sortRecursive(final N5SwingTreeNode node) {
-
-		if (node != null) {
-			final List<N5TreeNode> children = node.childrenList();
-			if (!children.isEmpty()) {
-				children.sort(Comparator.comparing(N5TreeNode::toString, comp));
-			}
-			treeModel.nodeStructureChanged(node);
-			for (final N5TreeNode child : children)
-				sortRecursive((N5SwingTreeNode)child);
-		}
-	}
-
 	private static String normalDatasetName(final String fullPath, final String groupSeparator) {
 
 		return fullPath.replaceAll("(^" + groupSeparator + "*)|(" + groupSeparator + "*$)", "");
@@ -978,51 +925,11 @@ public class DatasetSelectorDialog {
 			if (inputArg == null || inputArg.isEmpty())
 				return null;
 
-			// Check if the input starts with a format string 
-			// one of "h5:", "hdf5:", "n5:", "zarr:", etc
-			String fmt = null;
-			String input = inputArg;
-			final Pair<StorageFormat, String> fmtAndUri = StorageFormat.getStorageFromNestedScheme(input);
-			final StorageFormat format = fmtAndUri.getA();
-			if (format != null)
-				fmt = format.toString().toLowerCase() + "://";
-
-			input = fmtAndUri.getB();
-
-			N5URI n5uri = null;
 			try {
-				final URI uri = new URI(input.trim());
-				if (uri.isAbsolute())
-					return addTypeScheme(fmt, uri.normalize());
-				else {
-					n5uri = new N5URI(uri);
-				}
-			} catch (final Throwable ignore) {}
-
-			try {
-				if (n5uri != null) {
-					final N5URI pathOnly = new N5URI(Paths.get(n5uri.getContainerPath()).normalize().toUri());
-					final URI uri = n5uri.getURI();
-					final N5URI queryFragmentOnly = N5URI.from("",
-						uri.getQuery() == null ? null : n5uri.getGroupPath(),
-						uri.getFragment() == null ? null : n5uri.getAttributePath());
-
-					return addTypeScheme(fmt, pathOnly.resolve(queryFragmentOnly).getURI().normalize());
-				} else
-					return addTypeScheme(fmt, Paths.get(input.trim()).normalize().toUri());
-
-			} catch (final Throwable ignore) {}
-
-			throw new ParseException("input " + input + " not a valid URI", 0);
-		}
-
-		private URI addTypeScheme(String typeScheme, URI uri) {
-
-			if (typeScheme == null)
-				return uri;
-			else
-				return URI.create(typeScheme + uri.toString());
-
+				return N5Location.of(inputArg).uri();
+			} catch (final N5Exception e) {
+				throw new ParseException("input " + inputArg + " not a valid URI", 0);
+			}
 		}
 
 		@Override
