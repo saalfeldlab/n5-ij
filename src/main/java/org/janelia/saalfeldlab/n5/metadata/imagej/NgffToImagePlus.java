@@ -86,7 +86,6 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		double[] scale = t.getScale();
 		double[] translation = t.getTranslation();
 		double[] origin = originFromTranslation(translation, scale);
-		System.out.println(Arrays.toString(origin));
 		// setDimensions can't handle zeros, so set these to one if they're zero
 		numChannels = numChannels == 0 ? 1 : numChannels;
 		numZ = numZ == 0 ? 1 : numZ;
@@ -171,7 +170,6 @@ public class NgffToImagePlus extends SpatialMetadataToImagePlus<NgffSingleScaleA
 		}
 
 		final double[] translation =  translationFromOrigin(origin, scale);
-		System.out.println(Arrays.toString(translation));
 		final boolean noOffset = Arrays.stream(origin).allMatch( x -> x == 0.0 );
 		if( noOffset )
 			return new NgffSingleScaleAxesMetadata("", scale, null, axes, ImageplusMetadata.datasetAttributes(ip));

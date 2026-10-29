@@ -46,12 +46,10 @@ public class TranslateN5Tree implements Callable<Void> {
 		final Gson gson = JqUtils.buildGson(n5Base);
 		if( translation == null ) {
 			final TranslatedN5Reader n5 = new TranslatedN5Reader(n5Base, gson, ".", ".");
-			System.out.println(gson.toJson(n5.getTranslation().getOrig()));
 			n5.close();
 		}
 		else {
 			final TranslatedN5Reader n5 = new TranslatedN5Reader(n5Base, gson, translation, ".");
-			System.out.println(gson.toJson(n5.getTranslation().getTranslated()));
 			n5.close();
 		}
 
