@@ -42,11 +42,13 @@ import org.janelia.saalfeldlab.n5.universe.N5TreeNode;
 import org.janelia.saalfeldlab.n5.universe.factory.N5Location;
 import org.janelia.saalfeldlab.n5.universe.factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.universe.metadata.MetadataUtils;
+import org.janelia.saalfeldlab.n5.universe.metadata.MultiscaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5CosemMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5DatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5GenericSingleScaleMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5Metadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataGroup;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5MetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.N5SingleScaleMetadataParser;
@@ -56,6 +58,7 @@ import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalDatasetMe
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalMetadataParser;
 import org.janelia.saalfeldlab.n5.universe.metadata.canonical.CanonicalSpatialDatasetMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.NgffSingleScaleAxesMetadata;
+import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadata;
 import org.janelia.saalfeldlab.n5.universe.metadata.ome.ngff.OmeNgffMetadataParser;
 
 import ij.IJ;
@@ -180,6 +183,7 @@ public class N5Importer implements PlugIn {
 		final HashMap<Class<?>, ImageplusMetadata<?>> impMetaWriterTypes = new HashMap<>();
 		impMetaWriterTypes.put(N5ImagePlusMetadata.class, new ImagePlusLegacyMetadataParser());
 		impMetaWriterTypes.put(NgffSingleScaleAxesMetadata.class, new NgffToImagePlus());
+		impMetaWriterTypes.put(OmeNgffMetadata.class, new NgffToImagePlus());
 		impMetaWriterTypes.put(N5CosemMetadata.class, new CosemToImagePlus());
 		impMetaWriterTypes.put(N5SingleScaleMetadata.class, new N5ViewerToImagePlus());
 		impMetaWriterTypes.put(CanonicalDatasetMetadata.class, new CanonicalMetadataToImagePlus());
@@ -518,7 +522,20 @@ public class N5Importer implements PlugIn {
 			final N5DatasetMetadata datasetMetaArg, final Interval cropIntervalIn, final boolean asVirtual,
 			final ImageplusMetadata<M> ipMeta) throws IOException {
 
-		final String d = datasetMetaArg.getPath();
+		N5DatasetMetadata meta = datasetMetaArg;
+		if (datasetMetaArg instanceof MultiscaleMetadata) {
+
+			final N5Metadata tmpMeta = ((N5MetadataGroup)meta).getChildrenMetadata()[0];
+			if( tmpMeta instanceof N5DatasetMetadata )
+			{
+				meta = (N5DatasetMetadata) tmpMeta;
+			} else {
+				// this should never happen, but display an error if so
+				return null;
+			}
+		}
+
+		final String d = meta.getPath();
 		final CachedCellImg imgNorm = N5Utils.open(n5, d);
 
 		// crop if necessary
@@ -532,18 +549,18 @@ public class N5Importer implements PlugIn {
 
 		final RandomAccessibleInterval img;
 		final M datasetMeta;
-		if (datasetMetaArg != null && datasetMetaArg instanceof AxisMetadata) {
+		if (meta != null && meta instanceof AxisMetadata) {
 
 			// this permutation will be applied to the image whose dimensions
 			// are padded to 5d with a canonical axis order
-			final int[] p = AxisUtils.findPermutationByName((AxisMetadata)datasetMetaArg, N5IJUtils.imagePlusAxisOrder);
+			final int[] p = AxisUtils.findPermutationByName((AxisMetadata)meta, N5IJUtils.imagePlusAxisOrder);
 
-			final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadata(p, imgC, datasetMetaArg);
+			final Pair<RandomAccessibleInterval<T>, M> res = AxisUtils.permuteImageAndMetadata(p, imgC, meta);
 			img = res.getA();
 			datasetMeta = res.getB();
 		} else {
 			img = imgC;
-			datasetMeta = (M)datasetMetaArg;
+			datasetMeta = (M)meta;
 		}
 
 		RandomAccessibleInterval<T> convImg;
