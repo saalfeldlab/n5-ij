@@ -17,7 +17,7 @@ import org.janelia.saalfeldlab.n5.universe.translation.TranslatedN5Reader;
 
 public class N5MetadataTranslationPanel {
 
-	private static final String DEFAULT_TEXT = "include \"n5\";";
+	private static final String DEFAULT_TEXT = "include \"dialect\";";
 
 	private float fontScale = 1.0f;
 
@@ -32,6 +32,7 @@ public class N5MetadataTranslationPanel {
 		this.fontScale = fontScale;
 	}
 
+	@Deprecated
 	public void setFilter(Predicate<CanonicalMetadata> filter) {
 		this.filter = filter;
 	}
@@ -68,11 +69,6 @@ public class N5MetadataTranslationPanel {
 		final String txt = textArea.getText();
 		final boolean textSet = !( txt.isEmpty() || txt.equals(DEFAULT_TEXT));
 		return textSet;
-//		if( textSet ) {
-//			return TranslatedTreeMetadataParser.testTranslation( txt );
-//		}
-//		else
-//			return false;
 	}
 
 	public JPanel buildPanel()
